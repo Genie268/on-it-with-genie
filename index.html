@@ -820,6 +820,9 @@ const PAYSTACK_PUBLIC_KEY = "pk_live_e68832aeb38271278b021a3bcfbf5aa2e4c579a9";
 const SUPABASE_URL = "https://vbafqulhbskaswkyjjdn.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiYWZxdWxoYnNrYXN3a3lqamRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwODE3NDcsImV4cCI6MjA4MTY1Nzc0N30.cg7zCIJN9cPd1XUO29BVDjxDlOxcTzY1p6ndDThWr4Q";
 const GROQ_PROXY_URL = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/groq-proxy";
+const VAPID_PUBLIC_KEY = "BIsYpRrSeUjZSz9RK_6Y3ueIvrEI4C_jl2A91UL_GR93H4-bLHQUxJIm-ZduQJEK9XORRRyYe4Hyf2HesuOC_fI";
+const PUSH_FUNCTION_URL = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/send-push";
+const PUSH_ADMIN_SECRET = "yAhYqMsCQ1lcC2nNkkcZjzNWBjtv5DYb6D725uLvD6c";
 const ADMIN_PIN = "2025";
 const PRICES = {7:850000, 15:1500000, 30:5000000}; // Kobo
 /* ── GENIE PHOTO ──────────────────────────────────────────
@@ -1383,6 +1386,7 @@ function renderDash(){
   el("goal-c").innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8"><span class="tag">${PT[u.answers.proofType]||"Proof"}</span><span class="muted" style="font-size:11px;margin-left:5px">${u.name}</span></div>`;
   renderStreak(); renderGrid(); renderUnlock(); renderRecCard();
   updateMsgBadge();
+  initPushNotifications();
   renderEnergyCheck();
   renderChat();
   const dnr=el("day-nav-row");
@@ -2183,6 +2187,76 @@ async function sendMessageToDB(challengerId,message){
   }catch(e){return false;}
 }
 
+/* ── PUSH NOTIFICATIONS ─────────────────────────────────── */
+function urlBase64ToUint8Array(base64String){
+  const padding="=".repeat((4-base64String.length%4)%4);
+  const base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(base64);
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+
+async function initPushNotifications(){
+  if(!("serviceWorker" in navigator)||!("PushManager" in window))return;
+  if(!S.user?.supabaseId)return;
+  try{
+    const reg=await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      // iOS standalone check
+      const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isStandalone=window.navigator.standalone||window.matchMedia("(display-mode: standalone)").matches;
+      if(isIOS&&!isStandalone){
+        // Show a gentle prompt — don't block
+        const banner=document.createElement("div");
+        banner.id="ios-push-banner";
+        banner.style.cssText="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #c49a1c44;color:#e0e0e0;font-size:13px;padding:12px 16px;border-radius:12px;z-index:9999;max-width:300px;text-align:center;box-shadow:0 4px 20px #0008";
+        banner.innerHTML='<strong style="color:#c49a1c">Enable Notifications</strong><br>Add this app to your Home Screen to receive push notifications on iPhone.';
+        const close=document.createElement("button");
+        close.textContent="✕";
+        close.style.cssText="position:absolute;top:6px;right:10px;background:none;border:none;color:#888;font-size:16px;cursor:pointer";
+        close.onclick=()=>banner.remove();
+        banner.appendChild(close);
+        document.body.appendChild(banner);
+        return;
+      }
+      const perm=await Notification.requestPermission();
+      if(perm!=="granted")return;
+      sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+    }
+    // Upsert subscription to Supabase
+    if(sb){
+      const k=sub.toJSON().keys||{};
+      await sb.from("push_subscriptions").upsert({
+        challenger_id:S.user.supabaseId,
+        endpoint:sub.endpoint,
+        p256dh:k.p256dh||"",
+        auth:k.auth||""
+      },{onConflict:"endpoint",ignoreDuplicates:false});
+    }
+  }catch(e){console.warn("Push init failed:",e);}
+}
+
+async function triggerPush(challengerId,title,body){
+  try{
+    await fetch(PUSH_FUNCTION_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+PUSH_ADMIN_SECRET},
+      body:JSON.stringify({type:"personal",challenger_id:challengerId,title,body:body.slice(0,120),url:"/"})
+    });
+  }catch(e){}
+}
+
+async function triggerPushBroadcast(title,body){
+  try{
+    await fetch(PUSH_FUNCTION_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+PUSH_ADMIN_SECRET},
+      body:JSON.stringify({type:"broadcast",title,body:body.slice(0,120),url:"/"})
+    });
+  }catch(e){}
+}
+
 /* Admin: Send feedback to a specific challenger */
 async function sendFBLive(uid){
   const ta=el("fb-ta-"+uid);if(!ta||!ta.value.trim())return;
@@ -2196,6 +2270,7 @@ async function sendFBLive(uid){
     }catch(e){}
   }
   if(S.user&&S.user.supabaseId===uid){sendGenieMessage(msg);}
+  if(sent){triggerPush(uid,"Message from Genie 💬",msg);}
   el("fb-area-"+uid).innerHTML=`<div style="padding:10px 12px;background:rgba(77,201,138,.07);border:1px solid rgba(77,201,138,.22);border-radius:8px"><p class="ok" style="font-size:12px">${sent?"✓ Message sent to "+(u?.name||"challenger"):"⚠ Could not send"}</p></div>`;
   ta.value="";
 }
@@ -2216,6 +2291,7 @@ async function broadcastMessage(){
     }
   }
   btn.disabled=false;btn.textContent="Broadcast to All";
+  if(sent>0){triggerPushBroadcast("Message from Genie 💬",msg);}
   ta.value="";
   el("broadcast-status").innerHTML=`<p class="ok" style="font-size:12px;margin-top:8px">✓ Sent to ${sent} challenger${sent!==1?"s":""}</p>`;
   setTimeout(()=>{const s=el("broadcast-status");if(s)s.innerHTML="";},3000);
