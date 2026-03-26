@@ -884,12 +884,21 @@ async function loadAdminData(){
       const noteArr=Array(dur).fill("—");
       const rvArr=Array(dur).fill(0);
       const voiceArr=Array(dur).fill(0);
+      const voiceUrlArr=Array(dur).fill(null);
+      const linkArr=Array(dur).fill(null);
+      const fileNameArr=Array(dur).fill(null);
+      const behaviorArr=Array(dur).fill(null);
       uploads.forEach(u=>{
         if(u.day_number>=1&&u.day_number<=dur){
-          upArr[u.day_number-1]=1;
-          noteArr[u.day_number-1]=u.note||"No note";
-          rvArr[u.day_number-1]=u.reviewed?1:0;
-          voiceArr[u.day_number-1]=u.voice_url?1:0;
+          const i=u.day_number-1;
+          upArr[i]=1;
+          noteArr[i]=u.note||"No note";
+          rvArr[i]=u.reviewed?1:0;
+          voiceArr[i]=u.voice_url?1:0;
+          voiceUrlArr[i]=u.voice_url||null;
+          linkArr[i]=u.link_url||null;
+          fileNameArr[i]=u.file_name||null;
+          behaviorArr[i]=u.behavior_answer||null;
         }
       });
       const elog={};
@@ -902,8 +911,9 @@ async function loadAdminData(){
         id:c.id,name:c.name,
         ini:(c.name||"?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2),
         goal:c.goal_summary||c.goal_raw,pt:c.proof_type||"output",
-        day:curDay,dur,up:upArr,notes:noteArr,
-        energyLog:elog,hasVoice:voiceArr,
+        day:curDay,dur,up:upArr,notes:noteArr,rv:rvArr,
+        energyLog:elog,hasVoice:voiceArr,voiceUrls:voiceUrlArr,
+        links:linkArr,fileNames:fileNameArr,behaviors:behaviorArr,
         flag:missed>=4?"Multiple consecutive missed days":null,
         email:c.email,phone:c.phone,
         paymentStatus:c.payment_status,supabaseId:c.id,status:c.status
@@ -941,7 +951,17 @@ function calcDay(){
   S.day=Math.max(1,Math.min(getDur(),diff));
 }
 function saveState(){
-  try{localStorage.setItem("oiwg_state",JSON.stringify({user:S.user,uploads:S.uploads,day:S.day}));}catch(e){}
+  try{localStorage.setItem("oiwg_state",JSON.stringify({user:S.user,uploads:S.uploads,day:S.day}));}catch(e){
+    console.error("saveState failed:",e);
+    if(!document.getElementById("storage-warn")){
+      const w=document.createElement("div");
+      w.id="storage-warn";
+      w.style.cssText="position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#2a1a1a;border:1px solid rgba(217,80,58,.5);color:#f0a090;font-size:13px;padding:10px 16px;border-radius:10px;z-index:9999;max-width:320px;text-align:center";
+      w.textContent="⚠ Your progress couldn't be saved. Check browser storage settings.";
+      document.body.appendChild(w);
+      setTimeout(()=>w.remove(),6000);
+    }
+  }
 }
 function loadState(){
   try{
@@ -964,30 +984,32 @@ function spn(){ return `<span class="spinner"></span>`; }
 
 /* ── GROQ (via proxy, with temporary fallback) ── */
 async function lil(prompt, maxTokens=300){
-  try {
-    /* Try proxy first */
-    if(GROQ_PROXY_URL){
-      try{
-        const res=await fetch(GROQ_PROXY_URL,{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({prompt,maxTokens})
-        });
-        const data=await res.json();
-        if(data?.content) return data.content;
-        if(data?.error) console.warn("Proxy error:",data.error);
-      }catch(proxyErr){console.warn("Proxy unreachable:",proxyErr);}
-    }
-    /* Fallback to direct — REMOVE once proxy is confirmed */
-    const _fk="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";
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {"Content-Type":"application/json","Authorization":`Bearer ${_fk}`},
-      body: JSON.stringify({model:GROQ_MODEL,max_tokens:maxTokens,messages:[{role:"system",content:SYS},{role:"user",content:prompt}]})
-    });
-    const data = await res.json();
-    return data?.choices?.[0]?.message?.content?.trim() || null;
-  } catch(e){ console.error("AI error:",e); return null; }
+  const timeout=new Promise(resolve=>setTimeout(()=>resolve(null),10000));
+  async function _call(){
+    try {
+      if(GROQ_PROXY_URL){
+        try{
+          const res=await fetch(GROQ_PROXY_URL,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({prompt,maxTokens})
+          });
+          const data=await res.json();
+          if(data?.content) return data.content;
+          if(data?.error) console.warn("Proxy error:",data.error);
+        }catch(proxyErr){console.warn("Proxy unreachable:",proxyErr);}
+      }
+      const _fk="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";
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {"Content-Type":"application/json","Authorization":`Bearer ${_fk}`},
+        body: JSON.stringify({model:GROQ_MODEL,max_tokens:maxTokens,messages:[{role:"system",content:SYS},{role:"user",content:prompt}]})
+      });
+      const data = await res.json();
+      return data?.choices?.[0]?.message?.content?.trim() || null;
+    } catch(e){ console.error("AI error:",e); return null; }
+  }
+  return Promise.race([_call(), timeout]);
 }
 
 /* ── FALLBACKS ── */
@@ -1721,7 +1743,7 @@ async function subUp(){
 /* ── RECOVERY ── */
 async function initRec(){
   S.recDay=1;
-  if(S.user)S.user.recovery=[];
+  if(S.user&&!S.user.recovery)S.user.recovery=[];
   updRec();
   const rl=el("rec-lil"); rl.style.display="flex";
   el("rec-lil-t").innerHTML=`${spn()} <span class="muted" style="font-size:13px">Lil is thinking...</span>`;
@@ -1830,18 +1852,15 @@ async function applyAccessCode(){
       if(data){
         if(data.max_uses>0&&data.times_used>=data.max_uses){msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Code fully used";return;}
         S._accessDiscount=data.discount_percent;S._accessCode=code;S._accessCodeId=data.id;
+        // Increment usage count server-side immediately
+        try{await sb.from("access_codes").update({times_used:(data.times_used||0)+1}).eq("id",data.id);}catch(e){}
         updatePayAfterDiscount(data.discount_percent);
         msg.style.display="block";msg.style.color="#4dc98a";msg.textContent=data.discount_percent===100?"Free access applied!":data.discount_percent+"% off applied!";
         return;
       }
     }catch(e){}
   }
-  const offline={GENIE100:100,LAUNCH50:50,FRIEND25:25};
-  if(offline[code]!==undefined){
-    S._accessDiscount=offline[code];S._accessCode=code;
-    updatePayAfterDiscount(offline[code]);
-    msg.style.display="block";msg.style.color="#4dc98a";msg.textContent=offline[code]===100?"Free access!":offline[code]+"% off!";
-  }else{msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Invalid code";}
+  msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Invalid code";
 }
 
 function updatePayAfterDiscount(pct){
@@ -2063,7 +2082,7 @@ function renderChallengerDetail(u){
   const dur=u.dur||15;
   const callDays=CALL_DAYS[dur]||[];
   for(let i=0;i<dur;i++){
-    const d=i+1,isUp=u.up[i],isRv=u.rv||u.up.map(()=>0)[i],note=u.notes[i],fut=d>u.day;
+    const d=i+1,isUp=u.up[i],isRv=u.rv&&u.rv[i],note=u.notes[i],fut=d>u.day;
     const isCall=callDays.includes(d);
     const hasVoice=u.hasVoice&&u.hasVoice[i];
     const energy=u.energyLog&&u.energyLog[d];
@@ -2077,10 +2096,10 @@ function renderChallengerDetail(u){
     if(fut||!isUp){
       rows+=`<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--nav-bg);border-radius:7px;margin-bottom:4px;opacity:${fut?.3:.6}"><span style="font-size:9px;font-weight:700;color:#5a5a5a;width:40px;flex-shrink:0">D${d}${callBadge}</span><span class="muted" style="font-size:11px">${fut?"upcoming":"not uploaded"}</span>${energyBadge}</div>`;
     } else {
-      rows+=`<div style="display:flex;gap:8px;align-items:center;padding:8px 11px;background:${isRv?"rgba(196,154,28,.05)":"rgba(77,201,138,.05)"};border:1px solid ${isRv?"rgba(196,154,28,.2)":"rgba(77,201,138,.2)"};border-radius:8px;margin-bottom:4px"><span style="font-size:9px;font-weight:700;color:${isRv?"#c49a1c":"#4dc98a"};width:40px;flex-shrink:0">D${d}${callBadge}</span><span style="flex:1;font-size:12px">${note&&note!=="—"?note:"No note"}${hasVoice?" 🎙":""}</span>${energyBadge}<button onclick="togRv('${u.id}',${i})" style="padding:3px 9px;border-radius:100px;background:${isRv?"rgba(196,154,28,.1)":"#1b1b1b"};border:1px solid ${isRv?"rgba(196,154,28,.3)":"#333"};color:${isRv?"#c49a1c":"#888"};font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">${isRv?"✓✓ Done":"Mark Reviewed"}</button></div>`;
+      rows+=`<div style="display:flex;gap:8px;align-items:center;padding:8px 11px;background:${isRv?"rgba(196,154,28,.05)":"rgba(77,201,138,.05)"};border:1px solid ${isRv?"rgba(196,154,28,.2)":"rgba(77,201,138,.2)"};border-radius:8px;margin-bottom:4px;cursor:pointer" onclick="openUploadDetail('${u.id}',${i})"><span style="font-size:9px;font-weight:700;color:${isRv?"#c49a1c":"#4dc98a"};width:40px;flex-shrink:0">D${d}${callBadge}</span><span style="flex:1;font-size:12px">${note&&note!=="—"?note.slice(0,60)+(note.length>60?"…":""):"No note"}${hasVoice?" 🎙":""}${u.links&&u.links[i]?" 🔗":""}</span>${energyBadge}<button onclick="event.stopPropagation();togRv('${u.id}',${i})" style="padding:3px 9px;border-radius:100px;background:${isRv?"rgba(196,154,28,.1)":"#1b1b1b"};border:1px solid ${isRv?"rgba(196,154,28,.3)":"#333"};color:${isRv?"#c49a1c":"#888"};font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">${isRv?"✓✓ Done":"Mark Reviewed"}</button></div>`;
     }
   }
-  const up=u.up.filter(Boolean).length,rv=u.rv||u.up.map(()=>0).filter(Boolean).length;
+  const up=u.up.filter(Boolean).length,rv=(u.rv||[]).filter(Boolean).length;
   /* Energy summary */
   let energySummary="";
   if(u.energyLog){
@@ -2096,9 +2115,15 @@ function renderChallengerDetail(u){
       </div>`;
     }
   }
+  const contactSection=(u.email||u.phone)?`<div style="margin-bottom:14px;padding:10px 12px;background:rgba(255,255,255,.02);border:1px solid #1f1f1f;border-radius:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;flex-shrink:0">CONTACT</span>
+    ${u.email?`<a href="mailto:${u.email}" style="font-size:12px;color:#4dc98a;text-decoration:none">✉ ${u.email}</a>`:""}
+    ${u.phone?`<a href="https://wa.me/${u.phone.replace(/\D/g,'')}" target="_blank" style="font-size:12px;color:#4dc98a;text-decoration:none">📱 ${u.phone}</a>`:""}
+  </div>`:"";
   return `${u.flag?`<div style="padding:10px 12px;background:rgba(217,80,58,.07);border:1px solid rgba(217,80,58,.22);border-radius:8px;margin-bottom:14px;display:flex;gap:8px"><span class="er">⚑</span><p style="font-size:12px;line-height:1.5">${u.flag}</p></div>`:""}
+    ${contactSection}
     ${energySummary}
-    <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">UPLOADS · ${up}/${dur} · ${rv} reviewed</p>
+    <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">UPLOADS · ${up}/${dur} · ${rv} reviewed <span style="color:#444;font-weight:400">· tap a row to view proof</span></p>
     ${rows}
     <div style="margin-top:14px;border-top:1px solid #1b1b1b;padding-top:14px" id="fb-area-${u.id}">
       <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">SEND FEEDBACK</p>
@@ -2138,23 +2163,35 @@ function renderAdminFlagged(c){
 function renderAdminInbox(c){
   const pending=getAM().flatMap(u=>{
     const items=[];
-    for(let i=0;i<u.day-1;i++){if(u.up[i]&&!u.rv||u.up.map(()=>0)[i])items.push({u,day:i+1,note:u.notes[i],i,hasVoice:u.hasVoice&&u.hasVoice[i]});}
+    for(let i=0;i<u.day-1;i++){
+      if(u.up[i]&&!u.rv[i])items.push({u,day:i+1,note:u.notes[i],i,
+        hasVoice:u.hasVoice&&u.hasVoice[i],voiceUrl:u.voiceUrls&&u.voiceUrls[i],
+        link:u.links&&u.links[i],fileName:u.fileNames&&u.fileNames[i],
+        behavior:u.behaviors&&u.behaviors[i]});
+    }
     return items;
   });
   c.innerHTML=`<p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">UPLOADS TO REVIEW · ${pending.length}</p>
-    ${pending.map(({u,day,note,i,hasVoice})=>`
+    ${pending.map(({u,day,note,i,hasVoice,voiceUrl,link,fileName,behavior})=>`
       <div class="card mb10">
-        <div class="row mb8" style="justify-content:space-between">
-          <div class="row" style="gap:8px">
+        <div class="row mb8" style="justify-content:space-between;align-items:flex-start">
+          <div class="row" style="gap:8px;flex:1;min-width:0">
             <div style="width:30px;height:30px;border-radius:7px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.ini}</div>
-            <div><p style="font-size:12px;font-weight:700">${u.name} <span class="muted">Day ${day}</span>${hasVoice?` <span style="font-size:10px">🎙</span>`:""}</p><p style="font-size:12px;margin-top:3px">${note&&note!=="—"?note:"No note"}</p></div>
+            <div style="min-width:0">
+              <p style="font-size:12px;font-weight:700">${u.name} <span class="muted">Day ${day}</span></p>
+              ${note&&note!=="—"?`<p style="font-size:12px;margin-top:3px;line-height:1.5">${note}</p>`:""}
+              ${behavior?`<p style="font-size:11px;margin-top:3px;color:#c49a1c">Behavior: ${behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p>`:""}
+              ${link?`<a href="${link}" target="_blank" style="font-size:11px;color:#4dc98a;margin-top:3px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔗 ${link}</a>`:""}
+              ${fileName?`<p style="font-size:11px;color:#888;margin-top:2px">📎 ${fileName}</p>`:""}
+              ${voiceUrl?`<audio controls src="${voiceUrl}" style="width:100%;margin-top:6px;height:32px"></audio>`:(hasVoice?`<p style="font-size:11px;color:#888;margin-top:2px">🎙 Voice note (link unavailable)</p>`:"")}
+            </div>
           </div>
-          <button onclick="togRv('${u.id}',${i});renderAdminInbox(el('admin-content'))" style="padding:5px 12px;border-radius:100px;background:#1b1b1b;border:1px solid #333;color:#888;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0">Mark Done</button>
+          <button onclick="togRv('${u.id}',${i});renderAdminInbox(el('admin-content'))" style="padding:5px 12px;border-radius:100px;background:#1b1b1b;border:1px solid #333;color:#888;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px">Mark Done</button>
         </div>
         <textarea id="inb-${u.id}-${i}" rows="2" placeholder="Reply to ${u.name}..." style="font-size:12px;margin-top:4px"></textarea>
         <div class="row mt8" style="gap:7px">
-          <button class="bp" style="font-size:11px;padding:6px 12px" onclick="sendInboxReply('${u.id}','${i}')">Send →</button>
-          <button class="bs" style="font-size:11px;padding:6px 12px" onclick="lilInboxDraft('${u.id}','${i}','${note}')">✦ Lil Draft</button>
+          <button class="bp" style="font-size:11px;padding:6px 12px" onclick="sendInboxReply('${u.id}',${i})">Send →</button>
+          <button class="bs" style="font-size:11px;padding:6px 12px" onclick="lilInboxDraft('${u.id}',${i},'${(note||"").replace(/'/g,"\\'")}')">✦ Lil Draft</button>
         </div>
       </div>
     `).join("")||`<div style="text-align:center;padding:48px 20px"><p class="muted">All caught up. No pending reviews.</p></div>`}`;
@@ -2389,9 +2426,17 @@ Goal: "${u.goal}"`,120);
   ta.disabled=false;ta.placeholder=`Personal message to ${u.name}...`;
 }
 
-function sendInboxReply(uid,i){
+async function sendInboxReply(uid,i){
   const ta=el("inb-"+uid+"-"+i);if(!ta||!ta.value.trim())return;
-  const v=ta.value;ta.disabled=true;ta.value="✓ Sent: "+v;ta.style.borderColor="#4dc98a";
+  const msg=ta.value.trim();
+  ta.disabled=true;
+  if(sb){
+    try{
+      await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg});
+      triggerPush(uid,"Message from Genie 💬",msg);
+    }catch(e){console.warn("Inbox reply send error:",e);}
+  }
+  ta.value="✓ Sent: "+msg;ta.style.borderColor="#4dc98a";
 }
 
 async function lilInboxDraft(uid,i,note){
@@ -3165,6 +3210,65 @@ function playUploadSound(){
     });
   } catch(e){}
 }
+
+/* ── UPLOAD DETAIL SLIDE-OVER ───────────────────────────── */
+function openUploadDetail(uid, dayIndex){
+  const u=getAM().find(x=>x.id===uid);
+  if(!u)return;
+  const d=dayIndex+1;
+  const note=u.notes[dayIndex];
+  const voiceUrl=u.voiceUrls&&u.voiceUrls[dayIndex];
+  const link=u.links&&u.links[dayIndex];
+  const fileName=u.fileNames&&u.fileNames[dayIndex];
+  const behavior=u.behaviors&&u.behaviors[dayIndex];
+  const isRv=u.rv&&u.rv[dayIndex];
+  const energy=u.energyLog&&u.energyLog[d];
+
+  let energyHtml="";
+  if(energy&&energy.type!=="skip"){
+    if(energy.type==="energy") energyHtml=`<div style="margin-bottom:12px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">ENERGY</span><p style="margin-top:4px;font-size:20px">${"🔥".repeat(energy.value)}</p></div>`;
+    else if(energy.type==="mood") energyHtml=`<div style="margin-bottom:12px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">MOOD</span><p style="margin-top:4px;font-size:22px">${energy.value}</p></div>`;
+    else if(energy.type==="reflection") energyHtml=`<div style="margin-bottom:12px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">REFLECTION</span><p style="margin-top:4px;font-size:13px;line-height:1.6;color:#ccc">${energy.value}</p></div>`;
+  }
+
+  const panel=document.getElementById("upload-detail-panel");
+  document.getElementById("upload-detail-body").innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">${u.name.toUpperCase()} · DAY ${d}</p>
+        <p style="font-size:13px;color:#888;margin-top:2px">${u.goal}</p>
+      </div>
+      <span style="font-size:11px;padding:4px 10px;border-radius:100px;background:${isRv?"rgba(196,154,28,.12)":"rgba(77,201,138,.12)"};color:${isRv?"#c49a1c":"#4dc98a"};font-weight:700">${isRv?"Reviewed":"Pending"}</span>
+    </div>
+    ${behavior?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">BEHAVIOR</span><p style="margin-top:4px;font-size:14px;font-weight:700;color:${behavior==="yes"?"#4dc98a":"#d9503a"}">${behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p></div>`:""}
+    ${note&&note!=="—"?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">NOTE</span><p style="margin-top:4px;font-size:13px;line-height:1.7;color:#e0e0e0">${note}</p></div>`:""}
+    ${link?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">LINK</span><a href="${link}" target="_blank" style="display:block;margin-top:4px;font-size:13px;color:#4dc98a;word-break:break-all">${link}</a></div>`:""}
+    ${fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${fileName}</p></div>`:""}
+    ${voiceUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span><audio controls src="${voiceUrl}" style="width:100%;margin-top:8px;border-radius:8px"></audio></div>`:""}
+    ${energyHtml}
+    <div style="border-top:1px solid #1f1f1f;padding-top:16px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="togRv('${uid}',${dayIndex});closeUploadDetail()" style="padding:8px 16px;border-radius:100px;background:${isRv?"rgba(196,154,28,.1)":"#1b1b1b"};border:1px solid ${isRv?"rgba(196,154,28,.3)":"#333"};color:${isRv?"#c49a1c":"#888"};font-size:12px;font-weight:700;cursor:pointer">${isRv?"✓ Unmark Reviewed":"Mark Reviewed"}</button>
+      <button onclick="closeUploadDetail();setTimeout(()=>{const ta=el('fb-ta-${uid}');if(ta)ta.focus();},200)" style="padding:8px 16px;border-radius:100px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">Reply →</button>
+    </div>
+  `;
+  panel.style.transform="translateX(0)";
+  document.getElementById("upload-detail-backdrop").style.display="block";
+}
+
+function closeUploadDetail(){
+  document.getElementById("upload-detail-panel").style.transform="translateX(100%)";
+  document.getElementById("upload-detail-backdrop").style.display="none";
+}
 </script>
+
+<!-- UPLOAD DETAIL SLIDE-OVER -->
+<div id="upload-detail-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100" onclick="closeUploadDetail()"></div>
+<div id="upload-detail-panel" style="position:fixed;top:0;right:0;height:100%;width:min(420px,100%);background:#111;border-left:1px solid #1f1f1f;z-index:1101;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #1a1a1a;flex-shrink:0">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">UPLOAD DETAIL</span>
+    <button onclick="closeUploadDetail()" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:0;line-height:1">×</button>
+  </div>
+  <div id="upload-detail-body" style="flex:1;overflow-y:auto;padding:20px"></div>
+</div>
 </body>
 </html>
