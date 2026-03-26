@@ -612,7 +612,7 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 
       <div class="col mt12" style="opacity:0;animation:heroFadeUp .5s ease 1.5s forwards">
         <button class="bp" style="width:100%;font-size:15px;padding:14px" onclick="goTo('gauntlet')">Enter The Gauntlet →</button>
-        <button class="bs" style="width:100%;padding:11px;font-size:13px" onclick="S.uploads=Array(getDur()).fill(null);S.day=1;S.lilDone=false;startOB()">Start a New Challenge</button>
+        <button class="bs" style="width:100%;padding:11px;font-size:13px" onclick="S.uploads=[];S.day=1;S.lilDone=false;S.ans={};goTo('duration');initDuration()">Start a New Challenge</button>
       </div>
     </div>
   </div>
@@ -1790,7 +1790,7 @@ async function syncToSupabase(){
       amount_paid:u.amountPaid||0,access_code:u.accessCode||null,
       status:"active",current_day:S.day
     },{onConflict:"id"}).select().single();
-    if(data&&!u.supabaseId){S.user.supabaseId=data.id;saveState();}
+    if(data&&!u.supabaseId){S.user.supabaseId=data.id;saveState();initPushNotifications();}
   }catch(e){console.error("Sync error:",e);}
 }
 
@@ -1860,7 +1860,7 @@ function updatePayAfterDiscount(pct){
 function initiatePayment(){
   const dur=S.user?.duration||15;const email=el("pay-email")?.value?.trim();
   if(S._accessDiscount===100){completePayment({reference:"FREE_"+Date.now(),status:"free"});return;}
-  if(!email||!email.includes("@")){el("pay-status").textContent="Enter a valid email";el("pay-status").style.color="#d9503a";return;}
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){el("pay-status").textContent="Enter a valid email";el("pay-status").style.color="#d9503a";return;}
   const fk=S._accessDiscount>0?Math.round(PRICES[dur]*(1-S._accessDiscount/100)):PRICES[dur];
   el("pay-btn").disabled=true;el("pay-btn").textContent="Opening payment...";
   try{
@@ -2218,6 +2218,7 @@ async function initPushNotifications(){
         close.onclick=()=>banner.remove();
         banner.appendChild(close);
         document.body.appendChild(banner);
+        setTimeout(()=>banner.remove(),8000);
         return;
       }
       const perm=await Notification.requestPermission();
