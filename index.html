@@ -916,7 +916,10 @@ async function loadAdminData(){
         links:linkArr,fileNames:fileNameArr,behaviors:behaviorArr,
         flag:missed>=4?"Multiple consecutive missed days":null,
         email:c.email,phone:c.phone,
-        paymentStatus:c.payment_status,supabaseId:c.id,status:c.status
+        paymentStatus:c.payment_status,supabaseId:c.id,status:c.status,
+        goalRaw:c.goal_raw,goalSummary:c.goal_summary,
+        proofDescription:c.proof_description,proofType:c.proof_type||"output",
+        threat:c.threat,startDate:c.start_date
       };
     });
     adminDataLoaded=true;
@@ -2115,11 +2118,14 @@ function renderChallengerDetail(u){
       </div>`;
     }
   }
-  const contactSection=(u.email||u.phone)?`<div style="margin-bottom:14px;padding:10px 12px;background:rgba(255,255,255,.02);border:1px solid #1f1f1f;border-radius:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-    <span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;flex-shrink:0">CONTACT</span>
-    ${u.email?`<a href="mailto:${u.email}" style="font-size:12px;color:#4dc98a;text-decoration:none">✉ ${u.email}</a>`:""}
-    ${u.phone?`<a href="https://wa.me/${u.phone.replace(/\D/g,'')}" target="_blank" style="font-size:12px;color:#4dc98a;text-decoration:none">📱 ${u.phone}</a>`:""}
-  </div>`:"";
+  const contactSection=`<div style="margin-bottom:14px;padding:10px 12px;background:rgba(255,255,255,.02);border:1px solid #1f1f1f;border-radius:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;flex-shrink:0">CONTACT</span>
+      ${u.email?`<a href="mailto:${u.email}" style="font-size:12px;color:#4dc98a;text-decoration:none">✉ ${u.email}</a>`:"<span class='muted' style='font-size:12px'>No email</span>"}
+      ${u.phone?`<a href="https://wa.me/${u.phone.replace(/\D/g,'')}" target="_blank" style="font-size:12px;color:#4dc98a;text-decoration:none">📱 ${u.phone}</a>`:""}
+    </div>
+    <button onclick="openProfilePanel('${u.id}')" style="padding:4px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0">View / Edit Profile →</button>
+  </div>`;
   return `${u.flag?`<div style="padding:10px 12px;background:rgba(217,80,58,.07);border:1px solid rgba(217,80,58,.22);border-radius:8px;margin-bottom:14px;display:flex;gap:8px"><span class="er">⚑</span><p style="font-size:12px;line-height:1.5">${u.flag}</p></div>`:""}
     ${contactSection}
     ${energySummary}
@@ -3211,6 +3217,139 @@ function playUploadSound(){
   } catch(e){}
 }
 
+/* ── PROFILE SLIDE-OVER ─────────────────────────────────── */
+function openProfilePanel(uid){
+  const u=getAM().find(x=>x.id===uid);
+  if(!u)return;
+  const startFmt=u.startDate?new Date(u.startDate).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"—";
+  document.getElementById("profile-panel-body").innerHTML=`
+    <div style="margin-bottom:20px">
+      <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:4px">CHALLENGER</p>
+      <p style="font-size:18px;font-weight:800">${u.name}</p>
+      <p style="font-size:12px;color:#666;margin-top:2px">Day ${u.day} of ${u.dur} · Started ${startFmt} · ${u.paymentStatus||"—"}</p>
+    </div>
+
+    <div id="profile-view-mode">
+      <div class="profile-field-group">
+        <p class="pf-lbl">NAME</p><p class="pf-val">${u.name||"—"}</p>
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">EMAIL</p><p class="pf-val">${u.email||"—"}</p>
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">PHONE</p><p class="pf-val">${u.phone||"—"}</p>
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">GOAL</p><p class="pf-val">${u.goalRaw||u.goal||"—"}</p>
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">GOAL SUMMARY</p><p class="pf-val">${u.goalSummary||"—"}</p>
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">DAILY PROOF</p><p class="pf-val">${u.proofDescription||"—"}</p>
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">THEIR THREAT</p>
+        <p class="pf-val" style="color:#c49a1c;font-style:italic">"${u.threat||"—"}"</p>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <div class="profile-field-group" style="flex:1"><p class="pf-lbl">PROOF TYPE</p><p class="pf-val">${u.proofType||"—"}</p></div>
+        <div class="profile-field-group" style="flex:1"><p class="pf-lbl">DURATION</p><p class="pf-val">${u.dur} days</p></div>
+      </div>
+      <div style="margin-top:16px">
+        <button onclick="switchToEditMode('${uid}')" style="width:100%;padding:10px;border-radius:10px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:13px;font-weight:700;cursor:pointer">Edit Profile →</button>
+      </div>
+    </div>
+
+    <div id="profile-edit-mode" style="display:none">
+      <div class="profile-field-group">
+        <p class="pf-lbl">NAME</p>
+        <input id="pf-name" class="pf-input" value="${(u.name||"").replace(/"/g,"&quot;")}">
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">EMAIL</p>
+        <input id="pf-email" class="pf-input" type="email" value="${(u.email||"").replace(/"/g,"&quot;")}">
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">PHONE</p>
+        <input id="pf-phone" class="pf-input" type="tel" value="${(u.phone||"").replace(/"/g,"&quot;")}">
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">GOAL</p>
+        <textarea id="pf-goal" class="pf-input" rows="3">${u.goalRaw||u.goal||""}</textarea>
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">GOAL SUMMARY <span style="color:#444;font-weight:400">(shown in dashboard)</span></p>
+        <textarea id="pf-goal-summary" class="pf-input" rows="2">${u.goalSummary||""}</textarea>
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">DAILY PROOF</p>
+        <textarea id="pf-proof" class="pf-input" rows="2">${u.proofDescription||""}</textarea>
+      </div>
+      <div class="profile-field-group">
+        <p class="pf-lbl">THEIR THREAT</p>
+        <textarea id="pf-threat" class="pf-input" rows="2">${u.threat||""}</textarea>
+      </div>
+      <p style="font-size:11px;color:#444;margin-bottom:16px">Duration and start date cannot be changed mid-challenge.</p>
+      <div style="display:flex;gap:8px">
+        <button onclick="saveProfile('${uid}')" style="flex:1;padding:10px;border-radius:10px;background:#c49a1c;border:none;color:#000;font-size:13px;font-weight:800;cursor:pointer">Save Changes</button>
+        <button onclick="switchToViewMode()" style="padding:10px 16px;border-radius:10px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:13px;cursor:pointer">Cancel</button>
+      </div>
+      <p id="pf-save-status" style="font-size:12px;margin-top:10px;text-align:center"></p>
+    </div>
+  `;
+  document.getElementById("profile-panel").style.transform="translateX(0)";
+  document.getElementById("profile-panel-backdrop").style.display="block";
+}
+
+function switchToEditMode(uid){
+  document.getElementById("profile-view-mode").style.display="none";
+  document.getElementById("profile-edit-mode").style.display="block";
+}
+
+function switchToViewMode(){
+  document.getElementById("profile-edit-mode").style.display="none";
+  document.getElementById("profile-view-mode").style.display="block";
+}
+
+async function saveProfile(uid){
+  const u=getAM().find(x=>x.id===uid);
+  if(!u||!sb)return;
+  const name=document.getElementById("pf-name").value.trim();
+  const email=document.getElementById("pf-email").value.trim();
+  const phone=document.getElementById("pf-phone").value.trim();
+  const goalRaw=document.getElementById("pf-goal").value.trim();
+  const goalSummary=document.getElementById("pf-goal-summary").value.trim();
+  const proofDescription=document.getElementById("pf-proof").value.trim();
+  const threat=document.getElementById("pf-threat").value.trim();
+  if(!name||!goalRaw){document.getElementById("pf-save-status").textContent="Name and goal are required.";document.getElementById("pf-save-status").style.color="#d9503a";return;}
+  const btn=document.querySelector("#profile-edit-mode button");
+  btn.textContent="Saving...";btn.disabled=true;
+  try{
+    await sb.from("challengers").update({
+      name,email:email||null,phone:phone||null,
+      goal_raw:goalRaw,goal_summary:goalSummary||goalRaw,
+      proof_description:proofDescription||null,threat:threat||null
+    }).eq("id",uid);
+    // Update local state so list reflects change immediately
+    Object.assign(u,{name,email,phone,goalRaw,goalSummary:goalSummary||goalRaw,goal:goalSummary||goalRaw,proofDescription,threat,
+      ini:name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)});
+    document.getElementById("pf-save-status").textContent="✓ Saved";
+    document.getElementById("pf-save-status").style.color="#4dc98a";
+    btn.textContent="Save Changes";btn.disabled=false;
+    setTimeout(()=>{switchToViewMode();openProfilePanel(uid);},800);
+  }catch(e){
+    document.getElementById("pf-save-status").textContent="Save failed. Try again.";
+    document.getElementById("pf-save-status").style.color="#d9503a";
+    btn.textContent="Save Changes";btn.disabled=false;
+  }
+}
+
+function closeProfilePanel(){
+  document.getElementById("profile-panel").style.transform="translateX(100%)";
+  document.getElementById("profile-panel-backdrop").style.display="none";
+}
+
 /* ── UPLOAD DETAIL SLIDE-OVER ───────────────────────────── */
 function openUploadDetail(uid, dayIndex){
   const u=getAM().find(x=>x.id===uid);
@@ -3260,6 +3399,25 @@ function closeUploadDetail(){
   document.getElementById("upload-detail-backdrop").style.display="none";
 }
 </script>
+
+<!-- SHARED SLIDE-OVER STYLES -->
+<style>
+.profile-field-group{margin-bottom:14px}
+.pf-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:4px}
+.pf-val{font-size:13px;line-height:1.6;color:#e0e0e0}
+.pf-input{width:100%;background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;font-size:13px;color:#e0e0e0;font-family:inherit;resize:vertical;box-sizing:border-box}
+.pf-input:focus{outline:none;border-color:rgba(196,154,28,.4)}
+</style>
+
+<!-- PROFILE SLIDE-OVER -->
+<div id="profile-panel-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100" onclick="closeProfilePanel()"></div>
+<div id="profile-panel" style="position:fixed;top:0;right:0;height:100%;width:min(460px,100%);background:#111;border-left:1px solid #1f1f1f;z-index:1101;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #1a1a1a;flex-shrink:0">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">CHALLENGER PROFILE</span>
+    <button onclick="closeProfilePanel()" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:0;line-height:1">×</button>
+  </div>
+  <div id="profile-panel-body" style="flex:1;overflow-y:auto;padding:20px"></div>
+</div>
 
 <!-- UPLOAD DETAIL SLIDE-OVER -->
 <div id="upload-detail-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100" onclick="closeUploadDetail()"></div>
