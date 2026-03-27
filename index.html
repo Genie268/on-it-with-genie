@@ -577,7 +577,10 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
     </div>
     <div id="rec-c"></div>
     <div id="chat-container" style="margin-top:6px"></div>
-  </div>
+    <!-- TEMP TEST BUTTON - REMOVE AFTER TESTING -->
+    <div style="text-align:center;margin-top:18px;padding-bottom:8px">
+      <button onclick="runTestPayment()" style="background:none;border:1px dashed #2a2a2a;color:#3a3a3a;font-size:11px;padding:7px 14px;border-radius:100px;cursor:pointer;font-family:inherit">Test Payment (Dev) ₦100</button>
+    </div>
   <div class="stk">
     <button id="up-btn" class="bp" style="width:100%;max-width:320px;font-size:15px;padding:13px" onclick="openMod()">Upload Day 1 Proof ↑</button>
   </div>
@@ -1927,6 +1930,21 @@ function initiatePayment(){
 function completePayment(d){
   if(S.user){S.user.paymentRef=d.reference;S.user.paymentStatus=d.status;S.user.amountPaid=d.amount||0;S.user.email=d.email||S.user.email;S.user.phone=el("pay-phone")?.value?.trim()||S.user.phone||null;S.user.accessCode=S._accessCode||null;saveState();syncToSupabase();}
   goTo("photo");
+}
+
+/* ── TEMP TEST PAYMENT - REMOVE AFTER TESTING ── */
+function runTestPayment(){
+  const email=S.user?.email||"test@example.com";
+  const h=PaystackPop.setup({
+    key:PAYSTACK_PUBLIC_KEY,
+    email,
+    amount:10000,
+    currency:"NGN",
+    ref:"TEST_"+Date.now(),
+    onClose:()=>{},
+    callback:()=>{alert("Test payment successful ✓");}
+  });
+  h.openIframe();
 }
 
 /* ── ADMIN (PIN-gated) ── */
