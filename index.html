@@ -1917,7 +1917,18 @@ function initiatePayment(){
       ref:"OIWG_"+Date.now()+"_"+Math.random().toString(36).substr(2,6),
       metadata:{custom_fields:[{display_name:"Challenger",variable_name:"name",value:S.user?.name||""},{display_name:"Tier",variable_name:"tier",value:TIERS[dur].name}]},
       onClose:()=>{el("pay-btn").disabled=false;el("pay-btn").textContent="Pay & Start →";el("pay-status").textContent="Payment cancelled";el("pay-status").style.color="#d9503a";},
-      callback:(r)=>{completePayment({reference:r.reference,status:"paid",amount:fk,email});}
+      callback:(r)=>{
+        fetch('https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/send-welcome-email',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            email:email,
+            first_name:(S.user?.name||"").split(" ")[0]||"there",
+            tier:TIERS[dur].name.toLowerCase().replace("the ","")
+          })
+        }).catch(()=>{});
+        completePayment({reference:r.reference,status:"paid",amount:fk,email});
+      }
     });
     h.openIframe();
   }catch(e){el("pay-btn").disabled=false;el("pay-btn").textContent="Pay & Start →";el("pay-status").textContent="Payment failed. Check connection.";el("pay-status").style.color="#d9503a";}
