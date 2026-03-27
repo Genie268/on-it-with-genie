@@ -518,20 +518,6 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
   <div class="sb">
     <div id="energy-check-area"></div>
     <div class="card mb10" id="goal-c"></div>
-    <div style="text-align:center;padding:24px 16px;background:#131313;border:1px solid #171717;border-radius:12px;margin-bottom:10px">
-      <span class="lbl" style="margin-bottom:14px">CURRENT STREAK</span>
-      <div style="position:relative;width:120px;height:120px;margin:0 auto 12px">
-        <svg width="120" height="120" style="transform:rotate(-90deg)">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="#1b1b1b" stroke-width="8"/>
-          <circle id="sk-ring" cx="60" cy="60" r="52" fill="none" stroke="#c49a1c" stroke-width="8" stroke-dasharray="327" stroke-dashoffset="327" stroke-linecap="round" style="transition:stroke-dashoffset .6s ease"/>
-        </svg>
-        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
-          <div id="sk-num" style="font-size:42px;font-weight:900;line-height:1;letter-spacing:-0.04em;color:#2c2c2c;transition:color .3s">0</div>
-          <div style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-top:2px">DAYS</div>
-        </div>
-      </div>
-      <p class="muted" id="sk-lbl" style="font-size:13px">No streak yet — upload today to start</p>
-    </div>
     <div id="coach-notes"></div>
     <div class="card mb10">
       <div class="row mb12" style="justify-content:space-between">
@@ -547,6 +533,10 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
         <button class="bs" id="next-b" style="padding:7px 12px;font-size:11px" onclick="chDay(1)">Next →</button>
         <span class="muted" id="sim-l" style="margin-left:auto;font-size:10px">Sim day 1</span>
       </div>
+    </div>
+    <div id="call-day-banner" style="display:none;margin-bottom:10px;padding:12px 14px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.18);border-radius:10px">
+      <p style="font-size:12px;font-weight:700;color:#c49a1c;margin-bottom:2px">📞 Today is a call day</p>
+      <p style="font-size:12px;color:#888;line-height:1.5">Upload your proof first, then <a id="call-day-link" href="#" target="_blank" style="color:#c49a1c;text-decoration:none">book your call with Genie →</a></p>
     </div>
     <div class="card ca mb10">
       <div class="row mb8" style="justify-content:space-between">
@@ -1407,8 +1397,12 @@ function renderDash(){
   else{uc.textContent=u.name?u.name[0].toUpperCase():"?";}
   const un=el("dash-user-name"); if(un) un.textContent=u.name||"Challenger";
   const goalDisplay=u.answers.goalSummary||u.answers.goal;
-  el("goal-c").innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8"><span class="tag">${PT[u.answers.proofType]||"Proof"}</span><span class="muted" style="font-size:11px;margin-left:5px">${u.name}</span></div>`;
-  renderStreak(); renderGrid(); renderUnlock(); renderRecCard();
+  /* Streak lives as a compact row at the bottom of the goal card */
+  let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i]!==null)sk++;else break;}
+  const skColor=sk>0?"#c49a1c":"#3a3a3a";
+  const skText=sk===0?"No streak yet":sk===1?"1 day streak":`${sk} day streak`;
+  el("goal-c").innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${PT[u.answers.proofType]||"Proof"}</span><span class="muted" style="font-size:11px">${u.name}</span></div><span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span></div>`;
+  renderGrid(); renderUnlock(); renderRecCard();
   updateMsgBadge();
   initPushNotifications();
   renderEnergyCheck();
@@ -1416,10 +1410,19 @@ function renderDash(){
   const dnr=el("day-nav-row");
   if(S.devMode){dnr.style.display="flex";el("sim-l").textContent=`Sim day ${d}`;el("prev-b").disabled=d===1;el("next-b").disabled=d===getDur();}
   else{dnr.style.display="none";}
+  /* Call day reminder — shown inline, never blocks upload */
+  const callReminderEl=el("call-day-banner");
+  if(callReminderEl){
+    const isTodayCallDay=(CALL_DAYS[dur]||[]).includes(d);
+    callReminderEl.style.display=isTodayCallDay?"block":"none";
+  }
   updateUpBtn();
   renderCoachNotes();
   if(!S.lilDone){ S.lilDone=true; }
-  /* First-timer experience */
+  /* Call day banner link */
+  const callLinkEl=el("call-day-link");
+  if(callLinkEl) callLinkEl.href=CALENDLY_URL||"#";
+  /* First-timer walkthrough (no overlay gate) */
   if(S.uploads.every(v=>v===null)&&!S.devMode){
     const wtKey="oiwg_wt_"+S.user.startDate;
     if(!localStorage.getItem(wtKey)){
@@ -1427,7 +1430,6 @@ function renderDash(){
       setTimeout(fireConfetti,600);
       setTimeout(()=>{showWalkthrough(wtKey);},2200);
     }
-    showWelcomeOverlay();
   }
 }
 
@@ -1473,7 +1475,7 @@ async function renderCoachNotes(){
     </div>
   </div>`;
   const recContext=u.recovery&&u.recovery.length>0?`\nRecovery insight: "${u.recovery[u.recovery.length-1].text}"`:"";
-  const prompt=`User hasn't uploaded today. Write one direct nudge. Reference their stated threat.\n\nGoal: "${u.answers.goal}"\nThreat: "${u.answers.threat||"unknown"}"\nDay: ${d}/${dur}\nUploads: ${up}${recContext}`;
+  const prompt=`One sentence only. Max 12 words. Sharp, direct — name their threat or goal. No filler.\n\nGoal: "${u.answers.goal}"\nThreat: "${u.answers.threat||"unknown"}"\nDay: ${d}/${dur}${recContext}`;
   let msg=await lil(prompt,80);
   if(!msg) msg=FB.nudge(u.answers.goal,u.answers.threat||"what you described",d);
   cn.innerHTML=`<div class="card mb10" style="border-color:rgba(196,154,28,.1)">
@@ -1485,35 +1487,7 @@ async function renderCoachNotes(){
 }
 
 function renderStreak(){
-  const d=S.day,ups=S.uploads; let sk=0;
-  for(let i=d-1;i>=0;i--){ if(ups[i]!==null)sk++; else break; }
-  const numEl=el("sk-num");
-  /* Animate count-up from current displayed value */
-  const current=parseInt(numEl.textContent)||0;
-  if(current!==sk&&sk>0){
-    let c=current;
-    const step=()=>{
-      c+=(sk>c?1:-1);
-      numEl.textContent=c;
-      if(c!==sk)requestAnimationFrame(step);
-      else{numEl.style.animation="streakPop .35s ease";setTimeout(()=>numEl.style.animation="",400);}
-    };
-    requestAnimationFrame(step);
-  } else {
-    numEl.textContent=sk;
-  }
-  numEl.style.color=sk>0?"#c49a1c":"#2c2c2c";
-  /* Update ring */
-  const ring=el("sk-ring");
-  if(ring){
-    const pct=Math.min(sk/getDur(),1);
-    const offset=327-(327*pct);
-    ring.style.strokeDashoffset=offset;
-    ring.style.stroke=sk>=12?"#4dc98a":sk>0?"#c49a1c":"#2c2c2c";
-    /* Pulse ring after new upload */
-    if(current<sk&&sk>0){ring.style.animation="ringPulse .6s ease";setTimeout(()=>ring.style.animation="",700);}
-  }
-  el("sk-lbl").textContent=sk===0?"No streak yet — upload today to start":`${sk} day${sk===1?"":"s"} in a row`;
+  /* Streak is now rendered inline in the goal card by renderDash — no-op here */
 }
 
 function renderGrid(){
@@ -1537,7 +1511,7 @@ function renderGrid(){
     c.innerHTML=inner;
     if(isT&&!isUp)c.onclick=openMod;
     if(isUp){const idx=i;c.onclick=()=>openViewMod(idx);c.style.cursor="pointer";}
-    if(isCall&&(isT||isF)){c.onclick=()=>openCallModal(d);c.style.cursor="pointer";}
+    if(isCall&&isF){c.onclick=()=>openCallModal(d);c.style.cursor="pointer";}
     g.appendChild(c);
   }
 }
