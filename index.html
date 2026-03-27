@@ -1693,23 +1693,17 @@ async function subUp(){
 
   /* Upload file to Supabase Storage */
   let fileUrl=null;
-  if(S.pendingFile&&sb&&S.user?.supabaseId){
-    try{
-      const ext=(S.pendingFile.name.split(".").pop()||"bin").toLowerCase();
-      const path=`${S.user.supabaseId}/day${S.day}-${Date.now()}.${ext}`;
-      const {error:fe}=await sb.storage.from("uploads").upload(path,S.pendingFile,{contentType:S.pendingFile.type,upsert:true});
-      if(!fe) fileUrl=sb.storage.from("uploads").getPublicUrl(path).data.publicUrl;
-    }catch(e){}
+  if(S.pendingFile&&S.user?.supabaseId){
+    const ext=(S.pendingFile.name.split(".").pop()||"bin").toLowerCase();
+    const path=`${S.user.supabaseId}/day${S.day}-${Date.now()}.${ext}`;
+    fileUrl=await uploadToStorage("uploads",path,S.pendingFile,S.pendingFile.type);
   }
 
   /* Upload voice proof to Supabase Storage */
   let voiceUrl=null;
-  if(S.voiceBlob&&sb&&S.user?.supabaseId){
-    try{
-      const path=`${S.user.supabaseId}/day${S.day}-voice-${Date.now()}.webm`;
-      const {error:ve}=await sb.storage.from("uploads").upload(path,S.voiceBlob,{contentType:"audio/webm",upsert:true});
-      if(!ve) voiceUrl=sb.storage.from("uploads").getPublicUrl(path).data.publicUrl;
-    }catch(e){}
+  if(S.voiceBlob&&S.user?.supabaseId){
+    const path=`${S.user.supabaseId}/day${S.day}-voice-${Date.now()}.webm`;
+    voiceUrl=await uploadToStorage("uploads",path,S.voiceBlob,"audio/webm");
   }
 
   /* Build the upload record */
@@ -1811,6 +1805,16 @@ async function syncToSupabase(){
     },{onConflict:"id"}).select().single();
     if(data&&!u.supabaseId){S.user.supabaseId=data.id;saveState();initPushNotifications();}
   }catch(e){console.error("Sync error:",e);}
+}
+
+/* ── STORAGE UPLOAD (REST — works with anon key) ── */
+async function uploadToStorage(bucket,path,blob,contentType){
+  try{
+    const url=`${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeURIComponent(path)}`;
+    const res=await fetch(url,{method:"POST",headers:{"Authorization":`Bearer ${SUPABASE_ANON_KEY}`,"Content-Type":contentType,"x-upsert":"true"},body:blob});
+    if(!res.ok){console.error("Storage upload failed",res.status,await res.text());return null;}
+    return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+  }catch(e){console.error("Storage upload error",e);return null;}
 }
 
 async function syncUploadToSupabase(dayNum,upload){
@@ -2678,6 +2682,7 @@ function skipWT(){
 /* ── VOICE RECORDING ── */
 let mediaRecorder=null, audioChunks=[], recordingStartTime=0, recInterval=null;
 let chatMediaRecorder=null, chatAudioChunks=[], chatVoiceBlob=null;
+let adminMediaRecorder=null, adminAudioChunks=[], adminVoiceBlob=null;
 function initVoiceRecorder(containerId){
   const c=el(containerId);if(!c)return;
   c.innerHTML=`<div class="vr-wrap" id="vr-area" onclick="toggleRecording()">
@@ -2749,6 +2754,30 @@ async function toggleChatRecording(){
       if(status){status.style.display="block";status.textContent="Voice note ready — tap → to send";}
     };
     chatMediaRecorder.start();
+    if(btn){btn.textContent="⏹";btn.style.color="#d9503a";btn.style.borderColor="rgba(217,80,58,.3)";}
+    if(status){status.style.display="block";status.textContent="Recording... tap ⏹ to stop";}
+  }catch(e){
+    if(status){status.style.display="block";status.textContent="Microphone access denied";}
+  }
+}
+
+async function toggleAdminRecording(){
+  const btn=document.getElementById("admin-mic-btn");
+  const status=document.getElementById("admin-voice-status");
+  if(adminMediaRecorder&&adminMediaRecorder.state==="recording"){adminMediaRecorder.stop();return;}
+  adminVoiceBlob=null;
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    adminAudioChunks=[];
+    adminMediaRecorder=new MediaRecorder(stream);
+    adminMediaRecorder.ondataavailable=e=>{if(e.data.size>0)adminAudioChunks.push(e.data);};
+    adminMediaRecorder.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      adminVoiceBlob=new Blob(adminAudioChunks,{type:"audio/webm"});
+      if(btn){btn.textContent="🎙✓";btn.style.color="#4dc98a";btn.style.borderColor="rgba(77,201,138,.3)";}
+      if(status){status.style.display="block";status.textContent="Voice note ready — tap Send";}
+    };
+    adminMediaRecorder.start();
     if(btn){btn.textContent="⏹";btn.style.color="#d9503a";btn.style.borderColor="rgba(217,80,58,.3)";}
     if(status){status.style.display="block";status.textContent="Recording... tap ⏹ to stop";}
   }catch(e){
@@ -2996,18 +3025,15 @@ async function sendChatMsg(){
 
   /* Upload voice if present */
   let voiceUrl=null;
-  if(chatVoiceBlob&&sb&&S.user?.supabaseId){
-    try{
-      const path=`${S.user.supabaseId}/chat-${Date.now()}.webm`;
-      const {error:ve}=await sb.storage.from("chat-voice").upload(path,chatVoiceBlob,{contentType:"audio/webm",upsert:true});
-      if(!ve) voiceUrl=sb.storage.from("chat-voice").getPublicUrl(path).data.publicUrl;
-    }catch(e){}
+  if(chatVoiceBlob&&S.user?.supabaseId){
+    const path=`${S.user.supabaseId}/chat-${Date.now()}.webm`;
+    voiceUrl=await uploadToStorage("chat-voice",path,chatVoiceBlob,"audio/webm");
     chatVoiceBlob=null;
   }
 
   if(sb&&S.user?.supabaseId){
     try{
-      await sb.from("chat_messages").insert({challenger_id:S.user.supabaseId,sender:"challenger",message:msg||null,voice_url:voiceUrl||null});
+      await sb.from("chat_messages").insert({challenger_id:S.user.supabaseId,sender:"challenger",message:msg||"",voice_url:voiceUrl||null});
     }catch(e){console.error("Chat send error:",e);}
   }
   renderChat();
@@ -3342,8 +3368,10 @@ async function openProfilePanel(uid){
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end">
         <textarea id="pf-reply-input" rows="2" placeholder="Send a message..." style="flex:1;background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;font-size:13px;color:#e0e0e0;font-family:inherit;resize:none;box-sizing:border-box"></textarea>
+        <button id="admin-mic-btn" onclick="toggleAdminRecording()" style="padding:10px 11px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:16px;cursor:pointer;flex-shrink:0" title="Voice note">🎙</button>
         <button onclick="sendProfilePanelMsg('${uid}')" style="padding:10px 14px;border-radius:8px;background:#c49a1c;border:none;color:#000;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0">Send</button>
       </div>
+      <div id="admin-voice-status" style="display:none;font-size:11px;color:#888;margin-top:6px;text-align:center"></div>
     </div>
   `;
   document.getElementById("profile-panel").style.transform="translateX(0)";
@@ -3376,16 +3404,29 @@ async function loadProfilePanelChat(uid){
 
 async function sendProfilePanelMsg(uid){
   const ta=document.getElementById("pf-reply-input");
-  if(!ta||!ta.value.trim()||!sb)return;
-  const msg=ta.value.trim();
-  ta.value="";ta.disabled=true;
+  const hasText=ta&&ta.value.trim();
+  if(!hasText&&!adminVoiceBlob)return;
+  if(!sb)return;
+  const msg=hasText?ta.value.trim():"";
+  if(ta){ta.value="";ta.disabled=true;}
+  /* Upload admin voice note if recorded */
+  let voiceUrl=null;
+  if(adminVoiceBlob){
+    const path=`admin/genie-${uid}-${Date.now()}.webm`;
+    voiceUrl=await uploadToStorage("chat-voice",path,adminVoiceBlob,"audio/webm");
+    adminVoiceBlob=null;
+    const btn=document.getElementById("admin-mic-btn");
+    const status=document.getElementById("admin-voice-status");
+    if(btn){btn.textContent="🎙";btn.style.color="#888";btn.style.borderColor="#2a2a2a";}
+    if(status)status.style.display="none";
+  }
   try{
-    await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg});
+    await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg||"",voice_url:voiceUrl||null});
     /* Trigger push notification */
     const u=getAM().find(x=>x.id===uid);
-    if(u) triggerPush(uid,"Message from Genie",msg.slice(0,80));
+    if(u) triggerPush(uid,"Message from Genie",msg?msg.slice(0,80):"🎙 Voice note");
   }catch(e){}
-  ta.disabled=false;
+  if(ta)ta.disabled=false;
   loadProfilePanelChat(uid);
 }
 
