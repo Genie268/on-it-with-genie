@@ -233,15 +233,24 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 .cmsg-me .cmsg-body{background:#c49a1c;color:#000;font-weight:500;border-bottom-right-radius:4px}
 .cmsg-them .cmsg-body{background:#1e1e1e;color:#e0e0e0;border-bottom-left-radius:4px}
 .cmsg-time{font-size:10px;color:#3a3a3a;margin-top:3px;padding:0 4px}
-.chat-bar{display:flex;align-items:flex-end;gap:8px;padding:10px 12px;border-top:1px solid #1a1a1a;background:#0f0f0f}
-.chat-input-pill{flex:1;display:flex;align-items:flex-end;background:#1a1a1a;border-radius:22px;padding:0 2px 0 14px;min-height:38px}
-.chat-ta{flex:1;background:transparent;border:none;padding:9px 0;font-size:13px;color:#e0e0e0;font-family:inherit;resize:none;line-height:1.4;max-height:100px}
+.chat-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid #1a1a1a;background:#0f0f0f}
+.chat-input-pill{flex:1;display:flex;align-items:center;background:#1a1a1a;border-radius:22px;padding:0 4px 0 14px;transition:box-shadow .2s}
+.chat-input-pill.recording{box-shadow:0 0 0 1.5px rgba(217,80,58,.4),0 0 14px rgba(217,80,58,.08)}
+.chat-input-pill.recorded{box-shadow:0 0 0 1.5px rgba(77,201,138,.3)}
+.chat-ta{flex:1;background:transparent;border:none;padding:9px 0;font-size:13px;color:#e0e0e0;font-family:inherit;resize:none;line-height:1.45;max-height:80px}
 .chat-ta:focus{outline:none}
 .chat-ta::placeholder{color:#3a3a3a}
-.chat-mic-btn{background:none;border:none;cursor:pointer;color:#3a3a3a;width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:color .15s;padding:0}
-.chat-mic-btn.recording{color:#d9503a}
+.chat-mic-btn{background:none;border:none;cursor:pointer;color:#3a3a3a;width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:color .2s;padding:0}
 .chat-mic-btn.recorded{color:#4dc98a}
 .chat-send-btn{width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:#c49a1c;color:#000;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rec-wave{display:flex;align-items:center;gap:3px;height:20px}
+.rec-wave b{width:3px;border-radius:3px;background:#d9503a;animation:waveBar .85s ease-in-out infinite;transform-origin:center;display:block}
+.rec-wave b:nth-child(1){height:5px;animation-delay:0s}
+.rec-wave b:nth-child(2){height:11px;animation-delay:.1s}
+.rec-wave b:nth-child(3){height:18px;animation-delay:.2s}
+.rec-wave b:nth-child(4){height:11px;animation-delay:.3s}
+.rec-wave b:nth-child(5){height:5px;animation-delay:.4s}
+@keyframes waveBar{0%,100%{transform:scaleY(.2);opacity:.5}50%{transform:scaleY(1);opacity:1}}
 .audio-player{display:flex;align-items:center;gap:9px;min-width:150px;max-width:210px;padding:2px 0}
 .ap-play{width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(255,255,255,.15);color:#fff}
 .cmsg-me .ap-play{background:rgba(0,0,0,.22);color:#000}
@@ -2756,14 +2765,29 @@ async function toggleRecording(){
   }
 }
 
+const MIC_SVG='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>';
+const WAVE_HTML='<div class="rec-wave"><b></b><b></b><b></b><b></b><b></b></div>';
+let chatRecTimer=null,adminRecTimer=null;
+
+function startRecTimer(statusEl,onTick){
+  let secs=0;
+  return setInterval(()=>{
+    secs++;
+    const m=Math.floor(secs/60),s=String(secs%60).padStart(2,"0");
+    if(statusEl) statusEl.innerHTML=`<span class="rec-dot"></span>${m}:${s}`;
+    if(onTick) onTick(secs);
+  },1000);
+}
+
 async function toggleChatRecording(){
   const btn=el("chat-mic-btn");
+  const pill=btn&&btn.closest(".chat-input-pill");
   const status=el("chat-voice-status");
   if(chatMediaRecorder&&chatMediaRecorder.state==="recording"){
     chatMediaRecorder.stop();
+    clearInterval(chatRecTimer);
     return;
   }
-  /* Clear previous recording */
   chatVoiceBlob=null;
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -2772,13 +2796,17 @@ async function toggleChatRecording(){
     chatMediaRecorder.ondataavailable=e=>{if(e.data.size>0)chatAudioChunks.push(e.data);};
     chatMediaRecorder.onstop=()=>{
       stream.getTracks().forEach(t=>t.stop());
+      clearInterval(chatRecTimer);
       chatVoiceBlob=new Blob(chatAudioChunks,{type:"audio/webm"});
-      if(btn){btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>';btn.style.color="#4dc98a";}
-      if(status){status.style.display="block";status.textContent="Voice note ready — tap send";}
+      if(btn){btn.innerHTML=MIC_SVG;btn.style.color="#4dc98a";}
+      if(pill){pill.classList.remove("recording");pill.classList.add("recorded");}
+      if(status){status.style.display="block";status.innerHTML='<span style="color:#4dc98a;font-size:11px">● Voice note ready — tap send</span>';}
     };
     chatMediaRecorder.start();
-    if(btn){btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>';btn.style.color="#d9503a";}
-    if(status){status.style.display="block";status.textContent="Recording... tap to stop";}
+    if(btn){btn.innerHTML=WAVE_HTML;btn.style.color="";}
+    if(pill){pill.classList.add("recording");pill.classList.remove("recorded");}
+    if(status) status.style.display="block";
+    chatRecTimer=startRecTimer(status);
   }catch(e){
     if(status){status.style.display="block";status.textContent="Microphone access denied";}
   }
@@ -2786,8 +2814,9 @@ async function toggleChatRecording(){
 
 async function toggleAdminRecording(){
   const btn=document.getElementById("admin-mic-btn");
+  const pill=btn&&btn.closest(".chat-input-pill");
   const status=document.getElementById("admin-voice-status");
-  if(adminMediaRecorder&&adminMediaRecorder.state==="recording"){adminMediaRecorder.stop();return;}
+  if(adminMediaRecorder&&adminMediaRecorder.state==="recording"){adminMediaRecorder.stop();clearInterval(adminRecTimer);return;}
   adminVoiceBlob=null;
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -2796,13 +2825,17 @@ async function toggleAdminRecording(){
     adminMediaRecorder.ondataavailable=e=>{if(e.data.size>0)adminAudioChunks.push(e.data);};
     adminMediaRecorder.onstop=()=>{
       stream.getTracks().forEach(t=>t.stop());
+      clearInterval(adminRecTimer);
       adminVoiceBlob=new Blob(adminAudioChunks,{type:"audio/webm"});
-      if(btn){btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>';btn.style.color="#4dc98a";}
-      if(status){status.style.display="block";status.textContent="Voice note ready — tap send";}
+      if(btn){btn.innerHTML=MIC_SVG;btn.style.color="#4dc98a";}
+      if(pill){pill.classList.remove("recording");pill.classList.add("recorded");}
+      if(status){status.style.display="block";status.innerHTML='<span style="color:#4dc98a;font-size:11px">● Voice note ready — tap send</span>';}
     };
     adminMediaRecorder.start();
-    if(btn){btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>';btn.style.color="#d9503a";}
-    if(status){status.style.display="block";status.textContent="Recording... tap to stop";}
+    if(btn){btn.innerHTML=WAVE_HTML;btn.style.color="";}
+    if(pill){pill.classList.add("recording");pill.classList.remove("recorded");}
+    if(status) status.style.display="block";
+    adminRecTimer=startRecTimer(status);
   }catch(e){
     if(status){status.style.display="block";status.textContent="Microphone access denied";}
   }
