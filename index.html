@@ -503,10 +503,7 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
     <div id="profile-area" style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openProfile()">
       <div class="circles-wrap" style="height:40px;width:72px;flex-shrink:0;position:relative">
         <div class="circle-img circle-user initials" id="dash-user-circle" style="width:36px;height:36px;left:2px;font-size:11px;z-index:2">?</div>
-        <div style="position:relative" onclick="event.stopPropagation();document.getElementById('chat-container').scrollIntoView({behavior:'smooth'})">
-          <img class="circle-img circle-genie genie-photo-img" style="width:36px;height:36px;left:20px;z-index:1;cursor:pointer" src="" alt="Genie">
-          <div id="msg-badge" style="display:none;position:absolute;top:-2px;right:-6px;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;display:none;align-items:center;justify-content:center;padding:0 4px;z-index:3"></div>
-        </div>
+        <img class="circle-img circle-genie genie-photo-img" style="width:36px;height:36px;left:20px;z-index:1" src="" alt="Genie">
       </div>
       <div>
         <p style="font-size:11px;font-weight:700;line-height:1.2" id="dash-user-name">Loading...</p>
@@ -885,6 +882,7 @@ async function loadAdminData(){
       const rvArr=Array(dur).fill(0);
       const voiceArr=Array(dur).fill(0);
       const voiceUrlArr=Array(dur).fill(null);
+      const fileUrlArr=Array(dur).fill(null);
       const linkArr=Array(dur).fill(null);
       const fileNameArr=Array(dur).fill(null);
       const behaviorArr=Array(dur).fill(null);
@@ -896,6 +894,7 @@ async function loadAdminData(){
           rvArr[i]=u.reviewed?1:0;
           voiceArr[i]=u.voice_url?1:0;
           voiceUrlArr[i]=u.voice_url||null;
+          fileUrlArr[i]=u.file_url||null;
           linkArr[i]=u.link_url||null;
           fileNameArr[i]=u.file_name||null;
           behaviorArr[i]=u.behavior_answer||null;
@@ -912,7 +911,7 @@ async function loadAdminData(){
         ini:(c.name||"?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2),
         goal:c.goal_summary||c.goal_raw,pt:c.proof_type||"output",
         day:curDay,dur,up:upArr,notes:noteArr,rv:rvArr,
-        energyLog:elog,hasVoice:voiceArr,voiceUrls:voiceUrlArr,
+        energyLog:elog,hasVoice:voiceArr,voiceUrls:voiceUrlArr,fileUrls:fileUrlArr,
         links:linkArr,fileNames:fileNameArr,behaviors:behaviorArr,
         flag:missed>=4?"Multiple consecutive missed days":null,
         email:c.email,phone:c.phone,
@@ -1696,9 +1695,9 @@ function setBehavior(val){
 }
 
 function handleProofFile(input){
-  if(!input.files||!input.files[0]){S.fileOn=false;S.fileName=null;return;}
+  if(!input.files||!input.files[0]){S.fileOn=false;S.fileName=null;S.pendingFile=null;return;}
   const file=input.files[0];
-  S.fileOn=true; S.fileName=file.name;
+  S.fileOn=true; S.fileName=file.name; S.pendingFile=file;
   el("fd").className="fd on"; el("fi").textContent="✓"; el("ft").textContent=file.name;
   if(file.type.startsWith("image/")){
     const reader=new FileReader();
@@ -1718,6 +1717,27 @@ async function subUp(){
 
   const btn=el("mod-sub"); btn.textContent="Uploading..."; btn.disabled=true;
 
+  /* Upload file to Supabase Storage */
+  let fileUrl=null;
+  if(S.pendingFile&&sb&&S.user?.supabaseId){
+    try{
+      const ext=(S.pendingFile.name.split(".").pop()||"bin").toLowerCase();
+      const path=`${S.user.supabaseId}/day${S.day}-${Date.now()}.${ext}`;
+      const {error:fe}=await sb.storage.from("uploads").upload(path,S.pendingFile,{contentType:S.pendingFile.type,upsert:true});
+      if(!fe) fileUrl=sb.storage.from("uploads").getPublicUrl(path).data.publicUrl;
+    }catch(e){}
+  }
+
+  /* Upload voice proof to Supabase Storage */
+  let voiceUrl=null;
+  if(S.voiceBlob&&sb&&S.user?.supabaseId){
+    try{
+      const path=`${S.user.supabaseId}/day${S.day}-voice-${Date.now()}.webm`;
+      const {error:ve}=await sb.storage.from("uploads").upload(path,S.voiceBlob,{contentType:"audio/webm",upsert:true});
+      if(!ve) voiceUrl=sb.storage.from("uploads").getPublicUrl(path).data.publicUrl;
+    }catch(e){}
+  }
+
   /* Build the upload record */
   let summary=note;
   if(pt==="behavior") summary=`${S.behaviorAnswer==="yes"?"Did it":"Did not do it"}${note?". "+note:""}`;
@@ -1725,7 +1745,7 @@ async function subUp(){
 
   const ackPrompt=`ONE sentence, max 12 words. Reference what they actually wrote. Not praise.\n\nThey wrote: "${summary||"[file/voice only]"}"\nGoal: "${S.user.answers.goal}"`;
   const ack=await lil(ackPrompt,50);
-  S.uploads[S.day-1]={note:summary,hasFile:S.fileOn,fileName:S.fileName||null,proofType:pt,link:link||null,behavior:S.behaviorAnswer,hasVoice:!!S.voiceBlob};
+  S.uploads[S.day-1]={note:summary,hasFile:S.fileOn,fileName:S.fileName||null,fileUrl,proofType:pt,link:link||null,behavior:S.behaviorAnswer,hasVoice:!!S.voiceBlob,voiceUrl};
   saveState();
   el("ack-day").textContent=S.day;
   el("ack-t").textContent=ack||FB.ack(summary,S.day);
@@ -1821,7 +1841,7 @@ async function syncToSupabase(){
 
 async function syncUploadToSupabase(dayNum,upload){
   if(!sb||!S.user?.supabaseId)return;
-  try{await sb.from("uploads").upsert({challenger_id:S.user.supabaseId,day_number:dayNum,note:upload.note||null,link_url:upload.link||null,file_name:upload.fileName||null,proof_type:upload.proofType||null,behavior_answer:upload.behavior||null},{onConflict:"challenger_id,day_number"});}catch(e){}
+  try{await sb.from("uploads").upsert({challenger_id:S.user.supabaseId,day_number:dayNum,note:upload.note||null,link_url:upload.link||null,file_name:upload.fileName||null,file_url:upload.fileUrl||null,voice_url:upload.voiceUrl||null,proof_type:upload.proofType||null,behavior_answer:upload.behavior||null},{onConflict:"challenger_id,day_number"});}catch(e){}
 }
 
 async function syncEnergyToSupabase(dayNum,entry){
@@ -2683,6 +2703,7 @@ function skipWT(){
 
 /* ── VOICE RECORDING ── */
 let mediaRecorder=null, audioChunks=[], recordingStartTime=0, recInterval=null;
+let chatMediaRecorder=null, chatAudioChunks=[], chatVoiceBlob=null;
 function initVoiceRecorder(containerId){
   const c=el(containerId);if(!c)return;
   c.innerHTML=`<div class="vr-wrap" id="vr-area" onclick="toggleRecording()">
@@ -2730,6 +2751,34 @@ async function toggleRecording(){
     },500);
   }catch(e){
     el("vr-status").textContent="Microphone access denied";
+  }
+}
+
+async function toggleChatRecording(){
+  const btn=el("chat-mic-btn");
+  const status=el("chat-voice-status");
+  if(chatMediaRecorder&&chatMediaRecorder.state==="recording"){
+    chatMediaRecorder.stop();
+    return;
+  }
+  /* Clear previous recording */
+  chatVoiceBlob=null;
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    chatAudioChunks=[];
+    chatMediaRecorder=new MediaRecorder(stream);
+    chatMediaRecorder.ondataavailable=e=>{if(e.data.size>0)chatAudioChunks.push(e.data);};
+    chatMediaRecorder.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      chatVoiceBlob=new Blob(chatAudioChunks,{type:"audio/webm"});
+      if(btn){btn.textContent="🎙✓";btn.style.color="#4dc98a";btn.style.borderColor="rgba(77,201,138,.3)";}
+      if(status){status.style.display="block";status.textContent="Voice note ready — tap → to send";}
+    };
+    chatMediaRecorder.start();
+    if(btn){btn.textContent="⏹";btn.style.color="#d9503a";btn.style.borderColor="rgba(217,80,58,.3)";}
+    if(status){status.style.display="block";status.textContent="Recording... tap ⏹ to stop";}
+  }catch(e){
+    if(status){status.style.display="block";status.textContent="Microphone access denied";}
   }
 }
 
@@ -2812,7 +2861,7 @@ async function attemptSignIn(){
     const uploadArr=Array(dur).fill(null);
     (uploads||[]).forEach(u=>{
       if(u.day_number>=1&&u.day_number<=dur){
-        uploadArr[u.day_number-1]={note:u.note,hasFile:!!u.file_url,fileName:u.file_name,proofType:u.proof_type,link:u.link_url,behavior:u.behavior_answer,hasVoice:!!u.voice_url};
+        uploadArr[u.day_number-1]={note:u.note,hasFile:!!u.file_url,fileName:u.file_name,fileUrl:u.file_url||null,proofType:u.proof_type,link:u.link_url,behavior:u.behavior_answer,hasVoice:!!u.voice_url,voiceUrl:u.voice_url||null};
       }
     });
     
@@ -2922,20 +2971,24 @@ async function renderChat(){
     });
   }
   
+  const inputRow=`<div class="chat-input-row" style="align-items:flex-end">
+    <textarea id="chat-input" rows="1" placeholder="${messages.length===0?"Send a message...":"Reply to Genie..."}" style="font-size:13px"></textarea>
+    <button id="chat-mic-btn" onclick="toggleChatRecording()" style="padding:8px 10px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:16px;cursor:pointer;flex-shrink:0" title="Voice note">🎙</button>
+    <button class="chat-send" onclick="sendChatMsg()">→</button>
+  </div>
+  <div id="chat-voice-status" style="display:none;font-size:11px;color:#888;margin-top:6px;text-align:center"></div>`;
+
   if(messages.length===0){
     container.innerHTML=`<div class="card mb10" style="padding:14px">
       <div class="row" style="gap:8px;margin-bottom:10px">
         <span style="font-size:14px">💬</span>
         <span style="font-size:12px;font-weight:700">Messages</span>
       </div>
-      <div class="chat-input-row">
-        <textarea id="chat-input" rows="1" placeholder="Send a message..." style="font-size:13px"></textarea>
-        <button class="chat-send" onclick="sendChatMsg()">→</button>
-      </div>
+      ${inputRow}
     </div>`;
     return;
   }
-  
+
   container.innerHTML=`<div class="card mb10" style="padding:14px">
     <div class="row" style="gap:8px;margin-bottom:10px">
       <span style="font-size:14px">💬</span>
@@ -2943,15 +2996,13 @@ async function renderChat(){
       ${messages.filter(m=>m.sender==="genie"&&!m.read).length>0?`<span class="bdg bdg-a" style="font-size:9px;margin-left:auto">${messages.filter(m=>m.sender==="genie"&&!m.read).length} new</span>`:""}
     </div>
     <div class="chat-wrap" id="chat-scroll">
-      ${messages.map(m=>`<div class="chat-bubble ${m.sender==="genie"?"chat-genie":"chat-challenger"}">
-        <p>${m.message}</p>
-        <div class="chat-time">${m.sender==="genie"?"Genie":"You"} · ${new Date(m.created_at).toLocaleDateString()}</div>
-      </div>`).join("")}
+      ${messages.map(m=>{
+        const voiceHtml=m.voice_url?`<audio controls src="${m.voice_url}" style="width:100%;margin-top:6px;border-radius:6px;max-width:220px"></audio>`:"";
+        const msgHtml=m.message?`<p>${m.message}</p>`:"";
+        return `<div class="chat-bubble ${m.sender==="genie"?"chat-genie":"chat-challenger"}">${msgHtml}${voiceHtml}<div class="chat-time">${m.sender==="genie"?"Genie":"You"} · ${new Date(m.created_at).toLocaleDateString()}</div></div>`;
+      }).join("")}
     </div>
-    <div class="chat-input-row">
-      <textarea id="chat-input" rows="1" placeholder="Reply to Genie..." style="font-size:13px"></textarea>
-      <button class="chat-send" onclick="sendChatMsg()">→</button>
-    </div>
+    ${inputRow}
   </div>`;
   /* Scroll to bottom */
   setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},100);
@@ -2964,13 +3015,25 @@ async function renderChat(){
 
 async function sendChatMsg(){
   const ta=el("chat-input");
-  if(!ta||!ta.value.trim())return;
-  const msg=ta.value.trim();
-  ta.value="";
-  
+  const hasText=ta&&ta.value.trim();
+  if(!hasText&&!chatVoiceBlob)return;
+  const msg=hasText?ta.value.trim():"";
+  if(ta)ta.value="";
+
+  /* Upload voice if present */
+  let voiceUrl=null;
+  if(chatVoiceBlob&&sb&&S.user?.supabaseId){
+    try{
+      const path=`${S.user.supabaseId}/chat-${Date.now()}.webm`;
+      const {error:ve}=await sb.storage.from("chat-voice").upload(path,chatVoiceBlob,{contentType:"audio/webm",upsert:true});
+      if(!ve) voiceUrl=sb.storage.from("chat-voice").getPublicUrl(path).data.publicUrl;
+    }catch(e){}
+    chatVoiceBlob=null;
+  }
+
   if(sb&&S.user?.supabaseId){
     try{
-      await sb.from("chat_messages").insert({challenger_id:S.user.supabaseId,sender:"challenger",message:msg});
+      await sb.from("chat_messages").insert({challenger_id:S.user.supabaseId,sender:"challenger",message:msg||null,voice_url:voiceUrl||null});
     }catch(e){console.error("Chat send error:",e);}
   }
   renderChat();
@@ -3218,7 +3281,7 @@ function playUploadSound(){
 }
 
 /* ── PROFILE SLIDE-OVER ─────────────────────────────────── */
-function openProfilePanel(uid){
+async function openProfilePanel(uid){
   const u=getAM().find(x=>x.id===uid);
   if(!u)return;
   const startFmt=u.startDate?new Date(u.startDate).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"—";
@@ -3297,9 +3360,59 @@ function openProfilePanel(uid){
       </div>
       <p id="pf-save-status" style="font-size:12px;margin-top:10px;text-align:center"></p>
     </div>
+
+    <div style="border-top:1px solid #1a1a1a;margin-top:24px;padding-top:20px">
+      <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:14px">MESSAGES</p>
+      <div id="pf-chat-thread" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+        <p style="font-size:12px;color:#444;text-align:center;padding:16px 0">Loading messages...</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <textarea id="pf-reply-input" rows="2" placeholder="Send a message..." style="flex:1;background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;font-size:13px;color:#e0e0e0;font-family:inherit;resize:none;box-sizing:border-box"></textarea>
+        <button onclick="sendProfilePanelMsg('${uid}')" style="padding:10px 14px;border-radius:8px;background:#c49a1c;border:none;color:#000;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0">Send</button>
+      </div>
+    </div>
   `;
   document.getElementById("profile-panel").style.transform="translateX(0)";
   document.getElementById("profile-panel-backdrop").style.display="block";
+  /* Load chat messages async */
+  loadProfilePanelChat(uid);
+}
+
+async function loadProfilePanelChat(uid){
+  const thread=document.getElementById("pf-chat-thread");
+  if(!thread||!sb)return;
+  try{
+    const {data:msgs}=await sb.from("chat_messages").select("*").eq("challenger_id",uid).order("created_at",{ascending:true});
+    if(!msgs||msgs.length===0){thread.innerHTML=`<p style="font-size:12px;color:#444;text-align:center;padding:16px 0">No messages yet.</p>`;return;}
+    thread.innerHTML=msgs.map(m=>{
+      const isGenie=m.sender==="genie";
+      const time=new Date(m.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})+" "+new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+      const voiceHtml=m.voice_url?`<audio controls src="${m.voice_url}" style="width:100%;margin-top:6px;border-radius:6px"></audio>`:"";
+      const msgHtml=m.message?`<p style="font-size:13px;line-height:1.5;margin:0">${m.message}</p>`:"";
+      return `<div style="display:flex;flex-direction:column;align-items:${isGenie?"flex-start":"flex-end"}">
+        <div style="max-width:85%;background:${isGenie?"#1a1a1a":"rgba(196,154,28,.1)"};border:1px solid ${isGenie?"#242424":"rgba(196,154,28,.2)"};border-radius:10px;padding:8px 12px">
+          ${msgHtml}${voiceHtml}
+        </div>
+        <span style="font-size:10px;color:#444;margin-top:3px;padding:0 4px">${isGenie?"Genie":"Challenger"} · ${time}</span>
+      </div>`;
+    }).join("");
+    thread.scrollTop=thread.scrollHeight;
+  }catch(e){thread.innerHTML=`<p style="font-size:12px;color:#444;text-align:center;padding:16px 0">Could not load messages.</p>`;}
+}
+
+async function sendProfilePanelMsg(uid){
+  const ta=document.getElementById("pf-reply-input");
+  if(!ta||!ta.value.trim()||!sb)return;
+  const msg=ta.value.trim();
+  ta.value="";ta.disabled=true;
+  try{
+    await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg});
+    /* Trigger push notification */
+    const u=getAM().find(x=>x.id===uid);
+    if(u) triggerPush(uid,"Message from Genie",msg.slice(0,80));
+  }catch(e){}
+  ta.disabled=false;
+  loadProfilePanelChat(uid);
 }
 
 function switchToEditMode(uid){
@@ -3357,6 +3470,7 @@ function openUploadDetail(uid, dayIndex){
   const d=dayIndex+1;
   const note=u.notes[dayIndex];
   const voiceUrl=u.voiceUrls&&u.voiceUrls[dayIndex];
+  const fileUrl=u.fileUrls&&u.fileUrls[dayIndex];
   const link=u.links&&u.links[dayIndex];
   const fileName=u.fileNames&&u.fileNames[dayIndex];
   const behavior=u.behaviors&&u.behaviors[dayIndex];
@@ -3382,7 +3496,7 @@ function openUploadDetail(uid, dayIndex){
     ${behavior?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">BEHAVIOR</span><p style="margin-top:4px;font-size:14px;font-weight:700;color:${behavior==="yes"?"#4dc98a":"#d9503a"}">${behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p></div>`:""}
     ${note&&note!=="—"?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">NOTE</span><p style="margin-top:4px;font-size:13px;line-height:1.7;color:#e0e0e0">${note}</p></div>`:""}
     ${link?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">LINK</span><a href="${link}" target="_blank" style="display:block;margin-top:4px;font-size:13px;color:#4dc98a;word-break:break-all">${link}</a></div>`:""}
-    ${fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${fileName}</p></div>`:""}
+    ${fileUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${/\.(jpe?g|png|gif|webp)$/i.test(fileUrl||"")||fileUrl.includes("image")?`<img src="${fileUrl}" style="width:100%;border-radius:10px;margin-top:8px;display:block" loading="lazy">`:fileName?`<a href="${fileUrl}" target="_blank" style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;color:#4dc98a;text-decoration:none;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px">📎 <span>${fileName}</span></a>`:`<a href="${fileUrl}" target="_blank" style="display:block;margin-top:8px;font-size:13px;color:#4dc98a">📎 View file</a>`}</div>`:fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${fileName}</p></div>`:""}
     ${voiceUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span><audio controls src="${voiceUrl}" style="width:100%;margin-top:8px;border-radius:8px"></audio></div>`:""}
     ${energyHtml}
     <div style="border-top:1px solid #1f1f1f;padding-top:16px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
