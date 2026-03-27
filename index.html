@@ -225,14 +225,32 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 @media(max-width:600px){.welcome-card{padding:24px 18px;border-radius:14px}}
 
 /* ── CHAT INTERFACE ── */
-.chat-wrap{max-height:200px;overflow-y:auto;margin-bottom:12px;padding:4px 0;-webkit-overflow-scrolling:touch;scroll-behavior:smooth}
-.chat-bubble{max-width:80%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.55;margin-bottom:6px;animation:heroFadeUp .2s ease forwards}
-.chat-genie{background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.15);margin-right:auto;border-bottom-left-radius:4px}
-.chat-challenger{background:var(--s3);border:1px solid var(--bd);margin-left:auto;border-bottom-right-radius:4px}
-.chat-time{font-size:9px;color:#5a5a5a;margin-top:2px}
-.chat-input-row{display:flex;gap:8px;align-items:flex-end}
-.chat-input-row textarea{flex:1;resize:none;font-size:13px;padding:10px 12px;min-height:38px;max-height:100px;border-radius:10px}
-.chat-send{width:38px;height:38px;border-radius:10px;background:#c49a1c;border:none;color:#000;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900}
+.chat-screen{background:#0f0f0f;border-radius:14px;overflow:hidden;border:1px solid #1a1a1a;margin-bottom:10px}
+.chat-thread{overflow-y:auto;padding:14px 14px 8px;display:flex;flex-direction:column;gap:2px;max-height:300px;scroll-behavior:smooth}
+.cmsg{display:flex;flex-direction:column;margin-bottom:8px}
+.cmsg-me{align-items:flex-end}.cmsg-them{align-items:flex-start}
+.cmsg-body{max-width:78%;padding:9px 13px;border-radius:18px;font-size:13px;line-height:1.55;word-break:break-word}
+.cmsg-me .cmsg-body{background:#c49a1c;color:#000;font-weight:500;border-bottom-right-radius:4px}
+.cmsg-them .cmsg-body{background:#1e1e1e;color:#e0e0e0;border-bottom-left-radius:4px}
+.cmsg-time{font-size:10px;color:#3a3a3a;margin-top:3px;padding:0 4px}
+.chat-bar{display:flex;align-items:flex-end;gap:8px;padding:10px 12px;border-top:1px solid #1a1a1a;background:#0f0f0f}
+.chat-ta{flex:1;background:#1a1a1a;border:none;border-radius:20px;padding:9px 14px;font-size:13px;color:#e0e0e0;font-family:inherit;resize:none;line-height:1.4;max-height:100px}
+.chat-ta:focus{outline:none}
+.chat-icon-btn{width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;background:#1a1a1a;color:#888;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s}
+.chat-icon-btn.recording{background:rgba(217,80,58,.2);color:#d9503a}
+.chat-icon-btn.recorded{background:rgba(77,201,138,.12);color:#4dc98a}
+.chat-send-btn{width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;background:#c49a1c;color:#000;font-size:17px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.audio-player{display:flex;align-items:center;gap:9px;min-width:150px;max-width:210px;padding:2px 0}
+.ap-play{width:30px;height:30px;border-radius:50%;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(255,255,255,.15);color:#fff}
+.cmsg-me .ap-play{background:rgba(0,0,0,.22);color:#000}
+.ap-track{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.15);cursor:pointer;position:relative;overflow:hidden}
+.cmsg-me .ap-track{background:rgba(0,0,0,.18)}
+.ap-fill{height:100%;border-radius:2px;background:rgba(255,255,255,.55);width:0%;transition:width .1s linear}
+.cmsg-me .ap-fill{background:rgba(0,0,0,.35)}
+.ap-dur{font-size:10px;color:rgba(255,255,255,.4);min-width:28px;text-align:right;font-variant-numeric:tabular-nums}
+.cmsg-me .ap-dur{color:rgba(0,0,0,.45)}
+@keyframes recBlink{0%,100%{opacity:1}50%{opacity:.2}}
+.rec-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#d9503a;animation:recBlink .9s infinite;margin-right:4px}
 
 /* ── ENERGY/MOOD CHECK ── */
 .energy-card{background:rgba(196,154,28,.04);border:1px solid rgba(196,154,28,.12);border-radius:12px;padding:16px;margin-bottom:10px;animation:popIn .3s ease forwards}
@@ -2079,26 +2097,29 @@ function openChallenger(uid){
 }
 
 function renderChallengerDetail(u){
-  let rows="";
   const dur=u.dur||15;
   const callDays=CALL_DAYS[dur]||[];
+  /* Build compact grid (same visual language as user dashboard) */
+  let gridCells="";
   for(let i=0;i<dur;i++){
-    const d=i+1,isUp=u.up[i],isRv=u.rv&&u.rv[i],note=u.notes[i],fut=d>u.day;
+    const d=i+1,isUp=u.up[i],isRv=u.rv&&u.rv[i],fut=d>u.day,isMiss=d<u.day&&!isUp;
     const isCall=callDays.includes(d);
-    const hasVoice=u.hasVoice&&u.hasVoice[i];
-    const energy=u.energyLog&&u.energyLog[d];
-    let energyBadge="";
-    if(energy){
-      if(energy.type==="energy") energyBadge=`<span style="font-size:9px;margin-left:auto;flex-shrink:0">${"🔥".repeat(energy.value)}</span>`;
-      else if(energy.type==="mood") energyBadge=`<span style="font-size:9px;margin-left:auto;color:#c49a1c;flex-shrink:0">${energy.value}</span>`;
-      else if(energy.type==="reflection") energyBadge=`<span style="font-size:9px;margin-left:auto;color:#888;flex-shrink:0" title="${energy.value}">💭</span>`;
-    }
-    let callBadge=isCall?`<span style="font-size:8px;margin-left:4px;color:#c49a1c;font-weight:900">C</span>`:"";
-    if(fut||!isUp){
-      rows+=`<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--nav-bg);border-radius:7px;margin-bottom:4px;opacity:${fut?.3:.6}"><span style="font-size:9px;font-weight:700;color:#5a5a5a;width:40px;flex-shrink:0">D${d}${callBadge}</span><span class="muted" style="font-size:11px">${fut?"upcoming":"not uploaded"}</span>${energyBadge}</div>`;
-    } else {
-      rows+=`<div style="display:flex;gap:8px;align-items:center;padding:8px 11px;background:${isRv?"rgba(196,154,28,.05)":"rgba(77,201,138,.05)"};border:1px solid ${isRv?"rgba(196,154,28,.2)":"rgba(77,201,138,.2)"};border-radius:8px;margin-bottom:4px;cursor:pointer" onclick="openUploadDetail('${u.id}',${i})"><span style="font-size:9px;font-weight:700;color:${isRv?"#c49a1c":"#4dc98a"};width:40px;flex-shrink:0">D${d}${callBadge}</span><span style="flex:1;font-size:12px">${note&&note!=="—"?note.slice(0,60)+(note.length>60?"…":""):"No note"}${hasVoice?" 🎙":""}${u.links&&u.links[i]?" 🔗":""}</span>${energyBadge}<button onclick="event.stopPropagation();togRv('${u.id}',${i})" style="padding:3px 9px;border-radius:100px;background:${isRv?"rgba(196,154,28,.1)":"#1b1b1b"};border:1px solid ${isRv?"rgba(196,154,28,.3)":"#333"};color:${isRv?"#c49a1c":"#888"};font-size:9px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">${isRv?"✓✓ Done":"Mark Reviewed"}</button></div>`;
-    }
+    const hasVoice=u.hasVoice&&u.hasVoice[i],hasLink=u.links&&u.links[i];
+    let cls="dc";
+    let ds="";
+    if(isUp){cls+=isRv?" up":" up";ds=isRv?"✓✓":"✓";}
+    else if(d===u.day){cls+=" tod";ds="NOW";}
+    else if(isMiss){cls+=" ms";ds="—";}
+    else{cls+=" ft";}
+    if(isCall)cls+=" call-day";
+    const indicators=(hasVoice?"🎙":"")+(hasLink?"🔗":"");
+    const onclick=isUp?`onclick="openUploadDetail('${u.id}',${i})" style="cursor:pointer"`:"";
+    gridCells+=`<div class="${cls}" ${onclick} title="Day ${d}${isUp?": tap to view":fut?" · upcoming":""}">
+      <span class="dn">D${d}</span>
+      ${ds?`<span class="ds">${ds}</span>`:""}
+      ${indicators?`<span style="font-size:7px;line-height:1;margin-top:1px">${indicators}</span>`:""}
+      ${isCall?`<span style="position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:#c49a1c;display:flex;align-items:center;justify-content:center;font-size:5px">C</span>`:""}
+    </div>`;
   }
   const up=u.up.filter(Boolean).length,rv=(u.rv||[]).filter(Boolean).length;
   /* Energy summary */
@@ -2127,8 +2148,8 @@ function renderChallengerDetail(u){
   return `${u.flag?`<div style="padding:10px 12px;background:rgba(217,80,58,.07);border:1px solid rgba(217,80,58,.22);border-radius:8px;margin-bottom:14px;display:flex;gap:8px"><span class="er">⚑</span><p style="font-size:12px;line-height:1.5">${u.flag}</p></div>`:""}
     ${contactSection}
     ${energySummary}
-    <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">UPLOADS · ${up}/${dur} · ${rv} reviewed <span style="color:#444;font-weight:400">· tap a row to view proof</span></p>
-    ${rows}
+    <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">UPLOADS · ${up}/${dur} · ${rv} reviewed <span style="color:#444;font-weight:400">· tap a cell to view proof</span></p>
+    <div class="g15" style="margin-bottom:14px">${gridCells}</div>
     <div style="margin-top:14px;border-top:1px solid #1b1b1b;padding-top:14px" id="fb-area-${u.id}">
       <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">SEND FEEDBACK</p>
       <textarea id="fb-ta-${u.id}" rows="3" placeholder="Personal message to ${u.name}..." class="mb10" style="font-size:13px"></textarea>
@@ -2952,6 +2973,45 @@ function dismissWelcome(){
   el("welcome-overlay").style.display="none";
 }
 
+/* ── AUDIO PLAYER ── */
+function buildAudioBubble(url,id){
+  return `<div class="audio-player" id="ap-${id}">
+    <button class="ap-play" onclick="toggleAudio('${id}')">▶</button>
+    <div class="ap-track" onclick="seekAudio('${id}',event)"><div class="ap-fill" id="ap-fill-${id}"></div></div>
+    <span class="ap-dur" id="ap-dur-${id}">0:00</span>
+    <audio id="ap-el-${id}" src="${url}" preload="metadata" style="display:none"
+      onended="audioEnded('${id}')" ontimeupdate="audioProgress('${id}')" onloadedmetadata="audioDuration('${id}')"></audio>
+  </div>`;
+}
+function toggleAudio(id){
+  document.querySelectorAll("[id^='ap-el-']").forEach(a=>{
+    if(a.id!==`ap-el-${id}`&&!a.paused){a.pause();const oid=a.id.replace("ap-el-","");const b=document.querySelector(`#ap-${oid} .ap-play`);if(b)b.textContent="▶";}
+  });
+  const audio=document.getElementById(`ap-el-${id}`),btn=document.querySelector(`#ap-${id} .ap-play`);
+  if(!audio)return;
+  if(audio.paused){audio.play().catch(()=>{});if(btn)btn.textContent="⏸";}
+  else{audio.pause();if(btn)btn.textContent="▶";}
+}
+function audioProgress(id){
+  const audio=document.getElementById(`ap-el-${id}`),fill=document.getElementById(`ap-fill-${id}`),dur=document.getElementById(`ap-dur-${id}`);
+  if(fill&&audio.duration)fill.style.width=(audio.currentTime/audio.duration*100)+"%";
+  if(dur){const s=Math.floor(audio.currentTime);dur.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;}
+}
+function audioDuration(id){
+  const audio=document.getElementById(`ap-el-${id}`),dur=document.getElementById(`ap-dur-${id}`);
+  if(!audio||!dur||!audio.duration)return;
+  const s=Math.floor(audio.duration);dur.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+}
+function audioEnded(id){
+  const btn=document.querySelector(`#ap-${id} .ap-play`),fill=document.getElementById(`ap-fill-${id}`),audio=document.getElementById(`ap-el-${id}`);
+  if(btn)btn.textContent="▶";if(fill)fill.style.width="0%";if(audio)audio.currentTime=0;
+}
+function seekAudio(id,e){
+  const audio=document.getElementById(`ap-el-${id}`);
+  if(!audio||!audio.duration)return;
+  audio.currentTime=(e.offsetX/e.currentTarget.offsetWidth)*audio.duration;
+}
+
 /* ── CHAT INTERFACE ── */
 async function renderChat(){
   const container=el("chat-container");
@@ -2968,50 +3028,41 @@ async function renderChat(){
   /* Also include local genie messages not yet in chat */
   if(S.user.genieMessages){
     S.user.genieMessages.forEach(m=>{
-      if(!m.inChat){
-        messages.push({sender:"genie",message:m.text,created_at:m.date||new Date().toISOString()});
-      }
+      if(!m.inChat) messages.push({sender:"genie",message:m.text,created_at:m.date||new Date().toISOString()});
     });
   }
-  
-  const inputRow=`<div class="chat-input-row" style="align-items:flex-end">
-    <textarea id="chat-input" rows="1" placeholder="${messages.length===0?"Send a message...":"Reply to Genie..."}" style="font-size:13px"></textarea>
-    <button id="chat-mic-btn" onclick="toggleChatRecording()" style="padding:8px 10px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:16px;cursor:pointer;flex-shrink:0" title="Voice note">🎙</button>
-    <button class="chat-send" onclick="sendChatMsg()">→</button>
-  </div>
-  <div id="chat-voice-status" style="display:none;font-size:11px;color:#888;margin-top:6px;text-align:center"></div>`;
+  messages.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
 
-  if(messages.length===0){
-    container.innerHTML=`<div class="card mb10" style="padding:14px">
-      <div class="row" style="gap:8px;margin-bottom:10px">
-        <span style="font-size:14px">💬</span>
-        <span style="font-size:12px;font-weight:700">Messages</span>
-      </div>
-      ${inputRow}
+  const unread=messages.filter(m=>m.sender==="genie"&&!m.read).length;
+  const bubbles=messages.map((m,i)=>{
+    const isMe=m.sender==="challenger";
+    const t=new Date(m.created_at);
+    const timeStr=t.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+    const dateStr=t.toLocaleDateString([],{month:"short",day:"numeric"});
+    const aId=`uc-${i}-${t.getTime()}`;
+    let body="";
+    if(m.message&&m.message.trim()) body+=`<p style="margin:0">${m.message}</p>`;
+    if(m.voice_url) body+=buildAudioBubble(m.voice_url,aId);
+    if(!body) return "";
+    return `<div class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
+      <div class="cmsg-body">${body}</div>
+      <div class="cmsg-time">${isMe?"You":"Genie"} · ${dateStr} ${timeStr}</div>
     </div>`;
-    return;
-  }
+  }).join("");
 
-  container.innerHTML=`<div class="card mb10" style="padding:14px">
-    <div class="row" style="gap:8px;margin-bottom:10px">
-      <span style="font-size:14px">💬</span>
-      <span style="font-size:12px;font-weight:700">Messages</span>
-      ${messages.filter(m=>m.sender==="genie"&&!m.read).length>0?`<span class="bdg bdg-a" style="font-size:9px;margin-left:auto">${messages.filter(m=>m.sender==="genie"&&!m.read).length} new</span>`:""}
+  container.innerHTML=`<div class="chat-screen">
+    <div class="chat-thread" id="chat-scroll">
+      ${messages.length===0?`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:28px 0">No messages yet</p>`:bubbles}
     </div>
-    <div class="chat-wrap" id="chat-scroll">
-      ${messages.map(m=>{
-        const voiceHtml=m.voice_url?`<audio controls src="${m.voice_url}" style="width:100%;margin-top:6px;border-radius:6px;max-width:220px"></audio>`:"";
-        const msgHtml=m.message?`<p>${m.message}</p>`:"";
-        return `<div class="chat-bubble ${m.sender==="genie"?"chat-genie":"chat-challenger"}">${msgHtml}${voiceHtml}<div class="chat-time">${m.sender==="genie"?"Genie":"You"} · ${new Date(m.created_at).toLocaleDateString()}</div></div>`;
-      }).join("")}
+    <div class="chat-bar">
+      <textarea id="chat-input" class="chat-ta" rows="1" placeholder="Message Genie..."></textarea>
+      <button id="chat-mic-btn" class="chat-icon-btn" onclick="toggleChatRecording()" title="Voice note">🎙</button>
+      <button class="chat-send-btn" onclick="sendChatMsg()">↑</button>
     </div>
-    ${inputRow}
+    <div id="chat-voice-status" style="display:none;font-size:11px;color:#d9503a;padding:5px 14px 10px;background:#0f0f0f;text-align:center"></div>
   </div>`;
-  /* Scroll to bottom */
-  setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},100);
-  setTimeout(setGeniePhotos,50);
-  /* Mark genie messages as read */
-  if(sb&&S.user.supabaseId){
+  setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},60);
+  if(sb&&S.user.supabaseId&&unread>0){
     sb.from("chat_messages").update({read:true}).eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false).then(()=>{});
   }
 }
@@ -3361,17 +3412,19 @@ async function openProfilePanel(uid){
       <p id="pf-save-status" style="font-size:12px;margin-top:10px;text-align:center"></p>
     </div>
 
-    <div style="border-top:1px solid #1a1a1a;margin-top:24px;padding-top:20px">
-      <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:14px">MESSAGES</p>
-      <div id="pf-chat-thread" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
-        <p style="font-size:12px;color:#444;text-align:center;padding:16px 0">Loading messages...</p>
+    <div style="border-top:1px solid #1a1a1a;margin-top:24px;padding-top:4px">
+      <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px;padding:0 0 0 4px">MESSAGES</p>
+      <div class="chat-screen" style="margin-bottom:0">
+        <div id="pf-chat-thread" class="chat-thread" style="max-height:300px">
+          <p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">Loading...</p>
+        </div>
+        <div class="chat-bar">
+          <textarea id="pf-reply-input" class="chat-ta" rows="1" placeholder="Message ${u.name}..."></textarea>
+          <button id="admin-mic-btn" class="chat-icon-btn" onclick="toggleAdminRecording()" title="Voice note">🎙</button>
+          <button class="chat-send-btn" onclick="sendProfilePanelMsg('${uid}')">↑</button>
+        </div>
+        <div id="admin-voice-status" style="display:none;font-size:11px;color:#d9503a;padding:5px 14px 10px;background:#0f0f0f;text-align:center"></div>
       </div>
-      <div style="display:flex;gap:8px;align-items:flex-end">
-        <textarea id="pf-reply-input" rows="2" placeholder="Send a message..." style="flex:1;background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;font-size:13px;color:#e0e0e0;font-family:inherit;resize:none;box-sizing:border-box"></textarea>
-        <button id="admin-mic-btn" onclick="toggleAdminRecording()" style="padding:10px 11px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:16px;cursor:pointer;flex-shrink:0" title="Voice note">🎙</button>
-        <button onclick="sendProfilePanelMsg('${uid}')" style="padding:10px 14px;border-radius:8px;background:#c49a1c;border:none;color:#000;font-size:13px;font-weight:800;cursor:pointer;flex-shrink:0">Send</button>
-      </div>
-      <div id="admin-voice-status" style="display:none;font-size:11px;color:#888;margin-top:6px;text-align:center"></div>
     </div>
   `;
   document.getElementById("profile-panel").style.transform="translateX(0)";
@@ -3385,21 +3438,25 @@ async function loadProfilePanelChat(uid){
   if(!thread||!sb)return;
   try{
     const {data:msgs}=await sb.from("chat_messages").select("*").eq("challenger_id",uid).order("created_at",{ascending:true});
-    if(!msgs||msgs.length===0){thread.innerHTML=`<p style="font-size:12px;color:#444;text-align:center;padding:16px 0">No messages yet.</p>`;return;}
-    thread.innerHTML=msgs.map(m=>{
-      const isGenie=m.sender==="genie";
-      const time=new Date(m.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})+" "+new Date(m.created_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
-      const voiceHtml=m.voice_url?`<audio controls src="${m.voice_url}" style="width:100%;margin-top:6px;border-radius:6px"></audio>`:"";
-      const msgHtml=m.message?`<p style="font-size:13px;line-height:1.5;margin:0">${m.message}</p>`:"";
-      return `<div style="display:flex;flex-direction:column;align-items:${isGenie?"flex-start":"flex-end"}">
-        <div style="max-width:85%;background:${isGenie?"#1a1a1a":"rgba(196,154,28,.1)"};border:1px solid ${isGenie?"#242424":"rgba(196,154,28,.2)"};border-radius:10px;padding:8px 12px">
-          ${msgHtml}${voiceHtml}
-        </div>
-        <span style="font-size:10px;color:#444;margin-top:3px;padding:0 4px">${isGenie?"Genie":"Challenger"} · ${time}</span>
+    if(!msgs||msgs.length===0){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">No messages yet</p>`;return;}
+    /* In admin panel: genie (admin) = right, challenger = left */
+    thread.innerHTML=msgs.map((m,i)=>{
+      const isMe=m.sender==="genie"; // admin IS genie
+      const t=new Date(m.created_at);
+      const timeStr=t.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+      const dateStr=t.toLocaleDateString([],{month:"short",day:"numeric"});
+      const aId=`ac-${i}-${t.getTime()}`;
+      let body="";
+      if(m.message&&m.message.trim()) body+=`<p style="margin:0">${m.message}</p>`;
+      if(m.voice_url) body+=buildAudioBubble(m.voice_url,aId);
+      if(!body) return "";
+      return `<div class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
+        <div class="cmsg-body">${body}</div>
+        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${dateStr} ${timeStr}</div>
       </div>`;
     }).join("");
     thread.scrollTop=thread.scrollHeight;
-  }catch(e){thread.innerHTML=`<p style="font-size:12px;color:#444;text-align:center;padding:16px 0">Could not load messages.</p>`;}
+  }catch(e){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">Could not load messages</p>`;}
 }
 
 async function sendProfilePanelMsg(uid){
