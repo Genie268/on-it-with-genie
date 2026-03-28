@@ -883,7 +883,6 @@ let liveChallengers=[];
 let adminDataLoaded=false;
 
 async function loadAdminData(){
-  adminDataLoaded=false;
   if(!sb){liveChallengers=[];adminDataLoaded=true;return;}
   try{
     const {data:challengers}=await sb.from("challengers").select("*").order("created_at",{ascending:false});
@@ -1949,27 +1948,44 @@ async function renderAdmin(){
     c.innerHTML=`<div style="max-width:300px;margin:60px auto;text-align:center">
       <span class="lbl lbl-a" style="display:block;margin-bottom:12px">ADMIN ACCESS</span>
       <h3 style="font-size:18px;font-weight:800;margin-bottom:16px">Enter PIN</h3>
-      <input id="admin-pin-input" type="password" placeholder="····" style="text-align:center;font-size:22px;letter-spacing:8px;padding:14px;max-width:200px;margin:0 auto 14px" maxlength="10" onkeydown="if(event.key==='Enter')checkAdminPin()">
-      <button class="bp" style="width:100%;max-width:200px;padding:12px" onclick="checkAdminPin()">Enter</button>
-      <p id="admin-pin-msg" class="muted" style="font-size:11px;margin-top:10px"></p>
+      <input id="admin-pin-input" type="number" inputmode="numeric" placeholder="····" style="text-align:center;font-size:28px;letter-spacing:8px;padding:14px;width:100%;max-width:200px;display:block;margin:0 auto 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;color:#ebebeb;-moz-appearance:textfield" maxlength="6" onkeydown="if(event.key==='Enter')checkAdminPin()" oninput="this.value=this.value.slice(0,6)">
+      <button class="bp" style="width:100%;max-width:200px;padding:12px;font-size:15px" onclick="checkAdminPin()">Enter →</button>
+      <p id="admin-pin-msg" style="font-size:12px;margin-top:12px;min-height:18px"></p>
     </div>`;
-    setTimeout(()=>el("admin-pin-input")?.focus(),100);
+    setTimeout(()=>el("admin-pin-input")?.focus(),200);
     return;
   }
-  /* Load live data from Supabase */
   const c=el("admin-content");
   if(!adminDataLoaded){
     c.innerHTML=`<div style="text-align:center;padding:60px 20px"><div class="spinner" style="margin:0 auto 12px"></div><p class="muted">Loading challengers...</p></div>`;
-    await loadAdminData();
+    try{
+      await loadAdminData();
+    }catch(e){
+      c.innerHTML=`<div style="text-align:center;padding:60px 20px">
+        <p style="color:#d9503a;font-size:14px;margin-bottom:16px">Failed to load data</p>
+        <p class="muted" style="font-size:12px;margin-bottom:20px">${e?.message||"Check your connection"}</p>
+        <button class="bp" style="padding:10px 24px" onclick="adminDataLoaded=false;renderAdmin()">Retry</button>
+      </div>`;
+      return;
+    }
   }
   adminCurrentTab="overview";
   adminTab("overview");
 }
 
 function checkAdminPin(){
-  const pin=el("admin-pin-input")?.value;
-  if(pin===ADMIN_PIN){S._adminAuth=true;renderAdmin();}
-  else{el("admin-pin-msg").textContent="Wrong PIN";el("admin-pin-msg").style.color="#d9503a";el("admin-pin-input").value="";}
+  const pin=(el("admin-pin-input")?.value||"").trim();
+  if(pin===ADMIN_PIN){
+    S._adminAuth=true;
+    const msg=el("admin-pin-msg");
+    if(msg){msg.textContent="";msg.style.color="";}
+    renderAdmin();
+  }else{
+    const msg=el("admin-pin-msg");
+    if(msg){msg.textContent="Incorrect PIN — try again";msg.style.color="#d9503a";}
+    const input=el("admin-pin-input");
+    if(input){input.value="";input.focus();}
+  }
 }
 
 function adminTab(tab){
