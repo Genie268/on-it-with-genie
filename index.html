@@ -21,8 +21,9 @@ body{color:var(--text);font-family:'DM Sans',system-ui,-apple-system,sans-serif;
 :root{--bg:#060606;--s1:#0c0c0c;--s2:#131313;--s3:#1b1b1b;--s4:#232323;--text:#ebebeb;--muted:#5a5a5a;--mid:#888;--bd:#171717;--bdm:#222;--card-bg:#131313;--nav-bg:#0c0c0c}
 body.light{--bg:#f4f2ee;--s1:#ffffff;--s2:#f9f8f5;--s3:#f0ede8;--s4:#e8e4dd;--text:#1a1a1a;--muted:#888;--mid:#666;--bd:#e0ddd8;--bdm:#d0cdc8;--card-bg:#ffffff;--nav-bg:#ffffff}
 .screen{display:none;flex-direction:column;min-height:100vh;background:var(--bg)}
-.screen.active{display:flex;animation:fu .35s ease both}
-@keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.screen.active{display:flex}
+@media(prefers-reduced-motion:no-preference){.screen.active{animation:screenIn .3s ease}}
+@keyframes screenIn{from{transform:translateY(8px)}to{transform:translateY(0)}}
 @keyframes sp{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes glow{0%,100%{box-shadow:0 0 0 2px rgba(196,154,28,.2)}50%{box-shadow:0 0 0 3px rgba(196,154,28,.5)}}
@@ -685,7 +686,15 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
   </div>
 
   <!-- Tab content -->
-  <div id="admin-content" style="flex:1;overflow-y:auto;padding:18px;max-width:720px;margin:0 auto;width:100%"></div>
+  <div id="admin-content" style="flex:1;overflow-y:auto;padding:18px;max-width:720px;margin:0 auto;width:100%">
+    <div id="admin-pin-static" style="max-width:300px;margin:60px auto;text-align:center">
+      <span class="lbl lbl-a" style="display:block;margin-bottom:12px">ADMIN ACCESS</span>
+      <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;color:#ebebeb">Enter PIN</h3>
+      <input id="admin-pin-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="····" maxlength="6" autocomplete="off" style="text-align:center;font-size:28px;letter-spacing:8px;padding:14px;width:100%;max-width:200px;display:block;margin:0 auto 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;color:#ebebeb" onkeydown="if(event.key==='Enter')checkAdminPin()">
+      <button class="bp" style="width:100%;max-width:200px;padding:12px;font-size:15px" onclick="checkAdminPin()">Enter →</button>
+      <p id="admin-pin-msg" style="font-size:12px;margin-top:12px;min-height:18px"></p>
+    </div>
+  </div>
 </div>
 
 <!-- DEV MODE PANEL -->
@@ -828,6 +837,13 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 </div>
 
 <script>
+/* Global error handler — shows a visible banner on JS crash */
+window.onerror=function(msg,src,line){
+  var b=document.createElement("div");
+  b.style.cssText="position:fixed;top:0;left:0;right:0;padding:12px 16px;background:#d9503a;color:#fff;font-size:13px;z-index:99999;font-family:monospace";
+  b.textContent="JS Error: "+msg+" (line "+line+")";
+  document.body.appendChild(b);
+};
 /* ══════════════════════════════════════════════
    CONFIGURATION
    ══════════════════════════════════════════════ */
@@ -1953,16 +1969,22 @@ let adminCurrentTab = "overview";
 
 async function renderAdmin(){
   if(!S._adminAuth){
+    /* PIN form is in the static HTML — just ensure it's visible and focused */
     const c=document.getElementById("admin-content");
-    if(!c){console.error("renderAdmin: admin-content not found");return;}
-    c.innerHTML=`<div style="max-width:300px;margin:60px auto;text-align:center">
-      <span class="lbl lbl-a" style="display:block;margin-bottom:12px">ADMIN ACCESS</span>
-      <h3 style="font-size:18px;font-weight:800;margin-bottom:16px">Enter PIN</h3>
-      <input id="admin-pin-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="····" maxlength="6" autocomplete="off" style="text-align:center;font-size:28px;letter-spacing:8px;padding:14px;width:100%;max-width:200px;display:block;margin:0 auto 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;color:#ebebeb" onkeydown="if(event.key==='Enter')checkAdminPin()">
-      <button class="bp" style="width:100%;max-width:200px;padding:12px;font-size:15px" onclick="checkAdminPin()">Enter →</button>
-      <p id="admin-pin-msg" style="font-size:12px;margin-top:12px;min-height:18px"></p>
-    </div>`;
-    setTimeout(()=>el("admin-pin-input")?.focus(),200);
+    if(c){
+      const ps=document.getElementById("admin-pin-static");
+      if(!ps){
+        /* Static HTML was replaced (e.g. after auth then exit) — re-inject */
+        c.innerHTML=`<div id="admin-pin-static" style="max-width:300px;margin:60px auto;text-align:center">
+          <span class="lbl lbl-a" style="display:block;margin-bottom:12px">ADMIN ACCESS</span>
+          <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;color:#ebebeb">Enter PIN</h3>
+          <input id="admin-pin-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="····" maxlength="6" autocomplete="off" style="text-align:center;font-size:28px;letter-spacing:8px;padding:14px;width:100%;max-width:200px;display:block;margin:0 auto 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;color:#ebebeb" onkeydown="if(event.key==='Enter')checkAdminPin()">
+          <button class="bp" style="width:100%;max-width:200px;padding:12px;font-size:15px" onclick="checkAdminPin()">Enter →</button>
+          <p id="admin-pin-msg" style="font-size:12px;margin-top:12px;min-height:18px"></p>
+        </div>`;
+      }
+    }
+    setTimeout(()=>document.getElementById("admin-pin-input")?.focus(),200);
     return;
   }
   const c=el("admin-content");
