@@ -242,7 +242,7 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 .chat-ta::placeholder{color:#3a3a3a}
 .chat-mic-btn{background:none;border:none;cursor:pointer;color:#3a3a3a;width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:color .2s;padding:0}
 .chat-mic-btn.recorded{color:#4dc98a}
-.chat-send-btn{width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:#c49a1c;color:#000;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-send-btn{width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:#c49a1c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;font-weight:900;line-height:1}
 .rec-wave{display:flex;align-items:center;gap:3px;height:20px}
 .rec-wave b{width:3px;border-radius:3px;background:#d9503a;animation:waveBar .85s ease-in-out infinite;transform-origin:center;display:block}
 .rec-wave b:nth-child(1){height:5px;animation-delay:0s}
@@ -883,6 +883,7 @@ let liveChallengers=[];
 let adminDataLoaded=false;
 
 async function loadAdminData(){
+  adminDataLoaded=false;
   if(!sb){liveChallengers=[];adminDataLoaded=true;return;}
   try{
     const {data:challengers}=await sb.from("challengers").select("*").order("created_at",{ascending:false});
@@ -925,10 +926,10 @@ async function loadAdminData(){
       const curDay=Math.min(Math.max(Math.floor((now-startDate)/(1000*60*60*24))+1,1),dur);
       const missed=upArr.slice(0,curDay-1).filter(v=>!v).length;
       return {
-        id:c.id,name:c.name,
+        id:c.id,name:c.name,photo:c.photo_url||null,
         ini:(c.name||"?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2),
         goal:c.goal_summary||c.goal_raw,pt:c.proof_type||"output",
-        day:curDay,dur,up:upArr,notes:noteArr,rv:rvArr,
+        day:curDay,dur,up:upArr,notes:noteArr,rv:rvArr,rvCount:(rvArr||[]).filter(Boolean).length,
         energyLog:elog,hasVoice:voiceArr,voiceUrls:voiceUrlArr,fileUrls:fileUrlArr,
         links:linkArr,fileNames:fileNameArr,behaviors:behaviorArr,
         flag:missed>=4?"Multiple consecutive missed days":null,
@@ -1990,7 +1991,7 @@ function adminTab(tab){
 function renderAdminOverview(c){
   const total = getAM().length + (S.user?1:0);
   const active = getAM().filter(u => u.up.filter(Boolean).length > 0).length + (S.user&&S.uploads.some(v=>v!==null)?1:0);
-  const toReview = getAM().reduce((acc,u) => acc + (u.up.filter(Boolean).length - u.rv||u.up.map(()=>0).filter(Boolean).length), 0);
+  const toReview = getAM().reduce((acc,u) => acc + Math.max(0, u.up.filter(Boolean).length - (u.rvCount||0)), 0);
   const liveUp = S.user?S.uploads.filter(v=>v!==null).length:0;
   const liveRv = S.user?(S.uploads.map(()=>0)).filter(Boolean).length:0;
   const livePending = liveUp-liveRv;
@@ -2036,7 +2037,7 @@ function renderAdminOverview(c){
     ${liveCard}
     ${getAM().map(u => {
       const up = u.up.filter(Boolean).length;
-      const rv = u.rv||u.up.map(()=>0).filter(Boolean).length;
+      const rv = u.rvCount||0;
       const missed = u.up.slice(0,u.day-1).filter(v=>!v).length;
       const pct = Math.round((up/(u.dur||15))*100);
       const isAtRisk = missed>=3;
@@ -2142,7 +2143,7 @@ function renderChallengerDetail(u){
       ${isCall?`<span style="position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:#c49a1c;display:flex;align-items:center;justify-content:center;font-size:5px">C</span>`:""}
     </div>`;
   }
-  const up=u.up.filter(Boolean).length,rv=(u.rv||[]).filter(Boolean).length;
+  const up=u.up.filter(Boolean).length,rv=u.rvCount||0;
   /* Energy summary */
   let energySummary="";
   if(u.energyLog){
@@ -2792,7 +2793,7 @@ function startRecTimer(statusEl,onTick){
 async function toggleChatRecording(){
   const btn=el("chat-mic-btn");
   const pill=btn&&btn.closest(".chat-input-pill");
-  const status=el("chat-voice-status");
+  const ta=el("chat-input");
   if(chatMediaRecorder&&chatMediaRecorder.state==="recording"){
     chatMediaRecorder.stop();
     clearInterval(chatRecTimer);
@@ -2810,21 +2811,28 @@ async function toggleChatRecording(){
       chatVoiceBlob=new Blob(chatAudioChunks,{type:"audio/webm"});
       if(btn){btn.innerHTML=MIC_SVG;btn.style.color="#4dc98a";}
       if(pill){pill.classList.remove("recording");pill.classList.add("recorded");}
-      if(status){status.style.display="block";status.innerHTML='<span style="color:#4dc98a;font-size:11px">● Voice note ready — tap send</span>';}
+      if(ta) ta.placeholder="✓ Voice note ready — tap ↑ to send";
     };
     chatMediaRecorder.start();
     if(btn){btn.innerHTML=WAVE_HTML;btn.style.color="";}
     if(pill){pill.classList.add("recording");pill.classList.remove("recorded");}
-    if(status) status.style.display="block";
-    chatRecTimer=startRecTimer(status);
+    let secs=0;
+    chatRecTimer=setInterval(()=>{
+      secs++;
+      const m=Math.floor(secs/60),s=String(secs%60).padStart(2,"0");
+      if(ta) ta.placeholder=`● Recording ${m}:${s} — tap to stop`;
+    },1000);
+    if(ta) ta.placeholder="● Recording 0:00 — tap to stop";
   }catch(e){
-    if(status){status.style.display="block";status.textContent="Microphone access denied";}
+    if(ta) ta.placeholder="Microphone access denied";
+    setTimeout(()=>{if(ta)ta.placeholder="Message Genie...";},2500);
   }
 }
 
 async function toggleAdminRecording(){
   const btn=document.getElementById("admin-mic-btn");
   const pill=btn&&btn.closest(".chat-input-pill");
+  const ta=document.getElementById("pf-reply-input");
   const status=document.getElementById("admin-voice-status");
   if(adminMediaRecorder&&adminMediaRecorder.state==="recording"){adminMediaRecorder.stop();clearInterval(adminRecTimer);return;}
   adminVoiceBlob=null;
@@ -2839,15 +2847,22 @@ async function toggleAdminRecording(){
       adminVoiceBlob=new Blob(adminAudioChunks,{type:"audio/webm"});
       if(btn){btn.innerHTML=MIC_SVG;btn.style.color="#4dc98a";}
       if(pill){pill.classList.remove("recording");pill.classList.add("recorded");}
-      if(status){status.style.display="block";status.innerHTML='<span style="color:#4dc98a;font-size:11px">● Voice note ready — tap send</span>';}
+      if(ta) ta.placeholder="✓ Voice note ready — tap ↑ to send";
+      if(status) status.style.display="none";
     };
     adminMediaRecorder.start();
     if(btn){btn.innerHTML=WAVE_HTML;btn.style.color="";}
     if(pill){pill.classList.add("recording");pill.classList.remove("recorded");}
-    if(status) status.style.display="block";
-    adminRecTimer=startRecTimer(status);
+    let secs=0;
+    adminRecTimer=setInterval(()=>{
+      secs++;
+      const m=Math.floor(secs/60),s=String(secs%60).padStart(2,"0");
+      if(ta) ta.placeholder=`● Recording ${m}:${s} — tap to stop`;
+    },1000);
+    if(ta) ta.placeholder="● Recording 0:00 — tap to stop";
   }catch(e){
-    if(status){status.style.display="block";status.textContent="Microphone access denied";}
+    if(ta) ta.placeholder="Microphone access denied";
+    setTimeout(()=>{if(ta&&ta.placeholder.includes("denied"))ta.placeholder="Message...";},2500);
   }
 }
 
@@ -3104,9 +3119,8 @@ async function renderChat(){
         <textarea id="chat-input" class="chat-ta" rows="1" placeholder="Message Genie..."></textarea>
         <button id="chat-mic-btn" class="chat-mic-btn" onclick="toggleChatRecording()" title="Voice note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></button>
       </div>
-      <button class="chat-send-btn" onclick="sendChatMsg()"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+      <button class="chat-send-btn" onclick="sendChatMsg()">↑</button>
     </div>
-    <div id="chat-voice-status" style="display:none;font-size:11px;color:#d9503a;padding:5px 14px 10px;background:#0f0f0f;text-align:center"></div>
   </div>`;
   setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},60);
   if(sb&&S.user.supabaseId&&unread>0){
@@ -3119,7 +3133,11 @@ async function sendChatMsg(){
   const hasText=ta&&ta.value.trim();
   if(!hasText&&!chatVoiceBlob)return;
   const msg=hasText?ta.value.trim():"";
-  if(ta)ta.value="";
+  if(ta){ta.value="";ta.placeholder="Message Genie...";}
+  const pill=ta&&ta.closest(".chat-input-pill");
+  if(pill){pill.classList.remove("recording","recorded");}
+  const micBtn=el("chat-mic-btn");
+  if(micBtn){micBtn.innerHTML=MIC_SVG;micBtn.style.color="";}
 
   /* Upload voice if present */
   let voiceUrl=null;
@@ -3476,9 +3494,9 @@ async function openProfilePanel(uid){
             <textarea id="pf-reply-input" class="chat-ta" rows="1" placeholder="Message ${u.name}..."></textarea>
             <button id="admin-mic-btn" class="chat-mic-btn" onclick="toggleAdminRecording()" title="Voice note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></button>
           </div>
-          <button class="chat-send-btn" onclick="sendProfilePanelMsg('${uid}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+          <button class="chat-send-btn" onclick="sendProfilePanelMsg('${uid}')">↑</button>
         </div>
-        <div id="admin-voice-status" style="display:none;font-size:11px;color:#d9503a;padding:5px 14px 10px;background:#0f0f0f;text-align:center"></div>
+        <div id="admin-voice-status" style="display:none;font-size:10px;padding:4px 14px 6px;background:#0f0f0f;text-align:center"></div>
       </div>
     </div>
   `;
