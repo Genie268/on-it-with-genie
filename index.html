@@ -1948,7 +1948,7 @@ async function renderAdmin(){
     c.innerHTML=`<div style="max-width:300px;margin:60px auto;text-align:center">
       <span class="lbl lbl-a" style="display:block;margin-bottom:12px">ADMIN ACCESS</span>
       <h3 style="font-size:18px;font-weight:800;margin-bottom:16px">Enter PIN</h3>
-      <input id="admin-pin-input" type="number" inputmode="numeric" placeholder="····" style="text-align:center;font-size:28px;letter-spacing:8px;padding:14px;width:100%;max-width:200px;display:block;margin:0 auto 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;color:#ebebeb;-moz-appearance:textfield" maxlength="6" onkeydown="if(event.key==='Enter')checkAdminPin()" oninput="this.value=this.value.slice(0,6)">
+      <input id="admin-pin-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="····" maxlength="6" autocomplete="off" style="text-align:center;font-size:28px;letter-spacing:8px;padding:14px;width:100%;max-width:200px;display:block;margin:0 auto 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;color:#ebebeb" onkeydown="if(event.key==='Enter')checkAdminPin()">
       <button class="bp" style="width:100%;max-width:200px;padding:12px;font-size:15px" onclick="checkAdminPin()">Enter →</button>
       <p id="admin-pin-msg" style="font-size:12px;margin-top:12px;min-height:18px"></p>
     </div>`;
