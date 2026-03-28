@@ -21,7 +21,7 @@ body{color:var(--text);font-family:'DM Sans',system-ui,-apple-system,sans-serif;
 :root{--bg:#060606;--s1:#0c0c0c;--s2:#131313;--s3:#1b1b1b;--s4:#232323;--text:#ebebeb;--muted:#5a5a5a;--mid:#888;--bd:#171717;--bdm:#222;--card-bg:#131313;--nav-bg:#0c0c0c}
 body.light{--bg:#f4f2ee;--s1:#ffffff;--s2:#f9f8f5;--s3:#f0ede8;--s4:#e8e4dd;--text:#1a1a1a;--muted:#888;--mid:#666;--bd:#e0ddd8;--bdm:#d0cdc8;--card-bg:#ffffff;--nav-bg:#ffffff}
 .screen{display:none;flex-direction:column;min-height:100vh;height:100vh;background:var(--bg)}
-.screen.active{display:flex}
+.screen.active{display:flex;height:100vh;}
 @media(prefers-reduced-motion:no-preference){.screen.active{animation:screenIn .3s ease}}
 /* Admin route — ensure admin screen shows immediately via data attribute set by early script */
 html[data-route="admin"] #s-land.screen{display:none!important}
