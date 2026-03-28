@@ -20,8 +20,8 @@ html,body{min-height:100%;background:var(--bg)}
 body{color:var(--text);font-family:'DM Sans',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
 :root{--bg:#060606;--s1:#0c0c0c;--s2:#131313;--s3:#1b1b1b;--s4:#232323;--text:#ebebeb;--muted:#5a5a5a;--mid:#888;--bd:#171717;--bdm:#222;--card-bg:#131313;--nav-bg:#0c0c0c}
 body.light{--bg:#f4f2ee;--s1:#ffffff;--s2:#f9f8f5;--s3:#f0ede8;--s4:#e8e4dd;--text:#1a1a1a;--muted:#888;--mid:#666;--bd:#e0ddd8;--bdm:#d0cdc8;--card-bg:#ffffff;--nav-bg:#ffffff}
-.screen{display:none;flex-direction:column;min-height:100vh;animation:fu .35s ease forwards}
-.screen.active{display:flex}
+.screen{display:none;flex-direction:column;min-height:100vh;background:var(--bg)}
+.screen.active{display:flex;animation:fu .35s ease both}
 @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes sp{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -1053,9 +1053,18 @@ const FB = {
 
 /* ── NAV ── */
 function goTo(s){
+  /* Close any open overlays before switching screens */
+  const ppb=document.getElementById("profile-panel-backdrop");
+  const pp=document.getElementById("profile-panel");
+  if(ppb)ppb.style.display="none";
+  if(pp)pp.style.transform="translateX(100%)";
+  const mo=document.getElementById("mod");
+  if(mo)mo.classList.remove("show");
   document.querySelectorAll(".screen").forEach(x => x.classList.remove("active"));
   const map = {land:"s-land",ob:"s-ob",duration:"s-duration",commit:"s-commit",pay:"s-pay",photo:"s-photo",transition:"s-transition",dash:"s-dash",d15:"s-d15",gauntlet:"s-gauntlet",rec:"s-rec",admin:"s-admin",dev:"s-dev"};
-  el(map[s]||"s-land").classList.add("active");
+  const target = el(map[s]||"s-land");
+  if(!target){console.error("goTo: missing screen element for",s);return;}
+  target.classList.add("active");
   if(s==="dash")       renderDash();
   if(s==="admin")      renderAdmin();
   if(s==="rec")        initRec();
@@ -1944,7 +1953,8 @@ let adminCurrentTab = "overview";
 
 async function renderAdmin(){
   if(!S._adminAuth){
-    const c=el("admin-content");
+    const c=document.getElementById("admin-content");
+    if(!c){console.error("renderAdmin: admin-content not found");return;}
     c.innerHTML=`<div style="max-width:300px;margin:60px auto;text-align:center">
       <span class="lbl lbl-a" style="display:block;margin-bottom:12px">ADMIN ACCESS</span>
       <h3 style="font-size:18px;font-weight:800;margin-bottom:16px">Enter PIN</h3>
