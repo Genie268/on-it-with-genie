@@ -23,6 +23,9 @@ body.light{--bg:#f4f2ee;--s1:#ffffff;--s2:#f9f8f5;--s3:#f0ede8;--s4:#e8e4dd;--te
 .screen{display:none;flex-direction:column;min-height:100vh;background:var(--bg)}
 .screen.active{display:flex}
 @media(prefers-reduced-motion:no-preference){.screen.active{animation:screenIn .3s ease}}
+/* Admin route — ensure admin screen shows immediately via data attribute set by early script */
+html[data-route="admin"] #s-land.screen{display:none!important}
+html[data-route="admin"] #s-admin.screen{display:flex!important;flex-direction:column;min-height:100vh}
 @keyframes screenIn{from{transform:translateY(8px)}to{transform:translateY(0)}}
 @keyframes sp{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -330,6 +333,11 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 </style>
 </head>
 <body>
+<script>
+// Immediate admin-route detection — no DOMContentLoaded wait needed
+// Sets data-route="admin" on <html> so CSS shows the admin screen before any JS runs
+if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAttribute('data-route','admin');}
+</script>
 <div id="app">
 
 <!-- LANDING -->
@@ -792,13 +800,19 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 </div>
 
 <script>
-/* Global error handler — shows a visible banner on JS crash */
+/* Global error handlers — show a visible banner on JS crash */
 window.onerror=function(msg,src,line){
   var b=document.createElement("div");
   b.style.cssText="position:fixed;top:0;left:0;right:0;padding:12px 16px;background:#d9503a;color:#fff;font-size:13px;z-index:99999;font-family:monospace";
   b.textContent="JS Error: "+msg+" (line "+line+")";
   document.body.appendChild(b);
 };
+window.addEventListener('unhandledrejection',function(e){
+  var b=document.createElement("div");
+  b.style.cssText="position:fixed;top:40px;left:0;right:0;padding:12px 16px;background:#c44a3a;color:#fff;font-size:13px;z-index:99999;font-family:monospace";
+  b.textContent="Async Error: "+(e.reason&&e.reason.message?e.reason.message:String(e.reason));
+  document.body.appendChild(b);
+});
 /* ══════════════════════════════════════════════
    CONFIGURATION
    ══════════════════════════════════════════════ */
@@ -2575,7 +2589,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   initParticles();
   animateTierPills();
   initSupabase();
-  if(window.location.pathname==='/admin'){
+  if(/^\/admin\/?$/.test(window.location.pathname)){
     goTo('admin');
   } else if(loadState()){
     goTo('dash');
