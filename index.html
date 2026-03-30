@@ -1691,7 +1691,7 @@ function handleProofFile(input){
   if(!input.files||!input.files[0]){S.fileOn=false;S.fileName=null;S.pendingFile=null;return;}
   const file=input.files[0];
   S.fileOn=true; S.fileName=file.name; S.pendingFile=file;
-  el("fd").className="fd on"; el("fi").textContent="✓"; el("ft").textContent=file.name;
+  const fdEl=el("fd"); if(fdEl){fdEl.className="fd on";fdEl.innerHTML=`<span style="font-size:28px">✓</span><span style="font-size:13px;color:#4dc98a">${file.name}</span>`;}
   if(file.type.startsWith("image/")){
     const reader=new FileReader();
     reader.onload=e=>{el("mod-file-thumb").src=e.target.result;el("mod-file-thumb").style.display="block";el("mod-file-preview").style.display="block";};
