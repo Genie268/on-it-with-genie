@@ -1691,10 +1691,16 @@ function handleProofFile(input){
   if(!input.files||!input.files[0]){S.fileOn=false;S.fileName=null;S.pendingFile=null;return;}
   const file=input.files[0];
   S.fileOn=true; S.fileName=file.name; S.pendingFile=file;
-  el("fd").className="fd on"; el("fi").textContent="✓"; el("ft").textContent=file.name;
+  if(el("fd")) el("fd").className="fd on";
+  if(el("fi")) el("fi").textContent="✓";
+  if(el("ft")) el("ft").textContent=file.name;
   if(file.type.startsWith("image/")){
     const reader=new FileReader();
-    reader.onload=e=>{el("mod-file-thumb").src=e.target.result;el("mod-file-thumb").style.display="block";el("mod-file-preview").style.display="block";};
+    reader.onload=e=>{
+      const thumb=el("mod-file-thumb"); const prev=el("mod-file-preview");
+      if(thumb){thumb.src=e.target.result;thumb.style.display="block";}
+      if(prev) prev.style.display="block";
+    };
     reader.readAsDataURL(file);
   }
 }
