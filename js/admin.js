@@ -74,9 +74,14 @@ let adminRecentMessages=[];
 async function loadAdminMessages(){
   if(!sb)return;
   try{
-    /* Load 5 most recent chat_messages across all challengers */
-    const {data:recent}=await sb.from("chat_messages").select("*").order("created_at",{ascending:false}).limit(5);
-    adminRecentMessages=recent||[];
+    /* Load recent messages, enough to cover all challengers */
+    const {data:recent}=await sb.from("chat_messages").select("*").order("created_at",{ascending:false}).limit(200);
+    /* Group by challenger_id, keep only the latest message per challenger */
+    const byChallenger={};
+    (recent||[]).forEach(m=>{
+      if(!byChallenger[m.challenger_id]) byChallenger[m.challenger_id]=m;
+    });
+    adminRecentMessages=Object.values(byChallenger).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     /* Load unread challenger messages (sender=challenger, read_at is null) */
     const {data:unread}=await sb.from("chat_messages").select("id,challenger_id").eq("sender","challenger").is("read_at",null);
     adminUnreadMessages=unread||[];
@@ -216,18 +221,22 @@ function renderAdminOverview(c){
   const unreadBadge=totalUnread>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;background:#d9503a;color:#fff;font-size:10px;font-weight:800;padding:0 5px;margin-left:6px">${totalUnread}</span>`:"";
   let messagesSection=`<p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">MESSAGES${unreadBadge}</p>`;
   if(adminRecentMessages.length>0){
-    messagesSection+=`<div style="max-height:220px;overflow-y:auto;margin-bottom:20px;border:1px solid #1f1f1f;border-radius:10px">`;
+    messagesSection+=`<div style="max-height:320px;overflow-y:auto;margin-bottom:20px;border:1px solid #1f1f1f;border-radius:10px">`;
     adminRecentMessages.forEach(m=>{
       const challenger=getAM().find(u=>u.id===m.challenger_id);
-      const name=challenger?challenger.name:(m.sender==="genie"?"Genie":"Unknown");
-      const preview=(m.message||"").slice(0,60)+(m.message&&m.message.length>60?"...":"");
+      const name=challenger?challenger.name:"Unknown";
+      const ini=challenger?challenger.ini:"?";
+      const rawPreview=m.message||"";
+      const preview=rawPreview.slice(0,60)+(rawPreview.length>60?"...":"");
       const isVoice=!!m.voice_url;
       const ta=timeAgo(m.created_at);
-      const isUnread=m.sender==="challenger"&&!m.read_at;
-      messagesSection+=`<div style="padding:10px 14px;border-bottom:1px solid #1a1a1a;cursor:pointer;display:flex;gap:10px;align-items:center${isUnread?";background:rgba(217,80,58,.04)":""}" onclick="${challenger?`openProfilePanel('${m.challenger_id}')`:""}">`
-        +`<div style="width:28px;height:28px;border-radius:7px;background:${m.sender==="genie"?"#c49a1c":"rgba(196,154,28,.07)"};border:1px solid ${m.sender==="genie"?"#c49a1c":"rgba(196,154,28,.22)"};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${m.sender==="genie"?"#000":"#c49a1c"};flex-shrink:0">${m.sender==="genie"?"G":(challenger?challenger.ini:"?")}</div>`
-        +`<div style="flex:1;min-width:0"><p style="font-size:12px;font-weight:${isUnread?"800":"600"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}${isUnread?' <span style="color:#d9503a;font-size:9px">●</span>':""}</p>`
-        +`<p class="muted" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${isVoice&&!preview?"🎙 Voice note":preview||"🎙 Voice note"}</p></div>`
+      const unreadCt=getUnreadCountForChallenger(m.challenger_id);
+      const hasUnread=unreadCt>0;
+      const senderPrefix=m.sender==="genie"?"You: ":"";
+      messagesSection+=`<div style="padding:10px 14px;border-bottom:1px solid #1a1a1a;cursor:pointer;display:flex;gap:10px;align-items:center${hasUnread?";background:rgba(217,80,58,.04)":""}" onclick="${challenger?`openProfilePanel('${m.challenger_id}')`:""}">`
+        +`<div style="width:28px;height:28px;border-radius:7px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#c49a1c;flex-shrink:0">${ini}</div>`
+        +`<div style="flex:1;min-width:0"><p style="font-size:12px;font-weight:${hasUnread?"800":"600"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}${hasUnread?' <span style="color:#d9503a;font-size:9px">● '+unreadCt+'</span>':""}</p>`
+        +`<p class="muted" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${senderPrefix}${isVoice&&!preview?"🎙 Voice note":preview||"🎙 Voice note"}</p></div>`
         +`<span class="muted" style="font-size:10px;flex-shrink:0">${ta}</span></div>`;
     });
     messagesSection+=`</div>`;
