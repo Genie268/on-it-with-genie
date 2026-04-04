@@ -1,0 +1,157 @@
+/* ── GROQ (via proxy, with temporary fallback) ── */
+async function lil(prompt, maxTokens=300){
+  const timeout=new Promise(resolve=>setTimeout(()=>resolve(null),10000));
+  async function _call(){
+    try {
+      if(GROQ_PROXY_URL){
+        try{
+          const res=await fetch(GROQ_PROXY_URL,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({prompt,maxTokens})
+          });
+          const data=await res.json();
+          if(data?.content) return data.content;
+          if(data?.error) console.warn("Proxy error:",data.error);
+        }catch(proxyErr){console.warn("Proxy unreachable:",proxyErr);}
+      }
+      const _fk="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";
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {"Content-Type":"application/json","Authorization":`Bearer ${_fk}`},
+        body: JSON.stringify({model:GROQ_MODEL,max_tokens:maxTokens,messages:[{role:"system",content:SYS},{role:"user",content:prompt}]})
+      });
+      const data = await res.json();
+      return data?.choices?.[0]?.message?.content?.trim() || null;
+    } catch(e){ console.error("AI error:",e); return null; }
+  }
+  return Promise.race([_call(), timeout]);
+}
+
+
+/* ── CHAT INTERFACE ── */
+async function renderChat(){
+  const container=el("chat-container");
+  if(!container||!S.user)return;
+  
+  /* Load messages from Supabase if available */
+  let messages=[];
+  if(sb&&S.user.supabaseId){
+    try{
+      const {data}=await sb.from("chat_messages").select("*").eq("challenger_id",S.user.supabaseId).order("created_at",{ascending:true});
+      if(data)messages=data;
+    }catch(e){}
+  }
+  /* Also include local genie messages not yet in chat */
+  if(S.user.genieMessages){
+    S.user.genieMessages.forEach(m=>{
+      if(!m.inChat) messages.push({sender:"genie",message:m.text,created_at:m.date||new Date().toISOString()});
+    });
+  }
+  messages.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+
+  const unread=messages.filter(m=>m.sender==="genie"&&!m.read).length;
+  const bubbles=messages.map((m,i)=>{
+    const isMe=m.sender==="challenger";
+    const t=new Date(m.created_at);
+    const timeStr=t.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+    const dateStr=t.toLocaleDateString([],{month:"short",day:"numeric"});
+    const aId=`uc-${i}-${t.getTime()}`;
+    let body="";
+    if(m.message&&m.message.trim()) body+=`<p style="margin:0">${m.message}</p>`;
+    if(m.voice_url) body+=buildAudioBubble(m.voice_url,aId);
+    if(!body) return "";
+    return `<div class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
+      <div class="cmsg-body">${body}</div>
+      <div class="cmsg-time">${isMe?"You":"Genie"} · ${dateStr} ${timeStr}</div>
+    </div>`;
+  }).join("");
+
+  container.innerHTML=`<div class="chat-screen">
+    <div class="chat-thread" id="chat-scroll">
+      ${messages.length===0?`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:28px 0">No messages yet</p>`:bubbles}
+    </div>
+    <div class="chat-bar">
+      <div class="chat-input-pill">
+        <textarea id="chat-input" class="chat-ta" rows="1" placeholder="Message Genie..."></textarea>
+        <button id="chat-mic-btn" class="chat-mic-btn" onclick="toggleChatRecording()" title="Voice note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></button>
+      </div>
+      <button class="chat-send-btn" onclick="sendChatMsg()">↑</button>
+    </div>
+  </div>`;
+  setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},60);
+  if(sb&&S.user.supabaseId&&unread>0){
+    sb.from("chat_messages").update({read:true}).eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false).then(()=>{});
+  }
+}
+
+async function sendChatMsg(){
+  const ta=el("chat-input");
+  const hasText=ta&&ta.value.trim();
+  if(!hasText&&!chatVoiceBlob)return;
+  const msg=hasText?ta.value.trim():"";
+  if(ta){ta.value="";ta.placeholder="Message Genie...";}
+  const pill=ta&&ta.closest(".chat-input-pill");
+  if(pill){pill.classList.remove("recording","recorded");}
+  const micBtn=el("chat-mic-btn");
+  if(micBtn){micBtn.innerHTML=MIC_SVG;micBtn.style.color="";}
+
+  /* Upload voice if present */
+  let voiceUrl=null;
+  if(chatVoiceBlob&&S.user?.supabaseId){
+    const path=`${S.user.supabaseId}/chat-${Date.now()}.webm`;
+    voiceUrl=await uploadToStorage("chat-voice",path,chatVoiceBlob,"audio/webm");
+    chatVoiceBlob=null;
+  }
+
+  if(sb&&S.user?.supabaseId){
+    try{
+      await sb.from("chat_messages").insert({challenger_id:S.user.supabaseId,sender:"challenger",message:msg||"",voice_url:voiceUrl||null});
+    }catch(e){console.error("Chat send error:",e);}
+  }
+  renderChat();
+}
+
+function sendGenieMessage(text){
+  if(!S.user) return;
+  if(!S.user.genieMessages) S.user.genieMessages=[];
+  S.user.genieMessages.push({text,date:new Date().toLocaleDateString(),read:false});
+  saveState();
+}
+
+
+/* ── GENIE NOTIFICATION BANNER (JS) ── */
+async function updateMsgBadge(){
+  const badge=el("msg-badge");
+  if(!badge)return;
+  let count=0;
+  /* Check chat_messages from Supabase */
+  if(sb&&S.user?.supabaseId){
+    try{
+      const {count:c}=await sb.from("chat_messages").select("id",{count:"exact",head:true}).eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false);
+      if(c)count=c;
+    }catch(e){}
+  }
+  /* Also check local genie messages */
+  if(S.user?.genieMessages){
+    count+=S.user.genieMessages.filter(m=>!m.read).length;
+  }
+  if(count>0){
+    badge.style.display="flex";
+    badge.textContent=count;
+  } else {
+    badge.style.display="none";
+  }
+}
+
+
+/* ── ADAPTIVE PROOF PLACEHOLDER ── */
+async function getAdaptivePlaceholder(goal){
+  try{
+    const prompt=`Given this goal: "${goal}", suggest 2-3 specific daily proof examples the person could upload. Return ONLY the examples as a comma-separated list, no quotes, no intro. Max 20 words total.`;
+    const result=await lil(prompt,40);
+    if(result&&result.length>10) return "e.g. "+result;
+  }catch(e){}
+  return null;
+}
+
