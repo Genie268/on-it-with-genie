@@ -451,13 +451,14 @@ function renderAdminInbox(c){
     for(let i=0;i<u.day-1;i++){
       if(u.up[i]&&!u.rv[i])items.push({u,day:i+1,note:u.notes[i],i,
         hasVoice:u.hasVoice&&u.hasVoice[i],voiceUrl:u.voiceUrls&&u.voiceUrls[i],
+        fileUrl:u.fileUrls&&u.fileUrls[i],
         link:u.links&&u.links[i],fileName:u.fileNames&&u.fileNames[i],
         behavior:u.behaviors&&u.behaviors[i]});
     }
     return items;
   });
   c.innerHTML=`<p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">UPLOADS TO REVIEW · ${pending.length}</p>
-    ${pending.map(({u,day,note,i,hasVoice,voiceUrl,link,fileName,behavior})=>`
+    ${pending.map(({u,day,note,i,hasVoice,voiceUrl,fileUrl,link,fileName,behavior})=>`
       <div class="card mb10">
         <div class="row mb8" style="justify-content:space-between;align-items:flex-start">
           <div class="row" style="gap:8px;flex:1;min-width:0">
@@ -467,7 +468,7 @@ function renderAdminInbox(c){
               ${note&&note!=="—"?`<p style="font-size:12px;margin-top:3px;line-height:1.5">${note}</p>`:""}
               ${behavior?`<p style="font-size:11px;margin-top:3px;color:#c49a1c">Behavior: ${behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p>`:""}
               ${link?`<a href="${link}" target="_blank" style="font-size:11px;color:#4dc98a;margin-top:3px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔗 ${link}</a>`:""}
-              ${fileName?`<p style="font-size:11px;color:#888;margin-top:2px">📎 ${fileName}</p>`:""}
+              ${fileUrl?thumbHtml(fileUrl,fileName):fileName?`<p style="font-size:11px;color:#888;margin-top:2px">📎 ${fileName}</p>`:""}
               ${voiceUrl?`<audio controls src="${voiceUrl}" style="width:100%;margin-top:6px;height:32px"></audio>`:(hasVoice?`<p style="font-size:11px;color:#888;margin-top:2px">🎙 Voice note (link unavailable)</p>`:"")}
             </div>
           </div>

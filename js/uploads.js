@@ -1,5 +1,39 @@
 /* ── UPLOAD MODAL ── */
 
+/* Image detection helper */
+function isImageUrl(url){
+  if(!url)return false;
+  return /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url)||url.includes("image");
+}
+
+/* Lightbox for full-size image viewing */
+function openLightbox(src){
+  const ov=document.createElement("div");
+  ov.id="img-lightbox";
+  ov.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;cursor:pointer;animation:fadeIn .15s ease";
+  ov.onclick=()=>ov.remove();
+  const img=document.createElement("img");
+  img.src=src;
+  img.style.cssText="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,.5)";
+  img.loading="lazy";
+  img.onerror=()=>{ov.innerHTML=`<div style="color:#888;font-size:14px;text-align:center">Could not load image</div>`;};
+  ov.appendChild(img);
+  document.body.appendChild(ov);
+}
+
+/* Thumbnail HTML builder */
+function thumbHtml(url,fileName){
+  if(isImageUrl(url)){
+    return `<div style="margin-top:8px;cursor:pointer;display:inline-block" onclick="event.stopPropagation();openLightbox('${url.replace(/'/g,"\\'")}')">`
+      +`<img src="${url}" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #2a2a2a;display:block" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />`
+      +`<div style="display:none;width:80px;height:80px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;align-items:center;justify-content:center;font-size:11px;color:#666;text-align:center;padding:4px">📎 Image unavailable</div>`
+      +`</div>`;
+  }
+  /* Non-image file — show file icon */
+  const name=fileName||url.split("/").pop()||"File";
+  return `<a href="${url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:#4dc98a;text-decoration:none;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 12px">📎 <span style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span></a>`;
+}
+
 function openMod(){
   S.fileOn=false; S.fileName=null; S.behaviorAnswer=null; S.voiceBlob=null;
   el("mod-form").style.display=""; el("mod-ack").style.display="none";
@@ -257,7 +291,7 @@ function openUploadDetail(uid, dayIndex){
     ${behavior?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">BEHAVIOR</span><p style="margin-top:4px;font-size:14px;font-weight:700;color:${behavior==="yes"?"#4dc98a":"#d9503a"}">${behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p></div>`:""}
     ${note&&note!=="—"?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">NOTE</span><p style="margin-top:4px;font-size:13px;line-height:1.7;color:#e0e0e0">${note}</p></div>`:""}
     ${link?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">LINK</span><a href="${link}" target="_blank" style="display:block;margin-top:4px;font-size:13px;color:#4dc98a;word-break:break-all">${link}</a></div>`:""}
-    ${fileUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${/\.(jpe?g|png|gif|webp)$/i.test(fileUrl||"")||fileUrl.includes("image")?`<img src="${fileUrl}" style="width:100%;border-radius:10px;margin-top:8px;display:block" loading="lazy">`:fileName?`<a href="${fileUrl}" target="_blank" style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;color:#4dc98a;text-decoration:none;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px">📎 <span>${fileName}</span></a>`:`<a href="${fileUrl}" target="_blank" style="display:block;margin-top:8px;font-size:13px;color:#4dc98a">📎 View file</a>`}</div>`:fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${fileName}</p></div>`:""}
+    ${fileUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${thumbHtml(fileUrl,fileName)}</div>`:fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${fileName}</p></div>`:""}
     ${voiceUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span><audio controls src="${voiceUrl}" style="width:100%;margin-top:8px;border-radius:8px"></audio></div>`:""}
     ${energyHtml}
     <div style="border-top:1px solid #1f1f1f;padding-top:16px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
