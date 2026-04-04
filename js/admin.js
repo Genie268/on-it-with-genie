@@ -490,11 +490,13 @@ async function togRv(uid,i){
       const dayNum=i+1;
       const {data:existing}=await sb.from("uploads").select("id,reviewed").eq("challenger_id",uid).eq("day_number",dayNum).single();
       if(existing){
-        await sb.from("uploads").update({reviewed:!existing.reviewed,reviewed_at:new Date().toISOString()}).eq("id",existing.id);
+        const newState=!existing.reviewed;
+        await sb.from("uploads").update({reviewed:newState,reviewed_at:new Date().toISOString()}).eq("id",existing.id);
+        showToast(newState?"Marked as reviewed":"Unmarked review","success");
       }
       /* Reload data */
       await loadAdminData();
-    }catch(e){console.error("Review toggle error:",e);}
+    }catch(e){console.error("Review toggle error:",e);showToast("Review toggle failed","error");}
   }
   if(adminCurrentTab==="challengers")renderAdminChallengers(el("admin-content"));
   if(adminCurrentTab==="inbox")renderAdminInbox(el("admin-content"));

@@ -209,6 +209,7 @@ async function subUp(){
   }
   playUploadSound();
   syncUploadToSupabase(S.day,S.uploads[S.day-1]);
+  showToast("Day "+S.day+" proof submitted","success");
   S.lilDone=false; renderDash();
   if(S.day===dur)setTimeout(()=>{closeMod();goTo("d15");},1200);
 }
@@ -254,6 +255,7 @@ function deleteTodayUpload(){
   saveState();
   S.lilDone=false;
   closeViewMod();
+  showToast("Upload deleted","info");
   renderDash();
 }
 

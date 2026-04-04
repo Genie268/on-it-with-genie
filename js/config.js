@@ -11,6 +11,18 @@ window.addEventListener('unhandledrejection',function(e){
   b.textContent="Async Error: "+(e.reason&&e.reason.message?e.reason.message:String(e.reason));
   document.body.appendChild(b);
 });
+/* ── TOAST NOTIFICATIONS ── */
+function showToast(message,type="info",duration=3000){
+  let container=document.getElementById("toast-container");
+  if(!container){container=document.createElement("div");container.id="toast-container";container.className="toast-container";document.body.appendChild(container);}
+  const icons={success:"✓",error:"✕",info:"ℹ"};
+  const toast=document.createElement("div");
+  toast.className=`toast toast-${type}`;
+  toast.innerHTML=`<span class="toast-icon">${icons[type]||"ℹ"}</span><span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(()=>{toast.classList.add("toast-out");setTimeout(()=>toast.remove(),250);},duration);
+}
+
 /* ══════════════════════════════════════════════
    CONFIGURATION
    ══════════════════════════════════════════════ */

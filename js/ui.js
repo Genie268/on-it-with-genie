@@ -763,7 +763,7 @@ function pfChatSetReply(msgId,preview,uid){
 async function pfChatDeleteMsg(msgId,uid){
   if(!confirm("Unsend this message?"))return;
   if(!sb)return;
-  try{await sb.from("chat_messages").delete().eq("id",msgId);}catch(e){}
+  try{await sb.from("chat_messages").delete().eq("id",msgId);showToast("Message unsent","info");}catch(e){showToast("Failed to unsend","error");}
   loadProfilePanelChat(uid);
 }
 
@@ -791,7 +791,8 @@ async function sendProfilePanelMsg(uid){
     /* Trigger push notification */
     const u=getAM().find(x=>x.id===uid);
     if(u) triggerPush(uid,"Message from Genie",msg?msg.slice(0,80):"🎙 Voice note");
-  }catch(e){}
+    showToast("Message sent","success");
+  }catch(e){showToast("Failed to send","error");}
   if(ta)ta.disabled=false;
   loadProfilePanelChat(uid);
 }
@@ -830,11 +831,13 @@ async function saveProfile(uid){
       ini:name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)});
     document.getElementById("pf-save-status").textContent="✓ Saved";
     document.getElementById("pf-save-status").style.color="#4dc98a";
+    showToast("Profile saved","success");
     btn.textContent="Save Changes";btn.disabled=false;
     setTimeout(()=>{switchToViewMode();openProfilePanel(uid);},800);
   }catch(e){
     document.getElementById("pf-save-status").textContent="Save failed. Try again.";
     document.getElementById("pf-save-status").style.color="#d9503a";
+    showToast("Save failed","error");
     btn.textContent="Save Changes";btn.disabled=false;
   }
 }

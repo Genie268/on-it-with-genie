@@ -1,7 +1,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100%;background:var(--bg)}
 body{color:var(--text);font-family:'DM Sans',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
-:root{--bg:#060606;--s1:#0c0c0c;--s2:#131313;--s3:#1b1b1b;--s4:#232323;--text:#ebebeb;--muted:#5a5a5a;--mid:#888;--bd:#171717;--bdm:#222;--card-bg:#131313;--nav-bg:#0c0c0c}
+:root{--bg:#060606;--s1:#0c0c0c;--s2:#131313;--s3:#1b1b1b;--s4:#232323;--text:#ebebeb;--muted:#7a7a7a;--mid:#888;--bd:#171717;--bdm:#222;--card-bg:#131313;--nav-bg:#0c0c0c;--gold:#c49a1c;--gold-hover:#e8b830;--gold-bg:rgba(196,154,28,.07);--gold-bd:rgba(196,154,28,.22);--green:#4dc98a;--green-bg:rgba(77,201,138,.07);--green-bd:rgba(77,201,138,.22);--red:#d9503a;--red-bg:rgba(217,80,58,.07);--red-bd:rgba(217,80,58,.22);--focus-ring:0 0 0 2px rgba(196,154,28,.45)}
 body.light{--bg:#f4f2ee;--s1:#ffffff;--s2:#f9f8f5;--s3:#f0ede8;--s4:#e8e4dd;--text:#1a1a1a;--muted:#888;--mid:#666;--bd:#e0ddd8;--bdm:#d0cdc8;--card-bg:#ffffff;--nav-bg:#ffffff}
 .screen{display:none;flex-direction:column;min-height:100vh;height:100vh;background:var(--bg)}
 .screen.active{display:flex;height:100vh;}
@@ -35,8 +35,23 @@ button{border:none;border-radius:9px;font-family:inherit;font-weight:700;cursor:
 .bg{background:transparent;color:#5a5a5a;border:none;font-size:13px}.bg:hover{color:#ebebeb}
 .bd{background:#d9503a;color:#fff}
 button:disabled{opacity:.4;cursor:not-allowed}
-input,textarea{width:100%;padding:12px 15px;background:#1b1b1b;border:1px solid #222;border-radius:9px;font-size:15px;color:#ebebeb;font-family:inherit;outline:none;line-height:1.6;box-sizing:border-box}
+button:not(:disabled):active{transform:scale(.97)}
+button:focus-visible{box-shadow:var(--focus-ring);outline:none}
+input,textarea{width:100%;padding:12px 15px;background:#1b1b1b;border:1px solid #222;border-radius:9px;font-size:15px;color:#ebebeb;font-family:inherit;outline:none;line-height:1.6;box-sizing:border-box;transition:border-color .15s,box-shadow .15s}
+input:focus,textarea:focus{border-color:var(--gold);box-shadow:var(--focus-ring)}
 textarea{resize:none}
+
+/* ── TOAST NOTIFICATIONS ── */
+.toast-container{position:fixed;top:16px;right:16px;z-index:10000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:600;color:#ebebeb;background:#1b1b1b;border:1px solid #2a2a2a;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastIn .3s ease forwards;max-width:340px}
+.toast.toast-success{border-color:var(--green-bd);background:rgba(77,201,138,.1)}
+.toast.toast-error{border-color:var(--red-bd);background:rgba(217,80,58,.1)}
+.toast.toast-info{border-color:var(--gold-bd);background:var(--gold-bg)}
+.toast-icon{font-size:16px;flex-shrink:0}
+.toast.toast-out{animation:toastOut .25s ease forwards}
+@keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes toastOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(40px)}}
+@media(max-width:600px){.toast-container{top:10px;right:10px;left:10px}.toast{max-width:100%}}
 .g15{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .dur-grid{display:grid;gap:5px}
 .dur-grid.cols-7{grid-template-columns:repeat(7,1fr)}
@@ -116,7 +131,8 @@ textarea{resize:none}
 .circle-genie{z-index:2}
 .circle-user{z-index:1}
 .initials{background:var(--s3);border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--muted);font-size:12px}
-.profile-input{width:100%;padding:10px 14px;background:var(--s3);border:1px solid var(--bdm);border-radius:8px;font-size:14px;color:var(--text);font-family:inherit;outline:none}
+.profile-input{width:100%;padding:10px 14px;background:var(--s3);border:1px solid var(--bdm);border-radius:8px;font-size:14px;color:var(--text);font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+.profile-input:focus{border-color:var(--gold);box-shadow:var(--focus-ring)}
 body.light .lmt{color:var(--text)}
 body.light .lmt b{color:#c49a1c}
 body.light input,body.light textarea{background:var(--s3);border-color:var(--bdm);color:var(--text)}
