@@ -74,14 +74,17 @@ let adminRecentMessages=[];
 async function loadAdminMessages(){
   if(!sb)return;
   try{
-    /* Load recent messages, enough to cover all challengers */
-    const {data:recent}=await sb.from("chat_messages").select("*").order("created_at",{ascending:false}).limit(200);
-    /* Group by challenger_id, keep only the latest message per challenger */
-    const byChallenger={};
-    (recent||[]).forEach(m=>{
-      if(!byChallenger[m.challenger_id]) byChallenger[m.challenger_id]=m;
-    });
-    adminRecentMessages=Object.values(byChallenger).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+    const {data:msgs}=await sb.from("chat_messages").select("*").order("created_at",{ascending:false}).limit(50);
+    /* Group: keep only the first occurrence of each challenger_id */
+    const seen=new Set();
+    const latest=[];
+    for(const m of (msgs||[])){
+      if(!seen.has(m.challenger_id)){
+        seen.add(m.challenger_id);
+        latest.push(m);
+      }
+    }
+    adminRecentMessages=latest;
     /* Load unread challenger messages (sender=challenger, read_at is null) */
     const {data:unread}=await sb.from("chat_messages").select("id,challenger_id").eq("sender","challenger").is("read_at",null);
     adminUnreadMessages=unread||[];
