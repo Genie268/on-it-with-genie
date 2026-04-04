@@ -211,16 +211,55 @@ function animateTierPills(){
   setInterval(cycle,2200);
 }
 
+let _adminPollTimer=null;
+let _adminLastMsgTs=null;
+
 document.addEventListener("DOMContentLoaded",()=>{
   initParticles();
   animateTierPills();
   initSupabase();
-  if(/^\/admin\/?$/.test(window.location.pathname)){
+  const isAdmin=/^\/admin\/?$/.test(window.location.pathname);
+  if(isAdmin){
     goTo('admin');
+    /* Request notification permission for admin */
+    if("Notification" in window && Notification.permission==="default"){
+      Notification.requestPermission();
+    }
+    /* Start 60s polling for new challenger messages */
+    startAdminPoll();
   } else if(loadState()){
     goTo('dash');
   }
 });
+
+function startAdminPoll(){
+  if(_adminPollTimer) return;
+  _adminPollTimer=setInterval(async()=>{
+    if(!sb) return;
+    try{
+      const {data}=await sb.from("chat_messages").select("id,challenger_id,message,created_at").eq("sender","challenger").is("read_at",null).order("created_at",{ascending:false}).limit(1);
+      if(data&&data.length>0){
+        const latest=data[0];
+        if(_adminLastMsgTs!==latest.created_at){
+          _adminLastMsgTs=latest.created_at;
+          /* Show browser notification if tab not focused */
+          if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
+            new Notification("New message from challenger",{body:(latest.message||"🎙 Voice note").slice(0,80),icon:"/icon-192.png"});
+          }
+          /* Refresh admin overview if visible */
+          if(typeof loadAdminMessages==="function") loadAdminMessages().then(()=>{
+            const ov=document.getElementById("admin-overview");
+            if(ov&&ov.style.display!=="none"&&typeof renderAdminOverview==="function") renderAdminOverview();
+          });
+        }
+      }
+    }catch(e){}
+  },60000);
+}
+
+function stopAdminPoll(){
+  if(_adminPollTimer){clearInterval(_adminPollTimer);_adminPollTimer=null;}
+}
 
 
 /* ── CONFETTI ── */
@@ -430,7 +469,15 @@ async function toggleAdminRecording(){
       if(btn){btn.innerHTML=MIC_SVG;btn.style.color="#4dc98a";}
       if(pill){pill.classList.remove("recording");pill.classList.add("recorded");}
       if(ta) ta.placeholder="✓ Voice note ready — tap ↑ to send";
-      if(status) status.style.display="none";
+      /* Show audio preview so admin can play back before sending */
+      if(status){
+        const previewUrl=URL.createObjectURL(adminVoiceBlob);
+        status.style.display="flex";
+        status.style.alignItems="center";
+        status.style.gap="8px";
+        status.style.padding="6px 0";
+        status.innerHTML=`<audio controls src="${previewUrl}" style="height:32px;flex:1"></audio><button onclick="discardAdminVoice()" style="background:none;border:none;color:#d9503a;font-size:16px;cursor:pointer;padding:4px 8px" title="Discard">✕ Discard</button>`;
+      }
     };
     adminMediaRecorder.start();
     if(btn){btn.innerHTML=WAVE_HTML;btn.style.color="";}
@@ -446,6 +493,18 @@ async function toggleAdminRecording(){
     if(ta) ta.placeholder="Microphone access denied";
     setTimeout(()=>{if(ta&&ta.placeholder.includes("denied"))ta.placeholder="Message...";},2500);
   }
+}
+
+function discardAdminVoice(){
+  adminVoiceBlob=null;
+  const btn=document.getElementById("admin-mic-btn");
+  const pill=btn&&btn.closest(".chat-input-pill");
+  const ta=document.getElementById("pf-reply-input");
+  const status=document.getElementById("admin-voice-status");
+  if(btn){btn.innerHTML=MIC_SVG;btn.style.color="#888";btn.style.borderColor="#2a2a2a";}
+  if(pill){pill.classList.remove("recorded");}
+  if(ta) ta.placeholder="Message...";
+  if(status){status.style.display="none";status.innerHTML="";}
 }
 
 
@@ -642,16 +701,28 @@ async function openProfilePanel(uid){
   `;
   document.getElementById("profile-panel").style.transform="translateX(0)";
   document.getElementById("profile-panel-backdrop").style.display="block";
+  /* Mark all challenger messages as read */
+  if(sb){
+    sb.from("chat_messages").update({read_at:new Date().toISOString()}).eq("challenger_id",uid).eq("sender","challenger").is("read_at",null).then(()=>{
+      /* Update local unread cache */
+      adminUnreadMessages=adminUnreadMessages.filter(m=>m.challenger_id!==uid);
+    }).catch(()=>{});
+  }
   /* Load chat messages async */
   loadProfilePanelChat(uid);
 }
 
+let _pfChatReplyToId=null;
+
 async function loadProfilePanelChat(uid){
   const thread=document.getElementById("pf-chat-thread");
   if(!thread||!sb)return;
+  _pfChatReplyToId=null;
   try{
     const {data:msgs}=await sb.from("chat_messages").select("*").eq("challenger_id",uid).order("created_at",{ascending:true});
     if(!msgs||msgs.length===0){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">No messages yet</p>`;return;}
+    /* Build a lookup for reply_to */
+    const msgMap={};msgs.forEach(m=>{msgMap[m.id]=m;});
     /* In admin panel: genie (admin) = right, challenger = left */
     thread.innerHTML=msgs.map((m,i)=>{
       const isMe=m.sender==="genie"; // admin IS genie
@@ -659,17 +730,41 @@ async function loadProfilePanelChat(uid){
       const timeStr=t.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
       const dateStr=t.toLocaleDateString([],{month:"short",day:"numeric"});
       const aId=`ac-${i}-${t.getTime()}`;
-      let body="";
+      /* Reply quote if this message is a reply */
+      let replyQuote="";
+      if(m.reply_to_id&&msgMap[m.reply_to_id]){
+        const orig=msgMap[m.reply_to_id];
+        const origPreview=(orig.message||"").slice(0,50)+(orig.message&&orig.message.length>50?"...":"");
+        replyQuote=`<div style="font-size:10px;color:#666;border-left:2px solid #444;padding:2px 6px;margin-bottom:4px;font-style:italic">${origPreview||"🎙 Voice note"}</div>`;
+      }
+      let body=replyQuote;
       if(m.message&&m.message.trim()) body+=`<p style="margin:0">${m.message}</p>`;
       if(m.voice_url) body+=buildAudioBubble(m.voice_url,aId);
       if(!body) return "";
+      /* Reply button for all messages, delete button for admin's own */
+      const msgPreview=(m.message||"").slice(0,40).replace(/"/g,"&quot;").replace(/'/g,"\\'");
+      const replyBtn=`<span onclick="event.stopPropagation();pfChatSetReply('${m.id}','${msgPreview}','${uid}')" style="cursor:pointer;font-size:10px;color:#5a5a5a;margin-left:6px;opacity:0.5;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.5">↩ Reply</span>`;
+      const deleteBtn=isMe?`<span onclick="event.stopPropagation();pfChatDeleteMsg('${m.id}','${uid}')" style="cursor:pointer;font-size:10px;color:#d9503a;margin-left:6px;opacity:0.5;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.5">✕</span>`:"";
       return `<div class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
         <div class="cmsg-body">${body}</div>
-        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${dateStr} ${timeStr}</div>
+        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${dateStr} ${timeStr}${replyBtn}${deleteBtn}</div>
       </div>`;
     }).join("");
     thread.scrollTop=thread.scrollHeight;
   }catch(e){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">Could not load messages</p>`;}
+}
+
+function pfChatSetReply(msgId,preview,uid){
+  _pfChatReplyToId=msgId;
+  const ta=document.getElementById("pf-reply-input");
+  if(ta){ta.value="> "+preview+"\n";ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
+}
+
+async function pfChatDeleteMsg(msgId,uid){
+  if(!confirm("Unsend this message?"))return;
+  if(!sb)return;
+  try{await sb.from("chat_messages").delete().eq("id",msgId);}catch(e){}
+  loadProfilePanelChat(uid);
 }
 
 async function sendProfilePanelMsg(uid){
@@ -691,7 +786,8 @@ async function sendProfilePanelMsg(uid){
     if(status)status.style.display="none";
   }
   try{
-    await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg||"",voice_url:voiceUrl||null});
+    await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg||"",voice_url:voiceUrl||null,reply_to_id:_pfChatReplyToId||null});
+    _pfChatReplyToId=null;
     /* Trigger push notification */
     const u=getAM().find(x=>x.id===uid);
     if(u) triggerPush(uid,"Message from Genie",msg?msg.slice(0,80):"🎙 Voice note");

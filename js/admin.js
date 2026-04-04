@@ -67,6 +67,39 @@ function getAM(){return liveChallengers;}
 
 /* Set Genie photo on all avatar elements */
 
+/* ── ADMIN UNREAD MESSAGE TRACKING ── */
+let adminUnreadMessages=[];
+let adminRecentMessages=[];
+
+async function loadAdminMessages(){
+  if(!sb)return;
+  try{
+    /* Load 5 most recent chat_messages across all challengers */
+    const {data:recent}=await sb.from("chat_messages").select("*").order("created_at",{ascending:false}).limit(5);
+    adminRecentMessages=recent||[];
+    /* Load unread challenger messages (sender=challenger, read_at is null) */
+    const {data:unread}=await sb.from("chat_messages").select("id,challenger_id").eq("sender","challenger").is("read_at",null);
+    adminUnreadMessages=unread||[];
+  }catch(e){console.error("loadAdminMessages error:",e);adminRecentMessages=[];adminUnreadMessages=[];}
+}
+
+function getUnreadCountForChallenger(uid){
+  return adminUnreadMessages.filter(m=>m.challenger_id===uid).length;
+}
+
+function getTotalUnreadCount(){
+  return adminUnreadMessages.length;
+}
+
+function timeAgo(dateStr){
+  const now=Date.now(),then=new Date(dateStr).getTime();
+  const diff=Math.floor((now-then)/1000);
+  if(diff<60) return "just now";
+  if(diff<3600) return Math.floor(diff/60)+"m ago";
+  if(diff<86400) return Math.floor(diff/3600)+"h ago";
+  return Math.floor(diff/86400)+"d ago";
+}
+
 /* ── ADMIN (PIN-gated) ── */
 let adminCurrentTab = "overview";
 
@@ -96,6 +129,7 @@ async function renderAdmin(){
     c.innerHTML=`<div style="text-align:center;padding:60px 20px"><div class="spinner" style="margin:0 auto 12px"></div><p class="muted">Loading challengers...</p></div>`;
     try{
       await loadAdminData();
+      await loadAdminMessages();
     }catch(e){
       c.innerHTML=`<div style="text-align:center;padding:60px 20px">
         <p style="color:#d9503a;font-size:14px;margin-bottom:16px">Failed to load data</p>
@@ -177,7 +211,32 @@ function renderAdminOverview(c){
     </div>`;
   }
 
+  /* Build messages section */
+  const totalUnread=getTotalUnreadCount();
+  const unreadBadge=totalUnread>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;background:#d9503a;color:#fff;font-size:10px;font-weight:800;padding:0 5px;margin-left:6px">${totalUnread}</span>`:"";
+  let messagesSection=`<p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">MESSAGES${unreadBadge}</p>`;
+  if(adminRecentMessages.length>0){
+    messagesSection+=`<div style="max-height:220px;overflow-y:auto;margin-bottom:20px;border:1px solid #1f1f1f;border-radius:10px">`;
+    adminRecentMessages.forEach(m=>{
+      const challenger=getAM().find(u=>u.id===m.challenger_id);
+      const name=challenger?challenger.name:(m.sender==="genie"?"Genie":"Unknown");
+      const preview=(m.message||"").slice(0,60)+(m.message&&m.message.length>60?"...":"");
+      const isVoice=!!m.voice_url;
+      const ta=timeAgo(m.created_at);
+      const isUnread=m.sender==="challenger"&&!m.read_at;
+      messagesSection+=`<div style="padding:10px 14px;border-bottom:1px solid #1a1a1a;cursor:pointer;display:flex;gap:10px;align-items:center${isUnread?";background:rgba(217,80,58,.04)":""}" onclick="${challenger?`openProfilePanel('${m.challenger_id}')`:""}">`
+        +`<div style="width:28px;height:28px;border-radius:7px;background:${m.sender==="genie"?"#c49a1c":"rgba(196,154,28,.07)"};border:1px solid ${m.sender==="genie"?"#c49a1c":"rgba(196,154,28,.22)"};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${m.sender==="genie"?"#000":"#c49a1c"};flex-shrink:0">${m.sender==="genie"?"G":(challenger?challenger.ini:"?")}</div>`
+        +`<div style="flex:1;min-width:0"><p style="font-size:12px;font-weight:${isUnread?"800":"600"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}${isUnread?' <span style="color:#d9503a;font-size:9px">●</span>':""}</p>`
+        +`<p class="muted" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${isVoice&&!preview?"🎙 Voice note":preview||"🎙 Voice note"}</p></div>`
+        +`<span class="muted" style="font-size:10px;flex-shrink:0">${ta}</span></div>`;
+    });
+    messagesSection+=`</div>`;
+  }else{
+    messagesSection+=`<p class="muted" style="font-size:12px;margin-bottom:20px">No messages yet.</p>`;
+  }
+
   c.innerHTML = `
+    ${messagesSection}
     <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">ACTIVE CHALLENGERS</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
       <div class="card" style="text-align:center;padding:16px"><div style="font-size:32px;font-weight:900;color:#c49a1c">${total}</div><div class="muted" style="font-size:11px;margin-top:4px">Challengers</div></div>
@@ -194,11 +253,13 @@ function renderAdminOverview(c){
       const pct = Math.round((up/(u.dur||15))*100);
       const isAtRisk = missed>=3;
       const pending = up-rv;
+      const unreadCt=getUnreadCountForChallenger(u.id);
+      const unreadBdg=unreadCt>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:4px">${unreadCt}</span>`:"";
       return `<div class="card mb10" style="cursor:pointer" onclick="adminTab('challengers');setTimeout(()=>openChallenger('${u.id}'),60)">
         <div class="row mb10" style="justify-content:space-between">
           <div class="row" style="gap:10px">
             <div style="width:36px;height:36px;border-radius:9px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.ini}</div>
-            <div><p style="font-size:13px;font-weight:700">${u.name}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads</p></div>
+            <div><p style="font-size:13px;font-weight:700">${u.name}${unreadBdg}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads</p></div>
           </div>
           <div class="col" style="align-items:flex-end;gap:5px">
             ${isAtRisk?`<span style="font-size:10px;font-weight:700;color:#d9503a">At Risk</span>`:`<span style="font-size:10px;font-weight:700;color:#4dc98a">Active</span>`}
@@ -246,18 +307,21 @@ function renderAdminOverview(c){
 function renderAdminChallengers(c){
   c.innerHTML = `
     <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">ALL CHALLENGERS</p>
-    ${getAM().map(u=>`
+    ${getAM().map(u=>{
+      const unreadCt=getUnreadCountForChallenger(u.id);
+      const unreadBdg=unreadCt>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:4px">${unreadCt}</span>`:"";
+      return `
       <div class="card mb10" id="ch-card-${u.id}">
         <div class="row" style="justify-content:space-between;cursor:pointer;padding-bottom:12px" onclick="toggleCh('${u.id}')">
           <div class="row" style="gap:10px">
             <div style="width:38px;height:38px;border-radius:9px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.ini}</div>
-            <div><p style="font-size:14px;font-weight:700">${u.name}</p><p class="muted" style="font-size:11px;margin-top:2px">${u.goal}</p></div>
+            <div><p style="font-size:14px;font-weight:700">${u.name}${unreadBdg}</p><p class="muted" style="font-size:11px;margin-top:2px">${u.goal}</p></div>
           </div>
           <span id="chev-${u.id}" style="font-size:20px;color:#5a5a5a">›</span>
         </div>
         <div id="ch-det-${u.id}" style="display:none;border-top:1px solid #1b1b1b;padding-top:14px">${renderChallengerDetail(u)}</div>
       </div>
-    `).join("")}
+    `;}).join("")}
   `;
 }
 
