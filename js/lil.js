@@ -51,19 +51,40 @@ async function renderChat(){
   messages.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
 
   const unread=messages.filter(m=>m.sender==="genie"&&!m.read).length;
+  /* Build lookup for reply_to */
+  const msgMap={};messages.forEach(m=>{if(m.id)msgMap[m.id]=m;});
+  let lastDateStr="";
   const bubbles=messages.map((m,i)=>{
     const isMe=m.sender==="challenger";
     const t=new Date(m.created_at);
     const timeStr=t.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
     const dateStr=t.toLocaleDateString([],{month:"short",day:"numeric"});
     const aId=`uc-${i}-${t.getTime()}`;
-    let body="";
+    /* Date separator */
+    let dateSep="";
+    if(dateStr!==lastDateStr){
+      lastDateStr=dateStr;
+      const today=new Date().toLocaleDateString([],{month:"short",day:"numeric"});
+      const yesterday=new Date(Date.now()-86400000).toLocaleDateString([],{month:"short",day:"numeric"});
+      const label=dateStr===today?"Today":dateStr===yesterday?"Yesterday":dateStr;
+      dateSep=`<div style="text-align:center;padding:8px 0 4px"><span style="font-size:10px;color:#444;background:#111;padding:2px 10px;border-radius:10px;font-weight:600">${label}</span></div>`;
+    }
+    /* Reply quote */
+    let replyQuote="";
+    if(m.reply_to_id&&msgMap[m.reply_to_id]){
+      const orig=msgMap[m.reply_to_id];
+      const origPreview=(orig.message||"").slice(0,50)+(orig.message&&orig.message.length>50?"…":"");
+      replyQuote=`<div onclick="scrollToMsg('${m.reply_to_id}')" style="font-size:11px;color:${isMe?"rgba(0,0,0,.7)":"#999"};border-left:2px solid ${isMe?"rgba(0,0,0,.4)":"#555"};padding:3px 8px;margin-bottom:5px;cursor:pointer;border-radius:0 4px 4px 0;background:${isMe?"rgba(0,0,0,.12)":"rgba(255,255,255,.04)"}">${origPreview||"🎙 Voice note"}</div>`;
+    }
+    let body=replyQuote;
     if(m.message&&m.message.trim()) body+=`<p style="margin:0">${m.message}</p>`;
     if(m.voice_url) body+=buildAudioBubble(m.voice_url,aId);
     if(!body) return "";
-    return `<div class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
+    /* Read receipt for challenger's messages */
+    const readCheck=isMe&&m.read_at?`<span style="color:rgba(0,0,0,.35);font-size:9px;margin-left:4px" title="Read">✓✓</span>`:(isMe?`<span style="color:rgba(0,0,0,.2);font-size:9px;margin-left:4px">✓</span>`:"");
+    return `${dateSep}<div id="msg-${m.id||i}" class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
       <div class="cmsg-body">${body}</div>
-      <div class="cmsg-time">${isMe?"You":"Genie"} · ${dateStr} ${timeStr}</div>
+      <div class="cmsg-time">${isMe?"You":"Genie"} · ${timeStr}${readCheck}</div>
     </div>`;
   }).join("");
 
@@ -81,7 +102,7 @@ async function renderChat(){
   </div>`;
   setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},60);
   if(sb&&S.user.supabaseId&&unread>0){
-    sb.from("chat_messages").update({read:true}).eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false).then(()=>{});
+    sb.from("chat_messages").update({read:true,read_at:new Date().toISOString()}).eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false).then(()=>{});
   }
 }
 

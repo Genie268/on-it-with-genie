@@ -727,7 +727,7 @@ async function loadProfilePanelChat(uid){
       if(m.reply_to_id&&msgMap[m.reply_to_id]){
         const orig=msgMap[m.reply_to_id];
         const origPreview=(orig.message||"").slice(0,50)+(orig.message&&orig.message.length>50?"…":"");
-        replyQuote=`<div onclick="scrollToMsg('${m.reply_to_id}')" style="font-size:10px;color:#888;border-left:2px solid ${isMe?"rgba(0,0,0,.3)":"#444"};padding:2px 8px;margin-bottom:4px;cursor:pointer;border-radius:0 4px 4px 0;background:${isMe?"rgba(0,0,0,.1)":"rgba(255,255,255,.03)"};transition:background .15s" onmouseenter="this.style.background='${isMe?"rgba(0,0,0,.18)":"rgba(255,255,255,.06)"}'" onmouseleave="this.style.background='${isMe?"rgba(0,0,0,.1)":"rgba(255,255,255,.03)"}'">${origPreview||"🎙 Voice note"}</div>`;
+        replyQuote=`<div onclick="scrollToMsg('${m.reply_to_id}')" style="font-size:11px;color:${isMe?"rgba(0,0,0,.7)":"#999"};border-left:2px solid ${isMe?"rgba(0,0,0,.4)":"#555"};padding:3px 8px;margin-bottom:5px;cursor:pointer;border-radius:0 4px 4px 0;background:${isMe?"rgba(0,0,0,.12)":"rgba(255,255,255,.04)"};transition:background .15s" onmouseenter="this.style.background='${isMe?"rgba(0,0,0,.2)":"rgba(255,255,255,.07)"}'" onmouseleave="this.style.background='${isMe?"rgba(0,0,0,.12)":"rgba(255,255,255,.04)"}'">${origPreview||"🎙 Voice note"}</div>`;
       }
       let body=replyQuote;
       if(m.message&&m.message.trim()) body+=`<p style="margin:0">${m.message}</p>`;
