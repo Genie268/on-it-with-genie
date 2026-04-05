@@ -166,10 +166,24 @@ function checkAdminPin(){
   }
 }
 
+function getPendingInbox(){
+  return getAM().flatMap(u=>{
+    const items=[];
+    for(let i=0;i<u.day-1;i++){
+      if(u.up[i]&&!u.rv[i])items.push({u,day:i+1,note:u.notes[i],i,
+        hasVoice:u.hasVoice&&u.hasVoice[i],voiceUrl:u.voiceUrls&&u.voiceUrls[i],
+        fileUrl:u.fileUrls&&u.fileUrls[i],
+        link:u.links&&u.links[i],fileName:u.fileNames&&u.fileNames[i],
+        behavior:u.behaviors&&u.behaviors[i]});
+    }
+    return items;
+  });
+}
+
 function adminTab(tab){
   adminCurrentTab = tab;
   /* Compute badge counts */
-  const inboxCount=getAM().reduce((acc,u)=>{for(let i=0;i<u.day-1;i++){if(u.up[i]&&!u.rv[i])acc++;}return acc;},0);
+  const inboxCount=getPendingInbox().length;
   const flaggedCount=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
   ["overview","challengers","flagged","inbox"].forEach(t=>{
     const btn = el("tab-"+t);
@@ -453,13 +467,12 @@ function renderChallengerDetail(u){
     <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">UPLOADS · ${up}/${dur} · ${rv} reviewed <span style="color:#444;font-weight:400">· tap a cell to view proof</span></p>
     <div class="g15" style="margin-bottom:14px">${gridCells}</div>
     <div style="margin-top:14px;border-top:1px solid #1b1b1b;padding-top:14px" id="fb-area-${u.id}">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">SEND FEEDBACK</p>
-      <textarea id="fb-ta-${u.id}" rows="3" placeholder="Personal message to ${u.name}..." class="mb10" style="font-size:13px"></textarea>
+      <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">MESSAGE</p>
+      <textarea id="fb-ta-${u.id}" rows="2" placeholder="Message ${u.name}..." class="mb8" style="font-size:13px"></textarea>
       <div class="row" style="gap:8px;flex-wrap:wrap">
-        <button class="bp" style="font-size:12px;padding:8px 14px" onclick="sendFBLive('${u.id}')">Send Message →</button>
-        <button class="bs" style="font-size:12px;padding:8px 14px" onclick="sendInApp('${u.id}')">Send In-App</button>
-        <button class="bs" style="font-size:12px;padding:8px 14px" onclick="openCallSchedule('${u.id}')">📞 Schedule Call</button>
+        <button class="bp" style="font-size:12px;padding:8px 14px" onclick="sendFBLive('${u.id}')">Send →</button>
         <button class="bs" style="font-size:12px;padding:8px 14px" onclick="sendLilDraft('${u.id}')">✦ Lil Draft</button>
+        <button class="bs" style="font-size:12px;padding:8px 14px" onclick="openCallSchedule('${u.id}')">📞 Call</button>
       </div>
     </div>
     <div style="margin-top:16px;border-top:1px solid rgba(217,80,58,.15);padding-top:14px">
@@ -492,17 +505,7 @@ function renderAdminFlagged(c){
 }
 
 function renderAdminInbox(c){
-  const pending=getAM().flatMap(u=>{
-    const items=[];
-    for(let i=0;i<u.day-1;i++){
-      if(u.up[i]&&!u.rv[i])items.push({u,day:i+1,note:u.notes[i],i,
-        hasVoice:u.hasVoice&&u.hasVoice[i],voiceUrl:u.voiceUrls&&u.voiceUrls[i],
-        fileUrl:u.fileUrls&&u.fileUrls[i],
-        link:u.links&&u.links[i],fileName:u.fileNames&&u.fileNames[i],
-        behavior:u.behaviors&&u.behaviors[i]});
-    }
-    return items;
-  });
+  const pending=getPendingInbox();
   c.innerHTML=`<div class="row mb12" style="justify-content:space-between;align-items:center">
       <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">UPLOADS TO REVIEW · ${pending.length}</p>
       ${pending.length>=2?`<button class="bs" style="font-size:11px;padding:5px 12px" onclick="batchMarkAllReviewed()">Mark All Done (${pending.length})</button>`:""}
@@ -626,15 +629,6 @@ async function deleteAllFreeAccounts(){
 }
 
 /* Send message to a challenger via Supabase */
-async function sendMessageToDB(challengerId,message){
-  if(!sb)return false;
-  try{
-    const {error}=await sb.from("genie_messages").insert({challenger_id:challengerId,message,sent_via:"in_app"});
-    return !error;
-  }catch(e){return false;}
-}
-
-
 /* ── ADMIN CALL SCHEDULE ── */
 function openCallSchedule(uid){
   const u=getAM().find(x=>x.id===uid);if(!u)return;

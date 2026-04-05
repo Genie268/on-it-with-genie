@@ -18,31 +18,7 @@ function goTo(s){
 }
 
 
-/* ── DEV MODE FUNCTIONS ── */
-function sendFB(uid){
-  const ta=el("fb-ta-"+uid);if(!ta||!ta.value.trim())return;
-  const msg=ta.value;
-  const u=getAM().find(x=>x.id===uid);
-  /* Also deliver in-app if this is the live user */
-  if(S.user&&S.user.name===u?.name){
-    sendGenieMessage(msg);
-  }
-  const waText=encodeURIComponent(`Hey ${u?.name||""}! ${msg}`);
-  window.open(`https://wa.me/?text=${waText}`,"_blank");
-  el("fb-area-"+uid).innerHTML=`<div style="padding:10px 12px;background:rgba(77,201,138,.07);border:1px solid rgba(77,201,138,.22);border-radius:8px"><p class="ok" style="font-size:12px">✓ Sent to ${u?.name} (in-app + WhatsApp)</p></div>`;
-}
-
-function sendInApp(uid){
-  const ta=el("fb-ta-"+uid);if(!ta||!ta.value.trim())return;
-  const msg=ta.value;
-  const u=getAM().find(x=>x.id===uid);
-  if(S.user){
-    sendGenieMessage(msg);
-    el("fb-area-"+uid).innerHTML=`<div style="padding:10px 12px;background:rgba(77,201,138,.07);border:1px solid rgba(77,201,138,.22);border-radius:8px"><p class="ok" style="font-size:12px">✓ Message sent in-app to ${u?.name||"challenger"}. They'll see it on their dashboard.</p></div>`;
-  } else {
-    el("fb-area-"+uid).innerHTML=`<div style="padding:10px 12px;background:rgba(217,80,58,.07);border:1px solid rgba(217,80,58,.22);border-radius:8px"><p class="er" style="font-size:12px">No live user session — use WhatsApp instead.</p></div>`;
-  }
-}
+/* ── ADMIN MESSAGING HELPERS ── */
 
 function sendIntervention(uid){
   const ta=el("int-ta-"+uid);if(!ta||!ta.value.trim())return;
@@ -88,9 +64,10 @@ async function sendInboxReply(uid,i){
     try{
       await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg});
       triggerPush(uid,"Message from Genie 💬",msg);
-    }catch(e){console.warn("Inbox reply send error:",e);}
+      showToast("Reply sent","success");
+    }catch(e){console.warn("Inbox reply send error:",e);showToast("Failed to send","error");}
   }
-  ta.value="✓ Sent: "+msg;ta.style.borderColor="#4dc98a";
+  ta.value="";ta.placeholder="✓ Sent";ta.style.borderColor="#4dc98a";
 }
 
 async function lilInboxDraft(uid,i,note){
@@ -613,6 +590,23 @@ async function openProfilePanel(uid){
       </div>
     </div>
 
+    <div style="margin-bottom:20px">
+      <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px;padding:0 0 0 4px">MESSAGES</p>
+      <div class="chat-screen" style="margin-bottom:0">
+        <div id="pf-chat-thread" class="chat-thread" style="max-height:300px">
+          <p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">Loading...</p>
+        </div>
+        <div class="chat-bar">
+          <div class="chat-input-pill">
+            <textarea id="pf-reply-input" class="chat-ta" rows="1" placeholder="Message ${u.name}..."></textarea>
+            <button id="admin-mic-btn" class="chat-mic-btn" onclick="toggleAdminRecording()" title="Voice note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></button>
+          </div>
+          <button class="chat-send-btn" onclick="sendProfilePanelMsg('${uid}')">↑</button>
+        </div>
+        <div id="admin-voice-status" style="display:none;font-size:10px;padding:4px 14px 6px;background:#0f0f0f;text-align:center"></div>
+      </div>
+    </div>
+
     <div id="profile-view-mode">
       <div class="profile-field-group">
         <p class="pf-lbl">NAME</p><p class="pf-val">${u.name||"—"}</p>
@@ -680,23 +674,6 @@ async function openProfilePanel(uid){
         <button onclick="switchToViewMode()" style="padding:10px 16px;border-radius:10px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:13px;cursor:pointer">Cancel</button>
       </div>
       <p id="pf-save-status" style="font-size:12px;margin-top:10px;text-align:center"></p>
-    </div>
-
-    <div style="border-top:1px solid #1a1a1a;margin-top:24px;padding-top:4px">
-      <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px;padding:0 0 0 4px">MESSAGES</p>
-      <div class="chat-screen" style="margin-bottom:0">
-        <div id="pf-chat-thread" class="chat-thread" style="max-height:300px">
-          <p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">Loading...</p>
-        </div>
-        <div class="chat-bar">
-          <div class="chat-input-pill">
-            <textarea id="pf-reply-input" class="chat-ta" rows="1" placeholder="Message ${u.name}..."></textarea>
-            <button id="admin-mic-btn" class="chat-mic-btn" onclick="toggleAdminRecording()" title="Voice note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></button>
-          </div>
-          <button class="chat-send-btn" onclick="sendProfilePanelMsg('${uid}')">↑</button>
-        </div>
-        <div id="admin-voice-status" style="display:none;font-size:10px;padding:4px 14px 6px;background:#0f0f0f;text-align:center"></div>
-      </div>
     </div>
   `;
   document.getElementById("profile-panel").style.transform="translateX(0)";
