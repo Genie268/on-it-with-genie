@@ -204,6 +204,82 @@ function adminTab(tab){
   if(tab==="analytics")   renderAdminAnalytics(c);
 }
 
+async function loadSystemHealth(){
+  const hc=document.getElementById("health-content");
+  if(!hc||!sb)return;
+  hc.innerHTML=`<p class="muted" style="font-size:11px">Checking...</p>`;
+  try{
+    /* DB row counts */
+    const tables=["challengers","uploads","chat_messages","analytics_events"];
+    const counts={};
+    for(const t of tables){
+      const {count}=await sb.from(t).select("*",{count:"exact",head:true});
+      counts[t]=count||0;
+    }
+    /* Storage: count files in uploads bucket */
+    let storageFiles=0,storageWarning=false;
+    try{
+      const {data:folders}=await sb.storage.from("uploads").list("",{limit:100});
+      if(folders){
+        for(const f of folders){
+          if(f.id){storageFiles++;continue;}
+          const {data:files}=await sb.storage.from("uploads").list(f.name,{limit:500});
+          storageFiles+=(files||[]).length;
+        }
+      }
+      if(storageFiles>900)storageWarning=true; /* Supabase free tier: 1GB / ~1000 files warning */
+    }catch(e){}
+    /* Groq API check */
+    let groqStatus="unknown",groqColor="#888";
+    try{
+      const res=await fetch(GROQ_PROXY_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON_KEY},body:JSON.stringify({messages:[{role:"user",content:"ping"}],max_tokens:1})});
+      if(res.ok){groqStatus="connected";groqColor="#4dc98a";}
+      else if(res.status===429){groqStatus="rate limited";groqColor="#c49a1c";}
+      else{groqStatus="error ("+res.status+")";groqColor="#d9503a";}
+    }catch(e){groqStatus="unreachable";groqColor="#d9503a";}
+
+    /* Supabase free tier limits */
+    const dbRows=Object.values(counts).reduce((a,b)=>a+b,0);
+    const dbPct=Math.min(100,Math.round(dbRows/50000*100)); /* 500MB ≈ ~50k rows rough */
+    const storagePct=Math.min(100,Math.round(storageFiles/1000*100));
+
+    const statusDot=(color)=>`<span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>`;
+    const bar=(pct,color)=>`<div style="height:4px;background:#1b1b1b;border-radius:2px;overflow:hidden;flex:1"><div style="height:100%;width:${pct}%;background:${pct>80?"#d9503a":pct>50?"#c49a1c":color};border-radius:2px"></div></div>`;
+
+    hc.innerHTML=`
+      <div style="display:flex;flex-direction:column;gap:10px;text-align:left">
+        <div style="display:flex;align-items:center;gap:8px">
+          ${statusDot("#4dc98a")}
+          <span style="font-size:12px;font-weight:600;flex:1">Supabase DB</span>
+          <span style="font-size:11px;color:#888">${dbRows.toLocaleString()} rows</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${statusDot(storagePct>80?"#d9503a":storagePct>50?"#c49a1c":"#4dc98a")}
+          <span style="font-size:12px;font-weight:600;flex:1">Storage</span>
+          <span style="font-size:11px;color:#888">${storageFiles} files</span>
+          ${bar(storagePct,"#4dc98a")}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${statusDot(groqColor)}
+          <span style="font-size:12px;font-weight:600;flex:1">Lil AI (Groq)</span>
+          <span style="font-size:11px;color:${groqColor}">${groqStatus}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${statusDot("#4dc98a")}
+          <span style="font-size:12px;font-weight:600;flex:1">Vercel</span>
+          <span style="font-size:11px;color:#4dc98a">deployed</span>
+        </div>
+        ${counts.challengers>0?`<div style="margin-top:4px;padding:8px;background:#0a0a0a;border-radius:6px;font-size:11px;color:#666;line-height:1.6">
+          ${counts.challengers} challengers · ${counts.uploads} uploads · ${counts.chat_messages} messages · ${counts.analytics_events} events
+        </div>`:""}
+        ${storageWarning?`<div style="padding:6px 8px;background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.2);border-radius:6px;font-size:11px;color:#d9503a">⚠ Storage approaching limit. Consider upgrading Supabase plan.</div>`:""}
+        ${groqStatus==="rate limited"?`<div style="padding:6px 8px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.2);border-radius:6px;font-size:11px;color:#c49a1c">⚠ Groq API rate limited. Lil AI responses may be delayed.</div>`:""}
+      </div>`;
+  }catch(e){
+    hc.innerHTML=`<p style="font-size:11px;color:#d9503a">Health check failed: ${e.message}</p>`;
+  }
+}
+
 function toggleAdminSection(id){
   const div=document.getElementById(id);
   const chev=document.getElementById(id+"-chev");
@@ -369,6 +445,17 @@ function renderAdminOverview(c){
         <textarea id="broadcast-ta" rows="3" placeholder="Write your message to all challengers..." style="font-size:13px;margin-bottom:8px"></textarea>
         <button id="broadcast-btn" class="bp" style="font-size:12px;padding:8px 16px" onclick="broadcastMessage()">Broadcast to All</button>
         <div id="broadcast-status"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:8px;border:1px solid #1f1f1f;border-radius:10px;overflow:hidden">
+      <div onclick="toggleAdminSection('ov-health')" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#0e0e0e">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">SYSTEM HEALTH</span>
+        <span id="ov-health-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="ov-health" style="display:none;padding:10px 14px;border-top:1px solid #1a1a1a">
+        <div id="health-content" style="text-align:center;padding:8px 0"><span class="muted" style="font-size:11px">Tap to load...</span></div>
+        <button class="bs" style="font-size:11px;padding:6px 12px;margin-top:6px;width:100%" onclick="loadSystemHealth()">Check System Health</button>
       </div>
     </div>
 

@@ -173,12 +173,15 @@ async function subUp(){
 
   const btn=el("mod-sub"); btn.textContent="Uploading..."; btn.disabled=true;
 
-  /* Upload file to Supabase Storage */
+  /* Upload file to Supabase Storage (compress images first) */
   let fileUrl=null;
   if(S.pendingFile&&S.user?.supabaseId){
-    const ext=(S.pendingFile.name.split(".").pop()||"bin").toLowerCase();
+    const compressed=await compressImage(S.pendingFile);
+    const isCompressed=compressed!==S.pendingFile;
+    const ext=isCompressed?"jpg":(S.pendingFile.name.split(".").pop()||"bin").toLowerCase();
+    const ct=isCompressed?"image/jpeg":S.pendingFile.type;
     const path=`${S.user.supabaseId}/day${S.day}-${Date.now()}.${ext}`;
-    fileUrl=await uploadToStorage("uploads",path,S.pendingFile,S.pendingFile.type);
+    fileUrl=await uploadToStorage("uploads",path,compressed,ct);
   }
 
   /* Upload voice proof to Supabase Storage */

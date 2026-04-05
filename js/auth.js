@@ -26,6 +26,27 @@ async function syncToSupabase(){
 }
 
 /* ── STORAGE UPLOAD (REST — works with anon key) ── */
+/* Compress image before upload — max 1200px wide, 0.8 quality JPEG */
+function compressImage(file,maxWidth=1200,quality=0.8){
+  return new Promise(resolve=>{
+    if(!file.type.startsWith("image/")){resolve(file);return;}
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(w<=maxWidth){resolve(file);return;} /* Already small enough */
+      const ratio=maxWidth/w;w=maxWidth;h=Math.round(h*ratio);
+      const canvas=document.createElement("canvas");
+      canvas.width=w;canvas.height=h;
+      canvas.getContext("2d").drawImage(img,0,0,w,h);
+      canvas.toBlob(blob=>{
+        if(blob&&blob.size<file.size){resolve(blob);}else{resolve(file);}
+      },"image/jpeg",quality);
+    };
+    img.onerror=()=>resolve(file);
+    img.src=URL.createObjectURL(file);
+  });
+}
+
 async function uploadToStorage(bucket,path,blob,contentType){
   try{
     const url=`${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeURIComponent(path)}`;
