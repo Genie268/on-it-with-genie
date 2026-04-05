@@ -597,12 +597,12 @@ async function renderAdminAnalytics(c){
         <span style="font-size:12px;font-weight:700;color:#c49a1c">${ct}</span>
       </div>`).join("")||`<p class="muted" style="font-size:12px">No screen data yet</p>`;
 
-    /* Recent activity feed */
-    const recent=events.slice(0,15);
-    const feedHtml=recent.map(e=>{
+    /* Recent activity feed — skip screen_view noise, show 5 with expand */
+    const actionEvents=events.filter(e=>e.event_type!=="screen_view");
+    const feedRow=e=>{
       const ago=timeAgo(e.created_at);
       const who=e.event_data?.challenger_id?e.event_data.challenger_id.slice(0,8)+"…":(e.event_data?.is_admin?"Admin":"Visitor");
-      const detail=e.event_data?.screen?` → ${e.event_data.screen}`:(e.event_data?.day?` · Day ${e.event_data.day}`:"");
+      const detail=e.event_data?.day?` · Day ${e.event_data.day}`:"";
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #141414">
         <div style="min-width:0;flex:1">
           <span style="font-size:12px;font-weight:600;color:#ccc">${e.event_type.replace(/_/g," ")}</span>
@@ -613,7 +613,11 @@ async function renderAdminAnalytics(c){
           <span style="font-size:10px;color:#444;margin-left:6px">${ago}</span>
         </div>
       </div>`;
-    }).join("");
+    };
+    const visibleFeed=actionEvents.slice(0,5).map(feedRow).join("");
+    const hiddenFeed=actionEvents.length>5?actionEvents.slice(5,20).map(feedRow).join(""):"";
+    const feedHtml=actionEvents.length===0?`<p class="muted" style="font-size:12px">No activity yet</p>`:
+      visibleFeed+(hiddenFeed?`<div id="feed-more" style="display:none">${hiddenFeed}</div><button onclick="document.getElementById('feed-more').style.display='block';this.remove()" style="width:100%;padding:8px;margin-top:6px;background:none;border:1px solid #222;border-radius:6px;color:#5a5a5a;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Show ${Math.min(actionEvents.length-5,15)} more</button>`:"");
 
     /* Generate insights */
     const insights=[];
