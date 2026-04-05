@@ -28,6 +28,11 @@ function renderDash(){
   renderGrid(); renderUnlock(); renderRecCard();
   updateMsgBadge();
   initPushNotifications();
+  startChallengerRealtime();
+  /* Request notification permission for challenger */
+  if("Notification" in window && Notification.permission==="default"){
+    Notification.requestPermission();
+  }
   renderEnergyCheck();
   renderChat();
   const dnr=el("day-nav-row");

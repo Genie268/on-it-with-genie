@@ -205,8 +205,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     if("Notification" in window && Notification.permission==="default"){
       Notification.requestPermission();
     }
-    /* Start 60s polling for new challenger messages */
+    /* Start realtime + fallback polling for new challenger messages */
     startAdminPoll();
+    setTimeout(()=>updateTabTitle(),2000);
   } else if(loadState()){
     goTo('dash');
   }
@@ -246,6 +247,8 @@ async function adminRefreshBadges(){
     await loadAdminData();
     /* Re-render current tab badges without switching */
     if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+    /* Update browser tab title with unread count */
+    updateTabTitle();
   }catch(e){}
 }
 

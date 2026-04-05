@@ -164,6 +164,8 @@ async function updateMsgBadge(){
   } else {
     badge.style.display="none";
   }
+  /* Update browser tab title */
+  if(typeof updateTabTitle==="function") updateTabTitle();
 }
 
 

@@ -251,3 +251,44 @@ function confirmDuration(){
   _prepareCommitScreen();
 }
 
+
+/* ── DYNAMIC TAB TITLE WITH UNREAD COUNT ── */
+function updateTabTitle(){
+  const isAdmin=/^\/admin\/?$/.test(window.location.pathname);
+  let count=0;
+  if(isAdmin){
+    count=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
+    const inbox=typeof getPendingInbox==="function"?getPendingInbox():[];
+    count+=inbox.length;
+  } else {
+    /* Challenger side: count from badge */
+    const badge=el("msg-badge");
+    if(badge&&badge.style.display!=="none") count=parseInt(badge.textContent)||0;
+  }
+  document.title=count>0?`(${count}) On It With Genie`:"On It With Genie";
+}
+
+
+/* ── CHALLENGER REALTIME NOTIFICATIONS ── */
+let _challengerRealtimeStarted=false;
+function startChallengerRealtime(){
+  if(_challengerRealtimeStarted||!sb||!S.user?.supabaseId)return;
+  _challengerRealtimeStarted=true;
+  try{
+    sb.channel("challenger-realtime")
+      .on("postgres_changes",{event:"INSERT",schema:"public",table:"chat_messages",filter:`challenger_id=eq.${S.user.supabaseId}`},payload=>{
+        const m=payload.new;
+        if(m.sender==="genie"){
+          /* Browser notification if tab not focused */
+          if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
+            new Notification("Message from Genie",{body:(m.message||"🎙 Voice note").slice(0,80),icon:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23060606'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-size='36' font-weight='900' fill='%23c49a1c' font-family='system-ui'%3EG%3C/text%3E%3C/svg%3E"});
+          }
+          /* Refresh chat and badge */
+          if(typeof renderChat==="function") renderChat();
+          if(typeof updateMsgBadge==="function") updateMsgBadge();
+        }
+      })
+      .subscribe();
+  }catch(e){console.warn("Challenger realtime failed:",e);}
+}
+
