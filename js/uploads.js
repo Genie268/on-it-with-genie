@@ -210,6 +210,7 @@ async function subUp(){
   playUploadSound();
   syncUploadToSupabase(S.day,S.uploads[S.day-1]);
   showToast("Day "+S.day+" proof submitted","success");
+  trackEvent("upload_submitted",{day:S.day,has_file:!!S.uploads[S.day-1]?.fileUrl,has_note:!!S.uploads[S.day-1]?.note,has_voice:!!S.uploads[S.day-1]?.voiceUrl});
   S.lilDone=false; renderDash();
   if(S.day===dur)setTimeout(()=>{closeMod();goTo("d15");},1200);
 }

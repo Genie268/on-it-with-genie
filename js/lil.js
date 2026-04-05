@@ -86,6 +86,7 @@ async function renderChat(){
 }
 
 async function sendChatMsg(){
+  trackEvent("chat_msg_sent",{sender:"challenger"});
   const ta=el("chat-input");
   const hasText=ta&&ta.value.trim();
   if(!hasText&&!chatVoiceBlob)return;

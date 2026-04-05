@@ -265,6 +265,7 @@ function renderEnergyCheck(){
 }
 
 function setEnergy(level){
+  trackEvent("energy_logged",{level});
   if(!S.user.energyLog) S.user.energyLog={};
   S.user.energyLog[S.day]={type:"energy",value:level};
   saveState();
@@ -279,6 +280,7 @@ function setEnergy(level){
 }
 
 function setMood(mood){
+  trackEvent("mood_logged",{mood});
   if(!S.user.energyLog) S.user.energyLog={};
   S.user.energyLog[S.day]={type:"mood",value:mood};
   saveState();

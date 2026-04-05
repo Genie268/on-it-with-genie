@@ -23,6 +23,22 @@ function showToast(message,type="info",duration=3000){
   setTimeout(()=>{toast.classList.add("toast-out");setTimeout(()=>toast.remove(),250);},duration);
 }
 
+/* ── PRODUCT ANALYTICS ── */
+const _analyticsSessionId=(()=>{let s=sessionStorage.getItem("_asid");if(!s){s=crypto.randomUUID();sessionStorage.setItem("_asid",s);}return s;})();
+function trackEvent(event,data){
+  if(typeof sb==="undefined"||!sb)return;
+  const uid=typeof S!=="undefined"&&S.challengerId?S.challengerId:null;
+  const isAdmin=/^\/admin\/?$/.test(window.location.pathname);
+  sb.from("analytics_events").insert({
+    event_type:event,
+    event_data:{...data,challenger_id:uid,is_admin:isAdmin,day:typeof S!=="undefined"?S.day:null},
+    session_id:_analyticsSessionId,
+    user_agent:navigator.userAgent,
+    page_url:window.location.pathname,
+    referrer:document.referrer||null
+  }).then(()=>{}).catch(()=>{});
+}
+
 /* ══════════════════════════════════════════════
    CONFIGURATION
    ══════════════════════════════════════════════ */
@@ -167,6 +183,7 @@ function initDuration(){
 }
 
 function selectDuration(days){
+  trackEvent("duration_selected",{days});
   S.ans.duration=days;
   [7,15,30].forEach(d=>{
     const btn=el("dur-"+d);

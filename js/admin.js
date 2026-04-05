@@ -154,6 +154,7 @@ async function renderAdmin(){
 function checkAdminPin(){
   const pin=(el("admin-pin-input")?.value||"").trim();
   if(pin===ADMIN_PIN){
+    trackEvent("admin_login");
     S._adminAuth=true;
     const msg=el("admin-pin-msg");
     if(msg){msg.textContent="";msg.style.color="";}

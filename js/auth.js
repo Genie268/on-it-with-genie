@@ -100,6 +100,7 @@ function updatePayAfterDiscount(pct){
 
 function initiatePayment(){
   const dur=S.user?.duration||15;const email=el("pay-email")?.value?.trim();
+  trackEvent("payment_initiated",{duration:dur,has_discount:S._accessDiscount>0});
   if(S._accessDiscount===100){completePayment({reference:"FREE_"+Date.now(),status:"free"});return;}
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){el("pay-status").textContent="Enter a valid email";el("pay-status").style.color="#d9503a";return;}
   const fk=S._accessDiscount>0?Math.round(PRICES[dur]*(1-S._accessDiscount/100)):PRICES[dur];
@@ -128,6 +129,7 @@ function initiatePayment(){
 }
 
 function completePayment(d){
+  trackEvent("payment_completed",{status:d.status,duration:S.user?.duration});
   if(S.user){S.user.paymentRef=d.reference;S.user.paymentStatus=d.status;S.user.amountPaid=d.amount||0;S.user.email=d.email||S.user.email;S.user.phone=el("pay-phone")?.value?.trim()||S.user.phone||null;S.user.accessCode=S._accessCode||null;saveState();syncToSupabase();}
   goTo("photo");
 }
@@ -141,6 +143,7 @@ function showSignIn(){
 }
 
 async function attemptSignIn(){
+  trackEvent("sign_in_attempt");
   const email=el("signin-email")?.value?.trim();
   const msg=el("signin-msg");
   const btn=el("signin-btn");

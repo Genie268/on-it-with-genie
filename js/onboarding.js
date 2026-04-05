@@ -1,5 +1,6 @@
 /* ── ONBOARDING ── */
 function startOB(){
+  trackEvent("onboarding_start");
   S.stepIdx=-1; S.ans={}; S.inFU=false; S.fuQ="";
   goTo("ob"); renderOB();
 }

@@ -1,5 +1,6 @@
 /* ── NAV ── */
 function goTo(s){
+  trackEvent("screen_view",{screen:s});
   /* Close upload modal if open */
   const mo=document.getElementById("mod");
   if(mo&&mo.classList.contains("show"))mo.classList.remove("show");
@@ -720,14 +721,15 @@ async function loadProfilePanelChat(uid){
       if(m.message&&m.message.trim()) body+=`<p style="margin:0">${m.message}</p>`;
       if(m.voice_url) body+=buildAudioBubble(m.voice_url,aId);
       if(!body) return "";
-      /* 3-dot menu with Reply + Unsend actions */
+      /* Reply visible, Unsend behind 3-dot menu (admin's own messages only) */
       const msgPreview=(m.message||"").slice(0,40).replace(/"/g,"&quot;").replace(/'/g,"\\'");
+      const replyBtn=`<span onclick="event.stopPropagation();pfChatSetReply('${m.id}','${msgPreview}','${uid}')" style="cursor:pointer;font-size:10px;color:#5a5a5a;margin-left:6px;opacity:0.5;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.5">↩ Reply</span>`;
       const menuId=`cmenu-${m.id}`;
-      const menuItems=`<div onclick="event.stopPropagation();pfChatSetReply('${m.id}','${msgPreview}','${uid}');closeChatMenus()" style="padding:7px 14px;font-size:12px;color:#ccc;cursor:pointer;white-space:nowrap" onmouseenter="this.style.background='#2a2a2a'" onmouseleave="this.style.background='none'">↩ Reply</div>${isMe?`<div onclick="event.stopPropagation();pfChatDeleteMsg('${m.id}','${uid}');closeChatMenus()" style="padding:7px 14px;font-size:12px;color:#d9503a;cursor:pointer;white-space:nowrap;border-top:1px solid #222" onmouseenter="this.style.background='#2a2a2a'" onmouseleave="this.style.background='none'">Unsend</div>`:""}`;
-      const dotMenu=`<span style="position:relative;margin-left:6px"><span onclick="event.stopPropagation();toggleChatMenu('${menuId}')" style="cursor:pointer;font-size:12px;color:#444;letter-spacing:1px;line-height:1;transition:color .15s" onmouseenter="this.style.color='#888'" onmouseleave="this.style.color='#444'">⋯</span><div id="${menuId}" style="display:none;position:absolute;bottom:18px;${isMe?"right":"left"}:0;background:#181818;border:1px solid #2a2a2a;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:10;overflow:hidden">${menuItems}</div></span>`;
+      const wasRead=m.read_at?"true":"false";
+      const dotMenu=isMe?`<span style="position:relative;margin-left:4px"><span onclick="event.stopPropagation();toggleChatMenu('${menuId}')" style="cursor:pointer;font-size:12px;color:#444;letter-spacing:1px;line-height:1;transition:color .15s" onmouseenter="this.style.color='#888'" onmouseleave="this.style.color='#444'">⋯</span><div id="${menuId}" style="display:none;position:absolute;bottom:18px;right:0;background:#181818;border:1px solid #2a2a2a;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:10;overflow:hidden"><div onclick="event.stopPropagation();pfChatDeleteMsg('${m.id}','${uid}',${wasRead});closeChatMenus()" style="padding:7px 14px;font-size:12px;color:#d9503a;cursor:pointer;white-space:nowrap" onmouseenter="this.style.background='#2a2a2a'" onmouseleave="this.style.background='none'">Unsend</div></div></span>`:"";
       return `<div class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
         <div class="cmsg-body">${body}</div>
-        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${dateStr} ${timeStr}${dotMenu}</div>
+        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${dateStr} ${timeStr}${replyBtn}${dotMenu}</div>
       </div>`;
     }).join("");
     thread.scrollTop=thread.scrollHeight;
@@ -749,10 +751,14 @@ function pfChatSetReply(msgId,preview,uid){
   if(ta){ta.value="> "+preview+"\n";ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
 }
 
-async function pfChatDeleteMsg(msgId,uid){
-  if(!confirm("Unsend this message?"))return;
+async function pfChatDeleteMsg(msgId,uid,wasRead){
+  const msg=wasRead?"This message was already read by the challenger. Unsend anyway?":"Unsend this message?";
+  if(!confirm(msg))return;
   if(!sb)return;
-  try{await sb.from("chat_messages").delete().eq("id",msgId);showToast("Message unsent","info");}catch(e){showToast("Failed to unsend","error");}
+  try{
+    await sb.from("chat_messages").delete().eq("id",msgId);
+    showToast(wasRead?"Unsent — but they already saw it":"Message unsent",wasRead?"error":"info");
+  }catch(e){showToast("Failed to unsend","error");}
   loadProfilePanelChat(uid);
 }
 
@@ -760,6 +766,7 @@ async function sendProfilePanelMsg(uid){
   const ta=document.getElementById("pf-reply-input");
   const hasText=ta&&ta.value.trim();
   if(!hasText&&!adminVoiceBlob)return;
+  trackEvent("admin_msg_sent",{to:uid,has_voice:!!adminVoiceBlob,has_text:!!hasText});
   if(!sb)return;
   const msg=hasText?ta.value.trim():"";
   if(ta){ta.value="";ta.disabled=true;}
