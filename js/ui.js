@@ -698,42 +698,65 @@ async function loadProfilePanelChat(uid){
   const thread=document.getElementById("pf-chat-thread");
   if(!thread||!sb)return;
   _pfChatReplyToId=null;
+  const ind=document.getElementById("pf-reply-indicator");if(ind)ind.remove();
   try{
     const {data:msgs}=await sb.from("chat_messages").select("*").eq("challenger_id",uid).order("created_at",{ascending:true});
     if(!msgs||msgs.length===0){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">No messages yet</p>`;return;}
     /* Build a lookup for reply_to */
     const msgMap={};msgs.forEach(m=>{msgMap[m.id]=m;});
+    /* Date separator helper */
+    let lastDateStr="";
     /* In admin panel: genie (admin) = right, challenger = left */
     thread.innerHTML=msgs.map((m,i)=>{
-      const isMe=m.sender==="genie"; // admin IS genie
+      const isMe=m.sender==="genie";
       const t=new Date(m.created_at);
       const timeStr=t.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
       const dateStr=t.toLocaleDateString([],{month:"short",day:"numeric"});
       const aId=`ac-${i}-${t.getTime()}`;
-      /* Reply quote if this message is a reply */
+      /* Date separator */
+      let dateSep="";
+      if(dateStr!==lastDateStr){
+        lastDateStr=dateStr;
+        const today=new Date().toLocaleDateString([],{month:"short",day:"numeric"});
+        const yesterday=new Date(Date.now()-86400000).toLocaleDateString([],{month:"short",day:"numeric"});
+        const label=dateStr===today?"Today":dateStr===yesterday?"Yesterday":dateStr;
+        dateSep=`<div style="text-align:center;padding:8px 0 4px"><span style="font-size:10px;color:#444;background:#111;padding:2px 10px;border-radius:10px;font-weight:600">${label}</span></div>`;
+      }
+      /* Reply quote — clickable to scroll to original */
       let replyQuote="";
       if(m.reply_to_id&&msgMap[m.reply_to_id]){
         const orig=msgMap[m.reply_to_id];
-        const origPreview=(orig.message||"").slice(0,50)+(orig.message&&orig.message.length>50?"...":"");
-        replyQuote=`<div style="font-size:10px;color:#666;border-left:2px solid #444;padding:2px 6px;margin-bottom:4px;font-style:italic">${origPreview||"🎙 Voice note"}</div>`;
+        const origPreview=(orig.message||"").slice(0,50)+(orig.message&&orig.message.length>50?"…":"");
+        replyQuote=`<div onclick="scrollToMsg('${m.reply_to_id}')" style="font-size:10px;color:#888;border-left:2px solid ${isMe?"rgba(0,0,0,.3)":"#444"};padding:2px 8px;margin-bottom:4px;cursor:pointer;border-radius:0 4px 4px 0;background:${isMe?"rgba(0,0,0,.1)":"rgba(255,255,255,.03)"};transition:background .15s" onmouseenter="this.style.background='${isMe?"rgba(0,0,0,.18)":"rgba(255,255,255,.06)"}'" onmouseleave="this.style.background='${isMe?"rgba(0,0,0,.1)":"rgba(255,255,255,.03)"}'">${origPreview||"🎙 Voice note"}</div>`;
       }
       let body=replyQuote;
       if(m.message&&m.message.trim()) body+=`<p style="margin:0">${m.message}</p>`;
       if(m.voice_url) body+=buildAudioBubble(m.voice_url,aId);
       if(!body) return "";
+      /* Read receipt for admin's messages */
+      const readCheck=isMe&&m.read_at?`<span style="color:${isMe?"rgba(0,0,0,.35)":"#444"};font-size:9px;margin-left:4px" title="Read ${new Date(m.read_at).toLocaleString()}">✓✓</span>`:(isMe?`<span style="color:rgba(0,0,0,.2);font-size:9px;margin-left:4px">✓</span>`:"");
       /* Reply visible, Unsend behind 3-dot menu (admin's own messages only) */
       const msgPreview=(m.message||"").slice(0,40).replace(/"/g,"&quot;").replace(/'/g,"\\'");
       const replyBtn=`<span onclick="event.stopPropagation();pfChatSetReply('${m.id}','${msgPreview}','${uid}')" style="cursor:pointer;font-size:10px;color:#5a5a5a;margin-left:6px;opacity:0.5;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.5">↩ Reply</span>`;
       const menuId=`cmenu-${m.id}`;
       const wasRead=m.read_at?"true":"false";
       const dotMenu=isMe?`<span style="position:relative;margin-left:4px"><span onclick="event.stopPropagation();toggleChatMenu('${menuId}')" style="cursor:pointer;font-size:12px;color:#444;letter-spacing:1px;line-height:1;transition:color .15s" onmouseenter="this.style.color='#888'" onmouseleave="this.style.color='#444'">⋯</span><div id="${menuId}" style="display:none;position:absolute;bottom:18px;right:0;background:#181818;border:1px solid #2a2a2a;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:10;overflow:hidden"><div onclick="event.stopPropagation();pfChatDeleteMsg('${m.id}','${uid}',${wasRead});closeChatMenus()" style="padding:7px 14px;font-size:12px;color:#d9503a;cursor:pointer;white-space:nowrap" onmouseenter="this.style.background='#2a2a2a'" onmouseleave="this.style.background='none'">Unsend</div></div></span>`:"";
-      return `<div class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
+      return `${dateSep}<div id="msg-${m.id}" class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
         <div class="cmsg-body">${body}</div>
-        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${dateStr} ${timeStr}${replyBtn}${dotMenu}</div>
+        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${timeStr}${readCheck}${replyBtn}${dotMenu}</div>
       </div>`;
     }).join("");
     thread.scrollTop=thread.scrollHeight;
   }catch(e){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">Could not load messages</p>`;}
+}
+
+function scrollToMsg(msgId){
+  const el=document.getElementById("msg-"+msgId);
+  if(!el)return;
+  el.scrollIntoView({behavior:"smooth",block:"center"});
+  el.style.transition="background .2s";
+  el.style.background="rgba(196,154,28,.12)";
+  setTimeout(()=>{el.style.background="";},1200);
 }
 
 function toggleChatMenu(id){
