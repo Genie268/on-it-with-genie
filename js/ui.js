@@ -747,8 +747,19 @@ function closeChatMenus(){
 
 function pfChatSetReply(msgId,preview,uid){
   _pfChatReplyToId=msgId;
+  /* Show reply indicator above input */
+  let indicator=document.getElementById("pf-reply-indicator");
+  if(!indicator){
+    indicator=document.createElement("div");
+    indicator.id="pf-reply-indicator";
+    indicator.style.cssText="font-size:11px;color:#888;padding:4px 14px;background:#0f0f0f;border-left:2px solid #c49a1c;margin:0 0 0 0;display:flex;justify-content:space-between;align-items:center";
+    const chatBar=document.querySelector(".chat-bar");
+    if(chatBar)chatBar.parentNode.insertBefore(indicator,chatBar);
+  }
+  indicator.innerHTML=`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">↩ Replying to: <em>${preview||"voice note"}</em></span><span onclick="_pfChatReplyToId=null;this.parentNode.remove()" style="cursor:pointer;color:#555;margin-left:8px;font-size:14px">×</span>`;
+  indicator.style.display="flex";
   const ta=document.getElementById("pf-reply-input");
-  if(ta){ta.value="> "+preview+"\n";ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
+  if(ta)ta.focus();
 }
 
 async function pfChatDeleteMsg(msgId,uid,wasRead){
@@ -784,6 +795,7 @@ async function sendProfilePanelMsg(uid){
   try{
     await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg||"",voice_url:voiceUrl||null,reply_to_id:_pfChatReplyToId||null});
     _pfChatReplyToId=null;
+    const ind=document.getElementById("pf-reply-indicator");if(ind)ind.remove();
     /* Trigger push notification */
     const u=getAM().find(x=>x.id===uid);
     if(u) triggerPush(uid,"Message from Genie",msg?msg.slice(0,80):"🎙 Voice note");
