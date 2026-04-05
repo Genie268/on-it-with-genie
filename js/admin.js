@@ -186,14 +186,19 @@ function adminTab(tab){
   /* Compute badge counts */
   const inboxCount=getPendingInbox().length;
   const flaggedCount=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
+  const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
+  const bdg=(n)=>n>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:5px;vertical-align:middle">${n}</span>`:"";
   ["overview","challengers","flagged","inbox","analytics"].forEach(t=>{
     const btn = el("tab-"+t);
     if(!btn) return;
     btn.style.borderBottomColor = t===tab ? "#c49a1c" : "transparent";
     btn.style.color = t===tab ? "#c49a1c" : "#5a5a5a";
     /* Update tab labels with badge counts */
-    if(t==="inbox") btn.textContent=inboxCount>0?`Inbox · ${inboxCount}`:"Inbox";
-    if(t==="flagged") btn.textContent=flaggedCount>0?`Attention · ${flaggedCount}`:"Needs Attention";
+    if(t==="overview") btn.innerHTML=`Overview${bdg(unreadCount)}`;
+    if(t==="challengers") btn.innerHTML=`Challengers`;
+    if(t==="inbox") btn.innerHTML=`Inbox${bdg(inboxCount)}`;
+    if(t==="flagged") btn.innerHTML=`Attention${bdg(flaggedCount)}`;
+    if(t==="analytics") btn.innerHTML=`Analytics`;
   });
   const c = el("admin-content");
   if(!c) return;
