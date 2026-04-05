@@ -214,27 +214,39 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 function startAdminPoll(){
   if(_adminPollTimer) return;
-  _adminPollTimer=setInterval(async()=>{
-    if(!sb) return;
+  /* Supabase Realtime — instant notifications for new messages & uploads */
+  if(sb){
     try{
-      const {data}=await sb.from("chat_messages").select("id,challenger_id,message,created_at").eq("sender","challenger").is("read_at",null).order("created_at",{ascending:false}).limit(1);
-      if(data&&data.length>0){
-        const latest=data[0];
-        if(_adminLastMsgTs!==latest.created_at){
-          _adminLastMsgTs=latest.created_at;
-          /* Show browser notification if tab not focused */
-          if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
-            new Notification("New message from challenger",{body:(latest.message||"🎙 Voice note").slice(0,80),icon:"/icon-192.png"});
+      sb.channel("admin-realtime")
+        .on("postgres_changes",{event:"INSERT",schema:"public",table:"chat_messages"},payload=>{
+          const m=payload.new;
+          if(m.sender==="challenger"){
+            /* Browser notification if tab not focused */
+            if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
+              new Notification("New message from challenger",{body:(m.message||"🎙 Voice note").slice(0,80)});
+            }
+            /* Refresh data and badges */
+            adminRefreshBadges();
           }
-          /* Refresh admin overview if visible */
-          if(typeof loadAdminMessages==="function") loadAdminMessages().then(()=>{
-            const ov=document.getElementById("admin-overview");
-            if(ov&&ov.style.display!=="none"&&typeof renderAdminOverview==="function") renderAdminOverview();
-          });
-        }
-      }
-    }catch(e){}
-  },60000);
+        })
+        .on("postgres_changes",{event:"INSERT",schema:"public",table:"uploads"},()=>{
+          adminRefreshBadges();
+        })
+        .subscribe();
+    }catch(e){console.error("Realtime subscription failed:",e);}
+  }
+  /* Fallback poll every 60s in case realtime drops */
+  _adminPollTimer=setInterval(()=>adminRefreshBadges(),60000);
+}
+
+async function adminRefreshBadges(){
+  if(!sb)return;
+  try{
+    await loadAdminMessages();
+    await loadAdminData();
+    /* Re-render current tab badges without switching */
+    if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+  }catch(e){}
 }
 
 function stopAdminPoll(){
