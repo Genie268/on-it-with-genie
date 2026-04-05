@@ -615,8 +615,55 @@ async function renderAdminAnalytics(c){
       </div>`;
     }).join("");
 
+    /* Generate insights */
+    const insights=[];
+    const visits=counts["screen_view"]||0;
+    const obStart=counts["onboarding_start"]||0;
+    const durPick=counts["duration_selected"]||0;
+    const payInit=counts["payment_initiated"]||0;
+    const payDone=counts["payment_completed"]||0;
+    const uploads=counts["upload_submitted"]||0;
+    const chatChallenger=counts["chat_msg_sent"]||0;
+    const chatAdmin=counts["admin_msg_sent"]||0;
+    const energy=counts["energy_logged"]||0;
+    const mood=counts["mood_logged"]||0;
+    const signIns=counts["sign_in_attempt"]||0;
+
+    /* Funnel drop-off insights */
+    if(visits>5&&obStart===0) insights.push({type:"warning",text:"People are visiting but nobody starts onboarding. Your landing page might not be compelling enough — try a stronger CTA or social proof."});
+    if(obStart>3&&durPick===0) insights.push({type:"warning",text:"People start onboarding but never pick a duration. The onboarding questions might be causing friction — consider simplifying."});
+    if(durPick>2&&payInit===0) insights.push({type:"warning",text:"People pick a duration but never reach payment. The commitment screen or pricing might be scaring them off."});
+    if(payInit>2&&payDone===0) insights.push({type:"error",text:"People reach payment but nobody completes it. Check if Paystack is working, or consider the price point."});
+    if(payDone>0&&uploads===0) insights.push({type:"warning",text:"People paid but haven't uploaded any proof yet. Consider a welcome message nudging them to upload Day 1."});
+    if(visits>0&&obStart>0) insights.push({type:"success",text:`${Math.round(obStart/visits*100)}% of visitors start onboarding. ${obStart>visits*0.3?"That's solid.":"Try improving the landing page hook."}`});
+    if(obStart>0&&payDone>0) insights.push({type:"success",text:`${Math.round(payDone/obStart*100)}% onboarding-to-paid conversion rate. ${payDone>obStart*0.5?"Excellent.":"There's room to improve."}`});
+
+    /* Engagement insights */
+    if(uploads>5&&energy===0&&mood===0) insights.push({type:"info",text:"Nobody is using energy or mood check-ins. Consider making them more prominent or removing them to reduce clutter."});
+    if(uploads>3&&chatChallenger===0) insights.push({type:"info",text:"Challengers are uploading but not messaging you. They might not know the chat exists — consider a prompt after their first upload."});
+    if(chatChallenger>5&&chatAdmin===0) insights.push({type:"warning",text:"Challengers are messaging you but you haven't replied. Engagement drops when there's no response."});
+    if(signIns>3) insights.push({type:"success",text:`${signIns} return sign-ins — people are coming back. That's a strong retention signal.`});
+    if(uploads>10) insights.push({type:"success",text:`${uploads} proofs uploaded. Your challengers are showing up.`});
+
+    /* Not enough data yet */
+    if(events.length<10) insights.push({type:"info",text:"Not enough data yet for strong recommendations. Keep using the app and insights will sharpen as events come in."});
+
+    const insightIcons={success:"✓",warning:"⚠",error:"✕",info:"→"};
+    const insightColors={success:"#4dc98a",warning:"#c49a1c",error:"#d9503a",info:"#888"};
+    const insightsHtml=insights.map(ins=>`
+      <div style="display:flex;gap:10px;padding:10px 12px;background:${ins.type==="error"?"rgba(217,80,58,.06)":ins.type==="warning"?"rgba(196,154,28,.06)":ins.type==="success"?"rgba(77,201,138,.06)":"rgba(255,255,255,.02)"};border:1px solid ${ins.type==="error"?"rgba(217,80,58,.2)":ins.type==="warning"?"rgba(196,154,28,.18)":ins.type==="success"?"rgba(77,201,138,.18)":"#1a1a1a"};border-radius:8px;margin-bottom:6px">
+        <span style="color:${insightColors[ins.type]};font-weight:800;font-size:13px;flex-shrink:0;width:18px;text-align:center">${insightIcons[ins.type]}</span>
+        <p style="font-size:12px;line-height:1.6;color:#ccc;margin:0">${ins.text}</p>
+      </div>
+    `).join("");
+
     c.innerHTML=`
       <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:14px">PRODUCT ANALYTICS · ${events.length} events</p>
+
+      ${insights.length?`<div class="card mb10" style="padding:16px">
+        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">INSIGHTS & NEXT BUILD</p>
+        ${insightsHtml}
+      </div>`:""}
 
       <div class="card mb10" style="padding:16px">
         <p style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">CONVERSION FUNNEL</p>
