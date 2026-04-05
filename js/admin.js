@@ -186,7 +186,7 @@ function adminTab(tab){
   /* Compute badge counts */
   const inboxCount=getPendingInbox().length;
   const flaggedCount=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
-  ["overview","challengers","flagged","inbox"].forEach(t=>{
+  ["overview","challengers","flagged","inbox","analytics"].forEach(t=>{
     const btn = el("tab-"+t);
     if(!btn) return;
     btn.style.borderBottomColor = t===tab ? "#c49a1c" : "transparent";
@@ -201,6 +201,7 @@ function adminTab(tab){
   if(tab==="challengers") renderAdminChallengers(c);
   if(tab==="flagged")     renderAdminFlagged(c);
   if(tab==="inbox")       renderAdminInbox(c);
+  if(tab==="analytics")   renderAdminAnalytics(c);
 }
 
 function toggleAdminSection(id){
@@ -534,6 +535,123 @@ function renderAdminInbox(c){
         </div>
       </div>
     `).join("")||`<div style="text-align:center;padding:48px 20px"><p class="muted">All caught up. No pending reviews.</p></div>`}`;
+}
+
+async function renderAdminAnalytics(c){
+  c.innerHTML=`<div style="text-align:center;padding:40px 0"><p class="muted" style="font-size:12px">Loading analytics...</p></div>`;
+  if(!sb)return;
+  try{
+    const {data:events}=await sb.from("analytics_events").select("event_type,event_data,created_at").order("created_at",{ascending:false}).limit(500);
+    if(!events||!events.length){
+      c.innerHTML=`<div style="text-align:center;padding:60px 20px"><p class="muted">No analytics data yet. Events will appear as people use the app.</p></div>`;
+      return;
+    }
+    /* Aggregate counts */
+    const counts={};
+    events.forEach(e=>{counts[e.event_type]=(counts[e.event_type]||0)+1;});
+
+    /* Funnel */
+    const funnel=[
+      {key:"screen_view",label:"Visits",icon:"👁"},
+      {key:"onboarding_start",label:"Started Onboarding",icon:"✦"},
+      {key:"duration_selected",label:"Picked Duration",icon:"📅"},
+      {key:"payment_initiated",label:"Reached Payment",icon:"💳"},
+      {key:"payment_completed",label:"Paid",icon:"✓"},
+      {key:"upload_submitted",label:"Uploaded Proof",icon:"↑"},
+    ];
+    const funnelHtml=funnel.map(f=>{
+      const ct=counts[f.key]||0;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #1a1a1a">
+        <span style="font-size:16px;width:24px;text-align:center">${f.icon}</span>
+        <span style="flex:1;font-size:13px;font-weight:600">${f.label}</span>
+        <span style="font-size:14px;font-weight:800;color:${ct>0?"#c49a1c":"#333"}">${ct}</span>
+      </div>`;
+    }).join("");
+
+    /* Engagement events */
+    const engagement=[
+      {key:"chat_msg_sent",label:"Chat Messages (Challenger)",icon:"💬"},
+      {key:"admin_msg_sent",label:"Your Messages (Admin)",icon:"📤"},
+      {key:"energy_logged",label:"Energy Check-ins",icon:"🔥"},
+      {key:"mood_logged",label:"Mood Check-ins",icon:"😌"},
+      {key:"sign_in_attempt",label:"Return Sign-ins",icon:"🔑"},
+      {key:"admin_login",label:"Admin Logins",icon:"🔒"},
+    ];
+    const engHtml=engagement.map(f=>{
+      const ct=counts[f.key]||0;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #1a1a1a">
+        <span style="font-size:16px;width:24px;text-align:center">${f.icon}</span>
+        <span style="flex:1;font-size:13px;font-weight:600">${f.label}</span>
+        <span style="font-size:14px;font-weight:800;color:${ct>0?"#4dc98a":"#333"}">${ct}</span>
+      </div>`;
+    }).join("");
+
+    /* Screen popularity */
+    const screens={};
+    events.filter(e=>e.event_type==="screen_view"&&e.event_data?.screen).forEach(e=>{
+      const s=e.event_data.screen;screens[s]=(screens[s]||0)+1;
+    });
+    const screenRows=Object.entries(screens).sort((a,b)=>b[1]-a[1]).map(([s,ct])=>`
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a1a1a">
+        <span style="font-size:12px;color:#ccc">${s}</span>
+        <span style="font-size:12px;font-weight:700;color:#c49a1c">${ct}</span>
+      </div>`).join("")||`<p class="muted" style="font-size:12px">No screen data yet</p>`;
+
+    /* Recent activity feed */
+    const recent=events.slice(0,15);
+    const feedHtml=recent.map(e=>{
+      const ago=timeAgo(e.created_at);
+      const who=e.event_data?.challenger_id?e.event_data.challenger_id.slice(0,8)+"…":(e.event_data?.is_admin?"Admin":"Visitor");
+      const detail=e.event_data?.screen?` → ${e.event_data.screen}`:(e.event_data?.day?` · Day ${e.event_data.day}`:"");
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #141414">
+        <div style="min-width:0;flex:1">
+          <span style="font-size:12px;font-weight:600;color:#ccc">${e.event_type.replace(/_/g," ")}</span>
+          <span style="font-size:11px;color:#555">${detail}</span>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:10px">
+          <span style="font-size:10px;color:#555">${who}</span>
+          <span style="font-size:10px;color:#444;margin-left:6px">${ago}</span>
+        </div>
+      </div>`;
+    }).join("");
+
+    c.innerHTML=`
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:14px">PRODUCT ANALYTICS · ${events.length} events</p>
+
+      <div class="card mb10" style="padding:16px">
+        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">CONVERSION FUNNEL</p>
+        ${funnelHtml}
+      </div>
+
+      <div class="card mb10" style="padding:16px">
+        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">ENGAGEMENT</p>
+        ${engHtml}
+      </div>
+
+      <div class="card mb10" style="padding:16px">
+        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">SCREENS VISITED</p>
+        ${screenRows}
+      </div>
+
+      <div class="card mb10" style="padding:16px">
+        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">RECENT ACTIVITY</p>
+        ${feedHtml}
+      </div>
+    `;
+  }catch(e){
+    c.innerHTML=`<div style="text-align:center;padding:40px 0"><p style="color:#d9503a;font-size:12px">Failed to load analytics: ${e.message}</p></div>`;
+  }
+}
+
+function timeAgo(ts){
+  const diff=Date.now()-new Date(ts).getTime();
+  const mins=Math.floor(diff/60000);
+  if(mins<1)return "just now";
+  if(mins<60)return mins+"m ago";
+  const hrs=Math.floor(mins/60);
+  if(hrs<24)return hrs+"h ago";
+  const days=Math.floor(hrs/24);
+  return days+"d ago";
 }
 
 async function togRv(uid,i){
