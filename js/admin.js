@@ -168,11 +168,17 @@ function checkAdminPin(){
 
 function adminTab(tab){
   adminCurrentTab = tab;
+  /* Compute badge counts */
+  const inboxCount=getAM().reduce((acc,u)=>{for(let i=0;i<u.day-1;i++){if(u.up[i]&&!u.rv[i])acc++;}return acc;},0);
+  const flaggedCount=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
   ["overview","challengers","flagged","inbox"].forEach(t=>{
     const btn = el("tab-"+t);
     if(!btn) return;
     btn.style.borderBottomColor = t===tab ? "#c49a1c" : "transparent";
     btn.style.color = t===tab ? "#c49a1c" : "#5a5a5a";
+    /* Update tab labels with badge counts */
+    if(t==="inbox") btn.textContent=inboxCount>0?`Inbox · ${inboxCount}`:"Inbox";
+    if(t==="flagged") btn.textContent=flaggedCount>0?`Attention · ${flaggedCount}`:"Needs Attention";
   });
   const c = el("admin-content");
   if(!c) return;
@@ -180,6 +186,15 @@ function adminTab(tab){
   if(tab==="challengers") renderAdminChallengers(c);
   if(tab==="flagged")     renderAdminFlagged(c);
   if(tab==="inbox")       renderAdminInbox(c);
+}
+
+function toggleAdminSection(id){
+  const div=document.getElementById(id);
+  const chev=document.getElementById(id+"-chev");
+  if(!div)return;
+  const open=div.style.display!=="none";
+  div.style.display=open?"none":"block";
+  if(chev)chev.style.transform=open?"rotate(0deg)":"rotate(90deg)";
 }
 
 function renderAdminOverview(c){
@@ -249,7 +264,20 @@ function renderAdminOverview(c){
     messagesSection+=`<p class="muted" style="font-size:12px;margin-bottom:16px">No messages yet.</p>`;
   }
 
+  /* Needs Attention banner */
+  const atRiskUsers=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
+  let attentionBanner="";
+  if(atRiskUsers.length>0){
+    attentionBanner=`<div style="margin-bottom:16px;padding:12px 14px;background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.25);border-radius:10px;cursor:pointer" onclick="adminTab('flagged')">
+      <div class="row" style="justify-content:space-between">
+        <div class="row" style="gap:8px"><span style="font-size:16px">⚑</span><div><p style="font-size:13px;font-weight:700;color:#d9503a">${atRiskUsers.length} challenger${atRiskUsers.length>1?"s":""} need${atRiskUsers.length===1?"s":""} attention</p><p class="muted" style="font-size:11px;margin-top:2px">${atRiskUsers.map(u=>u.name).join(", ")}</p></div></div>
+        <span style="color:#d9503a;font-size:14px">→</span>
+      </div>
+    </div>`;
+  }
+
   c.innerHTML = `
+    ${attentionBanner}
     ${messagesSection}
     <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">ACTIVE CHALLENGERS</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
@@ -273,7 +301,7 @@ function renderAdminOverview(c){
         <div class="row mb10" style="justify-content:space-between">
           <div class="row" style="gap:10px">
             <div style="width:36px;height:36px;border-radius:9px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.ini}</div>
-            <div><p style="font-size:13px;font-weight:700">${u.name}${unreadBdg}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads</p></div>
+            <div><p style="font-size:13px;font-weight:700">${u.name}${unreadBdg}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads${up>0?` · last: Day ${u.up.lastIndexOf(1)+1}`:""}</p></div>
           </div>
           <div class="col" style="align-items:flex-end;gap:5px">
             ${isAtRisk?`<span style="font-size:10px;font-weight:700;color:#d9503a">At Risk</span>`:`<span style="font-size:10px;font-weight:700;color:#4dc98a">Active</span>`}
@@ -286,33 +314,51 @@ function renderAdminOverview(c){
       </div>`;
     }).join("")}
     ${totalReview>0?`<div class="card ca mt12"><p style="font-size:13px;font-weight:600;margin-bottom:8px"><span class="ac">${totalReview} uploads</span> waiting for your review.</p><button class="bp" style="font-size:12px;padding:8px 16px" onclick="adminTab('inbox')">Review Now →</button></div>`:""}
-    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px;margin-top:20px">UPCOMING CALLS</p>
-    ${getAM().map(u=>{
-      const callDays=CALL_DAYS[u.dur||15]||[];
-      const upcoming=callDays.filter(cd=>cd>=u.day);
-      if(!upcoming.length)return "";
-      return `<div class="card mb8" style="padding:12px 14px"><div class="row" style="justify-content:space-between"><span style="font-size:12px;font-weight:600">${u.name}</span><span class="bdg bdg-a" style="font-size:9px">📞 Day ${upcoming[0]}</span></div></div>`;
-    }).join("")}
-    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px;margin-top:20px">ENERGY & MOOD INSIGHTS</p>
-    ${getAM().filter(u=>u.energyLog&&Object.keys(u.energyLog).length>0).map(u=>{
-      const entries=Object.entries(u.energyLog).filter(([k,v])=>v.type!=="skip");
-      const lowDays=entries.filter(([k,v])=>v.type==="energy"&&v.value<=2);
-      return `<div class="card mb8" style="padding:12px 14px">
-        <p style="font-size:12px;font-weight:600;margin-bottom:4px">${u.name}</p>
-        <p class="muted" style="font-size:11px">${entries.length} check-ins logged${lowDays.length>0?` · <span class="er">${lowDays.length} low energy day${lowDays.length>1?"s":""}</span>`:""}</p>
-      </div>`;
-    }).join("")||`<p class="muted" style="font-size:12px">No check-in data yet.</p>`}
-    
-    <div style="display:flex;gap:8px;margin-bottom:20px">
+
+    <div style="margin-top:20px;border:1px solid #1f1f1f;border-radius:10px;overflow:hidden">
+      <div onclick="toggleAdminSection('ov-calls')" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#0e0e0e">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">UPCOMING CALLS</span>
+        <span id="ov-calls-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="ov-calls" style="display:none;padding:10px 14px;border-top:1px solid #1a1a1a">
+        ${getAM().map(u=>{
+          const callDays=CALL_DAYS[u.dur||15]||[];
+          const upcoming=callDays.filter(cd=>cd>=u.day);
+          if(!upcoming.length)return "";
+          return `<div class="row mb6" style="justify-content:space-between"><span style="font-size:12px;font-weight:600">${u.name}</span><span class="bdg bdg-a" style="font-size:9px">Day ${upcoming[0]}</span></div>`;
+        }).join("")||`<p class="muted" style="font-size:12px">No upcoming calls.</p>`}
+      </div>
+    </div>
+
+    <div style="margin-top:8px;border:1px solid #1f1f1f;border-radius:10px;overflow:hidden">
+      <div onclick="toggleAdminSection('ov-energy')" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#0e0e0e">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">ENERGY & MOOD</span>
+        <span id="ov-energy-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="ov-energy" style="display:none;padding:10px 14px;border-top:1px solid #1a1a1a">
+        ${getAM().filter(u=>u.energyLog&&Object.keys(u.energyLog).length>0).map(u=>{
+          const entries=Object.entries(u.energyLog).filter(([k,v])=>v.type!=="skip");
+          const lowDays=entries.filter(([k,v])=>v.type==="energy"&&v.value<=2);
+          return `<div class="row mb6" style="justify-content:space-between"><span style="font-size:12px;font-weight:600">${u.name}</span><span class="muted" style="font-size:11px">${entries.length} check-ins${lowDays.length>0?` · <span class="er">${lowDays.length} low</span>`:""}</span></div>`;
+        }).join("")||`<p class="muted" style="font-size:12px">No check-in data yet.</p>`}
+      </div>
+    </div>
+
+    <div style="margin-top:8px;border:1px solid #1f1f1f;border-radius:10px;overflow:hidden">
+      <div onclick="toggleAdminSection('ov-broadcast')" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#0e0e0e">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">BROADCAST MESSAGE</span>
+        <span id="ov-broadcast-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="ov-broadcast" style="display:none;padding:10px 14px;border-top:1px solid #1a1a1a">
+        <textarea id="broadcast-ta" rows="3" placeholder="Write your message to all challengers..." style="font-size:13px;margin-bottom:8px"></textarea>
+        <button id="broadcast-btn" class="bp" style="font-size:12px;padding:8px 16px" onclick="broadcastMessage()">Broadcast to All</button>
+        <div id="broadcast-status"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;margin-bottom:20px">
       <button class="bs" style="font-size:12px;padding:8px 16px" onclick="adminDataLoaded=false;renderAdmin()">↻ Refresh Data</button>
       <button style="padding:8px 16px;border-radius:9px;background:transparent;border:1px solid rgba(217,80,58,.3);color:#d9503a;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onclick="deleteAllFreeAccounts()">Delete Free Accounts</button>
-    </div>
-    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px;margin-top:20px">BROADCAST MESSAGE</p>
-    <div class="card mb10">
-      <p class="muted mb8" style="font-size:12px">Send a message to all active challengers at once.</p>
-      <textarea id="broadcast-ta" rows="3" placeholder="Write your message to all challengers..." style="font-size:13px;margin-bottom:8px"></textarea>
-      <button id="broadcast-btn" class="bp" style="font-size:12px;padding:8px 16px" onclick="broadcastMessage()">Broadcast to All</button>
-      <div id="broadcast-status"></div>
     </div>
     ${getAM().length===0?`<div class="card" style="text-align:center;padding:32px 16px;margin-top:16px"><p class="muted" style="font-size:14px;margin-bottom:6px">No challengers yet.</p><p class="muted" style="font-size:12px">When someone completes payment, they'll appear here.</p></div>`:""}
   `;
@@ -457,7 +503,10 @@ function renderAdminInbox(c){
     }
     return items;
   });
-  c.innerHTML=`<p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">UPLOADS TO REVIEW · ${pending.length}</p>
+  c.innerHTML=`<div class="row mb12" style="justify-content:space-between;align-items:center">
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">UPLOADS TO REVIEW · ${pending.length}</p>
+      ${pending.length>=2?`<button class="bs" style="font-size:11px;padding:5px 12px" onclick="batchMarkAllReviewed()">Mark All Done (${pending.length})</button>`:""}
+    </div>
     ${pending.map(({u,day,note,i,hasVoice,voiceUrl,fileUrl,link,fileName,behavior})=>`
       <div class="card mb10">
         <div class="row mb8" style="justify-content:space-between;align-items:flex-start">
@@ -501,6 +550,26 @@ async function togRv(uid,i){
   if(adminCurrentTab==="challengers")renderAdminChallengers(el("admin-content"));
   if(adminCurrentTab==="inbox")renderAdminInbox(el("admin-content"));
   if(adminCurrentTab==="overview")renderAdminOverview(el("admin-content"));
+}
+
+async function batchMarkAllReviewed(){
+  if(!confirm("Mark all pending uploads as reviewed?"))return;
+  if(!sb)return;
+  const pending=getAM().flatMap(u=>{
+    const items=[];
+    for(let i=0;i<u.day-1;i++){if(u.up[i]&&!u.rv[i])items.push({uid:u.id,day:i+1});}
+    return items;
+  });
+  let count=0;
+  for(const p of pending){
+    try{
+      const {data}=await sb.from("uploads").select("id").eq("challenger_id",p.uid).eq("day_number",p.day).single();
+      if(data) {await sb.from("uploads").update({reviewed:true,reviewed_at:new Date().toISOString()}).eq("id",data.id);count++;}
+    }catch(e){}
+  }
+  await loadAdminData();
+  showToast(`${count} uploads marked as reviewed`,"success");
+  renderAdminInbox(el("admin-content"));
 }
 
 async function deleteChallenger(uid, name){
