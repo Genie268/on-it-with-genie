@@ -195,6 +195,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   initParticles();
   animateTierPills();
   initSupabase();
+  /* Close chat 3-dot menus on outside click */
+  document.addEventListener("click",()=>closeChatMenus());
   const isAdmin=/^\/admin\/?$/.test(window.location.pathname);
   if(isAdmin){
     goTo('admin');
@@ -718,17 +720,27 @@ async function loadProfilePanelChat(uid){
       if(m.message&&m.message.trim()) body+=`<p style="margin:0">${m.message}</p>`;
       if(m.voice_url) body+=buildAudioBubble(m.voice_url,aId);
       if(!body) return "";
-      /* Reply button for all messages, delete button for admin's own */
+      /* 3-dot menu with Reply + Unsend actions */
       const msgPreview=(m.message||"").slice(0,40).replace(/"/g,"&quot;").replace(/'/g,"\\'");
-      const replyBtn=`<span onclick="event.stopPropagation();pfChatSetReply('${m.id}','${msgPreview}','${uid}')" style="cursor:pointer;font-size:10px;color:#5a5a5a;margin-left:6px;opacity:0.5;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.5">↩ Reply</span>`;
-      const deleteBtn=isMe?`<span onclick="event.stopPropagation();pfChatDeleteMsg('${m.id}','${uid}')" style="cursor:pointer;font-size:10px;color:#d9503a;margin-left:6px;opacity:0.5;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.5">✕</span>`:"";
+      const menuId=`cmenu-${m.id}`;
+      const menuItems=`<div onclick="event.stopPropagation();pfChatSetReply('${m.id}','${msgPreview}','${uid}');closeChatMenus()" style="padding:7px 14px;font-size:12px;color:#ccc;cursor:pointer;white-space:nowrap" onmouseenter="this.style.background='#2a2a2a'" onmouseleave="this.style.background='none'">↩ Reply</div>${isMe?`<div onclick="event.stopPropagation();pfChatDeleteMsg('${m.id}','${uid}');closeChatMenus()" style="padding:7px 14px;font-size:12px;color:#d9503a;cursor:pointer;white-space:nowrap;border-top:1px solid #222" onmouseenter="this.style.background='#2a2a2a'" onmouseleave="this.style.background='none'">Unsend</div>`:""}`;
+      const dotMenu=`<span style="position:relative;margin-left:6px"><span onclick="event.stopPropagation();toggleChatMenu('${menuId}')" style="cursor:pointer;font-size:12px;color:#444;letter-spacing:1px;line-height:1;transition:color .15s" onmouseenter="this.style.color='#888'" onmouseleave="this.style.color='#444'">⋯</span><div id="${menuId}" style="display:none;position:absolute;bottom:18px;${isMe?"right":"left"}:0;background:#181818;border:1px solid #2a2a2a;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:10;overflow:hidden">${menuItems}</div></span>`;
       return `<div class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
         <div class="cmsg-body">${body}</div>
-        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${dateStr} ${timeStr}${replyBtn}${deleteBtn}</div>
+        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${dateStr} ${timeStr}${dotMenu}</div>
       </div>`;
     }).join("");
     thread.scrollTop=thread.scrollHeight;
   }catch(e){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">Could not load messages</p>`;}
+}
+
+function toggleChatMenu(id){
+  closeChatMenus();
+  const menu=document.getElementById(id);
+  if(menu)menu.style.display=menu.style.display==="none"?"block":"none";
+}
+function closeChatMenus(){
+  document.querySelectorAll('[id^="cmenu-"]').forEach(m=>m.style.display="none");
 }
 
 function pfChatSetReply(msgId,preview,uid){
