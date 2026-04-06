@@ -184,8 +184,10 @@ async function subUp(){
   /* Upload voice proof to Supabase Storage */
   let voiceUrl=null;
   if(S.voiceBlob&&S.user?.supabaseId){
-    const path=`${S.user.supabaseId}/day${S.day}-voice-${Date.now()}.webm`;
-    voiceUrl=await uploadToStorage("uploads",path,S.voiceBlob,"audio/webm");
+    const vMime=S.voiceMime||"audio/webm";
+    const vExt=vMime.includes("mp4")?"mp4":vMime.includes("ogg")?"ogg":"webm";
+    const path=`${S.user.supabaseId}/day${S.day}-voice-${Date.now()}.${vExt}`;
+    voiceUrl=await uploadToStorage("uploads",path,S.voiceBlob,vMime);
   }
 
   /* Build the upload record */

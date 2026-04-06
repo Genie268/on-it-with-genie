@@ -342,6 +342,13 @@ function skipWT(){
 let mediaRecorder=null, audioChunks=[], recordingStartTime=0, recInterval=null;
 let chatMediaRecorder=null, chatAudioChunks=[], chatVoiceBlob=null;
 let adminMediaRecorder=null, adminAudioChunks=[], adminVoiceBlob=null;
+
+/* Pick a supported audio mimeType for MediaRecorder */
+function _audioMime(){
+  const types=["audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus","audio/mp4"];
+  for(const t of types){if(MediaRecorder.isTypeSupported(t))return t;}
+  return "";
+}
 function initVoiceRecorder(containerId){
   const c=el(containerId);if(!c)return;
   c.innerHTML=`<div class="vr-wrap" id="vr-area" onclick="toggleRecording()">
@@ -361,13 +368,15 @@ async function toggleRecording(){
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
     audioChunks=[];
-    mediaRecorder=new MediaRecorder(stream);
+    const mime=_audioMime();
+    mediaRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
     mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};
     mediaRecorder.onstop=()=>{
       stream.getTracks().forEach(t=>t.stop());
       clearInterval(recInterval);
-      const blob=new Blob(audioChunks,{type:"audio/webm"});
+      const blob=new Blob(audioChunks,{type:mediaRecorder.mimeType||"audio/webm"});
       S.voiceBlob=blob;
+      S.voiceMime=mediaRecorder.mimeType||"audio/webm";
       const url=URL.createObjectURL(blob);
       const pb=el("vr-playback");if(pb){pb.src=url;pb.style.display="block";}
       const area=el("vr-area");if(area)area.className="vr-wrap recorded";
@@ -375,7 +384,7 @@ async function toggleRecording(){
       el("vr-status").textContent="Voice note recorded ✓";
       el("vr-timer").style.display="none";
     };
-    mediaRecorder.start();
+    mediaRecorder.start(1000);
     recordingStartTime=Date.now();
     const area=el("vr-area");if(area)area.className="vr-wrap recording";
     const btn=el("vr-btn");if(btn)btn.className="vr-btn rec-active";
@@ -419,17 +428,18 @@ async function toggleChatRecording(){
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
     chatAudioChunks=[];
-    chatMediaRecorder=new MediaRecorder(stream);
+    const mime=_audioMime();
+    chatMediaRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
     chatMediaRecorder.ondataavailable=e=>{if(e.data.size>0)chatAudioChunks.push(e.data);};
     chatMediaRecorder.onstop=()=>{
       stream.getTracks().forEach(t=>t.stop());
       clearInterval(chatRecTimer);
-      chatVoiceBlob=new Blob(chatAudioChunks,{type:"audio/webm"});
+      chatVoiceBlob=new Blob(chatAudioChunks,{type:chatMediaRecorder.mimeType||"audio/webm"});
       if(btn){btn.innerHTML=MIC_SVG;btn.style.color="#4dc98a";}
       if(pill){pill.classList.remove("recording");pill.classList.add("recorded");}
       if(ta) ta.placeholder="✓ Voice note ready — tap ↑ to send";
     };
-    chatMediaRecorder.start();
+    chatMediaRecorder.start(1000);
     if(btn){btn.innerHTML=WAVE_HTML;btn.style.color="";}
     if(pill){pill.classList.add("recording");pill.classList.remove("recorded");}
     let secs=0;
@@ -455,12 +465,13 @@ async function toggleAdminRecording(){
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
     adminAudioChunks=[];
-    adminMediaRecorder=new MediaRecorder(stream);
+    const mime=_audioMime();
+    adminMediaRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
     adminMediaRecorder.ondataavailable=e=>{if(e.data.size>0)adminAudioChunks.push(e.data);};
     adminMediaRecorder.onstop=()=>{
       stream.getTracks().forEach(t=>t.stop());
       clearInterval(adminRecTimer);
-      adminVoiceBlob=new Blob(adminAudioChunks,{type:"audio/webm"});
+      adminVoiceBlob=new Blob(adminAudioChunks,{type:adminMediaRecorder.mimeType||"audio/webm"});
       if(btn){btn.innerHTML=MIC_SVG;btn.style.color="#4dc98a";}
       if(pill){pill.classList.remove("recording");pill.classList.add("recorded");}
       if(ta) ta.placeholder="✓ Voice note ready — tap ↑ to send";
@@ -474,7 +485,7 @@ async function toggleAdminRecording(){
         status.innerHTML=`<audio controls src="${previewUrl}" style="height:32px;flex:1"></audio><button onclick="discardAdminVoice()" style="background:none;border:none;color:#d9503a;font-size:16px;cursor:pointer;padding:4px 8px" title="Discard">✕ Discard</button>`;
       }
     };
-    adminMediaRecorder.start();
+    adminMediaRecorder.start(1000);
     if(btn){btn.innerHTML=WAVE_HTML;btn.style.color="";}
     if(pill){pill.classList.add("recording");pill.classList.remove("recorded");}
     let secs=0;
@@ -822,8 +833,10 @@ async function sendProfilePanelMsg(uid){
   /* Upload admin voice note if recorded */
   let voiceUrl=null;
   if(adminVoiceBlob){
-    const path=`admin/genie-${uid}-${Date.now()}.webm`;
-    voiceUrl=await uploadToStorage("chat-voice",path,adminVoiceBlob,"audio/webm");
+    const vMime=adminVoiceBlob.type||"audio/webm";
+    const vExt=vMime.includes("mp4")?"mp4":vMime.includes("ogg")?"ogg":"webm";
+    const path=`admin/genie-${uid}-${Date.now()}.${vExt}`;
+    voiceUrl=await uploadToStorage("chat-voice",path,adminVoiceBlob,vMime);
     adminVoiceBlob=null;
     const btn=document.getElementById("admin-mic-btn");
     const status=document.getElementById("admin-voice-status");

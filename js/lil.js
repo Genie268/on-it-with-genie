@@ -121,8 +121,10 @@ async function sendChatMsg(){
   /* Upload voice if present */
   let voiceUrl=null;
   if(chatVoiceBlob&&S.user?.supabaseId){
-    const path=`${S.user.supabaseId}/chat-${Date.now()}.webm`;
-    voiceUrl=await uploadToStorage("chat-voice",path,chatVoiceBlob,"audio/webm");
+    const vMime=chatVoiceBlob.type||"audio/webm";
+    const vExt=vMime.includes("mp4")?"mp4":vMime.includes("ogg")?"ogg":"webm";
+    const path=`${S.user.supabaseId}/chat-${Date.now()}.${vExt}`;
+    voiceUrl=await uploadToStorage("chat-voice",path,chatVoiceBlob,vMime);
     chatVoiceBlob=null;
   }
 
