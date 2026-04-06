@@ -151,9 +151,17 @@ async function renderAdmin(){
   adminTab("overview");
 }
 
-function checkAdminPin(){
+async function checkAdminPin(){
   const pin=(el("admin-pin-input")?.value||"").trim();
-  if(pin===ADMIN_PIN){
+  /* Check DB-stored PIN first, fallback to hardcoded */
+  let validPin=ADMIN_PIN;
+  if(sb){
+    try{
+      const {data}=await sb.from("app_settings").select("value").eq("key","admin_pin").single();
+      if(data&&data.value) validPin=data.value;
+    }catch(e){}
+  }
+  if(pin===validPin){
     trackEvent("admin_login");
     S._adminAuth=true;
     const msg=el("admin-pin-msg");
@@ -165,6 +173,85 @@ function checkAdminPin(){
     const input=el("admin-pin-input");
     if(input){input.value="";input.focus();}
   }
+}
+
+/* ── ADMIN PIN MANAGEMENT ── */
+async function changeAdminPin(){
+  const newPin=prompt("Enter new admin PIN:");
+  if(!newPin||!newPin.trim())return;
+  if(newPin.trim().length<4){showToast("PIN must be at least 4 characters","error");return;}
+  if(!sb){showToast("Database not connected","error");return;}
+  try{
+    await sb.from("app_settings").upsert({key:"admin_pin",value:newPin.trim()},{onConflict:"key"});
+    showToast("Admin PIN updated","success");
+  }catch(e){showToast("Failed to update PIN","error");}
+}
+
+/* ── ACCESS CODE MANAGEMENT ── */
+async function loadAccessCodes(){
+  if(!sb)return[];
+  try{
+    const {data}=await sb.from("access_codes").select("*").order("created_at",{ascending:false});
+    return data||[];
+  }catch(e){return[];}
+}
+
+async function createAccessCode(){
+  const code=prompt("Enter code (e.g. GENIE100):");
+  if(!code||!code.trim())return;
+  const discount=prompt("Discount percentage (0-100, 100=free):");
+  if(discount===null)return;
+  const pct=parseInt(discount);
+  if(isNaN(pct)||pct<0||pct>100){showToast("Invalid discount percentage","error");return;}
+  const maxUses=prompt("Max uses (0=unlimited):")||"0";
+  if(!sb){showToast("Database not connected","error");return;}
+  try{
+    await sb.from("access_codes").insert({code:code.trim().toUpperCase(),discount_percent:pct,max_uses:parseInt(maxUses)||0,times_used:0,active:true});
+    showToast(`Code ${code.trim().toUpperCase()} created`,"success");
+    renderAdminSettings();
+  }catch(e){showToast("Failed to create code","error");}
+}
+
+async function toggleAccessCode(id,active){
+  if(!sb)return;
+  try{
+    await sb.from("access_codes").update({active:!active}).eq("id",id);
+    showToast(active?"Code deactivated":"Code activated",active?"error":"success");
+    renderAdminSettings();
+  }catch(e){showToast("Failed to update code","error");}
+}
+
+async function deleteAccessCode(id){
+  if(!confirm("Delete this access code permanently?"))return;
+  if(!sb)return;
+  try{
+    await sb.from("access_codes").delete().eq("id",id);
+    showToast("Code deleted","info");
+    renderAdminSettings();
+  }catch(e){showToast("Failed to delete code","error");}
+}
+
+async function renderAdminSettings(){
+  const c=el("admin-content");if(!c)return;
+  const codes=await loadAccessCodes();
+  c.innerHTML=`<div style="padding:18px">
+    <h3 style="font-size:14px;font-weight:700;color:#e0e0e0;margin-bottom:14px">🔐 Admin PIN</h3>
+    <p style="font-size:12px;color:#888;margin-bottom:10px">Change the PIN required to access this admin dashboard.</p>
+    <button class="bs" style="padding:8px 16px;font-size:13px" onclick="changeAdminPin()">Change PIN</button>
+
+    <h3 style="font-size:14px;font-weight:700;color:#e0e0e0;margin:24px 0 14px">🎟 Access Codes</h3>
+    <p style="font-size:12px;color:#888;margin-bottom:10px">Manage discount and free-access codes. You control who gets in and for how long.</p>
+    <button class="bs" style="padding:8px 16px;font-size:13px;margin-bottom:14px" onclick="createAccessCode()">+ Create Code</button>
+    ${codes.length===0?`<p style="font-size:12px;color:#555">No access codes yet.</p>`:`
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${codes.map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#111;border:1px solid ${c.active?"#2a2a2a":"#d9503a44"};border-radius:8px">
+        <span style="font-weight:700;font-size:13px;color:${c.active?"#c49a1c":"#555"};min-width:100px;font-family:monospace">${c.code}</span>
+        <span style="font-size:11px;color:#888;flex:1">${c.discount_percent===100?"FREE":c.discount_percent+"% off"} · ${c.max_uses===0?"Unlimited":c.times_used+"/"+c.max_uses} uses</span>
+        <button onclick="toggleAccessCode('${c.id}',${c.active})" style="background:none;border:1px solid ${c.active?"#d9503a55":"#4dc98a55"};color:${c.active?"#d9503a":"#4dc98a"};font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer">${c.active?"Deactivate":"Activate"}</button>
+        <button onclick="deleteAccessCode('${c.id}')" style="background:none;border:1px solid #33333366;color:#555;font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer">✕</button>
+      </div>`).join("")}
+    </div>`}
+  </div>`;
 }
 
 function getPendingInbox(){
@@ -188,7 +275,7 @@ function adminTab(tab){
   const flaggedCount=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
   const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
   const bdg=(n)=>n>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:5px;vertical-align:middle">${n}</span>`:"";
-  ["overview","challengers","flagged","inbox","analytics"].forEach(t=>{
+  ["overview","challengers","flagged","inbox","analytics","settings"].forEach(t=>{
     const btn = el("tab-"+t);
     if(!btn) return;
     btn.style.borderBottomColor = t===tab ? "#c49a1c" : "transparent";
@@ -199,6 +286,7 @@ function adminTab(tab){
     if(t==="inbox") btn.innerHTML=`Inbox${bdg(inboxCount)}`;
     if(t==="flagged") btn.innerHTML=`Attention${bdg(flaggedCount)}`;
     if(t==="analytics") btn.innerHTML=`Analytics`;
+    if(t==="settings") btn.innerHTML=`Settings`;
   });
   const c = el("admin-content");
   if(!c) return;
@@ -207,6 +295,7 @@ function adminTab(tab){
   if(tab==="flagged")     renderAdminFlagged(c);
   if(tab==="inbox")       renderAdminInbox(c);
   if(tab==="analytics")   renderAdminAnalytics(c);
+  if(tab==="settings")    renderAdminSettings();
 }
 
 async function loadSystemHealth(){

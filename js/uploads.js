@@ -184,10 +184,16 @@ async function subUp(){
   /* Upload voice proof to Supabase Storage */
   let voiceUrl=null;
   if(S.voiceBlob&&S.user?.supabaseId){
-    const vMime=S.voiceMime||"audio/webm";
-    const vExt=vMime.includes("mp4")?"mp4":vMime.includes("ogg")?"ogg":"webm";
-    const path=`${S.user.supabaseId}/day${S.day}-voice-${Date.now()}.${vExt}`;
-    voiceUrl=await uploadToStorage("uploads",path,S.voiceBlob,vMime);
+    if(S.voiceBlob.size<100){
+      console.warn("Voice blob too small:",S.voiceBlob.size,"bytes — skipping upload");
+      showToast("Voice note was empty — try recording again","error");
+    } else {
+      const vMime=S.voiceMime||S.voiceBlob.type||"audio/webm";
+      const vExt=vMime.includes("mp4")?"mp4":vMime.includes("ogg")?"ogg":"webm";
+      const path=`${S.user.supabaseId}/day${S.day}-voice-${Date.now()}.${vExt}`;
+      voiceUrl=await uploadToStorage("uploads",path,S.voiceBlob,vMime);
+      if(!voiceUrl) showToast("Voice upload failed — proof saved without audio","error");
+    }
   }
 
   /* Build the upload record */
