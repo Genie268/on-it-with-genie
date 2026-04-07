@@ -102,7 +102,8 @@ function getTotalUnreadCount(){
 function timeAgo(dateStr){
   const now=Date.now(),then=new Date(dateStr).getTime();
   const diff=Math.floor((now-then)/1000);
-  if(diff<60) return "just now";
+  if(diff<5) return "just now";
+  if(diff<60) return diff+"s ago";
   if(diff<3600) return Math.floor(diff/60)+"m ago";
   if(diff<86400) return Math.floor(diff/3600)+"h ago";
   return Math.floor(diff/86400)+"d ago";
@@ -441,7 +442,7 @@ function renderAdminOverview(c){
       messagesSection+=`<div style="padding:8px 12px;${borderB}cursor:pointer;display:flex;gap:8px;align-items:center${hasUnread?";background:rgba(217,80,58,.04)":""}" onclick="${challenger?`openProfilePanel('${m.challenger_id}')`:""}">`
         +`<div style="width:32px;height:32px;border-radius:50%;background:rgba(196,154,28,.1);border:1.5px solid rgba(196,154,28,.25);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#c49a1c;flex-shrink:0">${ini}</div>`
         +`<div style="flex:1;min-width:0">`
-        +`<div style="display:flex;justify-content:space-between;align-items:center"><p style="font-size:12px;font-weight:${hasUnread?"800":"600"};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</p><span class="muted" style="font-size:10px;flex-shrink:0">${ta}</span></div>`
+        +`<div style="display:flex;justify-content:space-between;align-items:center"><p style="font-size:12px;font-weight:${hasUnread?"800":"600"};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</p><span class="muted" data-live-ts="${m.created_at}" style="font-size:10px;flex-shrink:0">${ta}</span></div>`
         +`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1px"><p class="muted" style="font-size:11px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${hasUnread?"color:#ccc":""}"><span style="opacity:.6">${senderPrefix}</span>${isVoice&&!preview?"🎙 Voice note":preview||"🎙 Voice note"}</p>${hasUnread?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;flex-shrink:0;margin-left:6px">${unreadCt}</span>`:""}</div>`
         +`</div></div>`;
     });
@@ -791,7 +792,7 @@ async function renderAdminAnalytics(c){
         </div>
         <div style="text-align:right;flex-shrink:0;margin-left:10px">
           <span style="font-size:10px;color:#555">${who}</span>
-          <span style="font-size:10px;color:#444;margin-left:6px">${ago}</span>
+          <span data-live-ts="${e.created_at}" style="font-size:10px;color:#444;margin-left:6px">${ago}</span>
         </div>
       </div>`;
     };
@@ -873,17 +874,6 @@ async function renderAdminAnalytics(c){
   }catch(e){
     c.innerHTML=`<div style="text-align:center;padding:40px 0"><p style="color:#d9503a;font-size:12px">Failed to load analytics: ${e.message}</p></div>`;
   }
-}
-
-function timeAgo(ts){
-  const diff=Date.now()-new Date(ts).getTime();
-  const mins=Math.floor(diff/60000);
-  if(mins<1)return "just now";
-  if(mins<60)return mins+"m ago";
-  const hrs=Math.floor(mins/60);
-  if(hrs<24)return hrs+"h ago";
-  const days=Math.floor(hrs/24);
-  return days+"d ago";
 }
 
 async function togRv(uid,i){

@@ -207,10 +207,14 @@ document.addEventListener("DOMContentLoaded",()=>{
     }
     /* Start realtime + fallback polling for new challenger messages */
     startAdminPoll();
-    setTimeout(()=>updateTabTitle(),2000);
+    setTimeout(()=>updateTabTitle(),500);
   } else if(loadState()){
     goTo('dash');
+    /* Start live timestamps for challenger side too */
+    if(typeof startLiveTimestamps==="function") startLiveTimestamps();
   }
+  /* Auto-refresh tab title every second to stay in sync */
+  setInterval(()=>{if(typeof updateTabTitle==="function")updateTabTitle();},1000);
 });
 
 function startAdminPoll(){
@@ -226,8 +230,33 @@ function startAdminPoll(){
             if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
               new Notification("New message from challenger",{body:(m.message||"🎙 Voice note").slice(0,80)});
             }
-            /* Refresh data and badges */
+            /* Instantly add to unread cache for immediate badge update */
+            if(typeof adminUnreadMessages!=="undefined"){
+              adminUnreadMessages.push({id:m.id,challenger_id:m.challenger_id});
+            }
+            /* Optimistic: update tab title immediately before full refresh */
+            updateTabTitle();
+            /* Full refresh for data + re-render */
             adminRefreshBadges();
+            /* Refresh profile panel chat if open for this challenger */
+            _refreshOpenProfileChat(m.challenger_id);
+          }
+        })
+        /* Listen for UPDATE events (read receipts, edits) */
+        .on("postgres_changes",{event:"UPDATE",schema:"public",table:"chat_messages"},payload=>{
+          const m=payload.new;
+          /* If admin's message was read by challenger, refresh the open chat */
+          if(m.sender==="genie"&&m.read_at){
+            _refreshOpenProfileChat(m.challenger_id);
+          }
+          /* If a challenger message was marked read (by us), update badge immediately */
+          if(m.sender==="challenger"&&m.read_at){
+            if(typeof adminUnreadMessages!=="undefined"){
+              adminUnreadMessages=adminUnreadMessages.filter(x=>x.id!==m.id);
+            }
+            updateTabTitle();
+            /* Re-render tabs to update badge counts */
+            if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
           }
         })
         .on("postgres_changes",{event:"INSERT",schema:"public",table:"uploads"},()=>{
@@ -236,8 +265,22 @@ function startAdminPoll(){
         .subscribe();
     }catch(e){console.error("Realtime subscription failed:",e);}
   }
-  /* Fallback poll every 60s in case realtime drops */
-  _adminPollTimer=setInterval(()=>adminRefreshBadges(),60000);
+  /* Start live timestamp ticker */
+  if(typeof startLiveTimestamps==="function") startLiveTimestamps();
+  /* Fallback poll every 30s in case realtime drops */
+  _adminPollTimer=setInterval(()=>adminRefreshBadges(),30000);
+}
+
+/* Helper: refresh the profile panel chat if it's open for a specific challenger */
+function _refreshOpenProfileChat(challengerId){
+  const panel=document.getElementById("profile-panel");
+  if(!panel||panel.style.transform!=="translateX(0px)")return;
+  const thread=document.getElementById("pf-chat-thread");
+  if(!thread)return;
+  /* Check if this panel is showing this challenger's chat */
+  if(typeof loadProfilePanelChat==="function"&&panel.dataset.challengerId===challengerId){
+    loadProfilePanelChat(challengerId);
+  }
 }
 
 async function adminRefreshBadges(){
@@ -254,6 +297,7 @@ async function adminRefreshBadges(){
 
 function stopAdminPoll(){
   if(_adminPollTimer){clearInterval(_adminPollTimer);_adminPollTimer=null;}
+  if(typeof stopLiveTimestamps==="function") stopLiveTimestamps();
 }
 
 
@@ -632,6 +676,9 @@ function seekAudio(id,e){
 async function openProfilePanel(uid){
   const u=getAM().find(x=>x.id===uid);
   if(!u)return;
+  /* Track which challenger's profile is open for realtime updates */
+  const panel=document.getElementById("profile-panel");
+  if(panel) panel.dataset.challengerId=uid;
   const startFmt=u.startDate?new Date(u.startDate).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"—";
   const avatarHTML=u.photo
     ?`<img src="${u.photo}" style="width:52px;height:52px;object-fit:cover;border-radius:50%;border:2px solid #2a2a2a;flex-shrink:0">`
@@ -734,12 +781,15 @@ async function openProfilePanel(uid){
   `;
   document.getElementById("profile-panel").style.transform="translateX(0)";
   document.getElementById("profile-panel-backdrop").style.display="block";
-  /* Mark all challenger messages as read */
+  /* Mark all challenger messages as read — optimistic: update local cache immediately */
+  if(typeof adminUnreadMessages!=="undefined"){
+    adminUnreadMessages=adminUnreadMessages.filter(m=>m.challenger_id!==uid);
+    /* Immediately update tab title and badges */
+    updateTabTitle();
+    if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+  }
   if(sb){
-    sb.from("chat_messages").update({read_at:new Date().toISOString()}).eq("challenger_id",uid).eq("sender","challenger").is("read_at",null).then(()=>{
-      /* Update local unread cache */
-      adminUnreadMessages=adminUnreadMessages.filter(m=>m.challenger_id!==uid);
-    }).catch(()=>{});
+    sb.from("chat_messages").update({read_at:new Date().toISOString()}).eq("challenger_id",uid).eq("sender","challenger").is("read_at",null).then(()=>{}).catch(()=>{});
   }
   /* Load chat messages async */
   loadProfilePanelChat(uid);

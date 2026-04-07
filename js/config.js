@@ -252,7 +252,11 @@ function confirmDuration(){
 }
 
 
-/* ── DYNAMIC TAB TITLE WITH UNREAD COUNT ── */
+/* ── DYNAMIC TAB TITLE + FAVICON BADGE ── */
+let _lastTabCount=-1;
+let _originalFavicon=null;
+let _faviconCanvas=null;
+
 function updateTabTitle(){
   const isAdmin=/^\/admin\/?$/.test(window.location.pathname);
   let count=0;
@@ -261,11 +265,76 @@ function updateTabTitle(){
     const inbox=typeof getPendingInbox==="function"?getPendingInbox():[];
     count+=inbox.length;
   } else {
-    /* Challenger side: count from badge */
     const badge=el("msg-badge");
     if(badge&&badge.style.display!=="none") count=parseInt(badge.textContent)||0;
   }
   document.title=count>0?`(${count}) On It With Genie`:"On It With Genie";
+  /* Update favicon with badge */
+  if(count!==_lastTabCount){
+    _lastTabCount=count;
+    _updateFaviconBadge(count);
+  }
+}
+
+function _updateFaviconBadge(count){
+  if(!_faviconCanvas){
+    _faviconCanvas=document.createElement("canvas");
+    _faviconCanvas.width=32;_faviconCanvas.height=32;
+  }
+  const canvas=_faviconCanvas;
+  const ctx=canvas.getContext("2d");
+  /* Draw base favicon */
+  ctx.clearRect(0,0,32,32);
+  ctx.fillStyle="#060606";
+  ctx.beginPath();
+  if(ctx.roundRect){ctx.roundRect(0,0,32,32,[6]);}
+  else{ctx.moveTo(6,0);ctx.lineTo(26,0);ctx.quadraticCurveTo(32,0,32,6);ctx.lineTo(32,26);ctx.quadraticCurveTo(32,32,26,32);ctx.lineTo(6,32);ctx.quadraticCurveTo(0,32,0,26);ctx.lineTo(0,6);ctx.quadraticCurveTo(0,0,6,0);}
+  ctx.fill();
+  ctx.fillStyle="#c49a1c";ctx.font="900 20px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText("G",16,18);
+  /* Draw badge circle if count > 0 */
+  if(count>0){
+    const text=count>99?"99+":String(count);
+    ctx.fillStyle="#d9503a";
+    ctx.beginPath();ctx.arc(24,8,9,0,2*Math.PI);ctx.fill();
+    ctx.fillStyle="#fff";ctx.font="bold 10px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText(text,24,8.5);
+  }
+  /* Apply to link tag */
+  let link=document.querySelector("link[rel='icon']");
+  if(!link){link=document.createElement("link");link.rel="icon";document.head.appendChild(link);}
+  link.href=canvas.toDataURL("image/png");
+}
+
+
+/* ── LIVE TIMESTAMP TICKER (updates every second) ── */
+let _liveTimeInterval=null;
+
+function startLiveTimestamps(){
+  if(_liveTimeInterval)return;
+  _liveTimeInterval=setInterval(()=>{
+    document.querySelectorAll("[data-live-ts]").forEach(el=>{
+      const ts=el.getAttribute("data-live-ts");
+      if(ts) el.textContent=_liveTimeAgo(ts);
+    });
+  },1000);
+}
+
+function _liveTimeAgo(dateStr){
+  const diff=Date.now()-new Date(dateStr).getTime();
+  const secs=Math.floor(diff/1000);
+  if(secs<5) return "just now";
+  if(secs<60) return secs+"s ago";
+  const mins=Math.floor(secs/60);
+  if(mins<60) return mins+"m ago";
+  const hrs=Math.floor(mins/60);
+  if(hrs<24) return hrs+"h ago";
+  const days=Math.floor(hrs/24);
+  return days+"d ago";
+}
+
+function stopLiveTimestamps(){
+  if(_liveTimeInterval){clearInterval(_liveTimeInterval);_liveTimeInterval=null;}
 }
 
 
@@ -283,9 +352,23 @@ function startChallengerRealtime(){
           if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
             new Notification("Message from Genie",{body:(m.message||"🎙 Voice note").slice(0,80),icon:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23060606'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-size='36' font-weight='900' fill='%23c49a1c' font-family='system-ui'%3EG%3C/text%3E%3C/svg%3E"});
           }
-          /* Refresh chat and badge */
+          /* Refresh chat and badge instantly */
           if(typeof renderChat==="function") renderChat();
           if(typeof updateMsgBadge==="function") updateMsgBadge();
+          updateTabTitle();
+        }
+      })
+      /* Listen for read receipt updates on challenger's messages */
+      .on("postgres_changes",{event:"UPDATE",schema:"public",table:"chat_messages",filter:`challenger_id=eq.${S.user.supabaseId}`},payload=>{
+        const m=payload.new;
+        /* If our message was marked as read, refresh chat to show ✓✓ */
+        if(m.sender==="challenger"&&m.read_at){
+          if(typeof renderChat==="function") renderChat();
+        }
+        /* If a genie message was marked read by us, update badge */
+        if(m.sender==="genie"&&m.read){
+          if(typeof updateMsgBadge==="function") updateMsgBadge();
+          updateTabTitle();
         }
       })
       .subscribe();

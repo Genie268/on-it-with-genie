@@ -105,7 +105,16 @@ async function renderChat(){
   </div>`;
   setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},60);
   if(sb&&S.user.supabaseId&&unread>0){
-    sb.from("chat_messages").update({read:true,read_at:new Date().toISOString()}).eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false).then(()=>{});
+    /* Mark read instantly in UI — update badge right away without waiting for DB */
+    sb.from("chat_messages").update({read:true,read_at:new Date().toISOString()}).eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false).then(()=>{
+      /* After DB confirms, refresh badge and tab title */
+      if(typeof updateMsgBadge==="function") updateMsgBadge();
+      if(typeof updateTabTitle==="function") updateTabTitle();
+    });
+    /* Optimistic: hide badge immediately */
+    const badge=el("msg-badge");
+    if(badge){badge.style.display="none";badge.textContent="0";}
+    if(typeof updateTabTitle==="function") updateTabTitle();
   }
 }
 
