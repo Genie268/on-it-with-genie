@@ -205,16 +205,25 @@ document.addEventListener("DOMContentLoaded",()=>{
     if("Notification" in window && Notification.permission==="default"){
       Notification.requestPermission();
     }
-    /* Start realtime + fallback polling for new challenger messages */
+    /* Start realtime + polling for new challenger messages */
     startAdminPoll();
     setTimeout(()=>updateTabTitle(),500);
   } else if(loadState()){
     goTo('dash');
-    /* Start live timestamps for challenger side too */
-    if(typeof startLiveTimestamps==="function") startLiveTimestamps();
+    /* Start challenger polling for live updates */
+    startChallengerPoll();
   }
-  /* Auto-refresh tab title every second to stay in sync */
-  setInterval(()=>{if(typeof updateTabTitle==="function")updateTabTitle();},1000);
+  /* Refresh immediately when tab becomes visible */
+  document.addEventListener("visibilitychange",()=>{
+    if(!document.hidden){
+      if(isAdmin){
+        adminRefreshBadges();
+      } else if(S.user?.supabaseId){
+        if(typeof updateMsgBadge==="function") updateMsgBadge();
+        if(typeof renderChat==="function") renderChat();
+      }
+    }
+  });
 });
 
 function startAdminPoll(){
@@ -267,8 +276,8 @@ function startAdminPoll(){
   }
   /* Start live timestamp ticker */
   if(typeof startLiveTimestamps==="function") startLiveTimestamps();
-  /* Fallback poll every 30s in case realtime drops */
-  _adminPollTimer=setInterval(()=>adminRefreshBadges(),30000);
+  /* Poll every 5s for reliable real-time feel */
+  _adminPollTimer=setInterval(()=>adminRefreshBadges(),5000);
 }
 
 /* Helper: refresh the profile panel chat if it's open for a specific challenger */
@@ -298,6 +307,25 @@ async function adminRefreshBadges(){
 function stopAdminPoll(){
   if(_adminPollTimer){clearInterval(_adminPollTimer);_adminPollTimer=null;}
   if(typeof stopLiveTimestamps==="function") stopLiveTimestamps();
+}
+
+
+/* ── CHALLENGER REALTIME POLLING ── */
+let _challengerPollTimer=null;
+function startChallengerPoll(){
+  if(_challengerPollTimer)return;
+  /* Start realtime subscription */
+  if(typeof startChallengerRealtime==="function") startChallengerRealtime();
+  /* Start live timestamps */
+  if(typeof startLiveTimestamps==="function") startLiveTimestamps();
+  /* Poll every 5s: refresh badge + tab title for reliable real-time feel */
+  _challengerPollTimer=setInterval(()=>{
+    if(typeof updateMsgBadge==="function") updateMsgBadge();
+  },5000);
+  /* Initial badge + tab title update */
+  setTimeout(()=>{
+    if(typeof updateMsgBadge==="function") updateMsgBadge();
+  },500);
 }
 
 

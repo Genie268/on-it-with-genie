@@ -28,7 +28,8 @@ function renderDash(){
   renderGrid(); renderUnlock(); renderRecCard();
   updateMsgBadge();
   initPushNotifications();
-  startChallengerRealtime();
+  /* Start realtime + polling (startChallengerPoll handles both) */
+  if(typeof startChallengerPoll==="function") startChallengerPoll();
   /* Request notification permission for challenger */
   if("Notification" in window && Notification.permission==="default"){
     Notification.requestPermission();
