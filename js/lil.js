@@ -82,9 +82,12 @@ async function renderChat(){
     if(!body) return "";
     /* Read receipt for challenger's messages */
     const readCheck=isMe&&m.read_at?`<span style="color:rgba(0,0,0,.35);font-size:9px;margin-left:4px" title="Read">✓✓</span>`:(isMe?`<span style="color:rgba(0,0,0,.2);font-size:9px;margin-left:4px">✓</span>`:"");
+    /* Reply button */
+    const msgPreview=(m.message||"").replace(/'/g,"&#39;").slice(0,40);
+    const replyBtn=m.id?` <span onclick="event.stopPropagation();chatSetReply('${m.id}','${msgPreview}')" style="cursor:pointer;color:${isMe?"rgba(0,0,0,.3)":"#444"};font-size:10px;margin-left:6px;padding:1px 4px;border-radius:3px" title="Reply">↩</span>`:"";
     return `${dateSep}<div id="msg-${m.id||i}" class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
       <div class="cmsg-body">${body}</div>
-      <div class="cmsg-time">${isMe?"You":"Genie"} · ${timeStr}${readCheck}</div>
+      <div class="cmsg-time">${isMe?"You":"Genie"} · ${timeStr}${readCheck}${replyBtn}</div>
     </div>`;
   }).join("");
 
@@ -106,6 +109,24 @@ async function renderChat(){
   }
 }
 
+/* ── CHALLENGER REPLY SYSTEM ── */
+let _chatReplyToId=null;
+function chatSetReply(msgId,preview){
+  _chatReplyToId=msgId;
+  let indicator=document.getElementById("chat-reply-indicator");
+  if(!indicator){
+    indicator=document.createElement("div");
+    indicator.id="chat-reply-indicator";
+    indicator.style.cssText="font-size:11px;color:#888;padding:4px 14px;background:#0f0f0f;border-left:2px solid #c49a1c;margin:0;display:flex;justify-content:space-between;align-items:center";
+    const chatBar=document.querySelector(".chat-bar");
+    if(chatBar)chatBar.parentNode.insertBefore(indicator,chatBar);
+  }
+  indicator.innerHTML=`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">↩ Replying to: <em>${preview||"voice note"}</em></span><span onclick="_chatReplyToId=null;this.parentNode.remove()" style="cursor:pointer;color:#555;margin-left:8px;font-size:14px">×</span>`;
+  indicator.style.display="flex";
+  const ta=el("chat-input");
+  if(ta)ta.focus();
+}
+
 async function sendChatMsg(){
   trackEvent("chat_msg_sent",{sender:"challenger"});
   const ta=el("chat-input");
@@ -117,6 +138,11 @@ async function sendChatMsg(){
   if(pill){pill.classList.remove("recording","recorded");}
   const micBtn=el("chat-mic-btn");
   if(micBtn){micBtn.innerHTML=MIC_SVG;micBtn.style.color="";}
+  /* Capture and clear reply */
+  const replyToId=_chatReplyToId;
+  _chatReplyToId=null;
+  const indicator=document.getElementById("chat-reply-indicator");
+  if(indicator)indicator.remove();
 
   /* Upload voice if present */
   let voiceUrl=null;
@@ -125,13 +151,14 @@ async function sendChatMsg(){
     const vExt=vMime.includes("mp4")?"mp4":vMime.includes("ogg")?"ogg":"webm";
     const path=`${S.user.supabaseId}/chat-${Date.now()}.${vExt}`;
     voiceUrl=await uploadToStorage("chat-voice",path,chatVoiceBlob,vMime);
+    if(!voiceUrl) showToast("Voice upload failed","error");
     chatVoiceBlob=null;
   }
 
   if(sb&&S.user?.supabaseId){
     try{
-      await sb.from("chat_messages").insert({challenger_id:S.user.supabaseId,sender:"challenger",message:msg||"",voice_url:voiceUrl||null});
-    }catch(e){console.error("Chat send error:",e);}
+      await sb.from("chat_messages").insert({challenger_id:S.user.supabaseId,sender:"challenger",message:msg||"",voice_url:voiceUrl||null,reply_to_id:replyToId||null});
+    }catch(e){console.error("Chat send error:",e);showToast("Message failed to send","error");}
   }
   renderChat();
 }

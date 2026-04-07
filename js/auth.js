@@ -28,10 +28,11 @@ async function syncToSupabase(){
 /* ── STORAGE UPLOAD (REST — works with anon key) ── */
 async function uploadToStorage(bucket,path,blob,contentType){
   try{
-    const url=`${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeURIComponent(path)}`;
+    const encodedPath=path.split("/").map(s=>encodeURIComponent(s)).join("/");
+    const url=`${SUPABASE_URL}/storage/v1/object/${bucket}/${encodedPath}`;
     const res=await fetch(url,{method:"POST",headers:{"Authorization":`Bearer ${SUPABASE_ANON_KEY}`,"Content-Type":contentType,"x-upsert":"true"},body:blob});
     if(!res.ok){console.error("Storage upload failed",res.status,await res.text());return null;}
-    return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+    return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${encodedPath}`;
   }catch(e){console.error("Storage upload error",e);return null;}
 }
 
