@@ -371,13 +371,14 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
   </div>
 
   <!-- Tab bar -->
-  <div style="display:flex;border-bottom:1px solid #171717;background:var(--nav-bg);flex-shrink:0">
-    <button id="tab-overview" onclick="adminTab('overview')" style="padding:11px 18px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid #c49a1c;color:#c49a1c;cursor:pointer;font-family:inherit">Overview</button>
-    <button id="tab-challengers" onclick="adminTab('challengers')" style="padding:11px 18px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit">Challengers</button>
-    <button id="tab-flagged" onclick="adminTab('flagged')" style="padding:11px 18px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit">Needs Attention</button>
-    <button id="tab-inbox" onclick="adminTab('inbox')" style="padding:11px 18px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit">Inbox</button>
-    <button id="tab-analytics" onclick="adminTab('analytics')" style="padding:11px 18px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit">Analytics</button>
-    <button id="tab-settings" onclick="adminTab('settings')" style="padding:11px 18px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit">Settings</button>
+  <div style="display:flex;border-bottom:1px solid #171717;background:var(--nav-bg);flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch">
+    <button id="tab-overview" onclick="adminTab('overview')" style="padding:11px 16px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid #c49a1c;color:#c49a1c;cursor:pointer;font-family:inherit;white-space:nowrap">Overview</button>
+    <button id="tab-messages" onclick="adminTab('messages')" style="padding:11px 16px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit;white-space:nowrap">Messages</button>
+    <button id="tab-challengers" onclick="adminTab('challengers')" style="padding:11px 16px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit;white-space:nowrap">Challengers</button>
+    <button id="tab-flagged" onclick="adminTab('flagged')" style="padding:11px 16px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit;white-space:nowrap">Attention</button>
+    <button id="tab-inbox" onclick="adminTab('inbox')" style="padding:11px 16px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit;white-space:nowrap">Reviews</button>
+    <button id="tab-analytics" onclick="adminTab('analytics')" style="padding:11px 16px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit;white-space:nowrap">Analytics</button>
+    <button id="tab-settings" onclick="adminTab('settings')" style="padding:11px 16px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit;white-space:nowrap">Settings</button>
   </div>
 
   <!-- Tab content -->

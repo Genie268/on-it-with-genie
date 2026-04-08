@@ -249,7 +249,13 @@ function startAdminPoll(){
             }
             /* Optimistic: update tab title + re-render immediately */
             updateTabTitle();
-            if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+            /* Refresh Messages tab chat if viewing this challenger */
+            if(adminCurrentTab==="messages"&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId===m.challenger_id){
+              if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(m.challenger_id);
+              if(typeof _markMsgTabRead==="function") _markMsgTabRead(m.challenger_id);
+            } else {
+              if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+            }
             /* Refresh profile panel chat if open for this challenger */
             _refreshOpenProfileChat(m.challenger_id);
             /* Full background data sync */
@@ -262,6 +268,10 @@ function startAdminPoll(){
           /* If admin's message was read by challenger, refresh the open chat */
           if(m.sender==="genie"&&m.read_at){
             _refreshOpenProfileChat(m.challenger_id);
+            /* Also refresh Messages tab if viewing this conversation */
+            if(adminCurrentTab==="messages"&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId===m.challenger_id){
+              if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(m.challenger_id);
+            }
           }
           /* If a challenger message was marked read (by us), update badge immediately */
           if(m.sender==="challenger"&&m.read_at){
@@ -300,6 +310,10 @@ async function _adminLightPoll(){
       await loadAdminMessages();
       await loadAdminData();
       if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+    }
+    /* If on Messages tab, refresh the active chat thread periodically */
+    if(adminCurrentTab==="messages"&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId){
+      if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(_msgActiveChallengerId);
     }
     updateTabTitle();
   }catch(e){}

@@ -272,19 +272,19 @@ function getPendingInbox(){
 function adminTab(tab){
   adminCurrentTab = tab;
   /* Compute badge counts */
-  const inboxCount=getPendingInbox().length;
+  const reviewCount=getPendingInbox().length;
   const flaggedCount=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
   const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
   const bdg=(n)=>n>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:5px;vertical-align:middle">${n}</span>`:"";
-  ["overview","challengers","flagged","inbox","analytics","settings"].forEach(t=>{
+  ["overview","messages","challengers","flagged","inbox","analytics","settings"].forEach(t=>{
     const btn = el("tab-"+t);
     if(!btn) return;
     btn.style.borderBottomColor = t===tab ? "#c49a1c" : "transparent";
     btn.style.color = t===tab ? "#c49a1c" : "#5a5a5a";
-    /* Update tab labels with badge counts */
-    if(t==="overview") btn.innerHTML=`Overview${bdg(unreadCount)}`;
+    if(t==="overview") btn.innerHTML=`Overview`;
+    if(t==="messages") btn.innerHTML=`Messages${bdg(unreadCount)}`;
     if(t==="challengers") btn.innerHTML=`Challengers`;
-    if(t==="inbox") btn.innerHTML=`Inbox${bdg(inboxCount)}`;
+    if(t==="inbox") btn.innerHTML=`Reviews${bdg(reviewCount)}`;
     if(t==="flagged") btn.innerHTML=`Attention${bdg(flaggedCount)}`;
     if(t==="analytics") btn.innerHTML=`Analytics`;
     if(t==="settings") btn.innerHTML=`Settings`;
@@ -292,11 +292,289 @@ function adminTab(tab){
   const c = el("admin-content");
   if(!c) return;
   if(tab==="overview")    renderAdminOverview(c);
+  if(tab==="messages")    renderAdminMessages(c);
   if(tab==="challengers") renderAdminChallengers(c);
   if(tab==="flagged")     renderAdminFlagged(c);
   if(tab==="inbox")       renderAdminInbox(c);
   if(tab==="analytics")   renderAdminAnalytics(c);
   if(tab==="settings")    renderAdminSettings();
+}
+
+/* ── MESSAGES TAB ── */
+let _msgActiveChallengerId=null;
+
+function renderAdminMessages(c){
+  const challengers=getAM();
+  if(!challengers.length&&!adminRecentMessages.length){
+    c.innerHTML=`<div style="text-align:center;padding:60px 20px"><p class="muted">No conversations yet. Messages will appear here when challengers write to you.</p></div>`;
+    return;
+  }
+
+  /* Build conversation list — sorted by most recent message, with unread on top */
+  const convos=[];
+  const seen=new Set();
+  /* Start with recent messages to get ordering */
+  adminRecentMessages.forEach(m=>{
+    if(seen.has(m.challenger_id))return;
+    seen.add(m.challenger_id);
+    const u=challengers.find(x=>x.id===m.challenger_id);
+    convos.push({
+      id:m.challenger_id,
+      name:u?u.name:"Unknown",
+      ini:u?u.ini:"?",
+      photo:u?u.photo:null,
+      lastMsg:m,
+      unread:getUnreadCountForChallenger(m.challenger_id)
+    });
+  });
+  /* Add challengers with no messages yet */
+  challengers.forEach(u=>{
+    if(!seen.has(u.id)){
+      convos.push({id:u.id,name:u.name,ini:u.ini,photo:u.photo,lastMsg:null,unread:0});
+    }
+  });
+  /* Sort: unread first, then by last message time */
+  convos.sort((a,b)=>{
+    if(a.unread&&!b.unread)return -1;
+    if(!a.unread&&b.unread)return 1;
+    if(a.lastMsg&&b.lastMsg) return new Date(b.lastMsg.created_at)-new Date(a.lastMsg.created_at);
+    if(a.lastMsg)return -1;
+    return 1;
+  });
+
+  /* If no active conversation or it doesn't exist, pick the first with unread or first overall */
+  if(!_msgActiveChallengerId||!convos.find(x=>x.id===_msgActiveChallengerId)){
+    const firstUnread=convos.find(x=>x.unread>0);
+    _msgActiveChallengerId=firstUnread?firstUnread.id:(convos[0]?convos[0].id:null);
+  }
+
+  const convoListHtml=convos.map(cv=>{
+    const isActive=cv.id===_msgActiveChallengerId;
+    const preview=cv.lastMsg?(cv.lastMsg.voice_url&&!cv.lastMsg.message?"🎙 Voice note":(cv.lastMsg.sender==="genie"?"You: ":"")+(cv.lastMsg.message||"").slice(0,40)):"No messages yet";
+    const ta=cv.lastMsg?timeAgo(cv.lastMsg.created_at):"";
+    const avatar=cv.photo?`<img src="${cv.photo}" style="width:36px;height:36px;object-fit:cover;border-radius:50%;flex-shrink:0">`:`<div style="width:36px;height:36px;border-radius:50%;background:rgba(196,154,28,.1);border:1.5px solid rgba(196,154,28,.25);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#c49a1c;flex-shrink:0">${cv.ini}</div>`;
+    return `<div onclick="_msgActiveChallengerId='${cv.id}';renderAdminMessages(el('admin-content'))" style="padding:10px 14px;cursor:pointer;display:flex;gap:10px;align-items:center;border-left:3px solid ${isActive?"#c49a1c":"transparent"};background:${isActive?"rgba(196,154,28,.06)":cv.unread?"rgba(217,80,58,.04)":"transparent"};transition:background .15s" onmouseenter="if(!${isActive})this.style.background='rgba(255,255,255,.03)'" onmouseleave="if(!${isActive})this.style.background='${cv.unread?"rgba(217,80,58,.04)":"transparent"}'">
+      ${avatar}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <p style="font-size:13px;font-weight:${cv.unread?"800":"600"};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cv.name}</p>
+          <span class="muted" data-live-ts="${cv.lastMsg?cv.lastMsg.created_at:""}" style="font-size:10px;flex-shrink:0">${ta}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+          <p class="muted" style="font-size:11px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${cv.unread?"color:#ccc":""}">${preview}</p>
+          ${cv.unread?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 5px;flex-shrink:0;margin-left:6px">${cv.unread}</span>`:""}
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  /* Build the active chat thread */
+  const activeConvo=convos.find(x=>x.id===_msgActiveChallengerId);
+  const chatHeaderHtml=activeConvo?`
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #1f1f1f;background:#0a0a0a">
+      ${activeConvo.photo?`<img src="${activeConvo.photo}" style="width:32px;height:32px;object-fit:cover;border-radius:50%">`:`<div style="width:32px;height:32px;border-radius:50%;background:rgba(196,154,28,.1);border:1.5px solid rgba(196,154,28,.25);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#c49a1c">${activeConvo.ini}</div>`}
+      <div style="flex:1;min-width:0">
+        <p style="font-size:14px;font-weight:700;margin:0">${activeConvo.name}</p>
+        <p class="muted" style="font-size:10px;margin:0">Tap to view profile</p>
+      </div>
+      <button onclick="openProfilePanel('${activeConvo.id}')" style="padding:5px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer">Profile →</button>
+    </div>`:"";
+
+  c.innerHTML=`
+    <div style="display:flex;flex-direction:column;height:calc(100vh - 120px);margin:-18px;border-radius:0">
+      <!-- Conversation list -->
+      <div style="border-bottom:1px solid #1f1f1f;max-height:220px;overflow-y:auto;flex-shrink:0">
+        <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;padding:12px 14px 8px">CONVERSATIONS · ${convos.length}</p>
+        ${convoListHtml}
+      </div>
+      <!-- Active chat -->
+      <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+        ${chatHeaderHtml}
+        <div id="msg-tab-thread" style="flex:1;overflow-y:auto;padding:12px 14px">
+          <div style="text-align:center;padding:20px"><span class="muted" style="font-size:11px">Loading...</span></div>
+        </div>
+        <div id="msg-tab-voice-status" style="display:none;padding:4px 14px"></div>
+        <div id="msg-tab-reply-indicator" style="display:none"></div>
+        ${activeConvo?`<div style="padding:10px 14px;border-top:1px solid #1f1f1f;background:#0a0a0a;display:flex;gap:8px;align-items:flex-end">
+          <div class="chat-input-pill" style="flex:1;display:flex;align-items:center;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:0 4px 0 14px">
+            <textarea id="msg-tab-input" class="chat-ta" rows="1" placeholder="Message ${activeConvo.name}..." style="flex:1;background:transparent;border:none;color:#ebebeb;font-size:13px;padding:10px 0;resize:none;outline:none;font-family:inherit;line-height:1.4"></textarea>
+            <button id="msg-tab-mic" onclick="toggleMsgTabRecording()" style="background:none;border:none;color:#888;cursor:pointer;padding:6px 8px;font-size:14px" title="Voice note">🎙</button>
+          </div>
+          <button onclick="sendMsgTabMsg('${activeConvo.id}')" style="width:36px;height:36px;border-radius:50%;background:#c49a1c;border:none;color:#000;font-size:16px;font-weight:900;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">↑</button>
+        </div>`:""}
+      </div>
+    </div>`;
+
+  /* Load chat thread async */
+  if(_msgActiveChallengerId){
+    _loadMsgTabChat(_msgActiveChallengerId);
+    /* Mark messages read for this challenger */
+    _markMsgTabRead(_msgActiveChallengerId);
+  }
+}
+
+async function _loadMsgTabChat(uid){
+  const thread=document.getElementById("msg-tab-thread");
+  if(!thread||!sb)return;
+  try{
+    const {data:msgs}=await sb.from("chat_messages").select("*").eq("challenger_id",uid).order("created_at",{ascending:true});
+    if(!msgs||!msgs.length){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:28px 0">No messages yet. Start the conversation.</p>`;return;}
+    const msgMap={};msgs.forEach(m=>{msgMap[m.id]=m;});
+    let lastDateStr="";
+    thread.innerHTML=msgs.map((m,i)=>{
+      const isMe=m.sender==="genie";
+      const t=new Date(m.created_at);
+      const timeStr=t.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+      const dateStr=t.toLocaleDateString([],{month:"short",day:"numeric"});
+      const aId=`mt-${i}-${t.getTime()}`;
+      let dateSep="";
+      if(dateStr!==lastDateStr){
+        lastDateStr=dateStr;
+        const today=new Date().toLocaleDateString([],{month:"short",day:"numeric"});
+        const yesterday=new Date(Date.now()-86400000).toLocaleDateString([],{month:"short",day:"numeric"});
+        const label=dateStr===today?"Today":dateStr===yesterday?"Yesterday":dateStr;
+        dateSep=`<div style="text-align:center;padding:8px 0 4px"><span style="font-size:10px;color:#444;background:#111;padding:2px 10px;border-radius:10px;font-weight:600">${label}</span></div>`;
+      }
+      let replyQuote="";
+      if(m.reply_to_id&&msgMap[m.reply_to_id]){
+        const orig=msgMap[m.reply_to_id];
+        const origPreview=(orig.message||"").slice(0,50)+(orig.message&&orig.message.length>50?"…":"");
+        replyQuote=`<div style="font-size:11px;color:${isMe?"rgba(0,0,0,.7)":"#999"};border-left:2px solid ${isMe?"rgba(0,0,0,.4)":"#555"};padding:3px 8px;margin-bottom:5px;border-radius:0 4px 4px 0;background:${isMe?"rgba(0,0,0,.12)":"rgba(255,255,255,.04)"}">${origPreview||"🎙 Voice note"}</div>`;
+      }
+      let body=replyQuote;
+      if(m.message&&m.message.trim()) body+=`<p style="margin:0">${m.message}</p>`;
+      if(m.voice_url) body+=buildAudioBubble(m.voice_url,aId);
+      if(!body) return "";
+      const readCheck=isMe&&m.read_at?`<span style="color:rgba(0,0,0,.35);font-size:9px;margin-left:4px" title="Read">✓✓</span>`:(isMe?`<span style="color:rgba(0,0,0,.2);font-size:9px;margin-left:4px">✓</span>`:"");
+      const msgPreview=(m.message||"").slice(0,40).replace(/"/g,"&quot;").replace(/'/g,"\\'");
+      const replyBtn=`<span onclick="event.stopPropagation();_msgTabSetReply('${m.id}','${msgPreview}','${uid}')" style="cursor:pointer;font-size:10px;color:#5a5a5a;margin-left:6px;opacity:0.5;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.5">↩</span>`;
+      return `${dateSep}<div id="msg-${m.id}" class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
+        <div class="cmsg-body">${body}</div>
+        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${timeStr}${readCheck}${replyBtn}</div>
+      </div>`;
+    }).join("");
+    thread.scrollTop=thread.scrollHeight;
+  }catch(e){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">Could not load messages</p>`;}
+}
+
+function _markMsgTabRead(uid){
+  /* Optimistic: remove from local unread cache immediately */
+  if(typeof adminUnreadMessages!=="undefined"){
+    const had=adminUnreadMessages.some(m=>m.challenger_id===uid);
+    adminUnreadMessages=adminUnreadMessages.filter(m=>m.challenger_id!==uid);
+    if(had){
+      updateTabTitle();
+      /* Update just the tab badges, not re-render content */
+      const unreadCount=getTotalUnreadCount();
+      const bdg=(n)=>n>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:5px;vertical-align:middle">${n}</span>`:"";
+      const msgBtn=el("tab-messages");
+      if(msgBtn) msgBtn.innerHTML=`Messages${bdg(unreadCount)}`;
+    }
+  }
+  /* DB update in background */
+  if(sb){
+    sb.from("chat_messages").update({read_at:new Date().toISOString()}).eq("challenger_id",uid).eq("sender","challenger").is("read_at",null).then(()=>{}).catch(()=>{});
+  }
+}
+
+/* Reply system for Messages tab */
+let _msgTabReplyToId=null;
+function _msgTabSetReply(msgId,preview,uid){
+  _msgTabReplyToId=msgId;
+  const indicator=document.getElementById("msg-tab-reply-indicator");
+  if(indicator){
+    indicator.style.display="flex";
+    indicator.style.cssText="display:flex;font-size:11px;color:#888;padding:4px 14px;background:#0f0f0f;border-left:2px solid #c49a1c;justify-content:space-between;align-items:center";
+    indicator.innerHTML=`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">↩ Replying to: <em>${preview||"voice note"}</em></span><span onclick="_msgTabReplyToId=null;document.getElementById('msg-tab-reply-indicator').style.display='none'" style="cursor:pointer;color:#555;margin-left:8px;font-size:14px">×</span>`;
+  }
+  const ta=document.getElementById("msg-tab-input");
+  if(ta)ta.focus();
+}
+
+/* Voice recording for Messages tab */
+let _msgTabVoiceBlob=null;
+let _msgTabRecorder=null;
+let _msgTabRecChunks=[];
+let _msgTabRecTimer=null;
+
+async function toggleMsgTabRecording(){
+  const btn=document.getElementById("msg-tab-mic");
+  const ta=document.getElementById("msg-tab-input");
+  const status=document.getElementById("msg-tab-voice-status");
+  if(_msgTabRecorder&&_msgTabRecorder.state==="recording"){_msgTabRecorder.stop();clearInterval(_msgTabRecTimer);return;}
+  _msgTabVoiceBlob=null;
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    _msgTabRecChunks=[];
+    _msgTabRecorder=_createRecorder(stream);
+    _msgTabRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)_msgTabRecChunks.push(e.data);};
+    _msgTabRecorder.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      clearInterval(_msgTabRecTimer);
+      if(_msgTabRecChunks.length===0||new Blob(_msgTabRecChunks).size<100){
+        _msgTabVoiceBlob=null;
+        if(ta)ta.placeholder="Recording failed — try again";
+        setTimeout(()=>{if(ta)ta.placeholder="Message...";},2500);
+        return;
+      }
+      _msgTabVoiceBlob=new Blob(_msgTabRecChunks,{type:_msgTabRecorder.mimeType||"audio/webm"});
+      if(btn){btn.textContent="🎙";btn.style.color="#4dc98a";}
+      if(ta)ta.placeholder="✓ Voice note ready — tap ↑ to send";
+      if(status){
+        const previewUrl=URL.createObjectURL(_msgTabVoiceBlob);
+        status.style.display="flex";status.style.alignItems="center";status.style.gap="8px";status.style.padding="6px 14px";
+        status.innerHTML=`<audio controls src="${previewUrl}" style="height:32px;flex:1"></audio><button onclick="discardMsgTabVoice()" style="background:none;border:none;color:#d9503a;font-size:16px;cursor:pointer;padding:4px 8px">✕</button>`;
+      }
+    };
+    _msgTabRecorder.start();
+    if(btn){btn.textContent="⏹";btn.style.color="#d9503a";}
+    let secs=0;
+    _msgTabRecTimer=setInterval(()=>{secs++;const m=Math.floor(secs/60),s=String(secs%60).padStart(2,"0");if(ta)ta.placeholder=`● Recording ${m}:${s} — tap to stop`;},1000);
+    if(ta)ta.placeholder="● Recording 0:00 — tap to stop";
+  }catch(e){if(ta)ta.placeholder="Microphone access denied";setTimeout(()=>{if(ta&&ta.placeholder.includes("denied"))ta.placeholder="Message...";},2500);}
+}
+
+function discardMsgTabVoice(){
+  _msgTabVoiceBlob=null;
+  const btn=document.getElementById("msg-tab-mic");
+  const ta=document.getElementById("msg-tab-input");
+  const status=document.getElementById("msg-tab-voice-status");
+  if(btn){btn.textContent="🎙";btn.style.color="#888";}
+  if(ta)ta.placeholder="Message...";
+  if(status){status.style.display="none";status.innerHTML="";}
+}
+
+async function sendMsgTabMsg(uid){
+  const ta=document.getElementById("msg-tab-input");
+  const hasText=ta&&ta.value.trim();
+  if(!hasText&&!_msgTabVoiceBlob)return;
+  trackEvent("admin_msg_sent",{to:uid,has_voice:!!_msgTabVoiceBlob,has_text:!!hasText});
+  if(!sb)return;
+  const msg=hasText?ta.value.trim():"";
+  if(ta){ta.value="";ta.disabled=true;}
+  /* Upload voice if present */
+  let voiceUrl=null;
+  if(_msgTabVoiceBlob){
+    const vMime=_msgTabVoiceBlob.type||"audio/webm";
+    const vExt=vMime.includes("mp4")?"mp4":vMime.includes("ogg")?"ogg":"webm";
+    const path=`admin/genie-${uid}-${Date.now()}.${vExt}`;
+    voiceUrl=await uploadToStorage("chat-voice",path,_msgTabVoiceBlob,vMime);
+    _msgTabVoiceBlob=null;
+    discardMsgTabVoice();
+  }
+  try{
+    await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg||"",voice_url:voiceUrl||null,reply_to_id:_msgTabReplyToId||null});
+    _msgTabReplyToId=null;
+    const indicator=document.getElementById("msg-tab-reply-indicator");
+    if(indicator)indicator.style.display="none";
+    const u=getAM().find(x=>x.id===uid);
+    if(u) triggerPush(uid,"Message from Genie",msg?msg.slice(0,80):"🎙 Voice note");
+    showToast("Message sent","success");
+  }catch(e){showToast("Failed to send","error");}
+  if(ta){ta.disabled=false;ta.placeholder=`Message ${getAM().find(x=>x.id===uid)?.name||""}...`;}
+  _loadMsgTabChat(uid);
+  /* Sync recent messages cache */
+  loadAdminMessages();
 }
 
 async function loadSystemHealth(){
@@ -421,34 +699,25 @@ function renderAdminOverview(c){
     </div>`;
   }
 
-  /* Build messages section — Meta-style: one compact row per challenger */
+  /* Compact messages summary — links to Messages tab */
   const totalUnread=getTotalUnreadCount();
-  const unreadBadge=totalUnread>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;background:#d9503a;color:#fff;font-size:10px;font-weight:800;padding:0 5px;margin-left:6px">${totalUnread}</span>`:"";
-  let messagesSection=`<p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:8px">MESSAGES${unreadBadge}</p>`;
-  if(adminRecentMessages.length>0){
-    messagesSection+=`<div style="margin-bottom:16px;border:1px solid #1f1f1f;border-radius:10px;overflow:hidden">`;
-    adminRecentMessages.forEach((m,i)=>{
-      const challenger=getAM().find(u=>u.id===m.challenger_id);
-      const name=challenger?challenger.name:"Unknown";
-      const ini=challenger?challenger.ini:"?";
-      const rawPreview=m.message||"";
-      const preview=rawPreview.slice(0,50)+(rawPreview.length>50?"...":"");
-      const isVoice=!!m.voice_url;
-      const ta=timeAgo(m.created_at);
-      const unreadCt=getUnreadCountForChallenger(m.challenger_id);
-      const hasUnread=unreadCt>0;
-      const senderPrefix=m.sender==="genie"?"You: ":"";
-      const borderB=i<adminRecentMessages.length-1?"border-bottom:1px solid #1a1a1a;":"";
-      messagesSection+=`<div style="padding:8px 12px;${borderB}cursor:pointer;display:flex;gap:8px;align-items:center${hasUnread?";background:rgba(217,80,58,.04)":""}" onclick="${challenger?`openProfilePanel('${m.challenger_id}')`:""}">`
-        +`<div style="width:32px;height:32px;border-radius:50%;background:rgba(196,154,28,.1);border:1.5px solid rgba(196,154,28,.25);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#c49a1c;flex-shrink:0">${ini}</div>`
-        +`<div style="flex:1;min-width:0">`
-        +`<div style="display:flex;justify-content:space-between;align-items:center"><p style="font-size:12px;font-weight:${hasUnread?"800":"600"};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</p><span class="muted" data-live-ts="${m.created_at}" style="font-size:10px;flex-shrink:0">${ta}</span></div>`
-        +`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:1px"><p class="muted" style="font-size:11px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${hasUnread?"color:#ccc":""}"><span style="opacity:.6">${senderPrefix}</span>${isVoice&&!preview?"🎙 Voice note":preview||"🎙 Voice note"}</p>${hasUnread?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;flex-shrink:0;margin-left:6px">${unreadCt}</span>`:""}</div>`
-        +`</div></div>`;
-    });
-    messagesSection+=`</div>`;
-  }else{
-    messagesSection+=`<p class="muted" style="font-size:12px;margin-bottom:16px">No messages yet.</p>`;
+  let messagesSection="";
+  if(totalUnread>0||adminRecentMessages.length>0){
+    const latestMsg=adminRecentMessages[0];
+    const latestName=latestMsg?getAM().find(u=>u.id===latestMsg.challenger_id)?.name||"Unknown":"";
+    const latestPreview=latestMsg?(latestMsg.voice_url&&!latestMsg.message?"🎙 Voice note":(latestMsg.sender==="genie"?"You: ":"")+(latestMsg.message||"").slice(0,40)):"";
+    messagesSection=`<div onclick="adminTab('messages')" style="margin-bottom:16px;padding:12px 14px;background:${totalUnread?"rgba(217,80,58,.06)":"rgba(196,154,28,.04)"};border:1px solid ${totalUnread?"rgba(217,80,58,.25)":"rgba(196,154,28,.15)"};border-radius:10px;cursor:pointer">
+      <div class="row" style="justify-content:space-between">
+        <div class="row" style="gap:8px">
+          <span style="font-size:16px">${totalUnread?"💬":"✉"}</span>
+          <div>
+            <p style="font-size:13px;font-weight:700;color:${totalUnread?"#d9503a":"#c49a1c"}">${totalUnread?totalUnread+" unread message"+(totalUnread>1?"s":""):"Messages"}</p>
+            ${latestMsg?`<p class="muted" style="font-size:11px;margin-top:2px">${latestName}: ${latestPreview}</p>`:""}
+          </div>
+        </div>
+        <span style="color:${totalUnread?"#d9503a":"#c49a1c"};font-size:14px">→</span>
+      </div>
+    </div>`;
   }
 
   /* Needs Attention banner */
