@@ -243,12 +243,17 @@ function startAdminPoll(){
             if(typeof adminUnreadMessages!=="undefined"){
               adminUnreadMessages.push({id:m.id,challenger_id:m.challenger_id});
             }
-            /* Optimistic: update tab title immediately before full refresh */
+            /* Add to recent messages for instant display */
+            if(typeof adminRecentMessages!=="undefined"){
+              adminRecentMessages.unshift(m);
+            }
+            /* Optimistic: update tab title + re-render immediately */
             updateTabTitle();
-            /* Full refresh for data + re-render */
-            adminRefreshBadges();
+            if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
             /* Refresh profile panel chat if open for this challenger */
             _refreshOpenProfileChat(m.challenger_id);
+            /* Full background data sync */
+            _adminSoftRefresh();
           }
         })
         /* Listen for UPDATE events (read receipts, edits) */
@@ -264,29 +269,61 @@ function startAdminPoll(){
               adminUnreadMessages=adminUnreadMessages.filter(x=>x.id!==m.id);
             }
             updateTabTitle();
-            /* Re-render tabs to update badge counts */
             if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
           }
         })
         .on("postgres_changes",{event:"INSERT",schema:"public",table:"uploads"},()=>{
-          adminRefreshBadges();
+          _adminSoftRefresh();
         })
         .subscribe();
     }catch(e){console.error("Realtime subscription failed:",e);}
   }
   /* Start live timestamp ticker */
   if(typeof startLiveTimestamps==="function") startLiveTimestamps();
-  /* Poll every 5s for reliable real-time feel */
-  _adminPollTimer=setInterval(()=>adminRefreshBadges(),5000);
+  /* LIGHTWEIGHT poll every 3s — only fetches unread counts, not full data */
+  _adminPollTimer=setInterval(()=>_adminLightPoll(),3000);
+}
+
+/* Lightweight poll: only check unread message count + update badges */
+let _adminLastUnreadCount=-1;
+let _adminLastInboxCount=-1;
+async function _adminLightPoll(){
+  if(!sb)return;
+  try{
+    /* Quick count query — much cheaper than loading all data */
+    const {count:unreadNow}=await sb.from("chat_messages").select("id",{count:"exact",head:true}).eq("sender","challenger").is("read_at",null);
+    const newUnreadCount=unreadNow||0;
+    /* Check if counts changed — only re-render if something actually changed */
+    if(newUnreadCount!==_adminLastUnreadCount){
+      _adminLastUnreadCount=newUnreadCount;
+      /* Something changed — do a full refresh */
+      await loadAdminMessages();
+      await loadAdminData();
+      if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+    }
+    updateTabTitle();
+  }catch(e){}
+}
+
+/* Full background data sync (called after realtime events) */
+async function _adminSoftRefresh(){
+  if(!sb)return;
+  try{
+    await loadAdminMessages();
+    await loadAdminData();
+    _adminLastUnreadCount=adminUnreadMessages.length;
+  }catch(e){}
 }
 
 /* Helper: refresh the profile panel chat if it's open for a specific challenger */
 function _refreshOpenProfileChat(challengerId){
   const panel=document.getElementById("profile-panel");
-  if(!panel||panel.style.transform!=="translateX(0px)")return;
+  if(!panel)return;
+  /* Check both "translateX(0)" and "translateX(0px)" since browsers differ */
+  const t=panel.style.transform;
+  if(t!=="translateX(0)"&&t!=="translateX(0px)")return;
   const thread=document.getElementById("pf-chat-thread");
   if(!thread)return;
-  /* Check if this panel is showing this challenger's chat */
   if(typeof loadProfilePanelChat==="function"&&panel.dataset.challengerId===challengerId){
     loadProfilePanelChat(challengerId);
   }
@@ -297,6 +334,7 @@ async function adminRefreshBadges(){
   try{
     await loadAdminMessages();
     await loadAdminData();
+    _adminLastUnreadCount=adminUnreadMessages.length;
     /* Re-render current tab badges without switching */
     if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
     /* Update browser tab title with unread count */
