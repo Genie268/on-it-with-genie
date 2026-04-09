@@ -304,6 +304,8 @@ function adminTab(tab){
 let _msgActiveChallengerId=null;
 
 function renderAdminMessages(c){
+  if(!c)c=el("admin-content");
+  if(!c)return;
   const challengers=getAM();
   if(!challengers.length&&!adminRecentMessages.length){
     c.innerHTML=`<div style="text-align:center;padding:60px 20px"><p class="muted">No conversations yet. Messages will appear here when challengers write to you.</p></div>`;
@@ -345,7 +347,9 @@ function renderAdminMessages(c){
   /* If no active conversation or it doesn't exist, pick the first with unread or first overall */
   if(!_msgActiveChallengerId||!convos.find(x=>x.id===_msgActiveChallengerId)){
     const firstUnread=convos.find(x=>x.unread>0);
-    _msgActiveChallengerId=firstUnread?firstUnread.id:(convos[0]?convos[0].id:null);
+    const newId=firstUnread?firstUnread.id:(convos[0]?convos[0].id:null);
+    if(newId!==_msgActiveChallengerId) _msgTabLastHash="";
+    _msgActiveChallengerId=newId;
   }
 
   const convoListHtml=convos.map(cv=>{
@@ -413,12 +417,17 @@ function renderAdminMessages(c){
   }
 }
 
+let _msgTabLastHash="";
 async function _loadMsgTabChat(uid){
   const thread=document.getElementById("msg-tab-thread");
   if(!thread||!sb)return;
   try{
     const {data:msgs}=await sb.from("chat_messages").select("*").eq("challenger_id",uid).order("created_at",{ascending:true});
-    if(!msgs||!msgs.length){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:28px 0">No messages yet. Start the conversation.</p>`;return;}
+    if(!msgs||!msgs.length){_msgTabLastHash="";thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:28px 0">No messages yet. Start the conversation.</p>`;return;}
+    /* Skip re-render if messages haven't changed (prevents scroll jump & audio interruption) */
+    const hash=msgs.map(m=>m.id+":"+(m.read_at||"")+(m.updated_at||"")).join("|");
+    if(hash===_msgTabLastHash)return;
+    _msgTabLastHash=hash;
     const msgMap={};msgs.forEach(m=>{msgMap[m.id]=m;});
     let lastDateStr="";
     thread.innerHTML=msgs.map((m,i)=>{
@@ -458,14 +467,15 @@ async function _loadMsgTabChat(uid){
 }
 
 function _markMsgTabRead(uid){
+  if(!uid)return;
   /* Optimistic: remove from local unread cache immediately */
   if(typeof adminUnreadMessages!=="undefined"){
     const had=adminUnreadMessages.some(m=>m.challenger_id===uid);
     adminUnreadMessages=adminUnreadMessages.filter(m=>m.challenger_id!==uid);
     if(had){
-      updateTabTitle();
+      if(typeof updateTabTitle==="function") updateTabTitle();
       /* Update just the tab badges, not re-render content */
-      const unreadCount=getTotalUnreadCount();
+      const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
       const bdg=(n)=>n>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:5px;vertical-align:middle">${n}</span>`:"";
       const msgBtn=el("tab-messages");
       if(msgBtn) msgBtn.innerHTML=`Messages${bdg(unreadCount)}`;
@@ -501,8 +511,11 @@ async function toggleMsgTabRecording(){
   const btn=document.getElementById("msg-tab-mic");
   const ta=document.getElementById("msg-tab-input");
   const status=document.getElementById("msg-tab-voice-status");
-  if(_msgTabRecorder&&_msgTabRecorder.state==="recording"){_msgTabRecorder.stop();clearInterval(_msgTabRecTimer);return;}
+  if(_msgTabRecorder){
+    try{if(_msgTabRecorder.state==="recording"){_msgTabRecorder.stop();clearInterval(_msgTabRecTimer);return;}}catch(e){_msgTabRecorder=null;}
+  }
   _msgTabVoiceBlob=null;
+  if(typeof _createRecorder!=="function"){if(ta)ta.placeholder="Voice recording not supported";return;}
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
     _msgTabRecChunks=[];
@@ -545,11 +558,11 @@ function discardMsgTabVoice(){
 }
 
 async function sendMsgTabMsg(uid){
+  if(!uid||!sb)return;
   const ta=document.getElementById("msg-tab-input");
   const hasText=ta&&ta.value.trim();
   if(!hasText&&!_msgTabVoiceBlob)return;
-  trackEvent("admin_msg_sent",{to:uid,has_voice:!!_msgTabVoiceBlob,has_text:!!hasText});
-  if(!sb)return;
+  if(typeof trackEvent==="function") trackEvent("admin_msg_sent",{to:uid,has_voice:!!_msgTabVoiceBlob,has_text:!!hasText});
   const msg=hasText?ta.value.trim():"";
   if(ta){ta.value="";ta.disabled=true;}
   /* Upload voice if present */
@@ -568,10 +581,11 @@ async function sendMsgTabMsg(uid){
     const indicator=document.getElementById("msg-tab-reply-indicator");
     if(indicator)indicator.style.display="none";
     const u=getAM().find(x=>x.id===uid);
-    if(u) triggerPush(uid,"Message from Genie",msg?msg.slice(0,80):"🎙 Voice note");
+    if(u&&typeof triggerPush==="function") triggerPush(uid,"Message from Genie",msg?msg.slice(0,80):"🎙 Voice note");
     showToast("Message sent","success");
   }catch(e){showToast("Failed to send","error");}
   if(ta){ta.disabled=false;ta.placeholder=`Message ${getAM().find(x=>x.id===uid)?.name||""}...`;}
+  _msgTabLastHash=""; /* Force refresh to show new message */
   _loadMsgTabChat(uid);
   /* Sync recent messages cache */
   loadAdminMessages();

@@ -64,7 +64,7 @@ async function sendInboxReply(uid,i){
   if(sb){
     try{
       await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg});
-      triggerPush(uid,"Message from Genie 💬",msg);
+      if(typeof triggerPush==="function") triggerPush(uid,"Message from Genie 💬",msg);
       showToast("Reply sent","success");
     }catch(e){console.warn("Inbox reply send error:",e);showToast("Failed to send","error");}
   }
@@ -297,8 +297,10 @@ function startAdminPoll(){
 /* Lightweight poll: only check unread message count + update badges */
 let _adminLastUnreadCount=-1;
 let _adminLastInboxCount=-1;
+let _adminPollRunning=false;
 async function _adminLightPoll(){
-  if(!sb)return;
+  if(!sb||_adminPollRunning)return;
+  _adminPollRunning=true;
   try{
     /* Quick count query — much cheaper than loading all data */
     const {count:unreadNow}=await sb.from("chat_messages").select("id",{count:"exact",head:true}).eq("sender","challenger").is("read_at",null);
@@ -311,12 +313,8 @@ async function _adminLightPoll(){
       await loadAdminData();
       if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
     }
-    /* If on Messages tab, refresh the active chat thread periodically */
-    if(adminCurrentTab==="messages"&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId){
-      if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(_msgActiveChallengerId);
-    }
     updateTabTitle();
-  }catch(e){}
+  }catch(e){}finally{_adminPollRunning=false;}
 }
 
 /* Full background data sync (called after realtime events) */
@@ -505,14 +503,15 @@ async function toggleRecording(){
       stream.getTracks().forEach(t=>t.stop());
       clearInterval(recInterval);
       const recMime=mediaRecorder.mimeType||"audio/webm";
+      const vrStatus=el("vr-status");
       if(audioChunks.length===0){
-        el("vr-status").textContent="Recording failed — try again";
+        if(vrStatus) vrStatus.textContent="Recording failed — try again";
         S.voiceBlob=null;S.voiceMime=null;
         return;
       }
       const blob=new Blob(audioChunks,{type:recMime});
       if(blob.size<100){
-        el("vr-status").textContent="Recording too short — try again";
+        if(vrStatus) vrStatus.textContent="Recording too short — try again";
         S.voiceBlob=null;S.voiceMime=null;
         return;
       }
@@ -522,23 +521,23 @@ async function toggleRecording(){
       const pb=el("vr-playback");if(pb){pb.src=url;pb.style.display="block";}
       const area=el("vr-area");if(area)area.className="vr-wrap recorded";
       const btn=el("vr-btn");if(btn)btn.className="vr-btn";
-      el("vr-status").textContent=`Voice note recorded ✓ (${Math.round(blob.size/1024)}KB)`;
-      el("vr-timer").style.display="none";
+      if(vrStatus) vrStatus.textContent=`Voice note recorded ✓ (${Math.round(blob.size/1024)}KB)`;
+      const vrTimer=el("vr-timer");if(vrTimer) vrTimer.style.display="none";
     };
     mediaRecorder.start();
     recordingStartTime=Date.now();
     const area=el("vr-area");if(area)area.className="vr-wrap recording";
     const btn=el("vr-btn");if(btn)btn.className="vr-btn rec-active";
-    el("vr-status").textContent="Recording...";
-    el("vr-timer").style.display="block";
+    const vrStatus=el("vr-status");if(vrStatus) vrStatus.textContent="Recording...";
+    const vrTimer=el("vr-timer");if(vrTimer) vrTimer.style.display="block";
     recInterval=setInterval(()=>{
       const elapsed=Math.floor((Date.now()-recordingStartTime)/1000);
       const m=String(Math.floor(elapsed/60)).padStart(2,"0");
       const s=String(elapsed%60).padStart(2,"0");
-      el("vr-timer").textContent=`${m}:${s}`;
+      const t=el("vr-timer");if(t) t.textContent=`${m}:${s}`;
     },500);
   }catch(e){
-    el("vr-status").textContent="Microphone access denied";
+    const vrStatus=el("vr-status");if(vrStatus) vrStatus.textContent="Microphone access denied";
   }
 }
 
@@ -670,6 +669,7 @@ function showWelcomeOverlay(){
   const key="oiwg_welcomed_"+S.user?.startDate;
   if(localStorage.getItem(key))return;
   const ov=el("welcome-overlay");
+  if(!ov)return;
   const hasPhoto=!!S.user?.photo;
   const hasPhone=!!S.user?.phone;
   ov.style.display="flex";
@@ -983,7 +983,7 @@ async function sendProfilePanelMsg(uid){
   const ta=document.getElementById("pf-reply-input");
   const hasText=ta&&ta.value.trim();
   if(!hasText&&!adminVoiceBlob)return;
-  trackEvent("admin_msg_sent",{to:uid,has_voice:!!adminVoiceBlob,has_text:!!hasText});
+  if(typeof trackEvent==="function") trackEvent("admin_msg_sent",{to:uid,has_voice:!!adminVoiceBlob,has_text:!!hasText});
   if(!sb)return;
   const msg=hasText?ta.value.trim():"";
   if(ta){ta.value="";ta.disabled=true;}
@@ -1006,7 +1006,7 @@ async function sendProfilePanelMsg(uid){
     const ind=document.getElementById("pf-reply-indicator");if(ind)ind.remove();
     /* Trigger push notification */
     const u=getAM().find(x=>x.id===uid);
-    if(u) triggerPush(uid,"Message from Genie",msg?msg.slice(0,80):"🎙 Voice note");
+    if(u&&typeof triggerPush==="function") triggerPush(uid,"Message from Genie",msg?msg.slice(0,80):"🎙 Voice note");
     showToast("Message sent","success");
   }catch(e){showToast("Failed to send","error");}
   if(ta)ta.disabled=false;
@@ -1014,13 +1014,17 @@ async function sendProfilePanelMsg(uid){
 }
 
 function switchToEditMode(uid){
-  document.getElementById("profile-view-mode").style.display="none";
-  document.getElementById("profile-edit-mode").style.display="block";
+  const vm=document.getElementById("profile-view-mode");
+  const em=document.getElementById("profile-edit-mode");
+  if(vm) vm.style.display="none";
+  if(em) em.style.display="block";
 }
 
 function switchToViewMode(){
-  document.getElementById("profile-edit-mode").style.display="none";
-  document.getElementById("profile-view-mode").style.display="block";
+  const em=document.getElementById("profile-edit-mode");
+  const vm=document.getElementById("profile-view-mode");
+  if(em) em.style.display="none";
+  if(vm) vm.style.display="block";
 }
 
 async function saveProfile(uid){

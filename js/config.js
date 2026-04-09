@@ -321,8 +321,11 @@ function startLiveTimestamps(){
 }
 
 function _liveTimeAgo(dateStr){
-  const diff=Date.now()-new Date(dateStr).getTime();
+  const then=new Date(dateStr).getTime();
+  if(isNaN(then)) return "";
+  const diff=Date.now()-then;
   const secs=Math.floor(diff/1000);
+  if(secs<0) return "just now";
   if(secs<5) return "just now";
   if(secs<60) return secs+"s ago";
   const mins=Math.floor(secs/60);
