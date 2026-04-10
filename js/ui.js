@@ -1,5 +1,9 @@
 /* ── NAV ── */
 function goTo(s){
+  /* ── PAYMENT GATE ── dash is paid-only. Block refresh bypass and any other unpaid path. */
+  if(s==="dash"&&S.user&&!["paid","free"].includes(S.user.paymentStatus)){
+    s="pay";
+  }
   trackEvent("screen_view",{screen:s});
   /* Close upload modal if open */
   const mo=document.getElementById("mod");
