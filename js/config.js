@@ -48,6 +48,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const GROQ_PROXY_URL = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/groq-proxy";
 const VAPID_PUBLIC_KEY = "BIsYpRrSeUjZSz9RK_6Y3ueIvrEI4C_jl2A91UL_GR93H4-bLHQUxJIm-ZduQJEK9XORRRyYe4Hyf2HesuOC_fI";
 const PUSH_FUNCTION_URL = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/send-push";
+const VERIFY_PAYMENT_URL = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/verify-payment";
 const PUSH_ADMIN_SECRET = "yAhYqMsCQ1lcC2nNkkcZjzNWBjtv5DYb6D725uLvD6c";
 const ADMIN_PIN = "2025";
 const PRICES = {7:850000, 15:1500000, 30:5000000}; // Kobo

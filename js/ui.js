@@ -1,8 +1,47 @@
+/* ── RESUME GUARD ──
+   Called on page load before we let a returning user back into the dashboard.
+   Reads payment_status directly from Supabase (the authoritative source —
+   payment columns on public.challengers are write-protected by trigger, so
+   only verify-payment can ever set them to 'paid'/'free'). If the server
+   disagrees with localStorage, the server wins and we bounce to land. */
+async function verifyResumeAllowed(){
+  if(!S.user) return false;
+  if(!S.user.supabaseId){
+    /* No server row at all ⇒ cannot possibly be paid. */
+    return false;
+  }
+  if(!sb){
+    /* Supabase client didn't init — fail closed rather than allow bypass. */
+    return false;
+  }
+  try{
+    const {data,error}=await sb
+      .from("challengers")
+      .select("payment_status")
+      .eq("id",S.user.supabaseId)
+      .maybeSingle();
+    if(error||!data) return false;
+    const status=data.payment_status;
+    if(status!=="paid"&&status!=="free") return false;
+    /* Reconcile localStorage with the server. */
+    if(S.user.paymentStatus!==status){
+      S.user.paymentStatus=status;
+      try{saveState();}catch(e){}
+    }
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
 /* ── NAV ── */
 function goTo(s){
-  /* ── PAYMENT GATE ── dash is paid-only. Block refresh bypass and any other unpaid path. */
+  /* ── PAYMENT GATE ── dash is paid-only. Any unpaid attempt to reach dash
+     wipes local state and returns the user to the homepage. No refresh
+     bypass, no stale-localStorage bypass. */
   if(s==="dash"&&S.user&&!["paid","free"].includes(S.user.paymentStatus)){
-    s="pay";
+    clearState();
+    return;
   }
   trackEvent("screen_view",{screen:s});
   /* Close upload modal if open */
@@ -196,7 +235,7 @@ function animateTierPills(){
 let _adminPollTimer=null;
 let _adminLastMsgTs=null;
 
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener("DOMContentLoaded",async()=>{
   initParticles();
   animateTierPills();
   initSupabase();
@@ -213,9 +252,20 @@ document.addEventListener("DOMContentLoaded",()=>{
     startAdminPoll();
     setTimeout(()=>updateTabTitle(),500);
   } else if(loadState()){
-    goTo('dash');
-    /* Start challenger polling for live updates */
-    startChallengerPoll();
+    /* ── SERVER-SIDE PAYMENT VERIFICATION ──────────────────────────────
+       localStorage is untrusted. Before resuming a challenger into the
+       dashboard, re-fetch payment_status from Supabase (the source of
+       truth, write-protected by the protect_challenger_payment_columns
+       trigger). If the server says not paid/free, wipe state and bounce
+       to the landing page. */
+    const verified=await verifyResumeAllowed();
+    if(verified){
+      goTo('dash');
+      /* Start challenger polling for live updates */
+      startChallengerPoll();
+    }else{
+      clearState();
+    }
   }
   /* Refresh immediately when tab becomes visible */
   document.addEventListener("visibilitychange",()=>{

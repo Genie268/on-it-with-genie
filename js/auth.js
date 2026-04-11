@@ -71,21 +71,21 @@ async function applyAccessCode(){
   const code=el("access-code-input").value.trim().toUpperCase();
   const msg=el("access-code-msg");
   if(!code){msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Enter a code";return;}
-  if(sb){
-    try{
-      const {data}=await sb.from("access_codes").select("*").eq("code",code).eq("active",true).single();
-      if(data){
-        if(data.max_uses>0&&data.times_used>=data.max_uses){msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Code fully used";return;}
-        S._accessDiscount=data.discount_percent;S._accessCode=code;S._accessCodeId=data.id;
-        // Increment usage count server-side immediately
-        try{await sb.from("access_codes").update({times_used:(data.times_used||0)+1}).eq("id",data.id);}catch(e){}
-        updatePayAfterDiscount(data.discount_percent);
-        msg.style.display="block";msg.style.color="#4dc98a";msg.textContent=data.discount_percent===100?"Free access applied!":data.discount_percent+"% off applied!";
-        return;
-      }
-    }catch(e){}
+  if(!sb){msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Not connected";return;}
+  try{
+    const {data}=await sb.from("access_codes").select("*").eq("code",code).eq("active",true).single();
+    if(!data){msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Invalid code";return;}
+    if(data.max_uses>0&&data.times_used>=data.max_uses){msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Code fully used";return;}
+    if(data.valid_until&&new Date(data.valid_until)<new Date()){msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Code expired";return;}
+    S._accessDiscount=data.discount_percent;S._accessCode=code;S._accessCodeId=data.id;
+    /* times_used is incremented server-side by verify-payment, NOT here. Anon
+       writes to access_codes are denied by RLS so a client-side increment
+       would silently fail anyway. */
+    updatePayAfterDiscount(data.discount_percent);
+    msg.style.display="block";msg.style.color="#4dc98a";msg.textContent=data.discount_percent===100?"Free access applied!":data.discount_percent+"% off applied!";
+  }catch(e){
+    msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Invalid code";
   }
-  msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Invalid code";
 }
 
 function updatePayAfterDiscount(pct){
@@ -101,20 +101,101 @@ function updatePayAfterDiscount(pct){
   }
 }
 
-function initiatePayment(){
-  const dur=S.user?.duration||15;const email=el("pay-email")?.value?.trim();
+/* Call the verify-payment edge function. Returns {ok, data, status}. */
+async function verifyPaymentServerside(body){
+  try{
+    const res=await fetch(VERIFY_PAYMENT_URL,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "apikey":SUPABASE_ANON_KEY,
+        "Authorization":"Bearer "+SUPABASE_ANON_KEY,
+      },
+      body:JSON.stringify(body),
+    });
+    let data=null;
+    try{data=await res.json();}catch(e){}
+    return {ok:res.ok&&data&&data.ok===true, data, status:res.status};
+  }catch(e){
+    return {ok:false, data:{error:"network"}, status:0};
+  }
+}
+
+/* Ensure a pending challenger row exists in supabase (so verify-payment has
+   something to update). Returns true if S.user.supabaseId is populated. */
+async function ensureChallengerRow(){
+  if(!sb||!S.user) return false;
+  if(!S.user.supabaseId){
+    try{ await syncToSupabase(); }catch(e){}
+  }
+  return !!S.user?.supabaseId;
+}
+
+function payError(text){
+  const btn=el("pay-btn");
+  if(btn){btn.disabled=false;btn.textContent="Pay & Start →";}
+  const st=el("pay-status");
+  if(st){st.textContent=text;st.style.color="#d9503a";}
+}
+
+async function initiatePayment(){
+  const dur=S.user?.duration||15;
+  const email=el("pay-email")?.value?.trim();
   trackEvent("payment_initiated",{duration:dur,has_discount:S._accessDiscount>0});
-  if(S._accessDiscount===100){completePayment({reference:"FREE_"+Date.now(),status:"free"});return;}
-  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){el("pay-status").textContent="Enter a valid email";el("pay-status").style.color="#d9503a";return;}
+
+  el("pay-btn").disabled=true;
+  el("pay-btn").textContent="Preparing...";
+  el("pay-status").textContent="";
+
+  /* Create the pending row first so verify-payment can promote it. */
+  const hasRow=await ensureChallengerRow();
+  if(!hasRow){payError("Connection problem. Try again.");return;}
+
+  /* ── 100% ACCESS CODE PATH ─────────────────────────────────────── */
+  if(S._accessDiscount===100){
+    const result=await verifyPaymentServerside({
+      method:"access_code",
+      challenger_id:S.user.supabaseId,
+      access_code:S._accessCode,
+    });
+    if(!result.ok){
+      payError("Access code rejected ("+(result.data?.error||"error")+").");
+      return;
+    }
+    await completePayment({status:"free",reference:null,amount:0,email:S.user.email});
+    return;
+  }
+
+  /* ── PAYSTACK PATH ─────────────────────────────────────────────── */
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    payError("Enter a valid email");
+    return;
+  }
   const fk=S._accessDiscount>0?Math.round(PRICES[dur]*(1-S._accessDiscount/100)):PRICES[dur];
-  el("pay-btn").disabled=true;el("pay-btn").textContent="Opening payment...";
+  el("pay-btn").textContent="Opening payment...";
   try{
     const h=PaystackPop.setup({
       key:PAYSTACK_PUBLIC_KEY,email,amount:fk,currency:"NGN",
       ref:"OIWG_"+Date.now()+"_"+Math.random().toString(36).substr(2,6),
       metadata:{custom_fields:[{display_name:"Challenger",variable_name:"name",value:S.user?.name||""},{display_name:"Tier",variable_name:"tier",value:TIERS[dur].name}]},
       onClose:()=>{el("pay-btn").disabled=false;el("pay-btn").textContent="Pay & Start →";el("pay-status").textContent="Payment cancelled";el("pay-status").style.color="#d9503a";},
-      callback:(r)=>{
+      callback:async(r)=>{
+        el("pay-btn").textContent="Verifying payment...";
+        /* Paystack's client-side callback is NOT trustworthy on its own —
+           we re-verify the reference against Paystack's API server-side
+           via the verify-payment edge function. Only that call can flip
+           payment_status to 'paid' in supabase. */
+        const result=await verifyPaymentServerside({
+          method:"paystack",
+          challenger_id:S.user.supabaseId,
+          reference:r.reference,
+          access_code:S._accessCode||undefined,
+        });
+        if(!result.ok){
+          payError("Payment could not be verified ("+(result.data?.error||"error")+"). Contact support with ref "+r.reference+".");
+          return;
+        }
+        /* Best-effort welcome email */
         fetch('https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/send-welcome-email',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
@@ -124,16 +205,30 @@ function initiatePayment(){
             tier:TIERS[dur].name.toLowerCase().replace("the ","")
           })
         }).catch(()=>{});
-        completePayment({reference:r.reference,status:"paid",amount:fk,email});
+        await completePayment({status:"paid",reference:r.reference,amount:fk,email});
       }
     });
     h.openIframe();
-  }catch(e){el("pay-btn").disabled=false;el("pay-btn").textContent="Pay & Start →";el("pay-status").textContent="Payment failed. Check connection.";el("pay-status").style.color="#d9503a";}
+  }catch(e){
+    payError("Payment failed. Check connection.");
+  }
 }
 
-function completePayment(d){
+async function completePayment(d){
   trackEvent("payment_completed",{status:d.status,duration:S.user?.duration});
-  if(S.user){S.user.paymentRef=d.reference;S.user.paymentStatus=d.status;S.user.amountPaid=d.amount||0;S.user.email=d.email||S.user.email;S.user.phone=el("pay-phone")?.value?.trim()||S.user.phone||null;S.user.accessCode=S._accessCode||null;saveState();syncToSupabase();}
+  if(S.user){
+    S.user.paymentRef=d.reference||S.user.paymentRef;
+    S.user.paymentStatus=d.status;
+    S.user.amountPaid=d.amount||0;
+    S.user.email=d.email||S.user.email;
+    S.user.phone=el("pay-phone")?.value?.trim()||S.user.phone||null;
+    S.user.accessCode=S._accessCode||null;
+    saveState();
+    /* Non-payment columns sync via upsert. Payment columns are pinned by
+       the protect_challenger_payment_columns trigger on the DB, so the
+       server-side value from verify-payment is authoritative. */
+    try{await syncToSupabase();}catch(e){}
+  }
   goTo("photo");
 }
 
