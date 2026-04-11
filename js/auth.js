@@ -258,7 +258,18 @@ async function attemptSignIn(){
       btn.disabled=false;btn.textContent="Find My Challenge →";
       return;
     }
-    
+
+    /* ── PAYMENT GATE ── the row exists, but sign-in is only valid for
+       a paid or free-access challenger. Anything else (pending, started)
+       is treated as "no paid challenge" — no protected state is restored,
+       no goTo('dash') is issued. */
+    if(data.payment_status!=="paid"&&data.payment_status!=="free"){
+      msg.textContent="No paid challenge on this email. Start a new one from the homepage.";
+      msg.style.color="#d9503a";
+      btn.disabled=false;btn.textContent="Find My Challenge →";
+      return;
+    }
+
     /* Restore session from database */
     const dur=data.duration||15;
     const startDate=new Date(data.start_date);

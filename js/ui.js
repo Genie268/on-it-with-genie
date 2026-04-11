@@ -34,15 +34,26 @@ async function verifyResumeAllowed(){
   }
 }
 
-/* ── NAV ── */
+/* ── NAV ──
+   goTo('dash') is the ONLY path that mounts the dashboard screen. Every
+   other flow (refresh-resume, sign-in, restart, payment completion) funnels
+   through here, so gating this function is equivalent to gating the whole
+   protected UI. The dash branch runs an async server-side verify via
+   verifyResumeAllowed() and only activates s-dash AFTER that resolves paid/
+   free. There is no local-state trust on this path. */
+let _dashGateInFlight=false;
+
 function goTo(s){
-  /* ── PAYMENT GATE ── dash is paid-only. Any unpaid attempt to reach dash
-     wipes local state and returns the user to the homepage. No refresh
-     bypass, no stale-localStorage bypass. */
-  if(s==="dash"&&S.user&&!["paid","free"].includes(S.user.paymentStatus)){
-    clearState();
+  if(s==="dash"){
+    _gateAndMountDash();
     return;
   }
+  _activateScreen(s);
+}
+
+/* Core screen activator — non-gated. Used directly for non-protected screens,
+   and indirectly for dash (after the async gate resolves). */
+function _activateScreen(s){
   trackEvent("screen_view",{screen:s});
   /* Close upload modal if open */
   const mo=document.getElementById("mod");
@@ -59,6 +70,51 @@ function goTo(s){
   if(s==="transition") renderTransition();
   if(s==="duration")   initDuration();
   if(s==="pay")        initPayment();
+}
+
+/* Dash gate — runs a server-side payment verify before mounting s-dash.
+   Fails closed on timeout, error, or any non-paid response. */
+function _gateAndMountDash(){
+  if(!S.user){_activateScreen("land");return;}
+  if(_dashGateInFlight) return; /* dedupe concurrent attempts */
+  _dashGateInFlight=true;
+  /* Visible blocker so the user never sees protected UI during verify. */
+  _showDashVerifying();
+  /* 10s hard cap — if the verify can't complete, we fail closed. */
+  const timeout=new Promise(res=>setTimeout(()=>res(false),10000));
+  Promise.race([verifyResumeAllowed(),timeout]).then(ok=>{
+    _dashGateInFlight=false;
+    _hideDashVerifying();
+    if(!ok){
+      /* Server says not paid/free, verify failed, or timed out. Wipe
+         state and bounce to landing — no protected UI ever mounted. */
+      clearState();
+      return;
+    }
+    _activateScreen("dash");
+  }).catch(()=>{
+    _dashGateInFlight=false;
+    _hideDashVerifying();
+    clearState();
+  });
+}
+
+/* Lightweight blocker overlay — shown while the server-side payment verify
+   is in flight, so the dashboard DOM is never visible before the check. */
+function _showDashVerifying(){
+  let ov=document.getElementById("dash-gate-ov");
+  if(!ov){
+    ov=document.createElement("div");
+    ov.id="dash-gate-ov";
+    ov.style.cssText="position:fixed;inset:0;background:#060606;display:flex;align-items:center;justify-content:center;z-index:99999;color:#c49a1c;font-family:system-ui,sans-serif;font-size:14px;font-weight:700;letter-spacing:.02em";
+    ov.innerHTML='<div style="display:flex;align-items:center;gap:12px"><div style="width:18px;height:18px;border:2px solid #c49a1c;border-top-color:transparent;border-radius:50%;animation:dgspin 0.8s linear infinite"></div><span>Verifying access…</span></div><style>@keyframes dgspin{to{transform:rotate(360deg)}}</style>';
+    document.body.appendChild(ov);
+  }
+  ov.style.display="flex";
+}
+function _hideDashVerifying(){
+  const ov=document.getElementById("dash-gate-ov");
+  if(ov) ov.style.display="none";
 }
 
 
@@ -235,7 +291,7 @@ function animateTierPills(){
 let _adminPollTimer=null;
 let _adminLastMsgTs=null;
 
-document.addEventListener("DOMContentLoaded",async()=>{
+document.addEventListener("DOMContentLoaded",()=>{
   initParticles();
   animateTierPills();
   initSupabase();
@@ -252,20 +308,10 @@ document.addEventListener("DOMContentLoaded",async()=>{
     startAdminPoll();
     setTimeout(()=>updateTabTitle(),500);
   } else if(loadState()){
-    /* ── SERVER-SIDE PAYMENT VERIFICATION ──────────────────────────────
-       localStorage is untrusted. Before resuming a challenger into the
-       dashboard, re-fetch payment_status from Supabase (the source of
-       truth, write-protected by the protect_challenger_payment_columns
-       trigger). If the server says not paid/free, wipe state and bounce
-       to the landing page. */
-    const verified=await verifyResumeAllowed();
-    if(verified){
-      goTo('dash');
-      /* Start challenger polling for live updates */
-      startChallengerPoll();
-    }else{
-      clearState();
-    }
+    /* All dash entries funnel through goTo('dash'), which runs the
+       async server-side payment verify before mounting any protected
+       UI. No local-state trust here. */
+    goTo('dash');
   }
   /* Refresh immediately when tab becomes visible */
   document.addEventListener("visibilitychange",()=>{
