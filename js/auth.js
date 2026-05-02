@@ -229,7 +229,8 @@ async function completePayment(d){
        server-side value from verify-payment is authoritative. */
     try{await syncToSupabase();}catch(e){}
   }
-  goTo("photo");
+  goTo("commit");
+  _prepareCommitScreen();
 }
 
 

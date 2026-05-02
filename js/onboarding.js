@@ -242,19 +242,19 @@ async function _prepareCommitScreen(){
   const si=el("sig");
   si.value="";
   si.placeholder=`Type "${S.ans.name}" to confirm`;
-  el("commit-sub").textContent=`This is the document you are accountable to for the next ${dur} days.`;
-  el("commit-btn").textContent=`I Commit. Start My ${dur} Days →`;
+  el("commit-sub").textContent=`You're in. Now make it official — sign your commitment for the next ${dur} days.`;
+  el("commit-btn").textContent=`I Commit. Let's Go →`;
   el("commit-btn").disabled=true;
   si.oninput=()=>{ el("commit-btn").disabled=!si.value.trim(); };
 }
 
 function doCommit(){
   const sig=el("sig").value.trim(); if(!sig)return;
-  const dur=S.ans.duration||15;
-  S.user={name:S.ans.name,answers:{...S.ans},sig,startDate:new Date().toISOString(),duration:dur,energyLog:{},genieMessages:[]};
-  S.uploads=Array(dur).fill(null); S.day=1; S.lilDone=false;
+  if(S.user){S.user.sig=sig;S.user.answers.sig=sig;}
+  S.ans.sig=sig;
   saveState();
-  goTo("pay");
+  if(typeof syncToSupabase==="function") syncToSupabase();
+  goTo("photo");
 }
 
 
