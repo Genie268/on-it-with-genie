@@ -160,13 +160,11 @@ async function sendInboxReply(uid,i){
   const ta=el("inb-"+uid+"-"+i);if(!ta||!ta.value.trim())return;
   const msg=ta.value.trim();
   ta.disabled=true;
-  if(sb){
-    try{
-      await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg});
-      if(typeof triggerPush==="function") triggerPush(uid,"Message from Genie 💬",msg);
-      showToast("Reply sent","success");
-    }catch(e){console.warn("Inbox reply send error:",e);showToast("Failed to send","error");}
-  }
+  try{
+    await adminFetch("send_message",{challenger_id:uid,message:msg});
+    adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Message from Genie 💬",body:msg.slice(0,120)}).catch(()=>{});
+    showToast("Reply sent","success");
+  }catch(e){console.warn("Inbox reply send error:",e);showToast("Failed to send","error");}
   ta.value="";ta.placeholder="✓ Sent";ta.style.borderColor="#4dc98a";
 }
 
@@ -399,17 +397,13 @@ let _adminLastUnreadCount=-1;
 let _adminLastInboxCount=-1;
 let _adminPollRunning=false;
 async function _adminLightPoll(){
-  if(!sb||_adminPollRunning)return;
+  if(!getAdminToken()||_adminPollRunning)return;
   _adminPollRunning=true;
   try{
-    /* Quick count query — much cheaper than loading all data */
-    const {count:unreadNow}=await sb.from("chat_messages").select("id",{count:"exact",head:true}).eq("sender","challenger").is("read_at",null);
-    const newUnreadCount=unreadNow||0;
-    /* Check if counts changed — only re-render if something actually changed */
+    await loadAdminMessages();
+    const newUnreadCount=adminUnreadMessages.length;
     if(newUnreadCount!==_adminLastUnreadCount){
       _adminLastUnreadCount=newUnreadCount;
-      /* Something changed — do a full refresh */
-      await loadAdminMessages();
       await loadAdminData();
       if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
     }
@@ -419,7 +413,7 @@ async function _adminLightPoll(){
 
 /* Full background data sync (called after realtime events) */
 async function _adminSoftRefresh(){
-  if(!sb)return;
+  if(!getAdminToken())return;
   try{
     await loadAdminMessages();
     await loadAdminData();
@@ -442,7 +436,7 @@ function _refreshOpenProfileChat(challengerId){
 }
 
 async function adminRefreshBadges(){
-  if(!sb)return;
+  if(!getAdminToken())return;
   try{
     await loadAdminMessages();
     await loadAdminData();
@@ -968,8 +962,8 @@ async function openProfilePanel(uid){
     updateTabTitle();
     if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
   }
-  if(sb){
-    sb.from("chat_messages").update({read_at:new Date().toISOString()}).eq("challenger_id",uid).eq("sender","challenger").is("read_at",null).then(()=>{}).catch(()=>{});
+  if(getAdminToken()){
+    adminFetch("mark_read",{challenger_id:uid}).catch(()=>{});
   }
   /* Load chat messages async */
   loadProfilePanelChat(uid);
@@ -979,11 +973,12 @@ let _pfChatReplyToId=null;
 
 async function loadProfilePanelChat(uid){
   const thread=document.getElementById("pf-chat-thread");
-  if(!thread||!sb)return;
+  if(!thread||!getAdminToken())return;
   _pfChatReplyToId=null;
   const ind=document.getElementById("pf-reply-indicator");if(ind)ind.remove();
   try{
-    const {data:msgs}=await sb.from("chat_messages").select("*").eq("challenger_id",uid).order("created_at",{ascending:true});
+    const res=await adminFetch("get_thread",{challenger_id:uid});
+    const msgs=res.messages||[];
     if(!msgs||msgs.length===0){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">No messages yet</p>`;return;}
     /* Build a lookup for reply_to */
     const msgMap={};msgs.forEach(m=>{msgMap[m.id]=m;});
@@ -1071,9 +1066,8 @@ function pfChatSetReply(msgId,preview,uid){
 async function pfChatDeleteMsg(msgId,uid,wasRead){
   const msg=wasRead?"This message was already read by the challenger. Unsend anyway?":"Unsend this message?";
   if(!confirm(msg))return;
-  if(!sb)return;
   try{
-    await sb.from("chat_messages").delete().eq("id",msgId);
+    await adminFetch("delete_message",{message_id:msgId});
     showToast(wasRead?"Unsent — but they already saw it":"Message unsent",wasRead?"error":"info");
   }catch(e){showToast("Failed to unsend","error");}
   loadProfilePanelChat(uid);
@@ -1084,10 +1078,9 @@ async function sendProfilePanelMsg(uid){
   const hasText=ta&&ta.value.trim();
   if(!hasText&&!adminVoiceBlob)return;
   if(typeof trackEvent==="function") trackEvent("admin_msg_sent",{to:uid,has_voice:!!adminVoiceBlob,has_text:!!hasText});
-  if(!sb)return;
+  if(!getAdminToken())return;
   const msg=hasText?ta.value.trim():"";
   if(ta){ta.value="";ta.disabled=true;}
-  /* Upload admin voice note if recorded */
   let voiceUrl=null;
   if(adminVoiceBlob){
     const vMime=adminVoiceBlob.type||"audio/webm";
@@ -1101,12 +1094,10 @@ async function sendProfilePanelMsg(uid){
     if(status)status.style.display="none";
   }
   try{
-    await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg||"",voice_url:voiceUrl||null,reply_to_id:_pfChatReplyToId||null});
+    await adminFetch("send_message",{challenger_id:uid,message:msg||"",voice_url:voiceUrl||null,reply_to_id:_pfChatReplyToId||null});
     _pfChatReplyToId=null;
     const ind=document.getElementById("pf-reply-indicator");if(ind)ind.remove();
-    /* Trigger push notification */
-    const u=getAM().find(x=>x.id===uid);
-    if(u&&typeof triggerPush==="function") triggerPush(uid,"Message from Genie",msg?msg.slice(0,80):"🎙 Voice note");
+    adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Message from Genie",body:msg?msg.slice(0,80):"🎙 Voice note"}).catch(()=>{});
     showToast("Message sent","success");
   }catch(e){showToast("Failed to send","error");}
   if(ta)ta.disabled=false;

@@ -1,15 +1,35 @@
+/* ── ADMIN SESSION & API HELPERS ── */
+function getAdminToken(){return sessionStorage.getItem("admin_token")||"";}
+function setAdminToken(t){if(t)sessionStorage.setItem("admin_token",t);else sessionStorage.removeItem("admin_token");}
+
+async function adminFetch(action,params){
+  const token=getAdminToken();
+  if(!token)throw new Error("not_authenticated");
+  const res=await fetch(ADMIN_API_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({action,token,...(params||{})})
+  });
+  const data=await res.json();
+  if(!res.ok||!data.ok){
+    if(data.error==="invalid_or_expired_token"){setAdminToken("");S._adminAuth=false;renderAdmin();throw new Error("Session expired");}
+    throw new Error(data.error||"admin_api_error");
+  }
+  return data;
+}
+
 /* ── LIVE ADMIN DATA FROM SUPABASE ── */
 let liveChallengers=[];
 let adminDataLoaded=false;
 
 async function loadAdminData(){
-  if(!sb){liveChallengers=[];adminDataLoaded=true;return;}
+  if(!getAdminToken()){liveChallengers=[];adminDataLoaded=true;return;}
   try{
-    const {data:challengers}=await sb.from("challengers").select("*").order("created_at",{ascending:false});
-    if(!challengers||!challengers.length){liveChallengers=[];adminDataLoaded=true;return;}
-    const ids=challengers.map(c=>c.id);
-    const {data:allUploads}=await sb.from("uploads").select("*").in("challenger_id",ids);
-    const {data:allEnergy}=await sb.from("energy_logs").select("*").in("challenger_id",ids);
+    const res=await adminFetch("load_data");
+    const challengers=res.challengers||[];
+    if(!challengers.length){liveChallengers=[];adminDataLoaded=true;return;}
+    const allUploads=res.uploads||[];
+    const allEnergy=res.energy_logs||[];
     
     liveChallengers=challengers.map(c=>{
       const uploads=(allUploads||[]).filter(u=>u.challenger_id===c.id);
@@ -72,22 +92,20 @@ let adminUnreadMessages=[];
 let adminRecentMessages=[];
 
 async function loadAdminMessages(){
-  if(!sb)return;
+  if(!getAdminToken())return;
   try{
-    const {data:msgs}=await sb.from("chat_messages").select("*").order("created_at",{ascending:false}).limit(50);
-    /* Group: keep only the first occurrence of each challenger_id */
+    const res=await adminFetch("load_messages");
+    const msgs=res.messages||[];
     const seen=new Set();
     const latest=[];
-    for(const m of (msgs||[])){
+    for(const m of msgs){
       if(!seen.has(m.challenger_id)){
         seen.add(m.challenger_id);
         latest.push(m);
       }
     }
     adminRecentMessages=latest;
-    /* Load unread challenger messages (sender=challenger, read_at is null) */
-    const {data:unread}=await sb.from("chat_messages").select("id,challenger_id").eq("sender","challenger").is("read_at",null);
-    adminUnreadMessages=unread||[];
+    adminUnreadMessages=res.unread||[];
   }catch(e){console.error("loadAdminMessages error:",e);adminRecentMessages=[];adminUnreadMessages=[];}
 }
 
@@ -113,6 +131,7 @@ function timeAgo(dateStr){
 let adminCurrentTab = "overview";
 
 async function renderAdmin(){
+  if(!S._adminAuth&&getAdminToken()) S._adminAuth=true;
   if(!S._adminAuth){
     /* PIN form is in the static HTML — just ensure it's visible and focused */
     const c=document.getElementById("admin-content");
@@ -154,25 +173,34 @@ async function renderAdmin(){
 
 async function checkAdminPin(){
   const pin=(el("admin-pin-input")?.value||"").trim();
-  /* Check DB-stored PIN first, fallback to hardcoded */
-  let validPin=ADMIN_PIN;
-  if(sb){
-    try{
-      const {data}=await sb.from("app_settings").select("value").eq("key","admin_pin").single();
-      if(data&&data.value) validPin=data.value;
-    }catch(e){}
-  }
-  if(pin===validPin){
+  if(!pin){const msg=el("admin-pin-msg");if(msg){msg.textContent="Enter a PIN";msg.style.color="#d9503a";}return;}
+  const btn=document.querySelector("#admin-pin-static .bp");
+  if(btn){btn.disabled=true;btn.textContent="Verifying...";}
+  try{
+    const res=await fetch(ADMIN_LOGIN_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({pin})
+    });
+    const data=await res.json();
+    if(!data.ok){
+      const msg=el("admin-pin-msg");
+      if(msg){msg.textContent=data.error==="invalid_pin"?"Incorrect PIN — try again":"Login failed";msg.style.color="#d9503a";}
+      const input=el("admin-pin-input");
+      if(input){input.value="";input.focus();}
+      if(btn){btn.disabled=false;btn.textContent="Enter →";}
+      return;
+    }
+    setAdminToken(data.token);
     trackEvent("admin_login");
     S._adminAuth=true;
     const msg=el("admin-pin-msg");
     if(msg){msg.textContent="";msg.style.color="";}
     renderAdmin();
-  }else{
+  }catch(e){
     const msg=el("admin-pin-msg");
-    if(msg){msg.textContent="Incorrect PIN — try again";msg.style.color="#d9503a";}
-    const input=el("admin-pin-input");
-    if(input){input.value="";input.focus();}
+    if(msg){msg.textContent="Connection error. Try again.";msg.style.color="#d9503a";}
+    if(btn){btn.disabled=false;btn.textContent="Enter →";}
   }
 }
 
@@ -181,19 +209,17 @@ async function changeAdminPin(){
   const newPin=prompt("Enter new admin PIN:");
   if(!newPin||!newPin.trim())return;
   if(newPin.trim().length<4){showToast("PIN must be at least 4 characters","error");return;}
-  if(!sb){showToast("Database not connected","error");return;}
   try{
-    await sb.from("app_settings").upsert({key:"admin_pin",value:newPin.trim()},{onConflict:"key"});
+    await adminFetch("change_pin",{new_pin:newPin.trim()});
     showToast("Admin PIN updated","success");
   }catch(e){showToast("Failed to update PIN","error");}
 }
 
 /* ── ACCESS CODE MANAGEMENT ── */
 async function loadAccessCodes(){
-  if(!sb)return[];
   try{
-    const {data}=await sb.from("access_codes").select("*").order("created_at",{ascending:false});
-    return data||[];
+    const res=await adminFetch("load_codes");
+    return res.codes||[];
   }catch(e){return[];}
 }
 
@@ -205,18 +231,16 @@ async function createAccessCode(){
   const pct=parseInt(discount);
   if(isNaN(pct)||pct<0||pct>100){showToast("Invalid discount percentage","error");return;}
   const maxUses=prompt("Max uses (0=unlimited):")||"0";
-  if(!sb){showToast("Database not connected","error");return;}
   try{
-    await sb.from("access_codes").insert({code:code.trim().toUpperCase(),discount_percent:pct,max_uses:parseInt(maxUses)||0,times_used:0,active:true});
+    await adminFetch("create_code",{code:code.trim().toUpperCase(),discount_percent:pct,max_uses:parseInt(maxUses)||0});
     showToast(`Code ${code.trim().toUpperCase()} created`,"success");
     renderAdminSettings();
   }catch(e){showToast("Failed to create code","error");}
 }
 
 async function toggleAccessCode(id,active){
-  if(!sb)return;
   try{
-    await sb.from("access_codes").update({active:!active}).eq("id",id);
+    await adminFetch("toggle_code",{id,active});
     showToast(active?"Code deactivated":"Code activated",active?"error":"success");
     renderAdminSettings();
   }catch(e){showToast("Failed to update code","error");}
@@ -224,9 +248,8 @@ async function toggleAccessCode(id,active){
 
 async function deleteAccessCode(id){
   if(!confirm("Delete this access code permanently?"))return;
-  if(!sb)return;
   try{
-    await sb.from("access_codes").delete().eq("id",id);
+    await adminFetch("delete_code",{id});
     showToast("Code deleted","info");
     renderAdminSettings();
   }catch(e){showToast("Failed to delete code","error");}
@@ -420,9 +443,10 @@ function renderAdminMessages(c){
 let _msgTabLastHash="";
 async function _loadMsgTabChat(uid){
   const thread=document.getElementById("msg-tab-thread");
-  if(!thread||!sb)return;
+  if(!thread||!getAdminToken())return;
   try{
-    const {data:msgs}=await sb.from("chat_messages").select("*").eq("challenger_id",uid).order("created_at",{ascending:true});
+    const res=await adminFetch("get_thread",{challenger_id:uid});
+    const msgs=res.messages||[];
     if(!msgs||!msgs.length){_msgTabLastHash="";thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:28px 0">No messages yet. Start the conversation.</p>`;return;}
     /* Skip re-render if messages haven't changed (prevents scroll jump & audio interruption) */
     const hash=msgs.map(m=>m.id+":"+(m.read_at||"")+(m.updated_at||"")).join("|");
@@ -482,8 +506,8 @@ function _markMsgTabRead(uid){
     }
   }
   /* DB update in background */
-  if(sb){
-    sb.from("chat_messages").update({read_at:new Date().toISOString()}).eq("challenger_id",uid).eq("sender","challenger").is("read_at",null).then(()=>{}).catch(()=>{});
+  if(getAdminToken()){
+    adminFetch("mark_read",{challenger_id:uid}).catch(()=>{});
   }
 }
 
@@ -558,14 +582,13 @@ function discardMsgTabVoice(){
 }
 
 async function sendMsgTabMsg(uid){
-  if(!uid||!sb)return;
+  if(!uid||!getAdminToken())return;
   const ta=document.getElementById("msg-tab-input");
   const hasText=ta&&ta.value.trim();
   if(!hasText&&!_msgTabVoiceBlob)return;
   if(typeof trackEvent==="function") trackEvent("admin_msg_sent",{to:uid,has_voice:!!_msgTabVoiceBlob,has_text:!!hasText});
   const msg=hasText?ta.value.trim():"";
   if(ta){ta.value="";ta.disabled=true;}
-  /* Upload voice if present */
   let voiceUrl=null;
   if(_msgTabVoiceBlob){
     const vMime=_msgTabVoiceBlob.type||"audio/webm";
@@ -576,46 +599,28 @@ async function sendMsgTabMsg(uid){
     discardMsgTabVoice();
   }
   try{
-    await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg||"",voice_url:voiceUrl||null,reply_to_id:_msgTabReplyToId||null});
+    await adminFetch("send_message",{challenger_id:uid,message:msg||"",voice_url:voiceUrl||null,reply_to_id:_msgTabReplyToId||null});
     _msgTabReplyToId=null;
     const indicator=document.getElementById("msg-tab-reply-indicator");
     if(indicator)indicator.style.display="none";
-    const u=getAM().find(x=>x.id===uid);
-    if(u&&typeof triggerPush==="function") triggerPush(uid,"Message from Genie",msg?msg.slice(0,80):"🎙 Voice note");
+    adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Message from Genie",body:msg?msg.slice(0,120):"🎙 Voice note"}).catch(()=>{});
     showToast("Message sent","success");
   }catch(e){showToast("Failed to send","error");}
   if(ta){ta.disabled=false;ta.placeholder=`Message ${getAM().find(x=>x.id===uid)?.name||""}...`;}
-  _msgTabLastHash=""; /* Force refresh to show new message */
+  _msgTabLastHash="";
   _loadMsgTabChat(uid);
-  /* Sync recent messages cache */
   loadAdminMessages();
 }
 
 async function loadSystemHealth(){
   const hc=document.getElementById("health-content");
-  if(!hc||!sb)return;
+  if(!hc||!getAdminToken())return;
   hc.innerHTML=`<p class="muted" style="font-size:11px">Checking...</p>`;
   try{
-    /* DB row counts */
-    const tables=["challengers","uploads","chat_messages","analytics_events"];
-    const counts={};
-    for(const t of tables){
-      const {count}=await sb.from(t).select("*",{count:"exact",head:true});
-      counts[t]=count||0;
-    }
-    /* Storage: count files in uploads bucket */
-    let storageFiles=0,storageWarning=false;
-    try{
-      const {data:folders}=await sb.storage.from("uploads").list("",{limit:100});
-      if(folders){
-        for(const f of folders){
-          if(f.id){storageFiles++;continue;}
-          const {data:files}=await sb.storage.from("uploads").list(f.name,{limit:500});
-          storageFiles+=(files||[]).length;
-        }
-      }
-      if(storageFiles>900)storageWarning=true; /* Supabase free tier: 1GB / ~1000 files warning */
-    }catch(e){}
+    const hRes=await adminFetch("health_check");
+    const counts=hRes.counts||{};
+    let storageFiles=hRes.storageFiles||0;
+    let storageWarning=storageFiles>900;
     /* Groq API check */
     let groqStatus="unknown",groqColor="#888";
     try{
@@ -625,9 +630,8 @@ async function loadSystemHealth(){
       else{groqStatus="error ("+res.status+")";groqColor="#d9503a";}
     }catch(e){groqStatus="unreachable";groqColor="#d9503a";}
 
-    /* Supabase free tier limits */
     const dbRows=Object.values(counts).reduce((a,b)=>a+b,0);
-    const dbPct=Math.min(100,Math.round(dbRows/50000*100)); /* 500MB ≈ ~50k rows rough */
+    const dbPct=Math.min(100,Math.round(dbRows/50000*100));
     const storagePct=Math.min(100,Math.round(storageFiles/1000*100));
 
     const statusDot=(color)=>`<span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>`;
@@ -1004,10 +1008,11 @@ function renderAdminInbox(c){
 
 async function renderAdminAnalytics(c){
   c.innerHTML=`<div style="text-align:center;padding:40px 0"><p class="muted" style="font-size:12px">Loading analytics...</p></div>`;
-  if(!sb)return;
+  if(!getAdminToken())return;
   try{
-    const {data:events}=await sb.from("analytics_events").select("event_type,event_data,created_at").order("created_at",{ascending:false}).limit(500);
-    if(!events||!events.length){
+    const aRes=await adminFetch("load_analytics");
+    const events=aRes.events||[];
+    if(!events.length){
       c.innerHTML=`<div style="text-align:center;padding:60px 20px"><p class="muted">No analytics data yet. Events will appear as people use the app.</p></div>`;
       return;
     }
@@ -1160,20 +1165,12 @@ async function renderAdminAnalytics(c){
 }
 
 async function togRv(uid,i){
-  /* Toggle review in Supabase */
-  if(sb){
-    try{
-      const dayNum=i+1;
-      const {data:existing}=await sb.from("uploads").select("id,reviewed").eq("challenger_id",uid).eq("day_number",dayNum).single();
-      if(existing){
-        const newState=!existing.reviewed;
-        await sb.from("uploads").update({reviewed:newState,reviewed_at:new Date().toISOString()}).eq("id",existing.id);
-        showToast(newState?"Marked as reviewed":"Unmarked review","success");
-      }
-      /* Reload data */
-      await loadAdminData();
-    }catch(e){console.error("Review toggle error:",e);showToast("Review toggle failed","error");}
-  }
+  try{
+    const dayNum=i+1;
+    const res=await adminFetch("toggle_reviewed",{challenger_id:uid,day_number:dayNum});
+    showToast(res.reviewed?"Marked as reviewed":"Unmarked review","success");
+    await loadAdminData();
+  }catch(e){console.error("Review toggle error:",e);showToast("Review toggle failed","error");}
   if(adminCurrentTab==="challengers")renderAdminChallengers(el("admin-content"));
   if(adminCurrentTab==="inbox")renderAdminInbox(el("admin-content"));
   if(adminCurrentTab==="overview")renderAdminOverview(el("admin-content"));
@@ -1181,41 +1178,25 @@ async function togRv(uid,i){
 
 async function batchMarkAllReviewed(){
   if(!confirm("Mark all pending uploads as reviewed?"))return;
-  if(!sb)return;
   const pending=getAM().flatMap(u=>{
     const items=[];
-    for(let i=0;i<u.day-1;i++){if(u.up[i]&&!u.rv[i])items.push({uid:u.id,day:i+1});}
+    for(let i=0;i<u.day-1;i++){if(u.up[i]&&!u.rv[i])items.push({challenger_id:u.id,day_number:i+1});}
     return items;
   });
-  let count=0;
-  for(const p of pending){
-    try{
-      const {data}=await sb.from("uploads").select("id").eq("challenger_id",p.uid).eq("day_number",p.day).single();
-      if(data) {await sb.from("uploads").update({reviewed:true,reviewed_at:new Date().toISOString()}).eq("id",data.id);count++;}
-    }catch(e){}
-  }
-  await loadAdminData();
-  showToast(`${count} uploads marked as reviewed`,"success");
+  try{
+    const res=await adminFetch("mark_all_reviewed",{items:pending});
+    await loadAdminData();
+    showToast(`${res.count||0} uploads marked as reviewed`,"success");
+  }catch(e){showToast("Batch review failed","error");}
   renderAdminInbox(el("admin-content"));
 }
 
 async function deleteChallenger(uid, name){
-  /* Step 1: confirm with name */
   const typed=prompt(`Type "${name}" to permanently delete this account and all their data:`);
   if(!typed||typed.trim()!==name){alert("Deletion cancelled. Name did not match.");return;}
-  /* Step 2: second confirm */
   if(!confirm(`FINAL CHECK: Delete ${name} and ALL their uploads, messages, and data? This cannot be undone.`))return;
-  if(!sb)return;
   try{
-    /* Delete from all child tables first */
-    await sb.from("uploads").delete().eq("challenger_id",uid);
-    await sb.from("energy_logs").delete().eq("challenger_id",uid);
-    await sb.from("chat_messages").delete().eq("challenger_id",uid);
-    await sb.from("push_subscriptions").delete().eq("challenger_id",uid);
-    await sb.from("genie_messages").delete().eq("challenger_id",uid);
-    /* Delete the challenger record */
-    await sb.from("challengers").delete().eq("id",uid);
-    /* Refresh admin */
+    await adminFetch("delete_challenger",{challenger_id:uid});
     adminDataLoaded=false;
     await loadAdminData();
     adminTab(adminCurrentTab);
@@ -1227,29 +1208,22 @@ async function deleteChallenger(uid, name){
 }
 
 async function deleteAllFreeAccounts(){
-  if(!sb)return;
   const freeUsers=getAM().filter(u=>u.paymentStatus==="free"||u.paymentStatus===null||u.paymentStatus==="pending");
   if(!freeUsers.length){alert("No free or unpaid accounts found.");return;}
   const names=freeUsers.map(u=>u.name).join(", ");
   if(!confirm(`Delete ${freeUsers.length} free/unpaid account(s)?\n\n${names}\n\nThis cannot be undone.`))return;
   const typed=prompt(`Type "DELETE ALL FREE" to confirm:`);
   if(typed!=="DELETE ALL FREE"){alert("Cancelled.");return;}
-  let deleted=0;
-  for(const u of freeUsers){
-    try{
-      await sb.from("uploads").delete().eq("challenger_id",u.id);
-      await sb.from("energy_logs").delete().eq("challenger_id",u.id);
-      await sb.from("chat_messages").delete().eq("challenger_id",u.id);
-      await sb.from("push_subscriptions").delete().eq("challenger_id",u.id);
-      await sb.from("genie_messages").delete().eq("challenger_id",u.id);
-      await sb.from("challengers").delete().eq("id",u.id);
-      deleted++;
-    }catch(e){console.error("Delete failed for",u.name,e);}
+  try{
+    const res=await adminFetch("delete_free");
+    adminDataLoaded=false;
+    await loadAdminData();
+    adminTab(adminCurrentTab);
+    alert(`Deleted ${res.deleted||0} of ${freeUsers.length} free accounts.`);
+  }catch(e){
+    console.error("Delete free error:",e);
+    alert("Deletion failed: "+(e.message||"Unknown error"));
   }
-  adminDataLoaded=false;
-  await loadAdminData();
-  adminTab(adminCurrentTab);
-  alert(`Deleted ${deleted} of ${freeUsers.length} free accounts.`);
 }
 
 /* Send message to a challenger via Supabase */

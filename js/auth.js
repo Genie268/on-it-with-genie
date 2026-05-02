@@ -376,22 +376,16 @@ async function initPushNotifications(){
 }
 
 async function triggerPush(challengerId,title,body){
+  if(typeof adminFetch!=="function"||!getAdminToken())return;
   try{
-    await fetch(PUSH_FUNCTION_URL,{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+PUSH_ADMIN_SECRET},
-      body:JSON.stringify({type:"personal",challenger_id:challengerId,title,body:body.slice(0,120),url:"/"})
-    });
+    await adminFetch("send_push",{push_type:"personal",challenger_id:challengerId,title,body:body.slice(0,120)});
   }catch(e){}
 }
 
 async function triggerPushBroadcast(title,body){
+  if(typeof adminFetch!=="function"||!getAdminToken())return;
   try{
-    await fetch(PUSH_FUNCTION_URL,{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+PUSH_ADMIN_SECRET},
-      body:JSON.stringify({type:"broadcast",title,body:body.slice(0,120),url:"/"})
-    });
+    await adminFetch("send_push",{push_type:"broadcast",title,body:body.slice(0,120)});
   }catch(e){}
 }
 
@@ -401,13 +395,11 @@ async function sendFBLive(uid){
   const msg=ta.value.trim();
   const u=getAM().find(x=>x.id===uid);
   let sent=false;
-  if(sb){
-    try{
-      const {error}=await sb.from("chat_messages").insert({challenger_id:uid,sender:"genie",message:msg});
-      sent=!error;
-    }catch(e){}
-  }
-  if(S.user&&S.user.supabaseId===uid){sendGenieMessage(msg);}
+  try{
+    await adminFetch("send_message",{challenger_id:uid,message:msg});
+    sent=true;
+  }catch(e){}
+  if(S.user&&S.user.supabaseId===uid&&typeof sendGenieMessage==="function"){sendGenieMessage(msg);}
   if(sent){triggerPush(uid,"Message from Genie 💬",msg);}
   el("fb-area-"+uid).innerHTML=`<div style="padding:10px 12px;background:rgba(77,201,138,.07);border:1px solid rgba(77,201,138,.22);border-radius:8px"><p class="ok" style="font-size:12px">${sent?"✓ Message sent to "+(u?.name||"challenger"):"⚠ Could not send"}</p></div>`;
   ta.value="";
@@ -420,13 +412,11 @@ async function broadcastMessage(){
   const btn=el("broadcast-btn");
   btn.disabled=true;btn.textContent="Sending...";
   let sent=0;
-  if(sb){
-    for(const u of getAM()){
-      try{
-        const {error}=await sb.from("chat_messages").insert({challenger_id:u.id,sender:"genie",message:msg});
-        if(!error)sent++;
-      }catch(e){}
-    }
+  for(const u of getAM()){
+    try{
+      await adminFetch("send_message",{challenger_id:u.id,message:msg});
+      sent++;
+    }catch(e){}
   }
   btn.disabled=false;btn.textContent="Broadcast to All";
   if(sent>0){triggerPushBroadcast("Message from Genie 💬",msg);}
