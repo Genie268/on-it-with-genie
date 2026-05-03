@@ -119,7 +119,7 @@ textarea{resize:none}
 .genie-photo-circle{width:36px;height:36px;border-radius:50%;border:2px solid #c49a1c;overflow:hidden;flex-shrink:0;background:#c49a1c;display:flex;align-items:center;justify-content:center}
 .profile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:998;display:none;align-items:flex-end;justify-content:center}
 .profile-overlay.show{display:flex}
-.profile-sheet{background:var(--s1);border:1px solid var(--bd);border-radius:16px 16px 0 0;padding:28px 22px;width:100%;max-width:440px;animation:popIn .25s ease forwards}
+.profile-sheet{background:var(--s1);border:1px solid var(--bd);border-radius:16px 16px 0 0;padding:28px 22px;width:100%;max-width:440px;max-height:85vh;overflow-y:auto;animation:popIn .25s ease forwards}
 .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--bd)}
 .toggle-pill{width:44px;height:24px;border-radius:12px;background:var(--s3);border:1px solid var(--bdm);cursor:pointer;position:relative;transition:background .2s}
 .toggle-pill::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:transform .2s,background .2s}

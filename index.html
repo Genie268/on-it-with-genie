@@ -194,8 +194,8 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
       </div>
       <input type="file" id="photo-file" accept="image/*" style="display:none" onchange="handlePhoto(this)">
       <div class="col" style="align-items:center">
-        <button class="bp" id="photo-continue-btn" style="width:100%;max-width:280px;padding:12px;font-size:15px" onclick="goTo('transition')">Continue →</button>
-        <button class="bg" onclick="goTo('transition')" style="font-size:12px;margin-top:4px">Skip for now</button>
+        <button class="bp" id="photo-continue-btn" style="width:100%;max-width:280px;padding:12px;font-size:15px" onclick="goTo('dash')">Continue →</button>
+        <button class="bg" onclick="goTo('dash')" style="font-size:12px;margin-top:4px">Skip for now</button>
       </div>
     </div>
   </div>
@@ -229,8 +229,7 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
       </div>
     </div>
     <div class="row">
-      <span class="bdg bdg-a" id="day-bdg">Day 1 / 15</span>
-      <button class="bs" style="padding:6px 12px;font-size:11px" onclick="goTo('admin')">Admin</button>
+      <span class="bdg bdg-a" id="day-bdg" onclick="_adminTap()">Day 1 / 15</span>
     </div>
   </div>
   <div class="sb">

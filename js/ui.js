@@ -339,6 +339,16 @@ async function deleteMyAccount(){
 }
 
 
+/* ── HIDDEN ADMIN ACCESS (5 taps on day badge) ── */
+let _adminTapCount=0,_adminTapTimer=null;
+function _adminTap(){
+  _adminTapCount++;
+  clearTimeout(_adminTapTimer);
+  if(_adminTapCount>=5){_adminTapCount=0;goTo("admin");return;}
+  _adminTapTimer=setTimeout(()=>{_adminTapCount=0;},1500);
+}
+
+
 /* ── LANDING PARTICLES ── */
 function initParticles(){
   const wrap=el("land-particles");if(!wrap)return;
