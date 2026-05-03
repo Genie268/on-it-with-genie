@@ -25,7 +25,7 @@ function renderDash(){
   const skColor=sk>0?"#c49a1c":"#3a3a3a";
   const skText=sk===0?"No streak yet":sk===1?"1 day streak":`${sk} day streak`;
   el("goal-c").innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${PT[u.answers.proofType]||"Proof"}</span><span class="muted" style="font-size:11px">${u.name}</span></div><span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span></div>`;
-  renderGrid(); renderUnlock(); renderRecCard();
+  renderGrid(); renderUnlock(); renderRecCard(); renderStats();
   updateMsgBadge();
   initPushNotifications();
   /* Start realtime + polling (startChallengerPoll handles both) */
@@ -402,6 +402,171 @@ function restartChallenge(){
   saveState();
   goTo("dash");
 }
+
+/* ── CHALLENGE STATS ── */
+function renderStats(){
+  const sc=el("stats-card");if(!sc||!S.user)return;
+  const u=S.user,d=S.day,dur=getDur();
+  const uploads=S.uploads.filter(v=>v!==null).length;
+  const missed=Math.max(0,d-1-uploads);
+  const pct=d>1?Math.round((uploads/Math.max(d-1,1))*100):0;
+  const remaining=Math.max(0,dur-d);
+  let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i]!==null)sk++;else break;}
+
+  sc.style.display="block";
+  sc.innerHTML=`<div class="row mb8" style="justify-content:space-between">
+    <span class="lbl m0">YOUR PROGRESS</span>
+    <button class="bs" style="padding:4px 10px;font-size:10px" onclick="openShareCard()">Share</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+    <div style="text-align:center;padding:10px 4px;background:var(--card2,#131313);border-radius:8px;border:1px solid var(--bd,#1a1a1a)">
+      <p style="font-size:20px;font-weight:900;color:#c49a1c">${uploads}</p>
+      <p style="font-size:9px;color:var(--muted,#5a5a5a);font-weight:600;letter-spacing:.04em">UPLOADS</p>
+    </div>
+    <div style="text-align:center;padding:10px 4px;background:var(--card2,#131313);border-radius:8px;border:1px solid var(--bd,#1a1a1a)">
+      <p style="font-size:20px;font-weight:900;color:${sk>0?"#c49a1c":"var(--muted,#5a5a5a)"}">${sk}</p>
+      <p style="font-size:9px;color:var(--muted,#5a5a5a);font-weight:600;letter-spacing:.04em">STREAK</p>
+    </div>
+    <div style="text-align:center;padding:10px 4px;background:var(--card2,#131313);border-radius:8px;border:1px solid var(--bd,#1a1a1a)">
+      <p style="font-size:20px;font-weight:900;color:${pct>=80?"#4dc98a":pct>=50?"#c49a1c":"#d9503a"}">${pct}%</p>
+      <p style="font-size:9px;color:var(--muted,#5a5a5a);font-weight:600;letter-spacing:.04em">HIT RATE</p>
+    </div>
+  </div>
+  <div class="row" style="justify-content:space-between;font-size:11px;color:var(--muted,#5a5a5a)">
+    <span>${missed} missed</span>
+    <span>${remaining} day${remaining!==1?"s":""} left</span>
+  </div>`;
+}
+
+
+/* ── SHARE PROGRESS CARD ── */
+function openShareCard(){
+  generateShareCanvas();
+  el("share-mod").classList.add("show");
+}
+
+function generateShareCanvas(){
+  const c=el("share-canvas");if(!c)return;
+  const u=S.user,d=S.day,dur=getDur();
+  const uploads=S.uploads.filter(v=>v!==null).length;
+  let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i]!==null)sk++;else break;}
+  const pct=d>1?Math.round((uploads/Math.max(d-1,1))*100):0;
+
+  const W=600,H=800;
+  c.width=W;c.height=H;
+  const ctx=c.getContext("2d");
+
+  ctx.fillStyle="#0a0a0a";
+  ctx.fillRect(0,0,W,H);
+
+  const grd=ctx.createRadialGradient(W/2,200,0,W/2,200,400);
+  grd.addColorStop(0,"rgba(196,154,28,.08)");
+  grd.addColorStop(1,"transparent");
+  ctx.fillStyle=grd;
+  ctx.fillRect(0,0,W,H);
+
+  ctx.fillStyle="#c49a1c";
+  ctx.font="bold 11px system-ui, -apple-system, sans-serif";
+  ctx.letterSpacing="2px";
+  ctx.textAlign="center";
+  ctx.fillText("ON IT WITH GENIE",W/2,60);
+  ctx.letterSpacing="0px";
+
+  ctx.fillStyle="#e0e0e0";
+  ctx.font="bold 28px system-ui, -apple-system, sans-serif";
+  ctx.fillText(u.name||"Challenger",W/2,110);
+
+  ctx.fillStyle="#888";
+  ctx.font="14px system-ui, -apple-system, sans-serif";
+  const goalText=u.answers.goalSummary||u.answers.goal||"";
+  const maxW=W-80;
+  if(ctx.measureText(goalText).width>maxW){
+    const words=goalText.split(" ");let line="",y=150;
+    for(const w of words){
+      const test=line?line+" "+w:w;
+      if(ctx.measureText(test).width>maxW){ctx.fillText(line,W/2,y);line=w;y+=22;}
+      else line=test;
+    }
+    if(line)ctx.fillText(line,W/2,y);
+  }else{
+    ctx.fillText(goalText,W/2,150);
+  }
+
+  const gridTop=200,cellSize=40,gap=6,cols=Math.min(dur,7);
+  const rows=Math.ceil(dur/cols);
+  const gridW=cols*cellSize+(cols-1)*gap;
+  const gridX=(W-gridW)/2;
+  for(let i=0;i<dur;i++){
+    const col=i%cols,row=Math.floor(i/cols);
+    const x=gridX+col*(cellSize+gap),y=gridTop+row*(cellSize+gap);
+    const isUp=S.uploads[i]!==null;
+    const isPast=i+1<d;
+    ctx.beginPath();
+    ctx.roundRect(x,y,cellSize,cellSize,6);
+    ctx.fillStyle=isUp?"rgba(77,201,138,.15)":isPast?"rgba(217,80,58,.08)":"#131313";
+    ctx.fill();
+    ctx.strokeStyle=isUp?"rgba(77,201,138,.4)":isPast?"rgba(217,80,58,.2)":"#1a1a1a";
+    ctx.lineWidth=1;
+    ctx.stroke();
+    if(isUp){
+      ctx.fillStyle="#4dc98a";ctx.font="bold 16px system-ui";ctx.textAlign="center";
+      ctx.fillText("✓",x+cellSize/2,y+cellSize/2+6);
+    }else{
+      ctx.fillStyle="#3a3a3a";ctx.font="bold 10px system-ui";ctx.textAlign="center";
+      ctx.fillText("D"+(i+1),x+cellSize/2,y+cellSize/2+4);
+    }
+  }
+
+  const statsY=gridTop+rows*(cellSize+gap)+40;
+  const statBoxW=140,statBoxH=80,statGap=20;
+  const totalW=3*statBoxW+2*statGap;
+  const statX=(W-totalW)/2;
+
+  [{v:String(uploads),l:"UPLOADS",c:"#c49a1c"},{v:String(sk),l:"STREAK",c:sk>0?"#c49a1c":"#5a5a5a"},{v:pct+"%",l:"HIT RATE",c:pct>=80?"#4dc98a":pct>=50?"#c49a1c":"#d9503a"}].forEach((s,i)=>{
+    const bx=statX+i*(statBoxW+statGap);
+    ctx.beginPath();ctx.roundRect(bx,statsY,statBoxW,statBoxH,10);
+    ctx.fillStyle="#131313";ctx.fill();
+    ctx.strokeStyle="#1a1a1a";ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle=s.c;ctx.font="bold 28px system-ui";ctx.textAlign="center";
+    ctx.fillText(s.v,bx+statBoxW/2,statsY+38);
+    ctx.fillStyle="#5a5a5a";ctx.font="bold 9px system-ui";
+    ctx.fillText(s.l,bx+statBoxW/2,statsY+60);
+  });
+
+  const dayY=statsY+statBoxH+30;
+  ctx.fillStyle="#888";ctx.font="13px system-ui";ctx.textAlign="center";
+  ctx.fillText(`Day ${d} of ${dur}`,W/2,dayY);
+
+  ctx.fillStyle="#c49a1c";ctx.font="bold 12px system-ui";
+  ctx.fillText("oiwg.vercel.app",W/2,H-30);
+
+  const preview=el("share-card-preview");
+  if(preview) preview.innerHTML=`<img src="${c.toDataURL("image/png")}" style="width:100%;border-radius:10px">`;
+}
+
+function downloadShareCard(){
+  const c=el("share-canvas");if(!c)return;
+  const link=document.createElement("a");
+  link.download=`oiwg-day${S.day}-progress.png`;
+  link.href=c.toDataURL("image/png");
+  link.click();
+}
+
+async function nativeShareCard(){
+  const c=el("share-canvas");if(!c)return;
+  try{
+    const blob=await new Promise(r=>c.toBlob(r,"image/png"));
+    const file=new File([blob],`oiwg-day${S.day}.png`,{type:"image/png"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:"My Progress — On It with Genie",text:`Day ${S.day} of ${getDur()} done.`});
+    }else{
+      downloadShareCard();
+    }
+  }catch(e){
+    if(e.name!=="AbortError") downloadShareCard();
+  }
+}
+
 
 /* initD15 is defined above with the new proof card logic */
 

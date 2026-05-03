@@ -220,6 +220,8 @@ function openProfile(){
     el("profile-name-input").value=S.user.name||"";
     el("profile-email").value=S.user.email||"";
     el("profile-phone").value=S.user.phone||"";
+    _renderProfilePayment();
+    _renderNotifToggle();
     if(S.user.photo){
       const pv=el("profile-photo-preview");
       if(pv){pv.src=S.user.photo;pv.style.display="block";el("profile-photo-placeholder").style.display="none";}
@@ -253,6 +255,87 @@ function toggleTheme(){
   document.body.classList.toggle("light");
   const tp=el("theme-toggle");
   if(tp)tp.className="toggle-pill"+(document.body.classList.contains("light")?" active":"");
+}
+
+
+/* ── NOTIFICATION TOGGLE ── */
+async function _renderNotifToggle(){
+  const row=el("notif-toggle-row");if(!row)return;
+  if(!("serviceWorker" in navigator)||!("PushManager" in window)){row.style.display="none";return;}
+  row.style.display="flex";
+  const reg=await navigator.serviceWorker.getRegistration("/sw.js");
+  const sub=reg?await reg.pushManager.getSubscription():null;
+  const nt=el("notif-toggle");
+  const ns=el("notif-toggle-sub");
+  if(sub){
+    nt.className="toggle-pill active";
+    ns.textContent="Push alerts are on";
+  }else{
+    nt.className="toggle-pill";
+    ns.textContent=Notification.permission==="denied"?"Blocked by browser":"Push alerts are off";
+  }
+}
+
+async function toggleNotifications(){
+  if(!("serviceWorker" in navigator)||!("PushManager" in window))return;
+  const reg=await navigator.serviceWorker.getRegistration("/sw.js");
+  if(!reg)return;
+  const sub=await reg.pushManager.getSubscription();
+  if(sub){
+    await sub.unsubscribe();
+    if(sb&&S.user?.supabaseId){
+      try{await sb.from("push_subscriptions").delete().eq("endpoint",sub.endpoint);}catch(e){}
+    }
+  }else{
+    if(Notification.permission==="denied"){
+      showToast("Notifications blocked by browser. Check your browser settings.","error",4000);
+      return;
+    }
+    await initPushNotifications();
+  }
+  _renderNotifToggle();
+}
+
+
+/* ── PAYMENT INFO ── */
+function _renderProfilePayment(){
+  const box=el("profile-payment-info");if(!box||!S.user)return;
+  const ps=S.user.paymentStatus;
+  if(ps!=="paid"&&ps!=="free"){box.style.display="none";return;}
+  box.style.display="block";
+  const statusText=ps==="free"?"Free Access":"Paid";
+  el("profile-pay-status").textContent=statusText;
+  el("profile-pay-status").style.color="#4dc98a";
+  const amt=S.user.amountPaid||0;
+  el("profile-pay-amount").textContent=amt>0?"₦"+(amt/100).toLocaleString():"Free";
+  const ref=S.user.paymentRef;
+  const refRow=el("profile-pay-ref-row");
+  if(ref){refRow.style.display="flex";el("profile-pay-ref").textContent=ref;}
+  else{refRow.style.display="none";}
+}
+
+
+/* ── DELETE ACCOUNT ── */
+async function deleteMyAccount(){
+  if(!confirm("This will permanently delete your account and all challenge data. This cannot be undone.\n\nAre you sure?"))return;
+  if(!confirm("Last chance — type 'delete' in the next prompt to confirm."))return;
+  const answer=prompt("Type DELETE to confirm:");
+  if(!answer||answer.trim().toUpperCase()!=="DELETE"){showToast("Deletion cancelled","info");return;}
+  if(sb&&S.user?.supabaseId){
+    try{
+      const uid=S.user.supabaseId;
+      await sb.from("push_subscriptions").delete().eq("challenger_id",uid);
+      await sb.from("energy_logs").delete().eq("challenger_id",uid);
+      await sb.from("uploads").delete().eq("challenger_id",uid);
+      await sb.from("messages").delete().eq("challenger_id",uid);
+      await sb.from("challengers").delete().eq("id",uid);
+    }catch(e){console.warn("Server cleanup partial:",e);}
+  }
+  try{localStorage.removeItem("oiwg_state");}catch(e){}
+  S.user=null;S.ans={};S.uploads=null;S.day=1;S.lilDone=false;S.devMode=false;
+  closeProfile();
+  goTo("land");
+  showToast("Account deleted","success");
 }
 
 

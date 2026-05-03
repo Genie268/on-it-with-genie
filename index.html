@@ -252,6 +252,7 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
         <span class="muted" id="sim-l" style="margin-left:auto;font-size:10px">Sim day 1</span>
       </div>
     </div>
+    <div class="card mb10" id="stats-card" style="display:none"></div>
     <div id="call-day-banner" style="display:none;margin-bottom:10px;padding:12px 14px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.18);border-radius:10px">
       <p style="font-size:12px;font-weight:700;color:#c49a1c;margin-bottom:2px">📞 Today is a call day</p>
       <p style="font-size:12px;color:#888;line-height:1.5">Upload your proof first, then <a id="call-day-link" href="#" target="_blank" style="color:#c49a1c;text-decoration:none">book your call with Genie →</a></p>
@@ -409,6 +410,10 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
       <div><p style="font-size:14px;font-weight:600">Light mode</p><p style="font-size:11px;color:var(--muted)">Switch between dark and light</p></div>
       <div class="toggle-pill" id="theme-toggle" onclick="toggleTheme()"></div>
     </div>
+    <div class="toggle-row" id="notif-toggle-row" style="margin-top:10px;display:none">
+      <div><p style="font-size:14px;font-weight:600">Notifications</p><p style="font-size:11px;color:var(--muted)" id="notif-toggle-sub">Push alerts for messages</p></div>
+      <div class="toggle-pill" id="notif-toggle" onclick="toggleNotifications()"></div>
+    </div>
 
     <div style="margin-top:16px">
       <span class="lbl">DISPLAY NAME</span>
@@ -418,18 +423,40 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
       <span class="lbl">EMAIL</span>
       <input class="profile-input" id="profile-email" type="email" placeholder="your@email.com">
     </div>
-    <div style="margin-top:12px;margin-bottom:24px">
+    <div style="margin-top:12px;margin-bottom:16px">
       <span class="lbl">PHONE NUMBER</span>
       <input class="profile-input" id="profile-phone" type="tel" placeholder="+234 000 000 0000">
     </div>
 
+    <div id="profile-payment-info" style="display:none;margin-bottom:16px;padding:12px 14px;background:rgba(77,201,138,.04);border:1px solid rgba(77,201,138,.12);border-radius:10px">
+      <span class="lbl" style="color:#4dc98a;margin-bottom:8px;display:block">PAYMENT</span>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="color:var(--muted)">Status</span><span id="profile-pay-status" style="font-weight:700;color:#4dc98a">Paid</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="color:var(--muted)">Amount</span><span id="profile-pay-amount" style="font-weight:600">—</span></div>
+      <div id="profile-pay-ref-row" style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--muted)">Reference</span><span id="profile-pay-ref" style="font-weight:600;font-size:11px;word-break:break-all;max-width:55%;text-align:right">—</span></div>
+    </div>
+
     <button class="bp" style="width:100%;padding:12px;font-size:14px" onclick="saveProfile()">Save Changes</button>
     <button class="bg" style="width:100%;padding:10px;margin-top:8px" onclick="closeProfile()">Close</button>
-    <div style="border-top:1px solid var(--bd);margin-top:16px;padding-top:16px">
+    <div style="border-top:1px solid var(--bd);margin-top:16px;padding-top:16px;display:flex;flex-direction:column;gap:8px">
       <button onclick="if(confirm('This will end your current challenge and clear all data. Are you sure?'))clearState()" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(217,80,58,.3);border-radius:9px;color:#d9503a;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">Log Out & Reset</button>
+      <button onclick="deleteMyAccount()" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(217,80,58,.5);border-radius:9px;color:#d9503a;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">Delete My Account</button>
     </div>
   </div>
 </div>
+
+<!-- SHARE CARD MODAL -->
+<div id="share-mod" class="mo">
+  <div class="mb" style="max-width:360px">
+    <div class="row mb16" style="justify-content:space-between;align-items:flex-start">
+      <div><span class="lbl lbl-a">SHARE YOUR PROGRESS</span><h3 style="font-size:18px;font-weight:800">Progress Card</h3></div>
+      <button onclick="el('share-mod').classList.remove('show')" style="background:#232323;border:none;color:#888;width:28px;height:28px;border-radius:7px;font-size:12px;cursor:pointer">✕</button>
+    </div>
+    <div id="share-card-preview" style="margin-bottom:14px;border-radius:10px;overflow:hidden"></div>
+    <button class="bp" style="width:100%;padding:12px;font-size:14px" onclick="downloadShareCard()">Download Image</button>
+    <button class="bg" style="width:100%;padding:10px;margin-top:8px;font-size:13px" onclick="nativeShareCard()">Share...</button>
+  </div>
+</div>
+<canvas id="share-canvas" style="display:none"></canvas>
 
 <!-- VIEW UPLOAD MODAL -->
 <div id="view-mod" class="mo">
