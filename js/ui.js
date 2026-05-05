@@ -58,6 +58,12 @@ function _activateScreen(s){
   /* Close upload modal if open */
   const mo=document.getElementById("mod");
   if(mo&&mo.classList.contains("show"))mo.classList.remove("show");
+  /* Hide floating chat when leaving dashboard */
+  if(s!=="dash"){
+    const fab=el("chat-fab");if(fab)fab.style.display="none";
+    const cf=el("chat-float");if(cf)cf.style.display="none";
+    if(typeof _chatOpen!=="undefined")_chatOpen=false;
+  }
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
   const map={land:"s-land",ob:"s-ob",duration:"s-duration",commit:"s-commit",pay:"s-pay",photo:"s-photo",transition:"s-transition",dash:"s-dash",d15:"s-d15",gauntlet:"s-gauntlet",rec:"s-rec",admin:"s-admin"};
   const target=el(map[s]||"s-land");

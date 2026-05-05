@@ -264,12 +264,25 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
       <div class="pb"><div class="pf" id="ul-bar" style="background:#c49a1c;width:0%"></div></div>
       <p class="muted" id="ul-msg" style="font-size:12px;margin-top:4px">12 uploads to unlock a second goal.</p>
     </div>
+    <div id="proof-wall" style="display:none"></div>
     <div id="rec-c"></div>
-    <div id="chat-container" style="margin-top:6px"></div>
   </div>
   <div class="stk">
     <button id="up-btn" class="bp" style="width:100%;max-width:320px;font-size:15px;padding:13px" onclick="openMod()">Upload Day 1 Proof ↑</button>
   </div>
+</div>
+
+<!-- FLOATING CHAT -->
+<div id="chat-fab" onclick="toggleFloatingChat()" style="display:none">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span id="msg-badge" class="chat-fab-badge" style="display:none">0</span>
+</div>
+<div id="chat-float" class="chat-float" style="display:none">
+  <div class="chat-float-header">
+    <span style="font-weight:700;font-size:14px">Message Genie</span>
+    <button onclick="toggleFloatingChat()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer;padding:0 4px">✕</button>
+  </div>
+  <div id="chat-container"></div>
 </div>
 
 <!-- DAY COMPLETE -->

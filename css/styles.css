@@ -227,6 +227,22 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 .welcome-card{background:#131313;border:1px solid rgba(196,154,28,.25);border-radius:18px;padding:32px 24px;max-width:380px;width:100%;text-align:center;animation:popIn .4s ease forwards}
 @media(max-width:600px){.welcome-card{padding:24px 18px;border-radius:14px}}
 
+/* ── FLOATING CHAT ── */
+#chat-fab{position:fixed;bottom:80px;right:18px;width:52px;height:52px;border-radius:50%;background:#c49a1c;color:#000;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:900;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:transform .15s,box-shadow .15s}
+#chat-fab:active{transform:scale(.92)}
+.chat-fab-badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;border-radius:9px;background:#d9503a;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #0a0a0a}
+.chat-float{position:fixed;bottom:0;left:0;right:0;z-index:950;background:#0a0a0a;border-top:1px solid #1a1a1a;border-radius:16px 16px 0 0;max-height:70vh;display:flex;flex-direction:column;animation:chatSlideUp .25s ease forwards}
+@keyframes chatSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.chat-float-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px;border-bottom:1px solid #141414}
+.chat-float .chat-screen{border:none;border-radius:0;margin-bottom:0}
+.chat-float .chat-thread{max-height:45vh}
+@media(min-width:600px){.chat-float{left:auto;right:18px;bottom:18px;width:380px;max-height:540px;border-radius:16px;border:1px solid #1a1a1a;box-shadow:0 8px 40px rgba(0,0,0,.5)}}
+
+/* ── PROOF WALL ── */
+.proof-wall-item{padding:10px 14px;font-size:12px;color:#666;display:flex;align-items:center;gap:10px;animation:proofFadeIn .5s ease forwards,proofFadeOut .5s ease 4s forwards;opacity:0}
+@keyframes proofFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes proofFadeOut{from{opacity:1}to{opacity:0}}
+
 /* ── CHAT INTERFACE ── */
 .chat-screen{background:#0f0f0f;border-radius:14px;overflow:hidden;border:1px solid #1a1a1a;margin-bottom:10px}
 .chat-thread{overflow-y:auto;padding:14px 14px 8px;display:flex;flex-direction:column;gap:0;max-height:300px;scroll-behavior:smooth}

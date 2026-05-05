@@ -35,7 +35,9 @@ function renderDash(){
     Notification.requestPermission();
   }
   renderEnergyCheck();
-  renderChat();
+  showChatFab();
+  if(!_chatRenderedOnce){_chatRenderedOnce=true;renderChat();}
+  startProofWall();
   const dnr=el("day-nav-row");
   if(S.devMode){dnr.style.display="flex";el("sim-l").textContent=`Sim day ${d}`;el("prev-b").disabled=d===1;el("next-b").disabled=d===getDur();}
   else{dnr.style.display="none";}
@@ -565,6 +567,75 @@ async function nativeShareCard(){
   }catch(e){
     if(e.name!=="AbortError") downloadShareCard();
   }
+}
+
+
+/* ── FLOATING CHAT ── */
+let _chatRenderedOnce=false;
+let _chatOpen=false;
+
+function showChatFab(){
+  const fab=el("chat-fab");
+  if(fab)fab.style.display="flex";
+}
+
+function toggleFloatingChat(){
+  const panel=el("chat-float");
+  const fab=el("chat-fab");
+  if(!panel)return;
+  _chatOpen=!_chatOpen;
+  if(_chatOpen){
+    panel.style.display="flex";
+    fab.style.display="none";
+    renderChat();
+    setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},100);
+  }else{
+    panel.style.display="none";
+    fab.style.display="flex";
+  }
+}
+
+
+/* ── PROOF WALL (subtle social proof) ── */
+let _proofWallTimer=null;
+let _proofWallData=null;
+
+function startProofWall(){
+  if(_proofWallTimer)return;
+  const pw=el("proof-wall");if(!pw)return;
+  _fetchProofWallData();
+  setTimeout(()=>_showProofWallItem(pw),3000);
+  _proofWallTimer=setInterval(()=>_showProofWallItem(pw),22000);
+}
+
+async function _fetchProofWallData(){
+  if(!sb)return;
+  try{
+    const {count}=await sb.from("uploads").select("id",{count:"exact",head:true});
+    const {count:active}=await sb.from("challengers").select("id",{count:"exact",head:true}).eq("status","active");
+    if(count||active)_proofWallData={totalUploads:count||0,activeChallengers:active||0};
+  }catch(e){}
+}
+
+function _showProofWallItem(pw){
+  if(!S.user)return;
+  pw.style.display="block";
+  const pool=[];
+  if(_proofWallData&&_proofWallData.totalUploads>5){
+    pool.push(`${_proofWallData.totalUploads} proofs uploaded across all challengers`);
+  }
+  if(_proofWallData&&_proofWallData.activeChallengers>1){
+    pool.push(`${_proofWallData.activeChallengers} challengers are active right now`);
+  }
+  pool.push("Someone just uploaded their daily proof");
+  pool.push("A challenger just completed a check-in");
+  pool.push("Someone is building their streak right now");
+  const text=pool[Math.floor(Math.random()*pool.length)];
+  pw.innerHTML=`<div class="proof-wall-item">
+    <div style="width:6px;height:6px;border-radius:50%;background:#4dc98a;flex-shrink:0;opacity:.6"></div>
+    <span>${text}</span>
+  </div>`;
+  setTimeout(()=>{pw.innerHTML="";},5000);
 }
 
 
