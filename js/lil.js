@@ -82,12 +82,13 @@ async function renderChat(){
     if(!body) return "";
     /* Read receipt for challenger's messages */
     const readCheck=isMe&&m.read_at?`<span style="color:rgba(0,0,0,.35);font-size:9px;margin-left:4px" title="Read">✓✓</span>`:(isMe?`<span style="color:rgba(0,0,0,.2);font-size:9px;margin-left:4px">✓</span>`:"");
-    /* Reply button */
+    /* Reply + unsend buttons */
     const msgPreview=(m.message||"").replace(/'/g,"&#39;").slice(0,40);
     const replyBtn=m.id?` <span onclick="event.stopPropagation();chatSetReply('${m.id}','${msgPreview}')" style="cursor:pointer;color:${isMe?"rgba(0,0,0,.3)":"#444"};font-size:10px;margin-left:6px;padding:1px 4px;border-radius:3px" title="Reply">↩</span>`:"";
+    const unsendBtn=isMe&&m.id?` <span onclick="event.stopPropagation();unsendChatMsg('${m.id}')" style="cursor:pointer;color:rgba(0,0,0,.2);font-size:10px;margin-left:2px;padding:1px 4px;border-radius:3px" title="Unsend">✕</span>`:"";
     return `${dateSep}<div id="msg-${m.id||i}" class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
       <div class="cmsg-body">${body}</div>
-      <div class="cmsg-time">${isMe?"You":"Genie"} · ${timeStr}${readCheck}${replyBtn}</div>
+      <div class="cmsg-time">${isMe?"You":"Genie"} · ${timeStr}${readCheck}${replyBtn}${unsendBtn}</div>
     </div>`;
   }).join("");
 
@@ -105,27 +106,10 @@ async function renderChat(){
   </div>`;
   setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},60);
   if(sb&&S.user.supabaseId&&unread>0){
-    /* Only mark messages as read when the chat panel is actually visible */
     const chatPanel=el("chat-float");
     const chatVisible=chatPanel&&chatPanel.style.display!=="none";
     if(chatVisible){
-      sb.from("chat_messages").update({read:true,read_at:new Date().toISOString()})
-        .eq("challenger_id",S.user.supabaseId).eq("sender","genie").is("read",null)
-        .then(()=>{
-          if(typeof updateMsgBadge==="function") updateMsgBadge();
-          if(typeof updateTabTitle==="function") updateTabTitle();
-        });
-      sb.from("chat_messages").update({read:true,read_at:new Date().toISOString()})
-        .eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false)
-        .then(()=>{});
-      /* Mark local genie messages as read too */
-      if(S.user.genieMessages){
-        S.user.genieMessages.forEach(m=>{m.read=true;});
-        saveState();
-      }
-      const badge=el("msg-badge");
-      if(badge){badge.style.display="none";badge.textContent="0";}
-      if(typeof updateTabTitle==="function") updateTabTitle();
+      _markChatRead();
     }
   }
 }
@@ -191,6 +175,33 @@ function sendGenieMessage(text){
   saveState();
 }
 
+async function _markChatRead(){
+  if(!sb||!S.user?.supabaseId)return;
+  const ts=new Date().toISOString();
+  try{
+    await sb.from("chat_messages").update({read:true,read_at:ts})
+      .eq("challenger_id",S.user.supabaseId).eq("sender","genie").is("read",null);
+    await sb.from("chat_messages").update({read:true,read_at:ts})
+      .eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false);
+  }catch(e){console.warn("Mark read failed:",e);}
+  if(S.user.genieMessages){
+    S.user.genieMessages.forEach(m=>{m.read=true;});
+    saveState();
+  }
+  const badge=el("msg-badge");
+  if(badge){badge.style.display="none";badge.textContent="0";}
+  if(typeof updateMsgBadge==="function") updateMsgBadge();
+  if(typeof updateTabTitle==="function") updateTabTitle();
+}
+
+async function unsendChatMsg(msgId){
+  if(!sb||!S.user?.supabaseId||!msgId)return;
+  try{
+    await sb.from("chat_messages").delete().eq("id",msgId).eq("sender","challenger");
+    renderChat();
+    showToast("Message deleted","info");
+  }catch(e){showToast("Could not delete","error");}
+}
 
 /* ── GENIE NOTIFICATION BANNER (JS) ── */
 async function updateMsgBadge(){

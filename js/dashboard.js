@@ -589,6 +589,7 @@ function toggleFloatingChat(){
     fab.style.display="none";
     renderChat();
     setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},100);
+    if(typeof _markChatRead==="function") _markChatRead();
   }else{
     panel.style.display="none";
     fab.style.display="flex";
