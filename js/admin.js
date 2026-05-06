@@ -794,7 +794,17 @@ function renderAdminOverview(c){
           const callDays=CALL_DAYS[u.dur||15]||[];
           const upcoming=callDays.filter(cd=>cd>=u.day);
           if(!upcoming.length)return "";
-          return `<div class="row mb6" style="justify-content:space-between"><span style="font-size:12px;font-weight:600">${u.name}</span><span class="bdg bdg-a" style="font-size:9px">Day ${upcoming[0]}</span></div>`;
+          const startD=new Date(u.startDate);
+          const nextCallDate=new Date(startD);
+          nextCallDate.setDate(nextCallDate.getDate()+upcoming[0]-1);
+          const dateLabel=nextCallDate.toLocaleDateString([],{month:"short",day:"numeric"});
+          return `<div class="row mb8" style="justify-content:space-between;align-items:center">
+            <div style="min-width:0;flex:1">
+              <span style="font-size:12px;font-weight:600">${u.name}</span>
+              <span class="muted" style="font-size:11px;margin-left:6px">Day ${upcoming[0]} · ${dateLabel}</span>
+            </div>
+            <button onclick="openCallSchedule('${u.id}')" style="padding:4px 10px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0">Book</button>
+          </div>`;
         }).join("")||`<p class="muted" style="font-size:12px">No upcoming calls.</p>`}
       </div>
     </div>
@@ -1296,7 +1306,89 @@ async function deleteAllFreeAccounts(){
 /* ── ADMIN CALL SCHEDULE ── */
 function openCallSchedule(uid){
   const u=getAM().find(x=>x.id===uid);if(!u)return;
-  window.open(CALENDLY_URL,"_blank");
+  const callDays=CALL_DAYS[u.dur||15]||[];
+  const upcoming=callDays.filter(cd=>cd>=u.day);
+  const startDate=new Date(u.startDate);
+  const callDateOptions=upcoming.map(cd=>{
+    const d=new Date(startDate);
+    d.setDate(d.getDate()+cd-1);
+    const label=d.toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"});
+    const val=d.toISOString().split("T")[0];
+    return {day:cd,label,val};
+  });
+
+  const panel=document.getElementById("call-schedule-panel");
+  if(panel){panel.remove();}
+  const overlay=document.createElement("div");
+  overlay.id="call-schedule-panel";
+  overlay.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;animation:popIn .2s ease";
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
+
+  const noUpcoming=!callDateOptions.length;
+  overlay.innerHTML=`<div style="background:#111;border:1px solid #222;border-radius:14px;padding:24px;max-width:360px;width:100%;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
+    <div class="row mb14" style="justify-content:space-between;align-items:center">
+      <p style="font-size:14px;font-weight:800">Book Call — ${u.name}</p>
+      <button onclick="document.getElementById('call-schedule-panel').remove()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer;padding:0 4px">×</button>
+    </div>
+    <p class="muted" style="font-size:12px;margin-bottom:14px">Day ${u.day}/${u.dur} · ${upcoming.length} call${upcoming.length!==1?"s":""} remaining</p>
+
+    ${noUpcoming?`<div style="text-align:center;padding:20px 0"><p class="muted" style="font-size:13px;margin-bottom:12px">No upcoming calls scheduled for ${u.name}.</p><button class="bp" style="font-size:12px;padding:8px 16px" onclick="window.open('${CALENDLY_URL}','_blank')">Open Calendly →</button></div>`:`
+    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:8px">CALL DAYS</p>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+      ${callDateOptions.map((opt,i)=>`<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0e0e0e;border:1px solid #1f1f1f;border-radius:8px;cursor:pointer;transition:border-color .15s" onclick="this.querySelector('input').checked=true;document.querySelectorAll('.call-day-opt').forEach(x=>x.style.borderColor='#1f1f1f');this.style.borderColor='#c49a1c'" class="call-day-opt">
+        <input type="radio" name="call-day-pick" value="${opt.day}" data-date="${opt.val}" ${i===0?"checked":""} style="accent-color:#c49a1c">
+        <div style="flex:1">
+          <p style="font-size:13px;font-weight:600">Day ${opt.day}</p>
+          <p class="muted" style="font-size:11px">${opt.label}</p>
+        </div>
+      </label>`).join("")}
+    </div>
+
+    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:8px">TIME</p>
+    <input type="time" id="call-time-pick" value="10:00" style="font-size:14px;padding:10px 14px;margin-bottom:16px">
+
+    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:8px">MESSAGE (optional)</p>
+    <textarea id="call-msg-ta" rows="2" placeholder="Any notes for ${u.name}..." style="font-size:12px;margin-bottom:16px"></textarea>
+
+    <div style="display:flex;gap:8px">
+      <button class="bp" style="flex:1;font-size:13px;padding:10px" onclick="_bookCall('${u.id}')">Send Invite</button>
+      <button class="bs" style="font-size:12px;padding:10px 14px" onclick="window.open('${CALENDLY_URL}','_blank')">Calendly →</button>
+    </div>`}
+  </div>`;
+  document.body.appendChild(overlay);
+  if(!noUpcoming){
+    const firstOpt=overlay.querySelector(".call-day-opt");
+    if(firstOpt)firstOpt.style.borderColor="#c49a1c";
+  }
+}
+
+async function _bookCall(uid){
+  const u=getAM().find(x=>x.id===uid);if(!u)return;
+  const radio=document.querySelector('input[name="call-day-pick"]:checked');
+  if(!radio){showToast("Pick a call day","error");return;}
+  const callDay=radio.value;
+  const callDate=radio.dataset.date;
+  const timeInput=document.getElementById("call-time-pick");
+  const time=timeInput?timeInput.value:"10:00";
+  const extraMsg=document.getElementById("call-msg-ta")?.value?.trim()||"";
+  const dateObj=new Date(callDate+"T"+time);
+  const formatted=dateObj.toLocaleDateString([],{weekday:"long",month:"long",day:"numeric"})+" at "+dateObj.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+
+  let msg=`Your Day ${callDay} call is booked for ${formatted}.`;
+  if(extraMsg) msg+=`\n\n${extraMsg}`;
+  msg+=`\n\nJoin here: ${CALENDLY_URL}`;
+
+  const btn=document.querySelector("#call-schedule-panel .bp");
+  if(btn){btn.disabled=true;btn.textContent="Sending...";}
+  try{
+    await adminFetch("send_message",{challenger_id:uid,message:msg});
+    adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Call Booked",body:`Day ${callDay} call on ${formatted}`}).catch(()=>{});
+    showToast(`Call invite sent to ${u.name}`,"success");
+    document.getElementById("call-schedule-panel")?.remove();
+  }catch(e){
+    showToast("Failed to send invite","error");
+    if(btn){btn.disabled=false;btn.textContent="Send Invite";}
+  }
 }
 
 function playUploadSound(){
