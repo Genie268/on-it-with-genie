@@ -70,7 +70,7 @@ function _activateScreen(s){
   if(!target){console.error("goTo: no element for screen",s);el("s-land").classList.add("active");return;}
   target.classList.add("active");
   if(s==="dash")       renderDash();
-  if(s==="admin")      renderAdmin();
+  if(s==="admin")      { renderAdmin(); startAdminPoll(); }
   if(s==="rec")        initRec();
   if(s==="d15")        initD15();
   if(s==="transition") renderTransition();

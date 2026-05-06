@@ -255,27 +255,74 @@ async function deleteAccessCode(id){
   }catch(e){showToast("Failed to delete code","error");}
 }
 
-async function renderAdminSettings(){
-  const c=el("admin-content");if(!c)return;
+async function renderAdminSettings(c){
+  if(!c)c=el("admin-content");if(!c)return;
   const codes=await loadAccessCodes();
-  c.innerHTML=`<div style="padding:18px">
-    <h3 style="font-size:14px;font-weight:700;color:#e0e0e0;margin-bottom:14px">🔐 Admin PIN</h3>
-    <p style="font-size:12px;color:#888;margin-bottom:10px">Change the PIN required to access this admin dashboard.</p>
-    <button class="bs" style="padding:8px 16px;font-size:13px" onclick="changeAdminPin()">Change PIN</button>
+  const all=getAM();
+  c.innerHTML=`
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('set-security')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">SECURITY</span>
+        <span id="set-security-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s;transform:rotate(90deg)">›</span>
+      </div>
+      <div id="set-security" class="admin-section-bd">
+        <p style="font-size:12px;color:#888;margin-bottom:10px">Change the PIN required to access this admin dashboard.</p>
+        <button class="bs" style="padding:8px 16px;font-size:12px" onclick="changeAdminPin()">Change PIN</button>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1a1a1a">
+          <p style="font-size:12px;color:#888;margin-bottom:8px">End your admin session. You'll need the PIN to log in again.</p>
+          <button onclick="setAdminToken('');S._adminAuth=false;renderAdmin()" style="padding:8px 16px;border-radius:8px;background:transparent;border:1px solid rgba(217,80,58,.3);color:#d9503a;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Log Out</button>
+        </div>
+      </div>
+    </div>
 
-    <h3 style="font-size:14px;font-weight:700;color:#e0e0e0;margin:24px 0 14px">🎟 Access Codes</h3>
-    <p style="font-size:12px;color:#888;margin-bottom:10px">Manage discount and free-access codes. You control who gets in and for how long.</p>
-    <button class="bs" style="padding:8px 16px;font-size:13px;margin-bottom:14px" onclick="createAccessCode()">+ Create Code</button>
-    ${codes.length===0?`<p style="font-size:12px;color:#555">No access codes yet.</p>`:`
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${codes.map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#111;border:1px solid ${c.active?"#2a2a2a":"#d9503a44"};border-radius:8px">
-        <span style="font-weight:700;font-size:13px;color:${c.active?"#c49a1c":"#555"};min-width:100px;font-family:monospace">${c.code}</span>
-        <span style="font-size:11px;color:#888;flex:1">${c.discount_percent===100?"FREE":c.discount_percent+"% off"} · ${c.max_uses===0?"Unlimited":c.times_used+"/"+c.max_uses} uses</span>
-        <button onclick="toggleAccessCode('${c.id}',${c.active})" style="background:none;border:1px solid ${c.active?"#d9503a55":"#4dc98a55"};color:${c.active?"#d9503a":"#4dc98a"};font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer">${c.active?"Deactivate":"Activate"}</button>
-        <button onclick="deleteAccessCode('${c.id}')" style="background:none;border:1px solid #33333366;color:#555;font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer">✕</button>
-      </div>`).join("")}
-    </div>`}
-  </div>`;
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('set-codes')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">ACCESS CODES${codes.length?` · ${codes.length}`:""}</span>
+        <span id="set-codes-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s;transform:rotate(90deg)">›</span>
+      </div>
+      <div id="set-codes" class="admin-section-bd">
+        <p style="font-size:12px;color:#888;margin-bottom:10px">Manage discount and free-access codes for challengers.</p>
+        <button class="bs" style="padding:8px 16px;font-size:12px;margin-bottom:12px" onclick="createAccessCode()">+ Create Code</button>
+        ${codes.length===0?`<p class="muted" style="font-size:12px">No access codes yet.</p>`:`
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${codes.map(cd=>`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0e0e0e;border:1px solid ${cd.active?"#1a1a1a":"rgba(217,80,58,.2)"};border-radius:8px">
+            <span style="font-weight:700;font-size:12px;color:${cd.active?"#c49a1c":"#555"};min-width:80px;font-family:monospace">${cd.code}</span>
+            <span style="font-size:10px;color:#888;flex:1">${cd.discount_percent===100?"FREE":cd.discount_percent+"% off"} · ${cd.max_uses===0?"∞":cd.times_used+"/"+cd.max_uses} uses</span>
+            <button onclick="toggleAccessCode('${cd.id}',${cd.active})" style="background:none;border:1px solid ${cd.active?"rgba(217,80,58,.3)":"rgba(77,201,138,.3)"};color:${cd.active?"#d9503a":"#4dc98a"};font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer">${cd.active?"Off":"On"}</button>
+            <button onclick="deleteAccessCode('${cd.id}')" style="background:none;border:none;color:#555;font-size:12px;cursor:pointer;padding:4px 6px">✕</button>
+          </div>`).join("")}
+        </div>`}
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('set-data')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">DATA & ACCOUNTS</span>
+        <span id="set-data-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="set-data" style="display:none" class="admin-section-bd">
+        <p style="font-size:12px;color:#888;margin-bottom:10px">${all.length} total accounts · ${all.filter(u=>u.paymentStatus==="paid"||u.paymentStatus==="completed").length} paid · ${all.filter(u=>!u.paymentStatus||u.paymentStatus==="free"||u.paymentStatus==="pending").length} free/pending</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="bs" style="font-size:12px;padding:8px 16px" onclick="adminDataLoaded=false;renderAdmin()">↻ Refresh Data</button>
+          <button onclick="deleteAllFreeAccounts()" style="padding:8px 16px;border-radius:8px;background:transparent;border:1px solid rgba(217,80,58,.3);color:#d9503a;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Delete Free Accounts</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('set-about')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">ABOUT</span>
+        <span id="set-about-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="set-about" style="display:none" class="admin-section-bd">
+        <div style="font-size:12px;color:#888;line-height:1.8">
+          <p><strong style="color:#ccc">On It With Genie</strong> — Accountability Platform</p>
+          <p>Admin Dashboard v2.0</p>
+          <p style="margin-top:8px;font-size:11px;color:#555">Supabase · Vercel · Groq AI · Paystack</p>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function getPendingInbox(){
@@ -292,35 +339,22 @@ function getPendingInbox(){
   });
 }
 
+const _bdg=(n)=>n>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:5px;vertical-align:middle">${n}</span>`:"";
+
 function adminTab(tab){
   adminCurrentTab = tab;
-  /* Compute badge counts */
   const reviewCount=getPendingInbox().length;
   const flaggedCount=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
   const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
-  const bdg=(n)=>n>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:5px;vertical-align:middle">${n}</span>`:"";
   ["overview","messages","challengers","flagged","inbox","analytics","settings"].forEach(t=>{
-    const btn = el("tab-"+t);
-    if(!btn) return;
-    btn.style.borderBottomColor = t===tab ? "#c49a1c" : "transparent";
-    btn.style.color = t===tab ? "#c49a1c" : "#5a5a5a";
-    if(t==="overview") btn.innerHTML=`Overview`;
-    if(t==="messages") btn.innerHTML=`Messages${bdg(unreadCount)}`;
-    if(t==="challengers") btn.innerHTML=`Challengers`;
-    if(t==="inbox") btn.innerHTML=`Reviews${bdg(reviewCount)}`;
-    if(t==="flagged") btn.innerHTML=`Attention${bdg(flaggedCount)}`;
-    if(t==="analytics") btn.innerHTML=`Analytics`;
-    if(t==="settings") btn.innerHTML=`Settings`;
+    const btn=el("tab-"+t);if(!btn)return;
+    btn.className="admin-tab"+(t===tab?" active":"");
+    const labels={overview:"Overview",messages:`Messages${_bdg(unreadCount)}`,challengers:"Challengers",flagged:`Attention${_bdg(flaggedCount)}`,inbox:`Reviews${_bdg(reviewCount)}`,analytics:"Analytics",settings:"Settings"};
+    btn.innerHTML=labels[t]||t;
   });
-  const c = el("admin-content");
-  if(!c) return;
-  if(tab==="overview")    renderAdminOverview(c);
-  if(tab==="messages")    renderAdminMessages(c);
-  if(tab==="challengers") renderAdminChallengers(c);
-  if(tab==="flagged")     renderAdminFlagged(c);
-  if(tab==="inbox")       renderAdminInbox(c);
-  if(tab==="analytics")   renderAdminAnalytics(c);
-  if(tab==="settings")    renderAdminSettings();
+  const c=el("admin-content");if(!c)return;
+  const renderers={overview:renderAdminOverview,messages:renderAdminMessages,challengers:renderAdminChallengers,flagged:renderAdminFlagged,inbox:renderAdminInbox,analytics:renderAdminAnalytics,settings:renderAdminSettings};
+  if(renderers[tab])renderers[tab](c);
 }
 
 /* ── MESSAGES TAB ── */
@@ -681,121 +715,82 @@ function toggleAdminSection(id){
 }
 
 function renderAdminOverview(c){
-  const total = getAM().length + (S.user?1:0);
-  const active = getAM().filter(u => u.up.filter(Boolean).length > 0).length + (S.user&&S.uploads.some(v=>v!==null)?1:0);
-  const toReview = getAM().reduce((acc,u) => acc + Math.max(0, u.up.filter(Boolean).length - (u.rvCount||0)), 0);
-  const liveUp = S.user?S.uploads.filter(v=>v!==null).length:0;
-  const liveRv = S.user?(S.uploads.map(()=>0)).filter(Boolean).length:0;
-  const livePending = liveUp-liveRv;
-  const totalReview = toReview + Math.max(0,livePending);
-  const atRisk = getAM().filter(u => u.up.slice(0,u.day-1).filter(v=>!v).length >= 3).length;
-  const liveMissed = S.user?S.uploads.slice(0,S.day-1).filter(v=>v===null).length:0;
-  const totalAtRisk = atRisk + (liveMissed>=3?1:0);
-
-  /* Build live user card */
-  let liveCard="";
-  if(S.user){
-    const ini=(S.user.name||"?")[0].toUpperCase();
-    const liveDur=S.user?.duration||15;
-    const pct=Math.round((liveUp/liveDur)*100);
-    const isAtRisk=liveMissed>=3;
-    liveCard=`<div class="card mb10" style="border-color:rgba(196,154,28,.4)">
-      <div class="row mb10" style="justify-content:space-between">
-        <div class="row" style="gap:10px">
-          <div style="width:36px;height:36px;border-radius:9px;background:rgba(196,154,28,.15);border:2px solid #c49a1c;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#c49a1c;flex-shrink:0">${S.user.photo?`<img src="${S.user.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:7px">`:ini}</div>
-          <div><p style="font-size:13px;font-weight:700">${S.user.name} <span class="ac" style="font-size:10px">LIVE</span></p><p class="muted" style="font-size:11px">Day ${S.day}/${liveDur} · ${liveUp} uploads</p></div>
-        </div>
-        <div class="col" style="align-items:flex-end;gap:5px">
-          ${isAtRisk?`<span style="font-size:10px;font-weight:700;color:#d9503a">At Risk</span>`:`<span style="font-size:10px;font-weight:700;color:#4dc98a">Active</span>`}
-          ${livePending>0?`<span class="bdg bdg-a" style="font-size:9px">${livePending} to review</span>`:""}
-        </div>
-      </div>
-      <div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden">
-        <div style="height:100%;width:${pct}%;background:${isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px"></div>
-      </div>
-      ${S.user.recovery?`<div style="margin-top:10px;padding:8px 10px;background:rgba(196,154,28,.05);border:1px solid rgba(196,154,28,.15);border-radius:6px"><p style="font-size:10px;font-weight:700;color:#c49a1c;margin-bottom:4px">RECOVERY COMPLETED</p><p class="muted" style="font-size:11px;line-height:1.5">${S.user.recovery.length} reflections on file</p></div>`:""}
-    </div>`;
-  }
-
-  /* Compact messages summary — links to Messages tab */
+  const all=getAM();
+  const total=all.length;
+  const uploadsTotal=all.reduce((a,u)=>a+u.up.filter(Boolean).length,0);
+  const toReview=all.reduce((a,u)=>a+Math.max(0,u.up.filter(Boolean).length-(u.rvCount||0)),0);
+  const atRiskUsers=all.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
   const totalUnread=getTotalUnreadCount();
-  let messagesSection="";
-  if(totalUnread>0||adminRecentMessages.length>0){
+
+  /* Action alerts — only show what needs attention right now */
+  let alerts="";
+  if(totalUnread>0){
     const latestMsg=adminRecentMessages[0];
-    const latestName=latestMsg?getAM().find(u=>u.id===latestMsg.challenger_id)?.name||"Unknown":"";
-    const latestPreview=latestMsg?(latestMsg.voice_url&&!latestMsg.message?"🎙 Voice note":(latestMsg.sender==="genie"?"You: ":"")+(latestMsg.message||"").slice(0,40)):"";
-    messagesSection=`<div onclick="adminTab('messages')" style="margin-bottom:16px;padding:12px 14px;background:${totalUnread?"rgba(217,80,58,.06)":"rgba(196,154,28,.04)"};border:1px solid ${totalUnread?"rgba(217,80,58,.25)":"rgba(196,154,28,.15)"};border-radius:10px;cursor:pointer">
-      <div class="row" style="justify-content:space-between">
-        <div class="row" style="gap:8px">
-          <span style="font-size:16px">${totalUnread?"💬":"✉"}</span>
-          <div>
-            <p style="font-size:13px;font-weight:700;color:${totalUnread?"#d9503a":"#c49a1c"}">${totalUnread?totalUnread+" unread message"+(totalUnread>1?"s":""):"Messages"}</p>
-            ${latestMsg?`<p class="muted" style="font-size:11px;margin-top:2px">${latestName}: ${latestPreview}</p>`:""}
-          </div>
-        </div>
-        <span style="color:${totalUnread?"#d9503a":"#c49a1c"};font-size:14px">→</span>
-      </div>
+    const who=latestMsg?all.find(u=>u.id===latestMsg.challenger_id)?.name||"Someone":"Someone";
+    const preview=latestMsg?(latestMsg.voice_url&&!latestMsg.message?"sent a voice note":latestMsg.message?.slice(0,35)+"…"):"";
+    alerts+=`<div class="admin-alert" onclick="adminTab('messages')" style="background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.2)">
+      <span style="font-size:18px">💬</span>
+      <div style="flex:1;min-width:0"><p style="font-size:13px;font-weight:700;color:#d9503a">${totalUnread} unread message${totalUnread>1?"s":""}</p>${preview?`<p class="muted" style="font-size:11px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${who}: ${preview}</p>`:""}</div>
+      <span style="color:#d9503a;font-size:14px;flex-shrink:0">→</span>
     </div>`;
   }
-
-  /* Needs Attention banner */
-  const atRiskUsers=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
-  let attentionBanner="";
   if(atRiskUsers.length>0){
-    attentionBanner=`<div style="margin-bottom:16px;padding:12px 14px;background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.25);border-radius:10px;cursor:pointer" onclick="adminTab('flagged')">
-      <div class="row" style="justify-content:space-between">
-        <div class="row" style="gap:8px"><span style="font-size:16px">⚑</span><div><p style="font-size:13px;font-weight:700;color:#d9503a">${atRiskUsers.length} challenger${atRiskUsers.length>1?"s":""} need${atRiskUsers.length===1?"s":""} attention</p><p class="muted" style="font-size:11px;margin-top:2px">${atRiskUsers.map(u=>u.name).join(", ")}</p></div></div>
-        <span style="color:#d9503a;font-size:14px">→</span>
-      </div>
+    alerts+=`<div class="admin-alert" onclick="adminTab('flagged')" style="background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.15)">
+      <span style="font-size:18px">⚑</span>
+      <div style="flex:1"><p style="font-size:13px;font-weight:700;color:#d9503a">${atRiskUsers.length} need${atRiskUsers.length===1?"s":""} attention</p><p class="muted" style="font-size:11px;margin-top:1px">${atRiskUsers.map(u=>u.name).join(", ")}</p></div>
+      <span style="color:#d9503a;font-size:14px;flex-shrink:0">→</span>
+    </div>`;
+  }
+  if(toReview>0){
+    alerts+=`<div class="admin-alert" onclick="adminTab('inbox')" style="background:rgba(196,154,28,.05);border:1px solid rgba(196,154,28,.15)">
+      <span style="font-size:18px">↑</span>
+      <div style="flex:1"><p style="font-size:13px;font-weight:700;color:#c49a1c">${toReview} upload${toReview>1?"s":""} to review</p></div>
+      <span style="color:#c49a1c;font-size:14px;flex-shrink:0">→</span>
     </div>`;
   }
 
-  c.innerHTML = `
-    ${attentionBanner}
-    ${messagesSection}
-    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">ACTIVE CHALLENGERS</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
-      <div class="card" style="text-align:center;padding:16px"><div style="font-size:32px;font-weight:900;color:#c49a1c">${total}</div><div class="muted" style="font-size:11px;margin-top:4px">Challengers</div></div>
-      <div class="card" style="text-align:center;padding:16px"><div style="font-size:32px;font-weight:900;color:#4dc98a">${active}</div><div class="muted" style="font-size:11px;margin-top:4px">Active</div></div>
-      <div class="card" style="text-align:center;padding:16px;${totalReview>0?"background:rgba(196,154,28,.07);border-color:rgba(196,154,28,.22)":""}"><div style="font-size:32px;font-weight:900;color:${totalReview>0?"#c49a1c":"#5a5a5a"}">${totalReview}</div><div class="muted" style="font-size:11px;margin-top:4px">Pending Reviews</div></div>
-      <div class="card" style="text-align:center;padding:16px;${totalAtRisk>0?"background:rgba(217,80,58,.07);border-color:rgba(217,80,58,.22)":""}"><div style="font-size:32px;font-weight:900;color:${totalAtRisk>0?"#d9503a":"#5a5a5a"}">${totalAtRisk}</div><div class="muted" style="font-size:11px;margin-top:4px">At Risk</div></div>
+  /* Stats grid */
+  const avgProgress=total>0?Math.round(all.reduce((a,u)=>a+Math.round(u.up.filter(Boolean).length/(u.dur||15)*100),0)/total):0;
+
+  c.innerHTML=`
+    ${alerts}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px">
+      <div class="admin-stat"><div class="admin-stat-val" style="color:#c49a1c">${total}</div><div class="admin-stat-lbl">Challengers</div></div>
+      <div class="admin-stat"><div class="admin-stat-val" style="color:#4dc98a">${uploadsTotal}</div><div class="admin-stat-lbl">Uploads</div></div>
+      <div class="admin-stat"><div class="admin-stat-val" style="color:${avgProgress>=50?"#4dc98a":"#c49a1c"}">${avgProgress}%</div><div class="admin-stat-lbl">Avg Progress</div></div>
+      <div class="admin-stat"><div class="admin-stat-val" style="color:${atRiskUsers.length?"#d9503a":"#5a5a5a"}">${atRiskUsers.length}</div><div class="admin-stat-lbl">At Risk</div></div>
     </div>
-    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">CHALLENGERS</p>
-    ${liveCard}
-    ${getAM().map(u => {
-      const up = u.up.filter(Boolean).length;
-      const rv = u.rvCount||0;
-      const missed = u.up.slice(0,u.day-1).filter(v=>!v).length;
-      const pct = Math.round((up/(u.dur||15))*100);
-      const isAtRisk = missed>=3;
-      const pending = up-rv;
+
+    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">CHALLENGERS</p>
+    ${total===0?`<div class="card" style="text-align:center;padding:32px 16px"><p class="muted" style="font-size:14px;margin-bottom:6px">No challengers yet.</p><p class="muted" style="font-size:12px">When someone completes payment, they'll appear here.</p></div>`:
+    all.map(u=>{
+      const up=u.up.filter(Boolean).length,missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
+      const pct=Math.round((up/(u.dur||15))*100);
+      const isAtRisk=missed>=3;
+      const pending=up-(u.rvCount||0);
       const unreadCt=getUnreadCountForChallenger(u.id);
-      const unreadBdg=unreadCt>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:4px">${unreadCt}</span>`:"";
       return `<div class="card mb10" style="cursor:pointer" onclick="adminTab('challengers');setTimeout(()=>openChallenger('${u.id}'),60)">
-        <div class="row mb10" style="justify-content:space-between">
+        <div class="row mb8" style="justify-content:space-between">
           <div class="row" style="gap:10px">
-            <div style="width:36px;height:36px;border-radius:9px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.ini}</div>
-            <div><p style="font-size:13px;font-weight:700">${u.name}${unreadBdg}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads${up>0?` · last: Day ${u.up.lastIndexOf(1)+1}`:""}</p></div>
+            <div style="width:34px;height:34px;border-radius:8px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:7px">`:u.ini}</div>
+            <div><p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads</p></div>
           </div>
-          <div class="col" style="align-items:flex-end;gap:5px">
+          <div style="text-align:right">
             ${isAtRisk?`<span style="font-size:10px;font-weight:700;color:#d9503a">At Risk</span>`:`<span style="font-size:10px;font-weight:700;color:#4dc98a">Active</span>`}
-            ${pending>0?`<span class="bdg bdg-a" style="font-size:9px">${pending} to review</span>`:""}
+            ${pending>0?`<br><span style="font-size:9px;color:#c49a1c;font-weight:600">${pending} to review</span>`:""}
           </div>
         </div>
-        <div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px"></div>
-        </div>
+        <div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px"></div></div>
       </div>`;
     }).join("")}
-    ${totalReview>0?`<div class="card ca mt12"><p style="font-size:13px;font-weight:600;margin-bottom:8px"><span class="ac">${totalReview} uploads</span> waiting for your review.</p><button class="bp" style="font-size:12px;padding:8px 16px" onclick="adminTab('inbox')">Review Now →</button></div>`:""}
 
-    <div style="margin-top:20px;border:1px solid #1f1f1f;border-radius:10px;overflow:hidden">
-      <div onclick="toggleAdminSection('ov-calls')" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#0e0e0e">
+    <div class="admin-section" style="margin-top:16px">
+      <div class="admin-section-hd" onclick="toggleAdminSection('ov-calls')">
         <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">UPCOMING CALLS</span>
         <span id="ov-calls-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
       </div>
-      <div id="ov-calls" style="display:none;padding:10px 14px;border-top:1px solid #1a1a1a">
-        ${getAM().map(u=>{
+      <div id="ov-calls" style="display:none" class="admin-section-bd">
+        ${all.map(u=>{
           const callDays=CALL_DAYS[u.dur||15]||[];
           const upcoming=callDays.filter(cd=>cd>=u.day);
           if(!upcoming.length)return "";
@@ -804,70 +799,88 @@ function renderAdminOverview(c){
       </div>
     </div>
 
-    <div style="margin-top:8px;border:1px solid #1f1f1f;border-radius:10px;overflow:hidden">
-      <div onclick="toggleAdminSection('ov-energy')" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#0e0e0e">
-        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">ENERGY & MOOD</span>
-        <span id="ov-energy-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
-      </div>
-      <div id="ov-energy" style="display:none;padding:10px 14px;border-top:1px solid #1a1a1a">
-        ${getAM().filter(u=>u.energyLog&&Object.keys(u.energyLog).length>0).map(u=>{
-          const entries=Object.entries(u.energyLog).filter(([k,v])=>v.type!=="skip");
-          const lowDays=entries.filter(([k,v])=>v.type==="energy"&&v.value<=2);
-          return `<div class="row mb6" style="justify-content:space-between"><span style="font-size:12px;font-weight:600">${u.name}</span><span class="muted" style="font-size:11px">${entries.length} check-ins${lowDays.length>0?` · <span class="er">${lowDays.length} low</span>`:""}</span></div>`;
-        }).join("")||`<p class="muted" style="font-size:12px">No check-in data yet.</p>`}
-      </div>
-    </div>
-
-    <div style="margin-top:8px;border:1px solid #1f1f1f;border-radius:10px;overflow:hidden">
-      <div onclick="toggleAdminSection('ov-broadcast')" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#0e0e0e">
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('ov-broadcast')">
         <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">BROADCAST MESSAGE</span>
         <span id="ov-broadcast-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
       </div>
-      <div id="ov-broadcast" style="display:none;padding:10px 14px;border-top:1px solid #1a1a1a">
+      <div id="ov-broadcast" style="display:none" class="admin-section-bd">
         <textarea id="broadcast-ta" rows="3" placeholder="Write your message to all challengers..." style="font-size:13px;margin-bottom:8px"></textarea>
         <button id="broadcast-btn" class="bp" style="font-size:12px;padding:8px 16px" onclick="broadcastMessage()">Broadcast to All</button>
         <div id="broadcast-status"></div>
       </div>
     </div>
 
-    <div style="margin-top:8px;border:1px solid #1f1f1f;border-radius:10px;overflow:hidden">
-      <div onclick="toggleAdminSection('ov-health')" style="padding:10px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#0e0e0e">
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('ov-health');if(!document.getElementById('ov-health').querySelector('.admin-stat'))loadSystemHealth()">
         <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">SYSTEM HEALTH</span>
         <span id="ov-health-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
       </div>
-      <div id="ov-health" style="display:none;padding:10px 14px;border-top:1px solid #1a1a1a">
-        <div id="health-content" style="text-align:center;padding:8px 0"><span class="muted" style="font-size:11px">Tap to load...</span></div>
-        <button class="bs" style="font-size:11px;padding:6px 12px;margin-top:6px;width:100%" onclick="loadSystemHealth()">Check System Health</button>
+      <div id="ov-health" style="display:none" class="admin-section-bd">
+        <div id="health-content" style="text-align:center;padding:8px 0"><div class="spinner" style="margin:0 auto"></div></div>
       </div>
     </div>
 
-    <div style="display:flex;gap:8px;margin-top:16px;margin-bottom:20px">
-      <button class="bs" style="font-size:12px;padding:8px 16px" onclick="adminDataLoaded=false;renderAdmin()">↻ Refresh Data</button>
-      <button style="padding:8px 16px;border-radius:9px;background:transparent;border:1px solid rgba(217,80,58,.3);color:#d9503a;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit" onclick="deleteAllFreeAccounts()">Delete Free Accounts</button>
+    <div style="margin-top:12px;margin-bottom:20px">
+      <button class="bs" style="font-size:12px;padding:8px 16px" onclick="adminDataLoaded=false;renderAdmin()">↻ Refresh</button>
     </div>
-    ${getAM().length===0?`<div class="card" style="text-align:center;padding:32px 16px;margin-top:16px"><p class="muted" style="font-size:14px;margin-bottom:6px">No challengers yet.</p><p class="muted" style="font-size:12px">When someone completes payment, they'll appear here.</p></div>`:""}
   `;
 }
 
 function renderAdminChallengers(c){
+  const all=getAM();
+  const total=all.length;
+  if(!total){c.innerHTML=`<div style="text-align:center;padding:60px 20px"><p class="muted" style="font-size:14px;margin-bottom:6px">No challengers yet.</p><p class="muted" style="font-size:12px">People will appear here after completing payment.</p></div>`;return;}
+  const paid=all.filter(u=>u.paymentStatus==="paid"||u.paymentStatus==="completed").length;
+  const free=total-paid;
   c.innerHTML = `
-    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">ALL CHALLENGERS</p>
-    ${getAM().map(u=>{
+    <div class="row mb12" style="justify-content:space-between;align-items:center">
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">${total} CHALLENGER${total>1?"S":""} · ${paid} paid${free?` · ${free} free`:""}</p>
+      <div style="position:relative">
+        <input id="ch-search" type="text" placeholder="Search..." oninput="_filterChallengers(this.value)" style="font-size:12px;padding:6px 12px 6px 28px;border-radius:100px;background:#111;border:1px solid #222;color:#ebebeb;width:140px;font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#c49a1c'" onblur="this.style.borderColor='#222'">
+        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;color:#555">⌕</span>
+      </div>
+    </div>
+    <div id="ch-list">
+    ${all.map(u=>{
       const unreadCt=getUnreadCountForChallenger(u.id);
-      const unreadBdg=unreadCt>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:4px">${unreadCt}</span>`:"";
+      const up=u.up.filter(Boolean).length;
+      const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
+      const pct=Math.round((up/(u.dur||15))*100);
+      const isAtRisk=missed>=3;
+      const statusLbl=isAtRisk?"At Risk":u.day>=u.dur?"Complete":"Active";
+      const statusColor=isAtRisk?"#d9503a":u.day>=u.dur?"#4dc98a":"#c49a1c";
       return `
-      <div class="card mb10" id="ch-card-${u.id}">
-        <div class="row" style="justify-content:space-between;cursor:pointer;padding-bottom:12px" onclick="toggleCh('${u.id}')">
+      <div class="card mb10 ch-item" data-name="${(u.name||'').toLowerCase()}" id="ch-card-${u.id}">
+        <div class="row" style="justify-content:space-between;cursor:pointer" onclick="toggleCh('${u.id}')">
           <div class="row" style="gap:10px">
-            <div style="width:38px;height:38px;border-radius:9px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.ini}</div>
-            <div><p style="font-size:14px;font-weight:700">${u.name}${unreadBdg}</p><p class="muted" style="font-size:11px;margin-top:2px">${u.goal}</p></div>
+            <div style="width:38px;height:38px;border-radius:9px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:u.ini}</div>
+            <div style="min-width:0">
+              <p style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}${_bdg(unreadCt)}</p>
+              <p class="muted" style="font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.goal||"No goal set"}</p>
+            </div>
           </div>
-          <span id="chev-${u.id}" style="font-size:20px;color:#5a5a5a">›</span>
+          <div class="row" style="gap:10px;flex-shrink:0">
+            <div style="text-align:right">
+              <span style="font-size:10px;font-weight:700;color:${statusColor}">${statusLbl}</span>
+              <p class="muted" style="font-size:10px;margin-top:2px">Day ${u.day}/${u.dur}</p>
+            </div>
+            <span id="chev-${u.id}" style="font-size:18px;color:#5a5a5a;transition:transform .2s">›</span>
+          </div>
         </div>
-        <div id="ch-det-${u.id}" style="display:none;border-top:1px solid #1b1b1b;padding-top:14px">${renderChallengerDetail(u)}</div>
+        <div style="margin-top:10px"><div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px;transition:width .3s"></div></div><p class="muted" style="font-size:9px;margin-top:4px;text-align:right">${up}/${u.dur} uploaded · ${pct}%</p></div>
+        <div id="ch-det-${u.id}" style="display:none;border-top:1px solid #1b1b1b;padding-top:14px;margin-top:10px">${renderChallengerDetail(u)}</div>
       </div>
     `;}).join("")}
+    </div>
   `;
+}
+
+function _filterChallengers(q){
+  const query=q.toLowerCase().trim();
+  document.querySelectorAll(".ch-item").forEach(el=>{
+    el.style.display=!query||el.dataset.name.includes(query)?"":"none";
+  });
 }
 
 function toggleCh(uid){
@@ -952,18 +965,61 @@ function renderChallengerDetail(u){
     </div>`;
 }
 
+function _getMissStreak(u){
+  let streak=0;
+  for(let i=u.day-2;i>=0;i--){
+    if(!u.up[i])streak++;else break;
+  }
+  return streak;
+}
+
 function renderAdminFlagged(c){
-  const atRisk=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
-  if(!atRisk.length){c.innerHTML=`<div style="text-align:center;padding:60px 20px"><p class="muted">No challengers need attention right now.</p></div>`;return;}
-  c.innerHTML=`<p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#d9503a;margin-bottom:12px">NEEDS YOUR ATTENTION · ${atRisk.length}</p>
-    ${atRisk.map(u=>{
+  const all=getAM();
+  const atRisk=all.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
+  if(!atRisk.length){
+    c.innerHTML=`<div style="text-align:center;padding:60px 20px">
+      <div style="font-size:32px;margin-bottom:12px;opacity:.5">✓</div>
+      <p style="font-size:14px;font-weight:600;color:#4dc98a;margin-bottom:6px">All clear</p>
+      <p class="muted" style="font-size:12px">No challengers need attention right now. Everyone's on track.</p>
+    </div>`;
+    return;
+  }
+  const sorted=[...atRisk].sort((a,b)=>{
+    const aMissed=a.up.slice(0,a.day-1).filter(v=>!v).length;
+    const bMissed=b.up.slice(0,b.day-1).filter(v=>!v).length;
+    return bMissed-aMissed;
+  });
+  c.innerHTML=`
+    <div class="row mb14" style="justify-content:space-between;align-items:center">
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#d9503a">NEEDS ATTENTION · ${sorted.length} of ${all.length}</p>
+      <span class="muted" style="font-size:10px">sorted by severity</span>
+    </div>
+    ${sorted.map(u=>{
       const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
+      const streak=_getMissStreak(u);
       const reasons=[];
-      if(missed>=3)reasons.push(missed+" missed days");
-      if(u.flag)reasons.push("upload flagged");
-      return `<div class="card ce mb10">
-        <div class="row mb10"><div style="width:36px;height:36px;border-radius:9px;background:rgba(217,80,58,.1);border:1px solid rgba(217,80,58,.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#d9503a;flex-shrink:0">${u.ini}</div><div style="margin-left:10px"><p style="font-size:13px;font-weight:700">${u.name}</p><p style="font-size:11px;color:#d9503a;margin-top:2px">${reasons.join(" · ")}</p></div></div>
-        ${u.flag?`<p style="font-size:12px;background:rgba(0,0,0,.3);padding:8px 10px;border-radius:6px;margin-bottom:10px;line-height:1.5">${u.flag}</p>`:""}
+      if(missed>=5)reasons.push(`<span style="color:#d9503a;font-weight:700">${missed} missed days</span>`);
+      else if(missed>=3)reasons.push(`${missed} missed days`);
+      if(streak>=3)reasons.push(`${streak}-day cold streak`);
+      if(u.flag)reasons.push("flagged");
+      const unreadCt=getUnreadCountForChallenger(u.id);
+      const lastUpload=u.up.lastIndexOf(1);
+      const daysSinceUpload=lastUpload>=0?u.day-1-lastUpload:u.day-1;
+      return `<div class="card mb10" style="border-left:3px solid ${missed>=5?"#d9503a":"rgba(217,80,58,.4)"}">
+        <div class="row mb10" style="justify-content:space-between">
+          <div class="row" style="gap:10px">
+            <div style="width:36px;height:36px;border-radius:9px;background:rgba(217,80,58,.08);border:1px solid rgba(217,80,58,.25);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#d9503a;flex-shrink:0">${u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:u.ini}</div>
+            <div>
+              <p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p>
+              <p style="font-size:11px;color:#d9503a;margin-top:2px">${reasons.join(" · ")}</p>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <p style="font-size:10px;color:#888">Day ${u.day}/${u.dur}</p>
+            <p style="font-size:10px;color:#555;margin-top:2px">${daysSinceUpload>0?daysSinceUpload+"d since upload":"uploaded today"}</p>
+          </div>
+        </div>
+        ${u.flag?`<div style="font-size:12px;background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.15);padding:8px 10px;border-radius:6px;margin-bottom:10px;line-height:1.5;color:#ccc">${u.flag}</div>`:""}
         <div id="intv-${u.id}">
           <textarea id="int-ta-${u.id}" rows="2" placeholder="Send ${u.name} a message..." style="font-size:13px;margin-bottom:8px"></textarea>
           <div class="row" style="gap:8px">
@@ -977,25 +1033,35 @@ function renderAdminFlagged(c){
 
 function renderAdminInbox(c){
   const pending=getPendingInbox();
+  if(!pending.length){
+    c.innerHTML=`<div style="text-align:center;padding:60px 20px">
+      <div style="font-size:32px;margin-bottom:12px;opacity:.5">✓</div>
+      <p style="font-size:14px;font-weight:600;color:#4dc98a;margin-bottom:6px">All caught up</p>
+      <p class="muted" style="font-size:12px">No pending uploads to review. Check back when challengers upload.</p>
+    </div>`;
+    return;
+  }
   c.innerHTML=`<div class="row mb12" style="justify-content:space-between;align-items:center">
       <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">UPLOADS TO REVIEW · ${pending.length}</p>
-      ${pending.length>=2?`<button class="bs" style="font-size:11px;padding:5px 12px" onclick="batchMarkAllReviewed()">Mark All Done (${pending.length})</button>`:""}
+      <div class="row" style="gap:6px">
+        ${pending.length>=2?`<button class="bs" style="font-size:10px;padding:5px 10px" onclick="batchMarkAllReviewed()">✓ All Done (${pending.length})</button>`:""}
+      </div>
     </div>
     ${pending.map(({u,day,note,i,hasVoice,voiceUrl,fileUrl,link,fileName,behavior})=>`
       <div class="card mb10">
         <div class="row mb8" style="justify-content:space-between;align-items:flex-start">
           <div class="row" style="gap:8px;flex:1;min-width:0">
-            <div style="width:30px;height:30px;border-radius:7px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.ini}</div>
+            <div style="width:30px;height:30px;border-radius:7px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:6px">`:u.ini}</div>
             <div style="min-width:0">
-              <p style="font-size:12px;font-weight:700">${u.name} <span class="muted">Day ${day}</span></p>
-              ${note&&note!=="—"?`<p style="font-size:12px;margin-top:3px;line-height:1.5">${note}</p>`:""}
-              ${behavior?`<p style="font-size:11px;margin-top:3px;color:#c49a1c">Behavior: ${behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p>`:""}
+              <p style="font-size:12px;font-weight:700">${u.name} <span class="muted" style="font-weight:400">· Day ${day}</span></p>
+              ${note&&note!=="—"?`<p style="font-size:12px;margin-top:4px;line-height:1.5;color:#ccc">${note}</p>`:""}
+              ${behavior?`<p style="font-size:11px;margin-top:4px;color:#c49a1c">Behavior: ${behavior==="yes"?"✓ Did it":"✗ Missed"}</p>`:""}
               ${link?`<a href="${link}" target="_blank" style="font-size:11px;color:#4dc98a;margin-top:3px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔗 ${link}</a>`:""}
               ${fileUrl?thumbHtml(fileUrl,fileName):fileName?`<p style="font-size:11px;color:#888;margin-top:2px">📎 ${fileName}</p>`:""}
-              ${voiceUrl?`<audio controls src="${voiceUrl}" style="width:100%;margin-top:6px;height:32px"></audio>`:(hasVoice?`<p style="font-size:11px;color:#888;margin-top:2px">🎙 Voice note (link unavailable)</p>`:"")}
+              ${voiceUrl?`<audio controls src="${voiceUrl}" style="width:100%;margin-top:6px;height:32px"></audio>`:(hasVoice?`<p style="font-size:11px;color:#888;margin-top:2px">🎙 Voice note</p>`:"")}
             </div>
           </div>
-          <button onclick="togRv('${u.id}',${i});renderAdminInbox(el('admin-content'))" style="padding:5px 12px;border-radius:100px;background:#1b1b1b;border:1px solid #333;color:#888;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px">Mark Done</button>
+          <button onclick="togRv('${u.id}',${i});renderAdminInbox(el('admin-content'))" style="padding:5px 12px;border-radius:100px;background:rgba(77,201,138,.06);border:1px solid rgba(77,201,138,.25);color:#4dc98a;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px;transition:background .15s" onmouseenter="this.style.background='rgba(77,201,138,.12)'" onmouseleave="this.style.background='rgba(77,201,138,.06)'">✓ Done</button>
         </div>
         <textarea id="inb-${u.id}-${i}" rows="2" placeholder="Reply to ${u.name}..." style="font-size:12px;margin-top:4px"></textarea>
         <div class="row mt8" style="gap:7px">
@@ -1003,7 +1069,7 @@ function renderAdminInbox(c){
           <button class="bs" style="font-size:11px;padding:6px 12px" onclick="lilInboxDraft('${u.id}',${i},'${(note||"").replace(/'/g,"\\'")}')">✦ Lil Draft</button>
         </div>
       </div>
-    `).join("")||`<div style="text-align:center;padding:48px 20px"><p class="muted">All caught up. No pending reviews.</p></div>`}`;
+    `).join("")}`;
 }
 
 async function renderAdminAnalytics(c){
