@@ -105,16 +105,28 @@ async function renderChat(){
   </div>`;
   setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},60);
   if(sb&&S.user.supabaseId&&unread>0){
-    /* Mark read instantly in UI — update badge right away without waiting for DB */
-    sb.from("chat_messages").update({read:true,read_at:new Date().toISOString()}).eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false).then(()=>{
-      /* After DB confirms, refresh badge and tab title */
-      if(typeof updateMsgBadge==="function") updateMsgBadge();
+    /* Only mark messages as read when the chat panel is actually visible */
+    const chatPanel=el("chat-float");
+    const chatVisible=chatPanel&&chatPanel.style.display!=="none";
+    if(chatVisible){
+      sb.from("chat_messages").update({read:true,read_at:new Date().toISOString()})
+        .eq("challenger_id",S.user.supabaseId).eq("sender","genie").is("read",null)
+        .then(()=>{
+          if(typeof updateMsgBadge==="function") updateMsgBadge();
+          if(typeof updateTabTitle==="function") updateTabTitle();
+        });
+      sb.from("chat_messages").update({read:true,read_at:new Date().toISOString()})
+        .eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false)
+        .then(()=>{});
+      /* Mark local genie messages as read too */
+      if(S.user.genieMessages){
+        S.user.genieMessages.forEach(m=>{m.read=true;});
+        saveState();
+      }
+      const badge=el("msg-badge");
+      if(badge){badge.style.display="none";badge.textContent="0";}
       if(typeof updateTabTitle==="function") updateTabTitle();
-    });
-    /* Optimistic: hide badge immediately */
-    const badge=el("msg-badge");
-    if(badge){badge.style.display="none";badge.textContent="0";}
-    if(typeof updateTabTitle==="function") updateTabTitle();
+    }
   }
 }
 
@@ -185,11 +197,13 @@ async function updateMsgBadge(){
   const badge=el("msg-badge");
   if(!badge)return;
   let count=0;
-  /* Check chat_messages from Supabase */
+  /* Check chat_messages from Supabase — cover both NULL and false for the read column */
   if(sb&&S.user?.supabaseId){
     try{
-      const {count:c}=await sb.from("chat_messages").select("id",{count:"exact",head:true}).eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false);
-      if(c)count=c;
+      const {count:c1}=await sb.from("chat_messages").select("id",{count:"exact",head:true}).eq("challenger_id",S.user.supabaseId).eq("sender","genie").eq("read",false);
+      if(c1)count+=c1;
+      const {count:c2}=await sb.from("chat_messages").select("id",{count:"exact",head:true}).eq("challenger_id",S.user.supabaseId).eq("sender","genie").is("read",null);
+      if(c2)count+=c2;
     }catch(e){}
   }
   /* Also check local genie messages */
