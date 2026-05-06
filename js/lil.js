@@ -82,13 +82,12 @@ async function renderChat(){
     if(!body) return "";
     /* Read receipt for challenger's messages */
     const readCheck=isMe&&m.read_at?`<span style="color:rgba(0,0,0,.35);font-size:9px;margin-left:4px" title="Read">✓✓</span>`:(isMe?`<span style="color:rgba(0,0,0,.2);font-size:9px;margin-left:4px">✓</span>`:"");
-    /* Reply + unsend buttons */
     const msgPreview=(m.message||"").replace(/'/g,"&#39;").slice(0,40);
     const replyBtn=m.id?` <span onclick="event.stopPropagation();chatSetReply('${m.id}','${msgPreview}')" style="cursor:pointer;color:${isMe?"rgba(0,0,0,.3)":"#444"};font-size:10px;margin-left:6px;padding:1px 4px;border-radius:3px" title="Reply">↩</span>`:"";
-    const unsendBtn=isMe&&m.id?` <span onclick="event.stopPropagation();unsendChatMsg('${m.id}')" style="cursor:pointer;color:rgba(0,0,0,.2);font-size:10px;margin-left:2px;padding:1px 4px;border-radius:3px" title="Unsend">✕</span>`:"";
-    return `${dateSep}<div id="msg-${m.id||i}" class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
+    const moreMenu=isMe&&m.id?` <span onclick="event.stopPropagation();_toggleMsgMenu('${m.id}')" style="cursor:pointer;color:rgba(0,0,0,.25);font-size:12px;margin-left:2px;padding:1px 4px;border-radius:3px;letter-spacing:1px;line-height:1;vertical-align:middle" title="More">···</span><div id="msg-menu-${m.id}" style="display:none;position:absolute;right:${isMe?"0":"auto"};left:${isMe?"auto":"0"};bottom:100%;margin-bottom:4px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.5);overflow:hidden;z-index:100;min-width:120px"><button onclick="event.stopPropagation();chatSetReply('${m.id}','${msgPreview}');_closeMsgMenus()" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;background:none;border:none;border-bottom:1px solid #222;color:#ccc;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left"><span style="font-size:13px">↩</span> Reply</button><button onclick="event.stopPropagation();_copyMsgText('${m.id}');_closeMsgMenus()" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;background:none;border:none;border-bottom:1px solid #222;color:#ccc;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left"><span style="font-size:13px">⊡</span> Copy</button><button onclick="event.stopPropagation();unsendChatMsg('${m.id}');_closeMsgMenus()" style="display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;background:none;border:none;color:#d9503a;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left"><span style="font-size:13px">⊘</span> Unsend</button></div>`:"";
+    return `${dateSep}<div id="msg-${m.id||i}" class="cmsg ${isMe?"cmsg-me":"cmsg-them"}" style="position:relative">
       <div class="cmsg-body">${body}</div>
-      <div class="cmsg-time">${isMe?"You":"Genie"} · ${timeStr}${readCheck}${replyBtn}${unsendBtn}</div>
+      <div class="cmsg-time" style="position:relative">${isMe?"You":"Genie"} · ${timeStr}${readCheck}${isMe?"":replyBtn}${moreMenu}</div>
     </div>`;
   }).join("");
 
@@ -104,7 +103,10 @@ async function renderChat(){
       <button class="chat-send-btn" onclick="sendChatMsg()">↑</button>
     </div>
   </div>`;
-  setTimeout(()=>{const s=el("chat-scroll");if(s)s.scrollTop=s.scrollHeight;},60);
+  setTimeout(()=>{
+    const s=el("chat-scroll");
+    if(s){s.scrollTop=s.scrollHeight;s.addEventListener("click",_closeMsgMenus);}
+  },60);
   if(sb&&S.user.supabaseId&&unread>0){
     const chatPanel=el("chat-float");
     const chatVisible=chatPanel&&chatPanel.style.display!=="none";
@@ -192,6 +194,23 @@ async function _markChatRead(){
   if(badge){badge.style.display="none";badge.textContent="0";}
   if(typeof updateMsgBadge==="function") updateMsgBadge();
   if(typeof updateTabTitle==="function") updateTabTitle();
+}
+
+function _toggleMsgMenu(msgId){
+  _closeMsgMenus();
+  const menu=document.getElementById("msg-menu-"+msgId);
+  if(menu) menu.style.display="block";
+}
+function _closeMsgMenus(){
+  document.querySelectorAll("[id^='msg-menu-']").forEach(m=>m.style.display="none");
+}
+function _copyMsgText(msgId){
+  const bubble=document.getElementById("msg-"+msgId);
+  if(!bubble)return;
+  const p=bubble.querySelector(".cmsg-body p");
+  if(p&&p.textContent){
+    navigator.clipboard.writeText(p.textContent).then(()=>showToast("Copied","info")).catch(()=>{});
+  }
 }
 
 async function unsendChatMsg(msgId){

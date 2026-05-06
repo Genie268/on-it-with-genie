@@ -414,7 +414,7 @@ function renderAdminMessages(c){
     const preview=cv.lastMsg?(cv.lastMsg.voice_url&&!cv.lastMsg.message?"🎙 Voice note":(cv.lastMsg.sender==="genie"?"You: ":"")+(cv.lastMsg.message||"").slice(0,40)):"No messages yet";
     const ta=cv.lastMsg?timeAgo(cv.lastMsg.created_at):"";
     const avatar=cv.photo?`<img src="${cv.photo}" style="width:36px;height:36px;object-fit:cover;border-radius:50%;flex-shrink:0">`:`<div style="width:36px;height:36px;border-radius:50%;background:rgba(196,154,28,.1);border:1.5px solid rgba(196,154,28,.25);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#c49a1c;flex-shrink:0">${cv.ini}</div>`;
-    return `<div onclick="_msgActiveChallengerId='${cv.id}';renderAdminMessages(el('admin-content'))" style="padding:10px 14px;cursor:pointer;display:flex;gap:10px;align-items:center;border-left:3px solid ${isActive?"#c49a1c":"transparent"};background:${isActive?"rgba(196,154,28,.06)":cv.unread?"rgba(217,80,58,.04)":"transparent"};transition:background .15s" onmouseenter="if(!${isActive})this.style.background='rgba(255,255,255,.03)'" onmouseleave="if(!${isActive})this.style.background='${cv.unread?"rgba(217,80,58,.04)":"transparent"}'">
+    return `<div onclick="_msgTabLastHash='';_msgActiveChallengerId='${cv.id}';renderAdminMessages(el('admin-content'))" style="padding:10px 14px;cursor:pointer;display:flex;gap:10px;align-items:center;border-left:3px solid ${isActive?"#c49a1c":"transparent"};background:${isActive?"rgba(196,154,28,.06)":cv.unread?"rgba(217,80,58,.04)":"transparent"};transition:background .15s" onmouseenter="if(!${isActive})this.style.background='rgba(255,255,255,.03)'" onmouseleave="if(!${isActive})this.style.background='${cv.unread?"rgba(217,80,58,.04)":"transparent"}'">
       ${avatar}
       <div style="flex:1;min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -466,11 +466,12 @@ function renderAdminMessages(c){
       </div>
     </div>`;
 
-  /* Load chat thread async */
+  /* Load chat thread async — slight delay to ensure DOM is ready */
   if(_msgActiveChallengerId){
-    _loadMsgTabChat(_msgActiveChallengerId);
-    /* Mark messages read for this challenger */
-    _markMsgTabRead(_msgActiveChallengerId);
+    setTimeout(()=>{
+      _loadMsgTabChat(_msgActiveChallengerId);
+      _markMsgTabRead(_msgActiveChallengerId);
+    },50);
   }
 }
 
@@ -521,7 +522,11 @@ async function _loadMsgTabChat(uid){
       </div>`;
     }).join("");
     thread.scrollTop=thread.scrollHeight;
-  }catch(e){thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">Could not load messages</p>`;}
+  }catch(e){
+    console.error("_loadMsgTabChat error:",e);
+    thread.innerHTML=`<p style="text-align:center;color:#3a3a3a;font-size:12px;padding:20px 0">Could not load messages</p>
+      <div style="text-align:center"><button class="bs" style="font-size:11px;padding:6px 14px" onclick="_msgTabLastHash='';_loadMsgTabChat('${uid}')">Retry</button></div>`;
+  }
 }
 
 function _markMsgTabRead(uid){
@@ -1345,10 +1350,11 @@ function openCallSchedule(uid){
 
 function _openCalendlyForCall(uid,callDay,dateLabel){
   const u=getAM().find(x=>x.id===uid);if(!u)return;
-  const nameParam=encodeURIComponent(u.name||"");
-  const emailParam=u.email?encodeURIComponent(u.email):"";
-  let url=CALENDLY_URL+`?name=${nameParam}`;
-  if(emailParam) url+=`&email=${emailParam}`;
+  const params=new URLSearchParams();
+  if(u.name) params.set("name",u.name);
+  if(u.email) params.set("email",u.email);
+  if(u.phone) params.set("a1",u.phone);
+  const url=CALENDLY_URL+"?"+params.toString();
 
   document.getElementById("call-schedule-panel")?.remove();
   const overlay=document.createElement("div");
