@@ -155,8 +155,9 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
       </div>
 
       <div id="pay-email-area" class="mb12">
-        <p style="font-size:11px;font-weight:700;color:#5a5a5a;margin-bottom:6px">YOUR EMAIL (for receipt)</p>
+        <p style="font-size:11px;font-weight:700;color:#5a5a5a;margin-bottom:6px">YOUR EMAIL</p>
         <input id="pay-email" type="email" placeholder="your@email.com" style="font-size:13px;padding:10px 14px">
+        <p class="muted" style="font-size:10px;margin-top:4px">Used to sign back in and receive updates</p>
       </div>
 
       <div class="mb16">
@@ -498,10 +499,11 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
       <h3 style="font-size:18px;font-weight:800">Welcome back</h3>
       <button onclick="el('signin-mod').classList.remove('show')" style="background:#232323;border:none;color:#888;width:28px;height:28px;border-radius:7px;font-size:12px;cursor:pointer">✕</button>
     </div>
-    <p class="muted mb16" style="font-size:13px;line-height:1.6">Enter the email you used when you started your challenge.</p>
-    <input id="signin-email" type="email" placeholder="your@email.com" class="mb12" style="font-size:14px">
+    <p class="muted mb16" style="font-size:13px;line-height:1.6">Enter your email or the name you used when you started your challenge.</p>
+    <input id="signin-email" type="text" placeholder="Email or full name" class="mb12" style="font-size:14px" onkeydown="if(event.key==='Enter')attemptSignIn()">
     <button id="signin-btn" class="bp" style="width:100%;padding:12px;font-size:14px" onclick="attemptSignIn()">Find My Challenge →</button>
     <p id="signin-msg" class="muted" style="font-size:11px;margin-top:8px;text-align:center"></p>
+    <div id="signin-results" style="display:none;margin-top:12px"></div>
   </div>
 </div>
 

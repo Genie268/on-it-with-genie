@@ -82,27 +82,45 @@ function _activateScreen(s){
    Fails closed on timeout, error, or any non-paid response. */
 function _gateAndMountDash(){
   if(!S.user){_activateScreen("land");return;}
-  if(_dashGateInFlight) return; /* dedupe concurrent attempts */
+  if(_dashGateInFlight) return;
   _dashGateInFlight=true;
-  /* Visible blocker so the user never sees protected UI during verify. */
   _showDashVerifying();
-  /* 10s hard cap — if the verify can't complete, we fail closed. */
-  const timeout=new Promise(res=>setTimeout(()=>res(false),10000));
+  const timeout=new Promise(res=>setTimeout(()=>res("timeout"),10000));
   Promise.race([verifyResumeAllowed(),timeout]).then(ok=>{
     _dashGateInFlight=false;
     _hideDashVerifying();
-    if(!ok){
-      /* Server says not paid/free, verify failed, or timed out. Wipe
-         state and bounce to landing — no protected UI ever mounted. */
-      clearState();
+    if(ok===true){
+      _activateScreen("dash");
       return;
     }
-    _activateScreen("dash");
+    if(ok==="timeout"){
+      _showRecoveryScreen("Connection timed out. Check your internet and try again.");
+      return;
+    }
+    _showRecoveryScreen("Your session couldn't be verified.");
   }).catch(()=>{
     _dashGateInFlight=false;
     _hideDashVerifying();
-    clearState();
+    _showRecoveryScreen("Something went wrong. Please try again.");
   });
+}
+
+function _showRecoveryScreen(msg){
+  _hideDashVerifying();
+  const name=S.user?.name||"";
+  const email=S.user?.email||"";
+  let ov=document.getElementById("dash-gate-ov");
+  if(!ov){ov=document.createElement("div");ov.id="dash-gate-ov";document.body.appendChild(ov);}
+  ov.style.cssText="position:fixed;inset:0;background:#060606;display:flex;align-items:center;justify-content:center;z-index:99999;padding:24px";
+  ov.innerHTML=`<div style="max-width:340px;width:100%;text-align:center">
+    <div style="width:48px;height:48px;border-radius:12px;background:#c49a1c;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;color:#000;margin:0 auto 16px">G</div>
+    ${name?`<p style="font-size:16px;font-weight:800;color:#ebebeb;margin-bottom:6px">Hey${name?", "+name:""}</p>`:""}
+    <p style="font-size:13px;color:#888;margin-bottom:24px;line-height:1.6">${msg}</p>
+    <button onclick="_dashGateInFlight=false;_gateAndMountDash()" class="bp" style="width:100%;padding:13px;font-size:14px;margin-bottom:10px">Try Again</button>
+    <button onclick="document.getElementById('dash-gate-ov').style.display='none';showSignIn()" class="bs" style="width:100%;padding:12px;font-size:13px;margin-bottom:10px">Sign In</button>
+    <button onclick="document.getElementById('dash-gate-ov').remove();clearState()" style="width:100%;padding:12px;font-size:13px;background:none;border:none;color:#555;cursor:pointer;font-family:inherit">Start Fresh</button>
+  </div>`;
+  ov.style.display="flex";
 }
 
 /* Lightweight blocker overlay — shown while the server-side payment verify
@@ -123,6 +141,28 @@ function _hideDashVerifying(){
   if(ov) ov.style.display="none";
 }
 
+
+function _smartResume(){
+  if(!S.user){_activateScreen("land");return;}
+  const ps=S.user.paymentStatus;
+  if(ps==="paid"||ps==="free"){
+    goTo("dash");
+    return;
+  }
+  if(ps==="pending"&&S.user.duration){
+    goTo("pay");
+    return;
+  }
+  if(S.user.duration&&!ps){
+    goTo("pay");
+    return;
+  }
+  if(S.ans&&S.ans.name&&!S.user.duration){
+    _activateScreen("land");
+    return;
+  }
+  _activateScreen("land");
+}
 
 /* ── ADMIN MESSAGING HELPERS ── */
 
@@ -405,10 +445,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     startAdminPoll();
     setTimeout(()=>updateTabTitle(),500);
   } else if(loadState()){
-    /* All dash entries funnel through goTo('dash'), which runs the
-       async server-side payment verify before mounting any protected
-       UI. No local-state trust here. */
-    goTo('dash');
+    _smartResume();
   }
   /* Refresh immediately when tab becomes visible */
   document.addEventListener("visibilitychange",()=>{

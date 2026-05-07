@@ -10,17 +10,19 @@ async function syncToSupabase(){
   if(!sb||!S.user)return;
   try{
     const u=S.user;
-    const {data}=await sb.from("challengers").upsert({
+    const row={
       id:u.supabaseId||undefined,
       name:u.name,email:u.email||null,phone:u.phone||null,
       goal_raw:u.answers.goal,goal_summary:u.answers.goalSummary||u.answers.goal,
       proof_description:u.answers.proof||null,proof_methods:u.answers.proofMethods||[],
       proof_type:u.answers.proofType||"output",threat:u.answers.threat||null,
-      duration:u.duration,signature:u.sig,start_date:u.startDate,
+      duration:u.duration,signature:u.sig,
       payment_ref:u.paymentRef||null,payment_status:u.paymentStatus||"pending",
       amount_paid:u.amountPaid||0,access_code:u.accessCode||null,
       status:"active",current_day:S.day
-    },{onConflict:"id"}).select().single();
+    };
+    if(u.startDate) row.start_date=u.startDate;
+    const {data}=await sb.from("challengers").upsert(row,{onConflict:"id"}).select().single();
     if(data&&!u.supabaseId){S.user.supabaseId=data.id;saveState();initPushNotifications();}
   }catch(e){console.error("Sync error:",e);}
 }
@@ -93,7 +95,6 @@ function updatePayAfterDiscount(pct){
   if(pct===100){
     el("pay-price").innerHTML=`<s style="color:#5a5a5a">${t.price}</s> <span class="ok">FREE</span>`;
     el("pay-btn").textContent="Start Challenge (Free) →";
-    el("pay-email-area").style.display="none";
   }else{
     const dk=Math.round(PRICES[dur]*(1-pct/100));const dn="₦"+(dk/100).toLocaleString();
     el("pay-price").innerHTML=`<s style="color:#5a5a5a">${t.price}</s> ${dn}`;
@@ -143,6 +144,12 @@ async function initiatePayment(){
   const email=el("pay-email")?.value?.trim();
   trackEvent("payment_initiated",{duration:dur,has_discount:S._accessDiscount>0});
 
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    payError("Enter a valid email to continue");
+    return;
+  }
+  if(S.user) S.user.email=email;
+
   el("pay-btn").disabled=true;
   el("pay-btn").textContent="Preparing...";
   el("pay-status").textContent="";
@@ -162,15 +169,11 @@ async function initiatePayment(){
       payError("Access code rejected ("+(result.data?.error||"error")+").");
       return;
     }
-    await completePayment({status:"free",reference:null,amount:0,email:S.user.email});
+    await completePayment({status:"free",reference:null,amount:0,email});
     return;
   }
 
   /* ── PAYSTACK PATH ─────────────────────────────────────────────── */
-  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-    payError("Enter a valid email");
-    return;
-  }
   const fk=S._accessDiscount>0?Math.round(PRICES[dur]*(1-S._accessDiscount/100)):PRICES[dur];
   el("pay-btn").textContent="Opening payment...";
   try{
@@ -217,6 +220,7 @@ async function initiatePayment(){
 async function completePayment(d){
   trackEvent("payment_completed",{status:d.status,duration:S.user?.duration});
   if(S.user){
+    if(!S.user.startDate) S.user.startDate=new Date().toISOString();
     S.user.paymentRef=d.reference||S.user.paymentRef;
     S.user.paymentStatus=d.status;
     S.user.amountPaid=d.amount||0;
@@ -224,9 +228,6 @@ async function completePayment(d){
     S.user.phone=el("pay-phone")?.value?.trim()||S.user.phone||null;
     S.user.accessCode=S._accessCode||null;
     saveState();
-    /* Non-payment columns sync via upsert. Payment columns are pinned by
-       the protect_challenger_payment_columns trigger on the DB, so the
-       server-side value from verify-payment is authoritative. */
     try{await syncToSupabase();}catch(e){}
   }
   goTo("commit");
@@ -243,41 +244,83 @@ function showSignIn(){
 
 async function attemptSignIn(){
   trackEvent("sign_in_attempt");
-  const email=el("signin-email")?.value?.trim();
+  const input=el("signin-email")?.value?.trim();
   const msg=el("signin-msg");
   const btn=el("signin-btn");
-  if(!email||!email.includes("@")){msg.textContent="Enter a valid email";msg.style.color="#d9503a";return;}
-  
+  const resultsDiv=el("signin-results");
+  if(resultsDiv)resultsDiv.style.display="none";
+  if(!input||input.length<2){msg.textContent="Enter your email or full name";msg.style.color="#d9503a";return;}
+
   if(!sb){msg.textContent="Database not connected. Clear your browser data and start fresh.";msg.style.color="#d9503a";return;}
-  
+
   btn.disabled=true;btn.textContent="Looking up...";
+  msg.textContent="";
   try{
-    const {data,error}=await sb.from("challengers").select("*").eq("email",email).order("created_at",{ascending:false}).limit(1).single();
-    if(error||!data){
-      msg.textContent="No challenge found with that email. Check spelling or start a new one.";
-      msg.style.color="#d9503a";
+    const isEmail=input.includes("@");
+    let rows=[];
+    if(isEmail){
+      const {data}=await sb.from("challengers").select("*").eq("email",input).order("created_at",{ascending:false}).limit(5);
+      rows=data||[];
+    }else{
+      const {data}=await sb.from("challengers").select("*").ilike("name",`%${input}%`).order("created_at",{ascending:false}).limit(5);
+      rows=data||[];
+    }
+
+    const paid=rows.filter(r=>r.payment_status==="paid"||r.payment_status==="free");
+    if(paid.length===0){
+      const hint=rows.length>0?"We found your profile but no paid challenge yet. Start a new one from the homepage.":"No challenge found. Check your spelling or start a new one.";
+      msg.textContent=hint;msg.style.color="#d9503a";
       btn.disabled=false;btn.textContent="Find My Challenge →";
       return;
     }
-
-    /* ── PAYMENT GATE ── the row exists, but sign-in is only valid for
-       a paid or free-access challenger. Anything else (pending, started)
-       is treated as "no paid challenge" — no protected state is restored,
-       no goTo('dash') is issued. */
-    if(data.payment_status!=="paid"&&data.payment_status!=="free"){
-      msg.textContent="No paid challenge on this email. Start a new one from the homepage.";
-      msg.style.color="#d9503a";
-      btn.disabled=false;btn.textContent="Find My Challenge →";
+    if(paid.length===1){
+      await _restoreSession(paid[0]);
       return;
     }
+    _showSignInPicker(paid);
+    btn.disabled=false;btn.textContent="Find My Challenge →";
+  }catch(e){
+    console.error("Sign in error:",e);
+    msg.textContent="Something went wrong. Try again.";
+    msg.style.color="#d9503a";
+    btn.disabled=false;btn.textContent="Find My Challenge →";
+  }
+}
 
-    /* Restore session from database */
+function _showSignInPicker(rows){
+  const div=el("signin-results");
+  if(!div)return;
+  const msg=el("signin-msg");
+  if(msg){msg.textContent="Multiple challenges found — pick yours:";msg.style.color="#b0b0b0";}
+  div.innerHTML=rows.map((r,i)=>{
+    const d=r.duration||15;
+    const goal=(r.goal_summary||r.goal_raw||"").substring(0,50);
+    const date=new Date(r.created_at).toLocaleDateString();
+    return `<button onclick="_pickSignInResult(${i})" style="width:100%;text-align:left;padding:10px 12px;margin-bottom:6px;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#fff;cursor:pointer;font-size:13px"><strong>${r.name||"Challenger"}</strong> · ${d}-day<br><span style="color:#888;font-size:11px">${goal}${goal.length>=50?"…":""} · Started ${date}</span></button>`;
+  }).join("");
+  div.style.display="block";
+  div._rows=rows;
+}
+
+async function _pickSignInResult(idx){
+  const div=el("signin-results");
+  const rows=div?._rows;
+  if(!rows||!rows[idx])return;
+  div.style.display="none";
+  const btn=el("signin-btn");
+  if(btn){btn.disabled=true;btn.textContent="Restoring...";}
+  await _restoreSession(rows[idx]);
+}
+
+async function _restoreSession(data){
+  const msg=el("signin-msg");
+  const btn=el("signin-btn");
+  try{
     const dur=data.duration||15;
     const startDate=new Date(data.start_date);
     const now=new Date();
     const curDay=Math.min(Math.max(Math.floor((now-startDate)/(1000*60*60*24))+1,1),dur);
-    
-    /* Load uploads */
+
     const {data:uploads}=await sb.from("uploads").select("*").eq("challenger_id",data.id).order("day_number",{ascending:true});
     const uploadArr=Array(dur).fill(null);
     (uploads||[]).forEach(u=>{
@@ -285,42 +328,31 @@ async function attemptSignIn(){
         uploadArr[u.day_number-1]={note:u.note,hasFile:!!u.file_url,fileName:u.file_name,fileUrl:u.file_url||null,proofType:u.proof_type,link:u.link_url,behavior:u.behavior_answer,hasVoice:!!u.voice_url,voiceUrl:u.voice_url||null};
       }
     });
-    
-    /* Load energy logs */
+
     const {data:energyData}=await sb.from("energy_logs").select("*").eq("challenger_id",data.id);
     const energyLog={};
     (energyData||[]).forEach(e=>{energyLog[e.day_number]={type:e.log_type,value:e.value};});
-    
-    /* Rebuild user state */
+
     S.user={
-      name:data.name,
-      email:data.email,
-      phone:data.phone,
-      photo:data.photo_url,
+      name:data.name,email:data.email,phone:data.phone,photo:data.photo_url,
       answers:{goal:data.goal_raw,goalSummary:data.goal_summary,proof:data.proof_description,proofMethods:data.proof_methods||[],proofType:data.proof_type,threat:data.threat},
-      sig:data.signature,
-      startDate:data.start_date,
-      duration:dur,
-      paymentRef:data.payment_ref,
-      paymentStatus:data.payment_status,
-      amountPaid:data.amount_paid,
-      accessCode:data.access_code,
-      supabaseId:data.id,
-      energyLog,
-      genieMessages:[]
+      sig:data.signature,startDate:data.start_date,duration:dur,
+      paymentRef:data.payment_ref,paymentStatus:data.payment_status,
+      amountPaid:data.amount_paid,accessCode:data.access_code,
+      supabaseId:data.id,energyLog,genieMessages:[]
     };
     S.uploads=uploadArr;
     S.day=curDay;
     S.ans=S.user.answers;
     saveState();
-    
+    trackEvent("sign_in_success",{method:data.email?"email":"name"});
+
     el("signin-mod").classList.remove("show");
     goTo("dash");
   }catch(e){
-    console.error("Sign in error:",e);
-    msg.textContent="Something went wrong. Try again.";
-    msg.style.color="#d9503a";
-    btn.disabled=false;btn.textContent="Find My Challenge →";
+    console.error("Restore error:",e);
+    if(msg){msg.textContent="Failed to restore your session. Try again.";msg.style.color="#d9503a";}
+    if(btn){btn.disabled=false;btn.textContent="Find My Challenge →";}
   }
 }
 

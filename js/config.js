@@ -249,7 +249,7 @@ function renderTierCard(days){
 
 function confirmDuration(){
   const dur=S.ans.duration||15;
-  S.user={name:S.ans.name,answers:{...S.ans},sig:null,startDate:new Date().toISOString(),duration:dur,energyLog:{},genieMessages:[]};
+  S.user={name:S.ans.name,answers:{...S.ans},sig:null,startDate:null,duration:dur,energyLog:{},genieMessages:[]};
   S.uploads=Array(dur).fill(null);S.day=1;S.lilDone=false;
   saveState();
   goTo("pay");
