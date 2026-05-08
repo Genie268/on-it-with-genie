@@ -268,6 +268,9 @@ function updateTabTitle(){
     count=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
     const inbox=typeof getPendingInbox==="function"?getPendingInbox():[];
     count+=inbox.length;
+    if(typeof _getNewSignupCount==="function") count+=_getNewSignupCount();
+    const flagged=typeof getAM==="function"?getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length:0;
+    count+=flagged;
   } else {
     const badge=el("msg-badge");
     if(badge&&badge.style.display!=="none") count=parseInt(badge.textContent)||0;

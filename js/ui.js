@@ -519,6 +519,17 @@ function startAdminPoll(){
         .on("postgres_changes",{event:"INSERT",schema:"public",table:"uploads"},()=>{
           _adminSoftRefresh();
         })
+        .on("postgres_changes",{event:"INSERT",schema:"public",table:"challengers"},payload=>{
+          const c=payload.new;
+          if(typeof _adminNewSignups!=="undefined"){
+            _adminNewSignups.push({id:c.id,name:c.name||"New challenger",time:Date.now()});
+            if(typeof _adminLastKnownIds!=="undefined") _adminLastKnownIds.add(c.id);
+          }
+          if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
+            new Notification("New challenger signed up!",{body:(c.name||"Someone")+" just joined"});
+          }
+          _adminSoftRefresh();
+        })
         .subscribe();
     }catch(e){console.error("Realtime subscription failed:",e);}
   }
@@ -532,15 +543,19 @@ function startAdminPoll(){
 let _adminLastUnreadCount=-1;
 let _adminLastInboxCount=-1;
 let _adminPollRunning=false;
+let _adminPollCycle=0;
 async function _adminLightPoll(){
   if(!getAdminToken()||_adminPollRunning)return;
   _adminPollRunning=true;
+  _adminPollCycle++;
   try{
     await loadAdminMessages();
     const newUnreadCount=adminUnreadMessages.length;
-    if(newUnreadCount!==_adminLastUnreadCount){
+    const fullRefresh=newUnreadCount!==_adminLastUnreadCount||_adminPollCycle%10===0;
+    if(fullRefresh){
       _adminLastUnreadCount=newUnreadCount;
       await loadAdminData();
+      if(typeof _trackNewSignups==="function") _trackNewSignups();
       if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
     }
     updateTabTitle();
@@ -553,7 +568,10 @@ async function _adminSoftRefresh(){
   try{
     await loadAdminMessages();
     await loadAdminData();
+    if(typeof _trackNewSignups==="function") _trackNewSignups();
     _adminLastUnreadCount=adminUnreadMessages.length;
+    if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+    updateTabTitle();
   }catch(e){}
 }
 
@@ -606,6 +624,19 @@ function startChallengerPoll(){
   setTimeout(()=>{
     if(typeof updateMsgBadge==="function") updateMsgBadge();
   },500);
+}
+
+
+/* ── HEARTBEAT (updates last_seen for online status) ── */
+let _heartbeatTimer=null;
+function startHeartbeat(){
+  if(_heartbeatTimer||!sb)return;
+  _sendHeartbeat();
+  _heartbeatTimer=setInterval(_sendHeartbeat,60000);
+}
+function _sendHeartbeat(){
+  if(!sb||!S.user?.supabaseId)return;
+  sb.from("challengers").update({last_seen:new Date().toISOString()}).eq("id",S.user.supabaseId).then(()=>{}).catch(()=>{});
 }
 
 
@@ -990,16 +1021,17 @@ async function openProfilePanel(uid){
   const panel=document.getElementById("profile-panel");
   if(panel) panel.dataset.challengerId=uid;
   const startFmt=u.startDate?new Date(u.startDate).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"—";
-  const avatarHTML=u.photo
+  const avatarHTML=typeof _avatarWithStatus==="function"?_avatarWithStatus(u,52,"50%"):(u.photo
     ?`<img src="${u.photo}" style="width:52px;height:52px;object-fit:cover;border-radius:50%;border:2px solid #2a2a2a;flex-shrink:0">`
-    :`<div style="width:52px;height:52px;border-radius:50%;background:#1e1e1e;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#c49a1c;flex-shrink:0">${(u.name||"?").charAt(0).toUpperCase()}</div>`;
+    :`<div style="width:52px;height:52px;border-radius:50%;background:#1e1e1e;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#c49a1c;flex-shrink:0">${(u.name||"?").charAt(0).toUpperCase()}</div>`);
+  const onlineLabel=typeof _isOnline==="function"&&_isOnline(u.lastSeen)?` · <span style="color:#4dc98a">online</span>`:"";
   document.getElementById("profile-panel-body").innerHTML=`
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
       ${avatarHTML}
       <div style="min-width:0">
         <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:4px">CHALLENGER</p>
         <p style="font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}</p>
-        <p style="font-size:12px;color:#666;margin-top:2px">Day ${u.day} of ${u.dur} · Started ${startFmt} · ${u.paymentStatus||"—"}</p>
+        <p style="font-size:12px;color:#666;margin-top:2px">Day ${u.day} of ${u.dur} · Started ${startFmt} · ${u.paymentStatus||"—"}${onlineLabel}</p>
       </div>
     </div>
 

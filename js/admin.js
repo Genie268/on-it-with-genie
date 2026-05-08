@@ -76,7 +76,8 @@ async function loadAdminData(){
         paymentStatus:c.payment_status,supabaseId:c.id,status:c.status,
         goalRaw:c.goal_raw,goalSummary:c.goal_summary,
         proofDescription:c.proof_description,proofType:c.proof_type||"output",
-        threat:c.threat,startDate:c.start_date
+        threat:c.threat,startDate:c.start_date,lastSeen:c.last_seen,
+        createdAt:c.created_at
       };
     });
     adminDataLoaded=true;
@@ -85,7 +86,43 @@ async function loadAdminData(){
 
 function getAM(){return liveChallengers;}
 
-/* Set Genie photo on all avatar elements */
+function _isOnline(lastSeen){
+  if(!lastSeen)return false;
+  return (Date.now()-new Date(lastSeen).getTime())<120000;
+}
+function _onlineDot(lastSeen,size){
+  size=size||10;
+  if(!_isOnline(lastSeen))return "";
+  return `<span style="position:absolute;bottom:-1px;right:-1px;width:${size}px;height:${size}px;border-radius:50%;background:#4dc98a;border:2px solid #0a0a0a"></span>`;
+}
+function _avatarWithStatus(u,sz,radius){
+  sz=sz||36;radius=radius||"50%";
+  const img=u.photo?`<img src="${u.photo}" style="width:${sz}px;height:${sz}px;object-fit:cover;border-radius:${radius}">`:`<div style="width:${sz}px;height:${sz}px;border-radius:${radius};background:rgba(196,154,28,.1);border:1.5px solid rgba(196,154,28,.25);display:flex;align-items:center;justify-content:center;font-size:${Math.round(sz*0.3)}px;font-weight:800;color:#c49a1c">${u.ini}</div>`;
+  return `<div style="position:relative;flex-shrink:0;width:${sz}px;height:${sz}px">${img}${_onlineDot(u.lastSeen,Math.max(8,Math.round(sz*0.25)))}</div>`;
+}
+
+/* ── ADMIN NOTIFICATION TRACKING ── */
+let _adminNewSignups=[];
+let _adminLastKnownIds=new Set();
+
+function _trackNewSignups(){
+  const all=getAM();
+  if(_adminLastKnownIds.size===0){
+    _adminLastKnownIds=new Set(all.map(u=>u.id));
+    return;
+  }
+  all.forEach(u=>{
+    if(!_adminLastKnownIds.has(u.id)){
+      _adminNewSignups.push({id:u.id,name:u.name,time:Date.now()});
+      _adminLastKnownIds.add(u.id);
+    }
+  });
+}
+function _getNewSignupCount(){
+  _adminNewSignups=_adminNewSignups.filter(s=>Date.now()-s.time<86400000);
+  return _adminNewSignups.length;
+}
+function _clearNewSignups(){_adminNewSignups=[];}
 
 /* ── ADMIN UNREAD MESSAGE TRACKING ── */
 let adminUnreadMessages=[];
@@ -157,6 +194,7 @@ async function renderAdmin(){
     c.innerHTML=`<div style="text-align:center;padding:60px 20px"><div class="spinner" style="margin:0 auto 12px"></div><p class="muted">Loading challengers...</p></div>`;
     try{
       await loadAdminData();
+      _trackNewSignups();
       await loadAdminMessages();
     }catch(e){
       c.innerHTML=`<div style="text-align:center;padding:60px 20px">
@@ -340,16 +378,19 @@ function getPendingInbox(){
 }
 
 const _bdg=(n)=>n>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:5px;vertical-align:middle">${n}</span>`:"";
+const _dot=(show)=>show?`<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#d9503a;margin-left:4px;vertical-align:middle"></span>`:"";
 
 function adminTab(tab){
   adminCurrentTab = tab;
   const reviewCount=getPendingInbox().length;
   const flaggedCount=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
   const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
+  const newSignups=_getNewSignupCount();
+  const onlineCount=getAM().filter(u=>_isOnline(u.lastSeen)).length;
   ["overview","messages","challengers","flagged","inbox","analytics","settings"].forEach(t=>{
     const btn=el("tab-"+t);if(!btn)return;
     btn.className="admin-tab"+(t===tab?" active":"");
-    const labels={overview:"Overview",messages:`Messages${_bdg(unreadCount)}`,challengers:"Challengers",flagged:`Attention${_bdg(flaggedCount)}`,inbox:`Reviews${_bdg(reviewCount)}`,analytics:"Analytics",settings:"Settings"};
+    const labels={overview:`Overview${_dot(newSignups>0)}`,messages:`Messages${_bdg(unreadCount)}`,challengers:`Challengers${_dot(onlineCount>0)}`,flagged:`Attention${_bdg(flaggedCount)}`,inbox:`Reviews${_bdg(reviewCount)}`,analytics:"Analytics",settings:"Settings"};
     btn.innerHTML=labels[t]||t;
   });
   const c=el("admin-content");if(!c)return;
@@ -382,6 +423,7 @@ function renderAdminMessages(c){
       name:u?u.name:"Unknown",
       ini:u?u.ini:"?",
       photo:u?u.photo:null,
+      lastSeen:u?u.lastSeen:null,
       lastMsg:m,
       unread:getUnreadCountForChallenger(m.challenger_id)
     });
@@ -389,7 +431,7 @@ function renderAdminMessages(c){
   /* Add challengers with no messages yet */
   challengers.forEach(u=>{
     if(!seen.has(u.id)){
-      convos.push({id:u.id,name:u.name,ini:u.ini,photo:u.photo,lastMsg:null,unread:0});
+      convos.push({id:u.id,name:u.name,ini:u.ini,photo:u.photo,lastSeen:u.lastSeen,lastMsg:null,unread:0});
     }
   });
   /* Sort: unread first, then by last message time */
@@ -413,7 +455,7 @@ function renderAdminMessages(c){
     const isActive=cv.id===_msgActiveChallengerId;
     const preview=cv.lastMsg?(cv.lastMsg.voice_url&&!cv.lastMsg.message?"🎙 Voice note":(cv.lastMsg.sender==="genie"?"You: ":"")+(cv.lastMsg.message||"").slice(0,40)):"No messages yet";
     const ta=cv.lastMsg?timeAgo(cv.lastMsg.created_at):"";
-    const avatar=cv.photo?`<img src="${cv.photo}" style="width:36px;height:36px;object-fit:cover;border-radius:50%;flex-shrink:0">`:`<div style="width:36px;height:36px;border-radius:50%;background:rgba(196,154,28,.1);border:1.5px solid rgba(196,154,28,.25);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#c49a1c;flex-shrink:0">${cv.ini}</div>`;
+    const avatar=_avatarWithStatus(cv,36,"50%");
     return `<div onclick="_msgTabLastHash='';_msgActiveChallengerId='${cv.id}';renderAdminMessages(el('admin-content'))" style="padding:10px 14px;cursor:pointer;display:flex;gap:10px;align-items:center;border-left:3px solid ${isActive?"#c49a1c":"transparent"};background:${isActive?"rgba(196,154,28,.06)":cv.unread?"rgba(217,80,58,.04)":"transparent"};transition:background .15s" onmouseenter="if(!${isActive})this.style.background='rgba(255,255,255,.03)'" onmouseleave="if(!${isActive})this.style.background='${cv.unread?"rgba(217,80,58,.04)":"transparent"}'">
       ${avatar}
       <div style="flex:1;min-width:0">
@@ -433,10 +475,10 @@ function renderAdminMessages(c){
   const activeConvo=convos.find(x=>x.id===_msgActiveChallengerId);
   const chatHeaderHtml=activeConvo?`
     <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #1f1f1f;background:#0a0a0a">
-      ${activeConvo.photo?`<img src="${activeConvo.photo}" style="width:32px;height:32px;object-fit:cover;border-radius:50%">`:`<div style="width:32px;height:32px;border-radius:50%;background:rgba(196,154,28,.1);border:1.5px solid rgba(196,154,28,.25);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#c49a1c">${activeConvo.ini}</div>`}
+      ${_avatarWithStatus(activeConvo,32,"50%")}
       <div style="flex:1;min-width:0">
         <p style="font-size:14px;font-weight:700;margin:0">${activeConvo.name}</p>
-        <p class="muted" style="font-size:10px;margin:0">Tap to view profile</p>
+        <p class="muted" style="font-size:10px;margin:0">${_isOnline(activeConvo.lastSeen)?'<span style="color:#4dc98a">Online now</span>':"Tap to view profile"}</p>
       </div>
       <button onclick="openProfilePanel('${activeConvo.id}')" style="padding:5px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer">Profile →</button>
     </div>`:"";
@@ -729,6 +771,22 @@ function renderAdminOverview(c){
 
   /* Action alerts — only show what needs attention right now */
   let alerts="";
+  const onlineNow=all.filter(u=>_isOnline(u.lastSeen));
+  const newSignups=_getNewSignupCount();
+  if(newSignups>0){
+    const names=_adminNewSignups.slice(-3).map(s=>s.name).join(", ");
+    alerts+=`<div class="admin-alert" onclick="_clearNewSignups();adminTab('challengers')" style="background:rgba(77,201,138,.06);border:1px solid rgba(77,201,138,.2)">
+      <span style="font-size:18px">🆕</span>
+      <div style="flex:1;min-width:0"><p style="font-size:13px;font-weight:700;color:#4dc98a">${newSignups} new signup${newSignups>1?"s":""}</p><p class="muted" style="font-size:11px;margin-top:1px">${names}</p></div>
+      <span style="color:#4dc98a;font-size:14px;flex-shrink:0">→</span>
+    </div>`;
+  }
+  if(onlineNow.length>0){
+    alerts+=`<div class="admin-alert" onclick="adminTab('challengers')" style="background:rgba(77,201,138,.04);border:1px solid rgba(77,201,138,.12)">
+      <span style="font-size:18px">🟢</span>
+      <div style="flex:1;min-width:0"><p style="font-size:13px;font-weight:600;color:#4dc98a">${onlineNow.length} online now</p><p class="muted" style="font-size:11px;margin-top:1px">${onlineNow.map(u=>u.name).join(", ")}</p></div>
+    </div>`;
+  }
   if(totalUnread>0){
     const latestMsg=adminRecentMessages[0];
     const who=latestMsg?all.find(u=>u.id===latestMsg.challenger_id)?.name||"Someone":"Someone";
@@ -759,8 +817,9 @@ function renderAdminOverview(c){
 
   c.innerHTML=`
     ${alerts}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px">
       <div class="admin-stat"><div class="admin-stat-val" style="color:#c49a1c">${total}</div><div class="admin-stat-lbl">Challengers</div></div>
+      <div class="admin-stat"><div class="admin-stat-val" style="color:#4dc98a">${onlineNow.length}</div><div class="admin-stat-lbl">Online</div></div>
       <div class="admin-stat"><div class="admin-stat-val" style="color:#4dc98a">${uploadsTotal}</div><div class="admin-stat-lbl">Uploads</div></div>
       <div class="admin-stat"><div class="admin-stat-val" style="color:${avgProgress>=50?"#4dc98a":"#c49a1c"}">${avgProgress}%</div><div class="admin-stat-lbl">Avg Progress</div></div>
       <div class="admin-stat"><div class="admin-stat-val" style="color:${atRiskUsers.length?"#d9503a":"#5a5a5a"}">${atRiskUsers.length}</div><div class="admin-stat-lbl">At Risk</div></div>
@@ -777,8 +836,8 @@ function renderAdminOverview(c){
       return `<div class="card mb10" style="cursor:pointer" onclick="adminTab('challengers');setTimeout(()=>openChallenger('${u.id}'),60)">
         <div class="row mb8" style="justify-content:space-between">
           <div class="row" style="gap:10px">
-            <div style="width:34px;height:34px;border-radius:8px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:7px">`:u.ini}</div>
-            <div><p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads</p></div>
+            ${_avatarWithStatus(u,34,"8px")}
+            <div><p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads${_isOnline(u.lastSeen)?' · <span style="color:#4dc98a">online</span>':""}</p></div>
           </div>
           <div style="text-align:right">
             ${isAtRisk?`<span style="font-size:10px;font-weight:700;color:#d9503a">At Risk</span>`:`<span style="font-size:10px;font-weight:700;color:#4dc98a">Active</span>`}
@@ -869,9 +928,9 @@ function renderAdminChallengers(c){
       <div class="card mb10 ch-item" data-name="${(u.name||'').toLowerCase()}" id="ch-card-${u.id}">
         <div class="row" style="justify-content:space-between;cursor:pointer" onclick="toggleCh('${u.id}')">
           <div class="row" style="gap:10px">
-            <div style="width:38px;height:38px;border-radius:9px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:u.ini}</div>
+            ${_avatarWithStatus(u,38,"9px")}
             <div style="min-width:0">
-              <p style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}${_bdg(unreadCt)}</p>
+              <p style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}${_bdg(unreadCt)}${_isOnline(u.lastSeen)?' <span style="font-size:10px;font-weight:600;color:#4dc98a">online</span>':""}</p>
               <p class="muted" style="font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.goal||"No goal set"}</p>
             </div>
           </div>
@@ -1023,9 +1082,9 @@ function renderAdminFlagged(c){
       return `<div class="card mb10" style="border-left:3px solid ${missed>=5?"#d9503a":"rgba(217,80,58,.4)"}">
         <div class="row mb10" style="justify-content:space-between">
           <div class="row" style="gap:10px">
-            <div style="width:36px;height:36px;border-radius:9px;background:rgba(217,80,58,.08);border:1px solid rgba(217,80,58,.25);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#d9503a;flex-shrink:0">${u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:u.ini}</div>
+            ${_avatarWithStatus(u,36,"9px")}
             <div>
-              <p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p>
+              <p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}${_isOnline(u.lastSeen)?' <span style="font-size:10px;color:#4dc98a">online</span>':""}</p>
               <p style="font-size:11px;color:#d9503a;margin-top:2px">${reasons.join(" · ")}</p>
             </div>
           </div>
@@ -1066,7 +1125,7 @@ function renderAdminInbox(c){
       <div class="card mb10">
         <div class="row mb8" style="justify-content:space-between;align-items:flex-start">
           <div class="row" style="gap:8px;flex:1;min-width:0">
-            <div style="width:30px;height:30px;border-radius:7px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#c49a1c;flex-shrink:0">${u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:6px">`:u.ini}</div>
+            ${_avatarWithStatus(u,30,"7px")}
             <div style="min-width:0">
               <p style="font-size:12px;font-weight:700">${u.name} <span class="muted" style="font-weight:400">· Day ${day}</span></p>
               ${note&&note!=="—"?`<p style="font-size:12px;margin-top:4px;line-height:1.5;color:#ccc">${note}</p>`:""}

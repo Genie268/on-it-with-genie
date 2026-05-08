@@ -23,7 +23,8 @@ html[data-route="admin"] #s-admin.screen{display:flex!important;flex-direction:c
 .admin-section-bd{padding:12px 14px;border-top:1px solid #141414}
 .admin-alert{padding:12px 14px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:10px;margin-bottom:10px;transition:opacity .15s}
 .admin-alert:hover{opacity:.85}
-@media(max-width:400px){.admin-stat-val{font-size:22px}.admin-tab{padding:10px 12px;font-size:11px}}
+@media(max-width:500px){.admin-stat-val{font-size:20px}.admin-stat{padding:12px 4px}.admin-stat-lbl{font-size:9px}}
+@media(max-width:400px){.admin-stat-val{font-size:18px}.admin-tab{padding:10px 12px;font-size:11px}}
 @keyframes screenIn{from{transform:translateY(8px)}to{transform:translateY(0)}}
 @keyframes sp{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}

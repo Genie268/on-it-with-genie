@@ -30,6 +30,7 @@ function renderDash(){
   initPushNotifications();
   /* Start realtime + polling (startChallengerPoll handles both) */
   if(typeof startChallengerPoll==="function") startChallengerPoll();
+  if(typeof startHeartbeat==="function") startHeartbeat();
   /* Request notification permission for challenger */
   if("Notification" in window && Notification.permission==="default"){
     Notification.requestPermission();
