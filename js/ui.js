@@ -307,7 +307,7 @@ function toggleTheme(){
 /* ── NOTIFICATION TOGGLE ── */
 async function _renderNotifToggle(){
   const row=el("notif-toggle-row");if(!row)return;
-  if(!("serviceWorker" in navigator)||!("PushManager" in window)){row.style.display="none";return;}
+  if(!_pushSupported()){row.style.display="none";return;}
   row.style.display="flex";
   const reg=await navigator.serviceWorker.getRegistration("/sw.js");
   const sub=reg?await reg.pushManager.getSubscription():null;
@@ -316,28 +316,35 @@ async function _renderNotifToggle(){
   if(sub){
     nt.className="toggle-pill active";
     ns.textContent="Push alerts are on";
+  }else if(Notification.permission==="denied"){
+    nt.className="toggle-pill";
+    ns.textContent="Blocked — check browser settings";
+    ns.style.color="#d9503a";
   }else{
     nt.className="toggle-pill";
-    ns.textContent=Notification.permission==="denied"?"Blocked by browser":"Push alerts are off";
+    ns.textContent="Tap to enable push alerts";
   }
 }
 
 async function toggleNotifications(){
-  if(!("serviceWorker" in navigator)||!("PushManager" in window))return;
+  if(!_pushSupported()){showToast("Push notifications aren't supported on this browser","error",3000);return;}
   const reg=await navigator.serviceWorker.getRegistration("/sw.js");
-  if(!reg)return;
+  if(!reg){await initPushNotifications();_renderNotifToggle();return;}
   const sub=await reg.pushManager.getSubscription();
   if(sub){
     await sub.unsubscribe();
     if(sb&&S.user?.supabaseId){
       try{await sb.from("push_subscriptions").delete().eq("endpoint",sub.endpoint);}catch(e){}
     }
+    showToast("Notifications turned off","info");
   }else{
     if(Notification.permission==="denied"){
-      showToast("Notifications blocked by browser. Check your browser settings.","error",4000);
+      showToast("Notifications blocked by your browser. Open browser settings → Site settings → Notifications, and allow this site.","error",6000);
       return;
     }
-    await initPushNotifications();
+    const ok=await _subscribePush();
+    if(ok) showToast("Notifications enabled","success");
+    else showToast("Could not enable notifications","error");
   }
   _renderNotifToggle();
 }
@@ -1024,14 +1031,13 @@ async function openProfilePanel(uid){
   const avatarHTML=typeof _avatarWithStatus==="function"?_avatarWithStatus(u,52,"50%"):(u.photo
     ?`<img src="${u.photo}" style="width:52px;height:52px;object-fit:cover;border-radius:50%;border:2px solid #2a2a2a;flex-shrink:0">`
     :`<div style="width:52px;height:52px;border-radius:50%;background:#1e1e1e;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#c49a1c;flex-shrink:0">${(u.name||"?").charAt(0).toUpperCase()}</div>`);
-  const onlineLabel=typeof _isOnline==="function"&&_isOnline(u.lastSeen)?` · <span style="color:#4dc98a">online</span>`:"";
   document.getElementById("profile-panel-body").innerHTML=`
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
       ${avatarHTML}
       <div style="min-width:0">
         <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:4px">CHALLENGER</p>
         <p style="font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}</p>
-        <p style="font-size:12px;color:#666;margin-top:2px">Day ${u.day} of ${u.dur} · Started ${startFmt} · ${u.paymentStatus||"—"}${onlineLabel}</p>
+        <p style="font-size:12px;color:#666;margin-top:2px">Day ${u.day} of ${u.dur} · Started ${startFmt} · ${u.paymentStatus||"—"}</p>
       </div>
     </div>
 

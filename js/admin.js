@@ -386,11 +386,10 @@ function adminTab(tab){
   const flaggedCount=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
   const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
   const newSignups=_getNewSignupCount();
-  const onlineCount=getAM().filter(u=>_isOnline(u.lastSeen)).length;
   ["overview","messages","challengers","flagged","inbox","analytics","settings"].forEach(t=>{
     const btn=el("tab-"+t);if(!btn)return;
     btn.className="admin-tab"+(t===tab?" active":"");
-    const labels={overview:`Overview${_dot(newSignups>0)}`,messages:`Messages${_bdg(unreadCount)}`,challengers:`Challengers${_dot(onlineCount>0)}`,flagged:`Attention${_bdg(flaggedCount)}`,inbox:`Reviews${_bdg(reviewCount)}`,analytics:"Analytics",settings:"Settings"};
+    const labels={overview:`Overview${_dot(newSignups>0)}`,messages:`Messages${_bdg(unreadCount)}`,challengers:"Challengers",flagged:`Attention${_bdg(flaggedCount)}`,inbox:`Reviews${_bdg(reviewCount)}`,analytics:"Analytics",settings:"Settings"};
     btn.innerHTML=labels[t]||t;
   });
   const c=el("admin-content");if(!c)return;
@@ -781,12 +780,6 @@ function renderAdminOverview(c){
       <span style="color:#4dc98a;font-size:14px;flex-shrink:0">→</span>
     </div>`;
   }
-  if(onlineNow.length>0){
-    alerts+=`<div class="admin-alert" onclick="adminTab('challengers')" style="background:rgba(77,201,138,.04);border:1px solid rgba(77,201,138,.12)">
-      <span style="font-size:18px">🟢</span>
-      <div style="flex:1;min-width:0"><p style="font-size:13px;font-weight:600;color:#4dc98a">${onlineNow.length} online now</p><p class="muted" style="font-size:11px;margin-top:1px">${onlineNow.map(u=>u.name).join(", ")}</p></div>
-    </div>`;
-  }
   if(totalUnread>0){
     const latestMsg=adminRecentMessages[0];
     const who=latestMsg?all.find(u=>u.id===latestMsg.challenger_id)?.name||"Someone":"Someone";
@@ -837,7 +830,7 @@ function renderAdminOverview(c){
         <div class="row mb8" style="justify-content:space-between">
           <div class="row" style="gap:10px">
             ${_avatarWithStatus(u,34,"8px")}
-            <div><p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads${_isOnline(u.lastSeen)?' · <span style="color:#4dc98a">online</span>':""}</p></div>
+            <div><p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads</p></div>
           </div>
           <div style="text-align:right">
             ${isAtRisk?`<span style="font-size:10px;font-weight:700;color:#d9503a">At Risk</span>`:`<span style="font-size:10px;font-weight:700;color:#4dc98a">Active</span>`}
@@ -930,7 +923,7 @@ function renderAdminChallengers(c){
           <div class="row" style="gap:10px">
             ${_avatarWithStatus(u,38,"9px")}
             <div style="min-width:0">
-              <p style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}${_bdg(unreadCt)}${_isOnline(u.lastSeen)?' <span style="font-size:10px;font-weight:600;color:#4dc98a">online</span>':""}</p>
+              <p style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}${_bdg(unreadCt)}</p>
               <p class="muted" style="font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.goal||"No goal set"}</p>
             </div>
           </div>
@@ -1084,7 +1077,7 @@ function renderAdminFlagged(c){
           <div class="row" style="gap:10px">
             ${_avatarWithStatus(u,36,"9px")}
             <div>
-              <p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}${_isOnline(u.lastSeen)?' <span style="font-size:10px;color:#4dc98a">online</span>':""}</p>
+              <p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p>
               <p style="font-size:11px;color:#d9503a;margin-top:2px">${reasons.join(" · ")}</p>
             </div>
           </div>
