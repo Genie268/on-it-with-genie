@@ -1,9 +1,11 @@
 /* ── SUPABASE CLIENT ── */
 let sb=null;
 function initSupabase(){
-  if(SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase){
-    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
-  }
+  try{
+    if(SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase){
+      sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+    }
+  }catch(e){console.warn("Supabase init failed:",e);}
 }
 
 async function syncToSupabase(){
