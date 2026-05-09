@@ -71,7 +71,7 @@ async function loadAdminData(){
         day:curDay,dur,up:upArr,notes:noteArr,rv:rvArr,rvCount:(rvArr||[]).filter(Boolean).length,
         energyLog:elog,hasVoice:voiceArr,voiceUrls:voiceUrlArr,fileUrls:fileUrlArr,
         links:linkArr,fileNames:fileNameArr,behaviors:behaviorArr,
-        flag:missed>=4?"Multiple consecutive missed days":null,
+        flag:missed>=4?`${missed} missed days`:null,
         email:c.email,phone:c.phone,
         paymentStatus:c.payment_status,supabaseId:c.id,status:c.status,
         goalRaw:c.goal_raw,goalSummary:c.goal_summary,
@@ -1346,7 +1346,7 @@ async function batchMarkAllReviewed(){
   if(!confirm("Mark all pending uploads as reviewed?"))return;
   const pending=getAM().flatMap(u=>{
     const items=[];
-    for(let i=0;i<u.day-1;i++){if(u.up[i]&&!u.rv[i])items.push({challenger_id:u.id,day_number:i+1});}
+    for(let i=0;i<u.day;i++){if(u.up[i]&&!u.rv[i])items.push({challenger_id:u.id,day_number:i+1});}
     return items;
   });
   try{
