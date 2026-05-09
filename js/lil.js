@@ -1,4 +1,4 @@
-/* ── GROQ (via proxy, with temporary fallback) ── */
+/* ── GROQ (via proxy) ── */
 async function lil(prompt, maxTokens=300){
   const timeout=new Promise(resolve=>setTimeout(()=>resolve(null),10000));
   async function _call(){
@@ -15,14 +15,7 @@ async function lil(prompt, maxTokens=300){
           if(data?.error) console.warn("Proxy error:",data.error);
         }catch(proxyErr){console.warn("Proxy unreachable:",proxyErr);}
       }
-      const _fk="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";
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {"Content-Type":"application/json","Authorization":`Bearer ${_fk}`},
-        body: JSON.stringify({model:GROQ_MODEL,max_tokens:maxTokens,messages:[{role:"system",content:SYS},{role:"user",content:prompt}]})
-      });
-      const data = await res.json();
-      return data?.choices?.[0]?.message?.content?.trim() || null;
+      return null;
     } catch(e){ console.error("AI error:",e); return null; }
   }
   return Promise.race([_call(), timeout]);
@@ -172,7 +165,7 @@ async function sendChatMsg(){
 function sendGenieMessage(text){
   if(!S.user) return;
   if(!S.user.genieMessages) S.user.genieMessages=[];
-  S.user.genieMessages.push({text,date:new Date().toLocaleDateString(),read:false});
+  S.user.genieMessages.push({text,date:new Date().toISOString(),read:false});
   saveState();
 }
 

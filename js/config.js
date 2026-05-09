@@ -27,7 +27,7 @@ function showToast(message,type="info",duration=3000){
 const _analyticsSessionId=(()=>{let s=sessionStorage.getItem("_asid");if(!s){s=crypto.randomUUID();sessionStorage.setItem("_asid",s);}return s;})();
 function trackEvent(event,data){
   if(typeof sb==="undefined"||!sb)return;
-  const uid=typeof S!=="undefined"&&S.challengerId?S.challengerId:null;
+  const uid=typeof S!=="undefined"&&S.user?.supabaseId?S.user.supabaseId:null;
   const isAdmin=/^\/admin\/?$/.test(window.location.pathname);
   sb.from("analytics_events").insert({
     event_type:event,

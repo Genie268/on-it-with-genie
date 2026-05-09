@@ -380,7 +380,7 @@ async function deleteMyAccount(){
       await sb.from("push_subscriptions").delete().eq("challenger_id",uid);
       await sb.from("energy_logs").delete().eq("challenger_id",uid);
       await sb.from("uploads").delete().eq("challenger_id",uid);
-      await sb.from("messages").delete().eq("challenger_id",uid);
+      await sb.from("chat_messages").delete().eq("challenger_id",uid);
       await sb.from("challengers").delete().eq("id",uid);
     }catch(e){console.warn("Server cleanup partial:",e);}
   }
@@ -673,7 +673,7 @@ function fireConfetti(){
 const WT_STEPS=[
   {target:"d-grid",title:"YOUR CALENDAR",text:"Each cell is one day of your challenge. Gold means today — tap it to upload your proof.",pos:"below"},
   {target:"up-btn",title:"DAILY UPLOAD",text:"This is your upload button. Photos, notes, links, voice — submit your evidence here every day.",pos:"above"},
-  {target:"sk-num",title:"YOUR STREAK",text:"This ring tracks consecutive uploads. Miss a day, it resets. The number is your momentum.",pos:"below"},
+  {target:"stats-card",title:"YOUR STATS",text:"Uploads, streak, and hit rate — this card tracks your consistency at a glance.",pos:"below"},
   {target:"profile-area",title:"YOUR PROFILE",text:"Tap here to update your name, photo, and settings. This is how Genie sees you.",pos:"below"}
 ];
 let wtIdx=0;
