@@ -478,7 +478,7 @@ function startAdminPoll(){
           if(m.sender==="challenger"){
             /* Browser notification if tab not focused */
             if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
-              new Notification("New message from challenger",{body:(m.message||"🎙 Voice note").slice(0,80)});
+              _showNotification("New message from challenger",{body:(m.message||"🎙 Voice note").slice(0,80)});
             }
             /* Instantly add to unread cache for immediate badge update */
             if(typeof adminUnreadMessages!=="undefined"){
@@ -533,7 +533,7 @@ function startAdminPoll(){
             if(typeof _adminLastKnownIds!=="undefined") _adminLastKnownIds.add(c.id);
           }
           if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
-            new Notification("New challenger signed up!",{body:(c.name||"Someone")+" just joined"});
+            _showNotification("New challenger signed up!",{body:(c.name||"Someone")+" just joined"});
           }
           _adminSoftRefresh();
         })

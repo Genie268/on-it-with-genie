@@ -1,15 +1,10 @@
-/* Global error handlers — show a visible banner on JS crash */
+/* Global error handlers — log silently, never show banners to users */
 window.onerror=function(msg,src,line){
-  var b=document.createElement("div");
-  b.style.cssText="position:fixed;top:0;left:0;right:0;padding:12px 16px;background:#d9503a;color:#fff;font-size:13px;z-index:99999;font-family:monospace";
-  b.textContent="JS Error: "+msg+" (line "+line+")";
-  document.body.appendChild(b);
+  console.warn("JS Error:",msg,"(line "+line+")");
 };
 window.addEventListener('unhandledrejection',function(e){
-  var b=document.createElement("div");
-  b.style.cssText="position:fixed;top:40px;left:0;right:0;padding:12px 16px;background:#c44a3a;color:#fff;font-size:13px;z-index:99999;font-family:monospace";
-  b.textContent="Async Error: "+(e.reason&&e.reason.message?e.reason.message:String(e.reason));
-  document.body.appendChild(b);
+  console.warn("Async Error:",e.reason&&e.reason.message?e.reason.message:String(e.reason));
+  e.preventDefault();
 });
 /* ── TOAST NOTIFICATIONS ── */
 function showToast(message,type="info",duration=3000){
@@ -24,7 +19,7 @@ function showToast(message,type="info",duration=3000){
 }
 
 /* ── PRODUCT ANALYTICS ── */
-const _analyticsSessionId=(()=>{let s=sessionStorage.getItem("_asid");if(!s){s=crypto.randomUUID();sessionStorage.setItem("_asid",s);}return s;})();
+const _analyticsSessionId=(()=>{let s=sessionStorage.getItem("_asid");if(!s){try{s=crypto.randomUUID();}catch(e){s=Date.now().toString(36)+Math.random().toString(36).slice(2);}sessionStorage.setItem("_asid",s);}return s;})();
 function trackEvent(event,data){
   if(typeof sb==="undefined"||!sb)return;
   const uid=typeof S!=="undefined"&&S.user?.supabaseId?S.user.supabaseId:null;
@@ -348,6 +343,17 @@ function stopLiveTimestamps(){
 }
 
 
+/* ── SAFE NOTIFICATION (uses Service Worker API on mobile) ── */
+async function _showNotification(title,options){
+  try{
+    if("serviceWorker" in navigator){
+      const reg=await navigator.serviceWorker.getRegistration("/sw.js");
+      if(reg){reg.showNotification(title,options);return;}
+    }
+    if(typeof Notification==="function"){new Notification(title,options);}
+  }catch(e){}
+}
+
 /* ── CHALLENGER REALTIME NOTIFICATIONS ── */
 let _challengerRealtimeStarted=false;
 function startChallengerRealtime(){
@@ -360,7 +366,7 @@ function startChallengerRealtime(){
         if(m.sender==="genie"){
           /* Browser notification if tab not focused */
           if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
-            new Notification("Message from Genie",{body:(m.message||"🎙 Voice note").slice(0,80),icon:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23060606'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-size='36' font-weight='900' fill='%23c49a1c' font-family='system-ui'%3EG%3C/text%3E%3C/svg%3E"});
+            _showNotification("Message from Genie",{body:(m.message||"🎙 Voice note").slice(0,80)});
           }
           /* Refresh chat and badge instantly */
           if(typeof renderChat==="function") renderChat();
