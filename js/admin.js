@@ -100,6 +100,16 @@ function _avatarWithStatus(u,sz,radius){
   const img=u.photo?`<img src="${u.photo}" style="width:${sz}px;height:${sz}px;object-fit:cover;border-radius:${radius}">`:`<div style="width:${sz}px;height:${sz}px;border-radius:${radius};background:rgba(196,154,28,.1);border:1.5px solid rgba(196,154,28,.25);display:flex;align-items:center;justify-content:center;font-size:${Math.round(sz*0.3)}px;font-weight:800;color:#c49a1c">${u.ini}</div>`;
   return `<div style="position:relative;flex-shrink:0;width:${sz}px;height:${sz}px">${img}${_onlineDot(u.lastSeen,Math.max(8,Math.round(sz*0.25)))}</div>`;
 }
+function _formatLastSeen(lastSeen){
+  if(!lastSeen)return "Never seen";
+  if(_isOnline(lastSeen))return '<span style="color:#4dc98a">Online</span>';
+  const d=new Date(lastSeen),now=new Date();
+  const timeStr=d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  if(d.toDateString()===now.toDateString())return "last seen today at "+timeStr;
+  const yest=new Date(now-86400000);
+  if(d.toDateString()===yest.toDateString())return "last seen yesterday at "+timeStr;
+  return "last seen "+d.toLocaleDateString([],{month:"short",day:"numeric"})+" at "+timeStr;
+}
 
 /* ── ADMIN NOTIFICATION TRACKING ── */
 let _adminNewSignups=[];
@@ -366,7 +376,7 @@ async function renderAdminSettings(c){
 function getPendingInbox(){
   return getAM().flatMap(u=>{
     const items=[];
-    for(let i=0;i<u.day-1;i++){
+    for(let i=0;i<u.day;i++){
       if(u.up[i]&&!u.rv[i])items.push({u,day:i+1,note:u.notes[i],i,
         hasVoice:u.hasVoice&&u.hasVoice[i],voiceUrl:u.voiceUrls&&u.voiceUrls[i],
         fileUrl:u.fileUrls&&u.fileUrls[i],
@@ -477,7 +487,7 @@ function renderAdminMessages(c){
       ${_avatarWithStatus(activeConvo,32,"50%")}
       <div style="flex:1;min-width:0">
         <p style="font-size:14px;font-weight:700;margin:0">${activeConvo.name}</p>
-        <p class="muted" style="font-size:10px;margin:0">${_isOnline(activeConvo.lastSeen)?'<span style="color:#4dc98a">Online now</span>':"Tap to view profile"}</p>
+        <p class="muted" style="font-size:10px;margin:0">${_formatLastSeen(activeConvo.lastSeen)}</p>
       </div>
       <button onclick="openProfilePanel('${activeConvo.id}')" style="padding:5px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer">Profile →</button>
     </div>`:"";
@@ -556,10 +566,12 @@ async function _loadMsgTabChat(uid){
       if(!body) return "";
       const readCheck=isMe&&m.read_at?`<span style="color:rgba(0,0,0,.35);font-size:9px;margin-left:4px" title="Read">✓✓</span>`:(isMe?`<span style="color:rgba(0,0,0,.2);font-size:9px;margin-left:4px">✓</span>`:"");
       const msgPreview=(m.message||"").slice(0,40).replace(/"/g,"&quot;").replace(/'/g,"\\'");
-      const replyBtn=`<span onclick="event.stopPropagation();_msgTabSetReply('${m.id}','${msgPreview}','${uid}')" style="cursor:pointer;font-size:10px;color:#5a5a5a;margin-left:6px;opacity:0.5;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.5">↩</span>`;
+      const menuId=`mtmenu-${m.id}`;
+      const wasRead=m.read_at?"true":"false";
+      const dotMenu=`<span style="position:relative;margin-left:4px"><span onclick="event.stopPropagation();toggleChatMenu('${menuId}')" style="cursor:pointer;font-size:14px;color:${isMe?"rgba(0,0,0,.25)":"#444"};line-height:1;vertical-align:middle;padding:2px" onmouseenter="this.style.color='${isMe?"rgba(0,0,0,.5)":"#888"}'" onmouseleave="this.style.color='${isMe?"rgba(0,0,0,.25)":"#444'"}">⋮</span><div id="${menuId}" style="display:none;position:absolute;bottom:20px;${isMe?"right:0":"left:0"};background:#181818;border:1px solid #2a2a2a;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:100;overflow:hidden;min-width:140px"><button onclick="event.stopPropagation();_msgTabSetReply('${m.id}','${msgPreview}','${uid}');closeChatMenus()" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 16px;background:none;border:none;border-bottom:1px solid #222;color:#ccc;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Reply<span style="font-size:14px;color:#555">↩</span></button><button onclick="event.stopPropagation();_msgTabCopyMsg('${m.id}');closeChatMenus()" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 16px;background:none;border:none;${isMe?"border-bottom:1px solid #222;":""}color:#ccc;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Copy<span style="font-size:14px;color:#555">⊡</span></button>${isMe?`<button onclick="event.stopPropagation();_msgTabDeleteMsg('${m.id}','${uid}',${wasRead});closeChatMenus()" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 16px;background:none;border:none;color:#d9503a;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Unsend<span style="font-size:14px">⊘</span></button>`:""}</div></span>`;
       return `${dateSep}<div id="msg-${m.id}" class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
         <div class="cmsg-body">${body}</div>
-        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${timeStr}${readCheck}${replyBtn}</div>
+        <div class="cmsg-time" style="position:relative">${isMe?"You":"Challenger"} · ${timeStr}${readCheck}${dotMenu}</div>
       </div>`;
     }).join("");
     thread.scrollTop=thread.scrollHeight;
@@ -649,6 +661,26 @@ async function toggleMsgTabRecording(){
     _msgTabRecTimer=setInterval(()=>{secs++;const m=Math.floor(secs/60),s=String(secs%60).padStart(2,"0");if(ta)ta.placeholder=`● Recording ${m}:${s} — tap to stop`;},1000);
     if(ta)ta.placeholder="● Recording 0:00 — tap to stop";
   }catch(e){if(ta)ta.placeholder="Microphone access denied";setTimeout(()=>{if(ta&&ta.placeholder.includes("denied"))ta.placeholder="Message...";},2500);}
+}
+
+function _msgTabCopyMsg(msgId){
+  const bubble=document.getElementById("msg-"+msgId);
+  if(!bubble)return;
+  const p=bubble.querySelector(".cmsg-body p");
+  if(p&&p.textContent){
+    navigator.clipboard.writeText(p.textContent).then(()=>showToast("Copied","info")).catch(()=>{});
+  }
+}
+
+async function _msgTabDeleteMsg(msgId,uid,wasRead){
+  const msg=wasRead?"This message was already read. Unsend anyway?":"Unsend this message?";
+  if(!confirm(msg))return;
+  try{
+    await adminFetch("delete_message",{message_id:msgId});
+    showToast(wasRead?"Unsent — but they already saw it":"Message unsent",wasRead?"error":"info");
+  }catch(e){showToast("Failed to unsend","error");}
+  _msgTabLastHash="";
+  _loadMsgTabChat(uid);
 }
 
 function discardMsgTabVoice(){
@@ -925,6 +957,7 @@ function renderAdminChallengers(c){
             <div style="min-width:0">
               <p style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}${_bdg(unreadCt)}</p>
               <p class="muted" style="font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.goal||"No goal set"}</p>
+              <p style="font-size:10px;color:#555;margin-top:2px">${_formatLastSeen(u.lastSeen)}</p>
             </div>
           </div>
           <div class="row" style="gap:10px;flex-shrink:0">

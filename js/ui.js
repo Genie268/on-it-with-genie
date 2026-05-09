@@ -440,7 +440,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   animateTierPills();
   initSupabase();
   /* Close chat 3-dot menus on outside click */
-  document.addEventListener("click",()=>closeChatMenus());
+  document.addEventListener("click",()=>{closeChatMenus();if(typeof _closeMsgMenus==="function")_closeMsgMenus();});
   const isAdmin=/^\/admin\/?$/.test(window.location.pathname);
   if(isAdmin){
     goTo('admin');
@@ -1038,6 +1038,7 @@ async function openProfilePanel(uid){
         <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:4px">CHALLENGER</p>
         <p style="font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}</p>
         <p style="font-size:12px;color:#666;margin-top:2px">Day ${u.day} of ${u.dur} · Started ${startFmt} · ${u.paymentStatus||"—"}</p>
+        <p style="font-size:10px;color:#555;margin-top:3px">${typeof _formatLastSeen==="function"?_formatLastSeen(u.lastSeen):""}</p>
       </div>
     </div>
 
@@ -1187,15 +1188,13 @@ async function loadProfilePanelChat(uid){
       if(!body) return "";
       /* Read receipt for admin's messages */
       const readCheck=isMe&&m.read_at?`<span style="color:${isMe?"rgba(0,0,0,.35)":"#444"};font-size:9px;margin-left:4px" title="Read ${new Date(m.read_at).toLocaleString()}">✓✓</span>`:(isMe?`<span style="color:rgba(0,0,0,.2);font-size:9px;margin-left:4px">✓</span>`:"");
-      /* Reply visible, Unsend behind 3-dot menu (admin's own messages only) */
       const msgPreview=(m.message||"").slice(0,40).replace(/"/g,"&quot;").replace(/'/g,"\\'");
-      const replyBtn=`<span onclick="event.stopPropagation();pfChatSetReply('${m.id}','${msgPreview}','${uid}')" style="cursor:pointer;font-size:10px;color:#5a5a5a;margin-left:6px;opacity:0.5;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.5">↩ Reply</span>`;
       const menuId=`cmenu-${m.id}`;
       const wasRead=m.read_at?"true":"false";
-      const dotMenu=isMe?`<span style="position:relative;margin-left:4px"><span onclick="event.stopPropagation();toggleChatMenu('${menuId}')" style="cursor:pointer;font-size:12px;color:#444;letter-spacing:1px;line-height:1;transition:color .15s" onmouseenter="this.style.color='#888'" onmouseleave="this.style.color='#444'">⋯</span><div id="${menuId}" style="display:none;position:absolute;bottom:18px;right:0;background:#181818;border:1px solid #2a2a2a;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:10;overflow:hidden"><div onclick="event.stopPropagation();pfChatDeleteMsg('${m.id}','${uid}',${wasRead});closeChatMenus()" style="padding:7px 14px;font-size:12px;color:#d9503a;cursor:pointer;white-space:nowrap" onmouseenter="this.style.background='#2a2a2a'" onmouseleave="this.style.background='none'">Unsend</div></div></span>`:"";
+      const dotMenu=`<span style="position:relative;margin-left:4px"><span onclick="event.stopPropagation();toggleChatMenu('${menuId}')" style="cursor:pointer;font-size:14px;color:${isMe?"rgba(0,0,0,.25)":"#444"};line-height:1;vertical-align:middle;padding:2px" onmouseenter="this.style.color='${isMe?"rgba(0,0,0,.5)":"#888"}'" onmouseleave="this.style.color='${isMe?"rgba(0,0,0,.25)":"#444'"}">⋮</span><div id="${menuId}" style="display:none;position:absolute;bottom:20px;${isMe?"right:0":"left:0"};background:#181818;border:1px solid #2a2a2a;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:100;overflow:hidden;min-width:140px"><button onclick="event.stopPropagation();pfChatSetReply('${m.id}','${msgPreview}','${uid}');closeChatMenus()" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 16px;background:none;border:none;border-bottom:1px solid #222;color:#ccc;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Reply<span style="font-size:14px;color:#555">↩</span></button><button onclick="event.stopPropagation();pfChatCopyMsg('${m.id}');closeChatMenus()" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 16px;background:none;border:none;${isMe?"border-bottom:1px solid #222;":""}color:#ccc;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Copy<span style="font-size:14px;color:#555">⊡</span></button>${isMe?`<button onclick="event.stopPropagation();pfChatDeleteMsg('${m.id}','${uid}',${wasRead});closeChatMenus()" style="display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 16px;background:none;border:none;color:#d9503a;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left">Unsend<span style="font-size:14px">⊘</span></button>`:""}</div></span>`;
       return `${dateSep}<div id="msg-${m.id}" class="cmsg ${isMe?"cmsg-me":"cmsg-them"}">
         <div class="cmsg-body">${body}</div>
-        <div class="cmsg-time">${isMe?"You":"Challenger"} · ${timeStr}${readCheck}${replyBtn}${dotMenu}</div>
+        <div class="cmsg-time" style="position:relative">${isMe?"You":"Challenger"} · ${timeStr}${readCheck}${dotMenu}</div>
       </div>`;
     }).join("");
     thread.scrollTop=thread.scrollHeight;
@@ -1217,7 +1216,16 @@ function toggleChatMenu(id){
   if(menu)menu.style.display=menu.style.display==="none"?"block":"none";
 }
 function closeChatMenus(){
-  document.querySelectorAll('[id^="cmenu-"]').forEach(m=>m.style.display="none");
+  document.querySelectorAll('[id^="cmenu-"],[id^="mtmenu-"]').forEach(m=>m.style.display="none");
+}
+
+function pfChatCopyMsg(msgId){
+  const bubble=document.getElementById("msg-"+msgId);
+  if(!bubble)return;
+  const p=bubble.querySelector(".cmsg-body p");
+  if(p&&p.textContent){
+    navigator.clipboard.writeText(p.textContent).then(()=>showToast("Copied","info")).catch(()=>{});
+  }
 }
 
 function pfChatSetReply(msgId,preview,uid){
