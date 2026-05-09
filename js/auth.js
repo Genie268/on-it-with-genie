@@ -365,47 +365,92 @@ function urlBase64ToUint8Array(base64String){
   return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
 }
 
+function _pushSupported(){
+  return "serviceWorker" in navigator && "PushManager" in window;
+}
+
 async function initPushNotifications(){
-  if(!("serviceWorker" in navigator)||!("PushManager" in window))return;
-  if(!S.user?.supabaseId)return;
+  if(!_pushSupported()||!S.user?.supabaseId)return;
   try{
     const reg=await navigator.serviceWorker.register("/sw.js");
     await navigator.serviceWorker.ready;
     let sub=await reg.pushManager.getSubscription();
+    if(sub){
+      await _syncPushSub(sub);
+      return;
+    }
+    if(Notification.permission==="granted"){
+      sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+      await _syncPushSub(sub);
+      return;
+    }
+    if(Notification.permission==="denied")return;
+    if(!localStorage.getItem("oiwg_push_prompted")){
+      setTimeout(()=>_showPushPrompt(),2000);
+    }
+  }catch(e){console.warn("Push init:",e);}
+}
+
+async function _subscribePush(){
+  if(!_pushSupported())return false;
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=="granted")return false;
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
     if(!sub){
-      // iOS standalone check
-      const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
-      const isStandalone=window.navigator.standalone||window.matchMedia("(display-mode: standalone)").matches;
-      if(isIOS&&!isStandalone){
-        // Show a gentle prompt — don't block
-        const banner=document.createElement("div");
-        banner.id="ios-push-banner";
-        banner.style.cssText="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #c49a1c44;color:#e0e0e0;font-size:13px;padding:12px 16px;border-radius:12px;z-index:9999;max-width:300px;text-align:center;box-shadow:0 4px 20px #0008";
-        banner.innerHTML='<strong style="color:#c49a1c">Enable Notifications</strong><br>Add this app to your Home Screen to receive push notifications on iPhone.';
-        const close=document.createElement("button");
-        close.textContent="✕";
-        close.style.cssText="position:absolute;top:6px;right:10px;background:none;border:none;color:#888;font-size:16px;cursor:pointer";
-        close.onclick=()=>banner.remove();
-        banner.appendChild(close);
-        document.body.appendChild(banner);
-        setTimeout(()=>banner.remove(),8000);
-        return;
-      }
-      const perm=await Notification.requestPermission();
-      if(perm!=="granted")return;
       sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
     }
-    // Upsert subscription to Supabase
-    if(sb){
-      const k=sub.toJSON().keys||{};
-      await sb.from("push_subscriptions").upsert({
-        challenger_id:S.user.supabaseId,
-        endpoint:sub.endpoint,
-        p256dh:k.p256dh||"",
-        auth:k.auth||""
-      },{onConflict:"endpoint",ignoreDuplicates:false});
-    }
-  }catch(e){console.warn("Push init failed:",e);}
+    await _syncPushSub(sub);
+    return true;
+  }catch(e){console.warn("Push subscribe:",e);return false;}
+}
+
+async function _syncPushSub(sub){
+  if(!sb||!S.user?.supabaseId||!sub)return;
+  const k=sub.toJSON().keys||{};
+  await sb.from("push_subscriptions").upsert({
+    challenger_id:S.user.supabaseId,
+    endpoint:sub.endpoint,
+    p256dh:k.p256dh||"",
+    auth:k.auth||"",
+    is_active:true
+  },{onConflict:"endpoint",ignoreDuplicates:false});
+}
+
+function _showPushPrompt(){
+  if(document.getElementById("push-prompt"))return;
+  localStorage.setItem("oiwg_push_prompted","1");
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone=window.navigator.standalone||window.matchMedia("(display-mode: standalone)").matches;
+  const banner=document.createElement("div");
+  banner.id="push-prompt";
+  banner.style.cssText="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid rgba(196,154,28,.3);color:#e0e0e0;font-size:13px;padding:16px 18px;border-radius:14px;z-index:9999;max-width:320px;width:calc(100% - 32px);text-align:center;box-shadow:0 8px 30px #0008;animation:popIn .25s ease";
+  if(isIOS&&!isStandalone){
+    banner.innerHTML=`<p style="font-weight:700;color:#c49a1c;margin-bottom:6px">Stay in the loop</p>
+      <p style="font-size:12px;color:#999;line-height:1.5;margin-bottom:12px">To get notifications on iPhone, add this app to your Home Screen: tap <strong style="color:#ddd">Share</strong> → <strong style="color:#ddd">Add to Home Screen</strong></p>
+      <button onclick="this.parentElement.remove()" style="padding:8px 20px;border-radius:8px;background:#222;border:1px solid #333;color:#888;font-size:12px;cursor:pointer;font-family:inherit">Got it</button>`;
+  }else{
+    banner.innerHTML=`<p style="font-weight:700;color:#c49a1c;margin-bottom:6px">Stay in the loop</p>
+      <p style="font-size:12px;color:#999;line-height:1.5;margin-bottom:12px">Get notified when Genie sends you a message or review.</p>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button onclick="_acceptPushPrompt()" style="padding:8px 20px;border-radius:8px;background:#c49a1c;border:none;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Enable</button>
+        <button onclick="this.parentElement.parentElement.remove()" style="padding:8px 20px;border-radius:8px;background:#222;border:1px solid #333;color:#888;font-size:12px;cursor:pointer;font-family:inherit">Not now</button>
+      </div>`;
+  }
+  document.body.appendChild(banner);
+}
+
+async function _acceptPushPrompt(){
+  const banner=document.getElementById("push-prompt");
+  if(banner) banner.remove();
+  const ok=await _subscribePush();
+  if(ok){
+    showToast("Notifications enabled","success");
+    if(typeof _renderNotifToggle==="function") _renderNotifToggle();
+  }else if(Notification.permission==="denied"){
+    showToast("Blocked by browser — check your browser's notification settings","error",5000);
+  }
 }
 
 async function triggerPush(challengerId,title,body){
