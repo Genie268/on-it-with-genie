@@ -219,6 +219,7 @@ async function subUp(){
   syncUploadToSupabase(S.day,S.uploads[S.day-1]);
   showToast("Day "+S.day+" proof submitted","success");
   trackEvent("upload_submitted",{day:S.day,has_file:!!S.uploads[S.day-1]?.fileUrl,has_note:!!S.uploads[S.day-1]?.note,has_voice:!!S.uploads[S.day-1]?.voiceUrl});
+  const rb=document.getElementById("upload-reminder");if(rb)rb.remove();
   S.lilDone=false; renderDash();
   if(S.day===dur)setTimeout(()=>{closeMod();goTo("d15");},1200);
 }
@@ -232,10 +233,28 @@ function openViewMod(dayIdx){
   const isToday=day===S.day;
   el("view-mod-dl").textContent=`DAY ${day}`;
   let html=`<div class="view-upload-card">`;
-  if(upload.note) html+=`<p style="font-size:14px;line-height:1.6;margin-bottom:6px">${upload.note}</p>`;
-  if(upload.hasFile) html+=`<p class="muted" style="font-size:12px">📎 ${upload.fileName||"File attached"}</p>`;
-  if(upload.hasVoice) html+=`<p class="muted" style="font-size:12px;margin-top:4px">🎙 Voice note recorded</p>`;
-  if(upload.proofType) html+=`<span class="tag mt6" style="display:inline-block;margin-top:6px">${PT[upload.proofType]||"Proof"}</span>`;
+  if(upload.behavior){
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">BEHAVIOR</span><p style="margin-top:4px;font-size:14px;font-weight:700;color:${upload.behavior==="yes"?"#4dc98a":"#d9503a"}">${upload.behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p></div>`;
+  }
+  if(upload.note){
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">NOTE</span><p style="margin-top:4px;font-size:14px;line-height:1.7;color:#e0e0e0">${upload.note}</p></div>`;
+  }
+  if(upload.link){
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">LINK</span><a href="${upload.link}" target="_blank" style="display:block;margin-top:4px;font-size:13px;color:#4dc98a;word-break:break-all">${upload.link}</a></div>`;
+  }
+  if(upload.fileUrl){
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${thumbHtml(upload.fileUrl,upload.fileName)}</div>`;
+  }else if(upload.hasFile&&upload.fileName){
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${upload.fileName}</p></div>`;
+  }
+  if(upload.voiceUrl){
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span><audio controls src="${upload.voiceUrl}" style="width:100%;margin-top:8px;border-radius:8px"></audio></div>`;
+  }else if(upload.hasVoice){
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span><p style="margin-top:4px;font-size:12px;color:#888">🎙 Voice note recorded</p></div>`;
+  }
+  if(upload.proofType){
+    html+=`<span class="tag mt6" style="display:inline-block;margin-top:6px">${PT[upload.proofType]||"Proof"}</span>`;
+  }
   html+=`</div>`;
   el("view-mod-body").innerHTML=html;
   if(isToday){
