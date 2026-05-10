@@ -34,7 +34,6 @@ function renderDash(){
   renderEnergyCheck();
   showChatFab();
   if(!_chatRenderedOnce){_chatRenderedOnce=true;renderChat();}
-  _initUploadReminders();
   _check2ndVisitPush();
   startProofWall();
   const dnr=el("day-nav-row");
@@ -636,65 +635,6 @@ function _showProofWallItem(pw){
     <span>${text}</span>
   </div>`;
   setTimeout(()=>{pw.innerHTML="";},5000);
-}
-
-
-/* ── DAILY UPLOAD REMINDERS (Duolingo-style gentle nudges) ── */
-const _REMIND_POOL=[
-  {t:"Your streak is waiting",b:"One upload keeps it alive. You've got this."},
-  {t:"Hey, quick reminder",b:"Your goal won't chase itself. Upload your proof today."},
-  {t:"Still time today",b:"The hardest part is opening the app. You already did that."},
-  {t:"Don't break the chain",b:"Midnight resets the clock. Upload before it does."},
-  {t:"Your future self is watching",b:"They'll thank you for showing up today."},
-  {t:"Just checking in",b:"One small upload. That's all it takes to keep going."}
-];
-let _reminderTimeout=null;
-
-function _initUploadReminders(){
-  if(!S.user||!S.uploads)return;
-  if(S.uploads[S.day-1]!==null)return;
-  if(_reminderTimeout)clearTimeout(_reminderTimeout);
-  _reminderTimeout=setTimeout(_fireReminder,45000);
-}
-
-function _fireReminder(){
-  if(!S.user||!S.uploads||S.uploads[S.day-1]!==null)return;
-  const today=new Date().toISOString().slice(0,10);
-  const key="oiwg_remind_"+today;
-  const data=JSON.parse(localStorage.getItem(key)||'{"c":0,"t":0}');
-  if(data.c>=3)return;
-  const now=Date.now();
-  if(data.t&&now-data.t<10800000)return;
-  const msg=_REMIND_POOL[data.c%_REMIND_POOL.length];
-  _showReminderBanner(msg.b);
-  if(typeof _showNotification==="function"&&document.hidden){
-    _showNotification(msg.t,{body:msg.b});
-  }
-  data.c++;data.t=now;
-  localStorage.setItem(key,JSON.stringify(data));
-}
-
-function _showReminderBanner(text){
-  if(document.getElementById("upload-reminder"))return;
-  const cn=el("coach-notes");
-  if(!cn)return;
-  const banner=document.createElement("div");
-  banner.id="upload-reminder";
-  banner.style.cssText="margin:0 0 10px;padding:12px 14px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);border-radius:12px;display:flex;align-items:center;gap:10px;animation:heroFadeUp .3s ease forwards;cursor:pointer";
-  banner.innerHTML=`<span style="font-size:18px">✨</span><div style="flex:1"><p style="font-size:13px;font-weight:600;color:#e0e0e0;margin-bottom:2px">${text}</p><p style="font-size:11px;color:#888">Tap to upload your proof now</p></div><span onclick="event.stopPropagation();this.parentElement.remove()" style="color:#555;cursor:pointer;padding:4px;font-size:14px">×</span>`;
-  banner.onclick=e=>{if(e.target.tagName!=="SPAN"||e.target===banner.firstElementChild){banner.remove();openMod();}};
-  cn.parentNode.insertBefore(banner,cn.nextSibling);
-}
-
-function _onVisibilityReminder(){
-  if(document.hidden)return;
-  if(!S.user||!S.uploads||S.uploads[S.day-1]!==null)return;
-  const today=new Date().toISOString().slice(0,10);
-  const key="oiwg_remind_"+today;
-  const data=JSON.parse(localStorage.getItem(key)||'{"c":0,"t":0}');
-  if(data.c>=3)return;
-  if(data.t&&Date.now()-data.t<10800000)return;
-  setTimeout(_fireReminder,5000);
 }
 
 
