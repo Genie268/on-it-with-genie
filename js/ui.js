@@ -462,6 +462,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       } else if(S.user?.supabaseId){
         if(typeof updateMsgBadge==="function") updateMsgBadge();
         if(typeof renderChat==="function") renderChat();
+        if(typeof _onVisibilityReminder==="function") _onVisibilityReminder();
       }
     }
   });

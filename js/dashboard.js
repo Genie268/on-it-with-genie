@@ -34,6 +34,8 @@ function renderDash(){
   renderEnergyCheck();
   showChatFab();
   if(!_chatRenderedOnce){_chatRenderedOnce=true;renderChat();}
+  _initUploadReminders();
+  _check2ndVisitPush();
   startProofWall();
   const dnr=el("day-nav-row");
   if(S.devMode){dnr.style.display="flex";el("sim-l").textContent=`Sim day ${d}`;el("prev-b").disabled=d===1;el("next-b").disabled=d===getDur();}
@@ -634,6 +636,138 @@ function _showProofWallItem(pw){
     <span>${text}</span>
   </div>`;
   setTimeout(()=>{pw.innerHTML="";},5000);
+}
+
+
+/* ── DAILY UPLOAD REMINDERS (Duolingo-style gentle nudges) ── */
+const _REMIND_POOL=[
+  {t:"Your streak is waiting",b:"One upload keeps it alive. You've got this."},
+  {t:"Hey, quick reminder",b:"Your goal won't chase itself. Upload your proof today."},
+  {t:"Still time today",b:"The hardest part is opening the app. You already did that."},
+  {t:"Don't break the chain",b:"Midnight resets the clock. Upload before it does."},
+  {t:"Your future self is watching",b:"They'll thank you for showing up today."},
+  {t:"Just checking in",b:"One small upload. That's all it takes to keep going."}
+];
+let _reminderTimeout=null;
+
+function _initUploadReminders(){
+  if(!S.user||!S.uploads)return;
+  if(S.uploads[S.day-1]!==null)return;
+  if(_reminderTimeout)clearTimeout(_reminderTimeout);
+  _reminderTimeout=setTimeout(_fireReminder,45000);
+}
+
+function _fireReminder(){
+  if(!S.user||!S.uploads||S.uploads[S.day-1]!==null)return;
+  const today=new Date().toISOString().slice(0,10);
+  const key="oiwg_remind_"+today;
+  const data=JSON.parse(localStorage.getItem(key)||'{"c":0,"t":0}');
+  if(data.c>=3)return;
+  const now=Date.now();
+  if(data.t&&now-data.t<10800000)return;
+  const msg=_REMIND_POOL[data.c%_REMIND_POOL.length];
+  _showReminderBanner(msg.b);
+  if(typeof _showNotification==="function"&&document.hidden){
+    _showNotification(msg.t,{body:msg.b});
+  }
+  data.c++;data.t=now;
+  localStorage.setItem(key,JSON.stringify(data));
+}
+
+function _showReminderBanner(text){
+  if(document.getElementById("upload-reminder"))return;
+  const cn=el("coach-notes");
+  if(!cn)return;
+  const banner=document.createElement("div");
+  banner.id="upload-reminder";
+  banner.style.cssText="margin:0 0 10px;padding:12px 14px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);border-radius:12px;display:flex;align-items:center;gap:10px;animation:heroFadeUp .3s ease forwards;cursor:pointer";
+  banner.innerHTML=`<span style="font-size:18px">✨</span><div style="flex:1"><p style="font-size:13px;font-weight:600;color:#e0e0e0;margin-bottom:2px">${text}</p><p style="font-size:11px;color:#888">Tap to upload your proof now</p></div><span onclick="event.stopPropagation();this.parentElement.remove()" style="color:#555;cursor:pointer;padding:4px;font-size:14px">×</span>`;
+  banner.onclick=e=>{if(e.target.tagName!=="SPAN"||e.target===banner.firstElementChild){banner.remove();openMod();}};
+  cn.parentNode.insertBefore(banner,cn.nextSibling);
+}
+
+function _onVisibilityReminder(){
+  if(document.hidden)return;
+  if(!S.user||!S.uploads||S.uploads[S.day-1]!==null)return;
+  const today=new Date().toISOString().slice(0,10);
+  const key="oiwg_remind_"+today;
+  const data=JSON.parse(localStorage.getItem(key)||'{"c":0,"t":0}');
+  if(data.c>=3)return;
+  if(data.t&&Date.now()-data.t<10800000)return;
+  setTimeout(_fireReminder,5000);
+}
+
+
+/* ── 2ND-VISIT PUSH NOTIFICATION CHECK ── */
+function _check2ndVisitPush(){
+  if(typeof _pushSupported!=="function"||!_pushSupported())return;
+  if(localStorage.getItem("oiwg_push_check_done"))return;
+  const key="oiwg_dash_visits";
+  const visits=parseInt(localStorage.getItem(key)||"0")+1;
+  localStorage.setItem(key,String(visits));
+  if(visits!==2)return;
+  if(!("serviceWorker" in navigator))return;
+  navigator.serviceWorker.getRegistration("/sw.js").then(reg=>{
+    if(!reg){setTimeout(_show2ndVisitPrompt,3000);return;}
+    reg.pushManager.getSubscription().then(sub=>{
+      if(!sub)setTimeout(_show2ndVisitPrompt,3000);
+    });
+  }).catch(()=>{});
+}
+
+function _show2ndVisitPrompt(){
+  if(document.getElementById("push-check-prompt"))return;
+  localStorage.setItem("oiwg_push_check_done","1");
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone=window.navigator.standalone||window.matchMedia("(display-mode: standalone)").matches;
+  const banner=document.createElement("div");
+  banner.id="push-check-prompt";
+  banner.style.cssText="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid rgba(196,154,28,.3);color:#e0e0e0;font-size:13px;padding:18px 20px;border-radius:14px;z-index:9999;max-width:340px;width:calc(100% - 32px);text-align:center;box-shadow:0 8px 30px #0008;animation:popIn .25s ease";
+  banner.innerHTML=`<p style="font-weight:700;color:#c49a1c;margin-bottom:6px">Quick question</p>
+    <p style="font-size:12px;color:#999;line-height:1.6;margin-bottom:14px">Have you been receiving notifications from us? They help you stay on track with your challenge.</p>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button onclick="this.closest('#push-check-prompt').remove()" style="padding:8px 20px;border-radius:8px;background:#222;border:1px solid #333;color:#ccc;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Yes, I have</button>
+      <button onclick="_handle2ndVisitNo()" style="padding:8px 20px;border-radius:8px;background:#c49a1c;border:none;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">No, not yet</button>
+    </div>`;
+  document.body.appendChild(banner);
+}
+
+function _handle2ndVisitNo(){
+  const prompt=document.getElementById("push-check-prompt");
+  if(!prompt)return;
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone=window.navigator.standalone||window.matchMedia("(display-mode: standalone)").matches;
+  if(isIOS&&!isStandalone){
+    prompt.innerHTML=`<p style="font-weight:700;color:#c49a1c;margin-bottom:8px">Let's fix that</p>
+      <p style="font-size:12px;color:#999;line-height:1.6;margin-bottom:6px">On iPhone, notifications work best when the app is on your Home Screen:</p>
+      <div style="text-align:left;font-size:12px;color:#ccc;line-height:1.8;margin-bottom:14px;padding:10px 14px;background:#111;border-radius:8px">
+        1. Tap the <strong>Share</strong> button (bottom bar)<br>
+        2. Scroll down and tap <strong>Add to Home Screen</strong><br>
+        3. Open the app from your Home Screen
+      </div>
+      <button onclick="this.closest('#push-check-prompt').remove()" style="padding:8px 20px;border-radius:8px;background:#222;border:1px solid #333;color:#888;font-size:12px;cursor:pointer;font-family:inherit">Got it</button>`;
+  }else{
+    prompt.innerHTML=`<p style="font-weight:700;color:#c49a1c;margin-bottom:8px">Let's turn them on</p>
+      <p style="font-size:12px;color:#999;line-height:1.6;margin-bottom:14px">Notifications help you stay consistent. Enable them so Genie can remind you when it matters.</p>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button onclick="_accept2ndVisitPush()" style="padding:8px 20px;border-radius:8px;background:#c49a1c;border:none;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Enable Notifications</button>
+        <button onclick="this.closest('#push-check-prompt').remove()" style="padding:8px 20px;border-radius:8px;background:#222;border:1px solid #333;color:#888;font-size:12px;cursor:pointer;font-family:inherit">Not now</button>
+      </div>`;
+  }
+}
+
+async function _accept2ndVisitPush(){
+  const prompt=document.getElementById("push-check-prompt");
+  if(prompt)prompt.remove();
+  if(typeof _subscribePush==="function"){
+    const ok=await _subscribePush();
+    if(ok){
+      showToast("Notifications enabled — you're all set","success");
+      if(typeof _renderNotifToggle==="function")_renderNotifToggle();
+    }else if(Notification.permission==="denied"){
+      showToast("Blocked by browser — check notification settings","error",5000);
+    }
+  }
 }
 
 
