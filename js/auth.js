@@ -413,11 +413,12 @@ async function _syncPushSub(sub){
   const k=sub.toJSON().keys||{};
   await sb.from("push_subscriptions").upsert({
     challenger_id:S.user.supabaseId,
+    role:"challenger",
     endpoint:sub.endpoint,
     p256dh:k.p256dh||"",
     auth:k.auth||"",
     is_active:true
-  },{onConflict:"endpoint",ignoreDuplicates:false});
+  },{onConflict:"endpoint,role",ignoreDuplicates:false});
 }
 
 async function initAdminPushNotifications(){
@@ -450,12 +451,27 @@ async function _syncAdminPushSub(sub){
   if(!sb||!sub)return;
   const k=sub.toJSON().keys||{};
   await sb.from("push_subscriptions").upsert({
-    challenger_id:"admin",
+    challenger_id:null,
+    role:"admin",
     endpoint:sub.endpoint,
     p256dh:k.p256dh||"",
     auth:k.auth||"",
     is_active:true
-  },{onConflict:"endpoint",ignoreDuplicates:false});
+  },{onConflict:"endpoint,role",ignoreDuplicates:false});
+}
+
+async function _enableAdminPush(){
+  if(!_pushSupported())return;
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm==="granted"){
+      const reg=await navigator.serviceWorker.ready;
+      let sub=await reg.pushManager.getSubscription();
+      if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+      await _syncAdminPushSub(sub);
+    }
+    if(typeof renderAdminSettings==="function") renderAdminSettings();
+  }catch(e){console.warn("Enable admin push:",e);}
 }
 
 function _showPushPrompt(){
