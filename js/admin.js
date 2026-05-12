@@ -368,9 +368,9 @@ async function renderAdminSettings(c){
     <div class="admin-section">
       <div class="admin-section-hd" onclick="toggleAdminSection('set-notif')">
         <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">NOTIFICATIONS</span>
-        <span id="set-notif-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s;transform:rotate(90deg)">›</span>
+        <span id="set-notif-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
       </div>
-      <div id="set-notif" class="admin-section-bd">
+      <div id="set-notif" style="display:none" class="admin-section-bd">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 12px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:8px">
           <span style="font-size:12px;color:#888">Push notifications:</span>
           ${pushLabel}
@@ -387,9 +387,9 @@ async function renderAdminSettings(c){
     <div class="admin-section">
       <div class="admin-section-hd" onclick="toggleAdminSection('set-security')">
         <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">SECURITY</span>
-        <span id="set-security-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s;transform:rotate(90deg)">›</span>
+        <span id="set-security-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
       </div>
-      <div id="set-security" class="admin-section-bd">
+      <div id="set-security" style="display:none" class="admin-section-bd">
         <p style="font-size:12px;color:#888;margin-bottom:10px">Change the PIN required to access this admin dashboard.</p>
         <button class="bs" style="padding:8px 16px;font-size:12px" onclick="changeAdminPin()">Change PIN</button>
         <div style="margin-top:14px;padding-top:14px;border-top:1px solid #1a1a1a">
@@ -402,9 +402,9 @@ async function renderAdminSettings(c){
     <div class="admin-section">
       <div class="admin-section-hd" onclick="toggleAdminSection('set-codes')">
         <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">ACCESS CODES${codes.length?` · ${codes.length}`:""}</span>
-        <span id="set-codes-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s;transform:rotate(90deg)">›</span>
+        <span id="set-codes-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
       </div>
-      <div id="set-codes" class="admin-section-bd">
+      <div id="set-codes" style="display:none" class="admin-section-bd">
         <p style="font-size:12px;color:#888;margin-bottom:10px">Manage discount and free-access codes for challengers.</p>
         <button class="bs" style="padding:8px 16px;font-size:12px;margin-bottom:12px" onclick="createAccessCode()">+ Create Code</button>
         ${codes.length===0?`<p class="muted" style="font-size:12px">No access codes yet.</p>`:`

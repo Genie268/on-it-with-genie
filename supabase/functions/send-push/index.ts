@@ -5,7 +5,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
-const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT")!;
+const VAPID_SUBJECT = (() => {
+  const v = Deno.env.get("VAPID_SUBJECT") || "";
+  return v.startsWith("mailto:") ? v : "mailto:oboeugene@gmail.com";
+})();
 const ADMIN_SECRET = Deno.env.get("ADMIN_SECRET")!;
 
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
