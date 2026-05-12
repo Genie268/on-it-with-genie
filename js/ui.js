@@ -564,6 +564,7 @@ async function _adminLightPoll(){
       if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
     }
     updateTabTitle();
+    if(typeof _checkOnlineChanges==="function") _checkOnlineChanges();
   }catch(e){}finally{_adminPollRunning=false;}
 }
 

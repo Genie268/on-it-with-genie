@@ -303,11 +303,87 @@ async function deleteAccessCode(id){
   }catch(e){showToast("Failed to delete code","error");}
 }
 
+/* ── Admin notification preferences (localStorage) ── */
+function _getAdminNotifPrefs(){
+  try{return JSON.parse(localStorage.getItem("oiwg_admin_notif")||"{}");}catch(e){return {};}
+}
+function _setAdminNotifPref(key,val){
+  const p=_getAdminNotifPrefs();p[key]=val;
+  localStorage.setItem("oiwg_admin_notif",JSON.stringify(p));
+}
+function _adminNotifOn(key){
+  const p=_getAdminNotifPrefs();
+  return p[key]!==false;
+}
+function _toggleAdminNotif(key){
+  const on=!_adminNotifOn(key);
+  _setAdminNotifPref(key,on);
+  renderAdminSettings();
+}
+
+function _notifToggleHtml(key,label,desc){
+  const on=_adminNotifOn(key);
+  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1a1a1a">
+    <div style="flex:1"><div style="font-size:13px;color:#ccc;font-weight:600">${label}</div><div style="font-size:11px;color:#666;margin-top:2px">${desc}</div></div>
+    <button onclick="_toggleAdminNotif('${key}')" style="width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;position:relative;background:${on?"#4dc98a":"#333"};transition:background .2s">
+      <span style="position:absolute;top:2px;${on?"right:2px":"left:2px"};width:20px;height:20px;border-radius:50%;background:#fff;transition:all .2s"></span>
+    </button>
+  </div>`;
+}
+
+/* ── Online presence sound ── */
+let _adminOnlineSet=new Set();
+function _playOnlineSound(){
+  if(!_adminNotifOn("sound_online"))return;
+  try{
+    const ac=new (window.AudioContext||window.webkitAudioContext)();
+    const g=ac.createGain();g.gain.value=0.15;g.connect(ac.destination);
+    const o1=ac.createOscillator();o1.type="sine";o1.frequency.value=880;o1.connect(g);o1.start();o1.stop(ac.currentTime+0.08);
+    const o2=ac.createOscillator();o2.type="sine";o2.frequency.value=1174;o2.connect(g);o2.start(ac.currentTime+0.1);o2.stop(ac.currentTime+0.18);
+    setTimeout(()=>ac.close(),500);
+  }catch(e){}
+}
+function _checkOnlineChanges(){
+  const all=typeof getAM==="function"?getAM():[];
+  const nowOnline=new Set();
+  all.forEach(u=>{if(_isOnline(u.lastSeen))nowOnline.add(u.id);});
+  nowOnline.forEach(id=>{
+    if(!_adminOnlineSet.has(id)){
+      const u=all.find(x=>x.id===id);
+      if(u&&_adminNotifOn("sound_online"))_playOnlineSound();
+    }
+  });
+  _adminOnlineSet=nowOnline;
+}
+
 async function renderAdminSettings(c){
   if(!c)c=el("admin-content");if(!c)return;
   const codes=await loadAccessCodes();
   const all=getAM();
+
+  const pushStatus=typeof Notification!=="undefined"?Notification.permission:"unsupported";
+  const pushLabel=pushStatus==="granted"?'<span style="color:#4dc98a">Enabled</span>':pushStatus==="denied"?'<span style="color:#d9503a">Blocked</span>':pushStatus==="default"?'<span style="color:#c49a1c">Not yet allowed</span>':'<span style="color:#888">Not supported</span>';
+
   c.innerHTML=`
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('set-notif')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">NOTIFICATIONS</span>
+        <span id="set-notif-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s;transform:rotate(90deg)">›</span>
+      </div>
+      <div id="set-notif" class="admin-section-bd">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 12px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:8px">
+          <span style="font-size:12px;color:#888">Push notifications:</span>
+          ${pushLabel}
+          ${pushStatus==="default"?`<button class="bs" style="padding:4px 12px;font-size:11px;margin-left:auto" onclick="_enableAdminPush()">Enable</button>`:""}
+          ${pushStatus==="denied"?`<span style="font-size:10px;color:#666;margin-left:auto">Unblock in browser settings</span>`:""}
+        </div>
+        ${_notifToggleHtml("push_messages","New Messages","Push notification when a challenger sends you a message")}
+        ${_notifToggleHtml("push_uploads","New Uploads","Push notification when a challenger uploads proof")}
+        ${_notifToggleHtml("sound_online","Online Alert Sound","Play a sound when a challenger comes online")}
+        ${_notifToggleHtml("push_signups","New Signups","Push notification when someone joins the challenge")}
+      </div>
+    </div>
+
     <div class="admin-section">
       <div class="admin-section-hd" onclick="toggleAdminSection('set-security')">
         <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">SECURITY</span>
