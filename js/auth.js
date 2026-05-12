@@ -420,6 +420,44 @@ async function _syncPushSub(sub){
   },{onConflict:"endpoint",ignoreDuplicates:false});
 }
 
+async function initAdminPushNotifications(){
+  if(!_pushSupported()||!sb)return;
+  try{
+    const reg=await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(sub){
+      await _syncAdminPushSub(sub);
+      return;
+    }
+    if(Notification.permission==="granted"){
+      sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+      await _syncAdminPushSub(sub);
+      return;
+    }
+    if(Notification.permission==="denied")return;
+    if(Notification.permission==="default"){
+      const perm=await Notification.requestPermission();
+      if(perm==="granted"){
+        sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+        await _syncAdminPushSub(sub);
+      }
+    }
+  }catch(e){console.warn("Admin push init:",e);}
+}
+
+async function _syncAdminPushSub(sub){
+  if(!sb||!sub)return;
+  const k=sub.toJSON().keys||{};
+  await sb.from("push_subscriptions").upsert({
+    challenger_id:"admin",
+    endpoint:sub.endpoint,
+    p256dh:k.p256dh||"",
+    auth:k.auth||"",
+    is_active:true
+  },{onConflict:"endpoint",ignoreDuplicates:false});
+}
+
 function _showPushPrompt(){
   if(document.getElementById("push-prompt"))return;
   localStorage.setItem("oiwg_push_prompted","1");

@@ -444,10 +444,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   const isAdmin=/^\/admin\/?$/.test(window.location.pathname);
   if(isAdmin){
     goTo('admin');
-    /* Request notification permission for admin */
-    if("Notification" in window && Notification.permission==="default"){
-      Notification.requestPermission();
-    }
+    /* Register admin for push notifications (works even when browser is closed) */
+    if(typeof initAdminPushNotifications==="function") initAdminPushNotifications();
     /* Start realtime + polling for new challenger messages */
     startAdminPoll();
     setTimeout(()=>updateTabTitle(),500);
