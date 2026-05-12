@@ -7,15 +7,18 @@ self.addEventListener('push', event => {
   let data = { title: 'On It With Genie', body: '', tag: 'oiwg-msg', url: '/' };
   try { if (event.data) data = { ...data, ...event.data.json() }; } catch (e) {}
 
+  const iconUrl = self.location.origin + '/icon-192.png';
+  const badgeUrl = self.location.origin + '/badge-72.png';
+
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      icon: iconUrl,
+      badge: badgeUrl,
       tag: data.tag,
       renotify: true,
       vibrate: [200, 100, 200],
-      data: { url: data.url }
+      data: { url: data.url || '/' }
     })
   );
 });
