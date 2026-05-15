@@ -876,7 +876,9 @@ function renderAdminOverview(c){
   const total=all.length;
   const uploadsTotal=all.reduce((a,u)=>a+u.up.filter(Boolean).length,0);
   const toReview=all.reduce((a,u)=>a+Math.max(0,u.up.filter(Boolean).length-(u.rvCount||0)),0);
-  const atRiskUsers=all.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
+  const active=all.filter(u=>u.status!=="completed");
+  const completed=all.filter(u=>u.status==="completed");
+  const atRiskUsers=active.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
   const totalUnread=getTotalUnreadCount();
 
   /* Action alerts — only show what needs attention right now */
@@ -936,21 +938,23 @@ function renderAdminOverview(c){
     all.map(u=>{
       const up=u.up.filter(Boolean).length,missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
       const pct=Math.round((up/(u.dur||15))*100);
-      const isAtRisk=missed>=3;
+      const isComplete=u.status==="completed";
+      const isAtRisk=!isComplete&&missed>=3;
       const pending=up-(u.rvCount||0);
       const unreadCt=getUnreadCountForChallenger(u.id);
-      return `<div class="card mb10" style="cursor:pointer" onclick="adminTab('challengers');setTimeout(()=>openChallenger('${u.id}'),60)">
+      const statusBadge=isComplete?`<span style="font-size:10px;font-weight:700;color:#c49a1c">Completed ★</span>`:isAtRisk?`<span style="font-size:10px;font-weight:700;color:#d9503a">At Risk</span>`:`<span style="font-size:10px;font-weight:700;color:#4dc98a">Active</span>`;
+      return `<div class="card mb10" style="cursor:pointer${isComplete?";opacity:.75":""}" onclick="adminTab('challengers');setTimeout(()=>openChallenger('${u.id}'),60)">
         <div class="row mb8" style="justify-content:space-between">
           <div class="row" style="gap:10px">
             ${_avatarWithStatus(u,34,"8px")}
-            <div><p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads</p></div>
+            <div><p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p><p class="muted" style="font-size:11px">${isComplete?`${u.dur} days · ${up} uploads`:`Day ${u.day}/${u.dur||15} · ${up} uploads`}</p></div>
           </div>
           <div style="text-align:right">
-            ${isAtRisk?`<span style="font-size:10px;font-weight:700;color:#d9503a">At Risk</span>`:`<span style="font-size:10px;font-weight:700;color:#4dc98a">Active</span>`}
+            ${statusBadge}
             ${pending>0?`<br><span style="font-size:9px;color:#c49a1c;font-weight:600">${pending} to review</span>`:""}
           </div>
         </div>
-        <div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px"></div></div>
+        <div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isComplete?"#c49a1c":isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px"></div></div>
       </div>`;
     }).join("")}
 
@@ -1027,11 +1031,12 @@ function renderAdminChallengers(c){
       const up=u.up.filter(Boolean).length;
       const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
       const pct=Math.round((up/(u.dur||15))*100);
-      const isAtRisk=missed>=3;
-      const statusLbl=isAtRisk?"At Risk":u.day>=u.dur?"Complete":"Active";
-      const statusColor=isAtRisk?"#d9503a":u.day>=u.dur?"#4dc98a":"#c49a1c";
+      const isComplete=u.status==="completed";
+      const isAtRisk=!isComplete&&missed>=3;
+      const statusLbl=isComplete?"Completed ★":isAtRisk?"At Risk":"Active";
+      const statusColor=isComplete?"#c49a1c":isAtRisk?"#d9503a":"#4dc98a";
       return `
-      <div class="card mb10 ch-item" data-name="${(u.name||'').toLowerCase()}" id="ch-card-${u.id}">
+      <div class="card mb10 ch-item" data-name="${(u.name||'').toLowerCase()}" id="ch-card-${u.id}"${isComplete?' style="opacity:.75"':""}>
         <div class="row" style="justify-content:space-between;cursor:pointer" onclick="toggleCh('${u.id}')">
           <div class="row" style="gap:10px">
             ${_avatarWithStatus(u,38,"9px")}
@@ -1044,12 +1049,12 @@ function renderAdminChallengers(c){
           <div class="row" style="gap:10px;flex-shrink:0">
             <div style="text-align:right">
               <span style="font-size:10px;font-weight:700;color:${statusColor}">${statusLbl}</span>
-              <p class="muted" style="font-size:10px;margin-top:2px">Day ${u.day}/${u.dur}</p>
+              <p class="muted" style="font-size:10px;margin-top:2px">${isComplete?`${u.dur} days · ${up} uploads`:`Day ${u.day}/${u.dur}`}</p>
             </div>
             <span id="chev-${u.id}" style="font-size:18px;color:#5a5a5a;transition:transform .2s">›</span>
           </div>
         </div>
-        <div style="margin-top:10px"><div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px;transition:width .3s"></div></div><p class="muted" style="font-size:9px;margin-top:4px;text-align:right">${up}/${u.dur} uploaded · ${pct}%</p></div>
+        <div style="margin-top:10px"><div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isComplete?"#c49a1c":isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px;transition:width .3s"></div></div><p class="muted" style="font-size:9px;margin-top:4px;text-align:right">${up}/${u.dur} uploaded · ${pct}%</p></div>
         <div id="ch-det-${u.id}" style="display:none;border-top:1px solid #1b1b1b;padding-top:14px;margin-top:10px">${renderChallengerDetail(u)}</div>
       </div>
     `;}).join("")}

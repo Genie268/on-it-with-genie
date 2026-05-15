@@ -142,9 +142,23 @@ function _hideDashVerifying(){
 }
 
 
+function _markCompleted(){
+  if(!S.user)return;
+  S.user.status="completed";
+  saveState();
+  if(typeof sb!=="undefined"&&sb&&S.user.supabaseId){
+    sb.from("challengers").update({status:"completed"}).eq("id",S.user.supabaseId).then(()=>{}).catch(()=>{});
+  }
+}
+
 function _smartResume(){
   if(!S.user){_activateScreen("land");return;}
   const ps=S.user.paymentStatus;
+  if((ps==="paid"||ps==="free")&&isChallengeComplete()){
+    _markCompleted();
+    goTo("d15");
+    return;
+  }
   if(ps==="paid"||ps==="free"){
     goTo("dash");
     return;
@@ -1072,9 +1086,9 @@ async function openProfilePanel(uid){
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
       ${avatarHTML}
       <div style="min-width:0">
-        <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:4px">CHALLENGER</p>
+        <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:4px">${u.status==="completed"?"CHALLENGER · COMPLETED ★":"CHALLENGER"}</p>
         <p style="font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}</p>
-        <p style="font-size:12px;color:#666;margin-top:2px">Day ${u.day} of ${u.dur} · Started ${startFmt} · ${u.paymentStatus||"—"}</p>
+        <p style="font-size:12px;color:#666;margin-top:2px">${u.status==="completed"?`${u.dur} days completed`:`Day ${u.day} of ${u.dur}`} · Started ${startFmt} · ${u.paymentStatus||"—"}</p>
         <p style="font-size:10px;color:#555;margin-top:3px">${typeof _formatLastSeen==="function"?_formatLastSeen(u.lastSeen):""}</p>
       </div>
     </div>

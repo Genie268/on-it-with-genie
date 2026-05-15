@@ -200,11 +200,31 @@ async function initD15(){
   el("pf-txt").innerHTML=`<div class="row" style="gap:10px">${spn()}<span class="muted" style="font-size:13px">Lil is writing your summary...</span></div>`;
   el("genie-d15-msg").textContent=`${u.name}, what you just did in ${dur} days is something most people spend months talking about. You have the evidence now. No one gave it to you — you built it, day by day.`;
   const journey=buildJourneyNarrative();
+  const planStats=_buildPlanStats();
   const proofPrompt=`Write ONE sentence — max 20 words — that states what this person just proved about themselves. Grounded, specific, no fluff. Reference their goal directly.${journey?`\n\nJourney context: ${journey}`:""}\n\nName: ${u.name}\nGoal: "${u.answers.goal}"`;
   const pf=await lil(proofPrompt,80);
   let finalText=pf||FB.proof(u.name,u.answers.goal);
   if(journey) finalText+=`<br><br><span style="font-size:12px;color:#888;line-height:1.7">${journey}</span>`;
+  if(planStats) finalText+=`<br><span style="font-size:12px;color:#888;line-height:1.7">${planStats}</span>`;
   el("pf-txt").innerHTML=finalText;
+}
+function _buildPlanStats(){
+  if(!S.plans)return"";
+  const days=Object.keys(S.plans).filter(k=>S.plans[k].mainStep&&!S.plans[k].skipped);
+  if(!days.length)return"";
+  const dur=getDur();
+  const plannedDays=days.length;
+  const uploadDaysWithPlan=days.filter(d=>S.uploads[+d-1]!==null).length;
+  const uploadDaysWithoutPlan=S.uploads.filter((v,i)=>v!==null&&!days.includes(String(i+1))).length;
+  const totalUploads=S.uploads.filter(v=>v!==null).length;
+  let s=`You planned ${plannedDays} out of ${dur} days.`;
+  if(plannedDays>=3&&totalUploads>0){
+    const planRate=Math.round(uploadDaysWithPlan/plannedDays*100);
+    const noPlanDays=dur-plannedDays;
+    const noPlanRate=noPlanDays>0?Math.round(uploadDaysWithoutPlan/noPlanDays*100):0;
+    if(planRate>noPlanRate) s+=` On days you planned, you uploaded ${planRate}% of the time vs ${noPlanRate}% when you didn't.`;
+  }
+  return s;
 }
 
 

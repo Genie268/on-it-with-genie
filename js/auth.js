@@ -381,7 +381,12 @@ async function _restoreSession(data){
     trackEvent("sign_in_success",{method:data.email?"email":"name"});
 
     el("signin-mod").classList.remove("show");
-    goTo("dash");
+    if(isChallengeComplete()){
+      _markCompleted();
+      goTo("d15");
+    } else {
+      goTo("dash");
+    }
   }catch(e){
     console.error("Restore error:",e);
     if(msg){msg.textContent="Failed to restore your session. Try again.";msg.style.color="#d9503a";}

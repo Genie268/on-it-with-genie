@@ -100,6 +100,16 @@ document.addEventListener("DOMContentLoaded", setGeniePhotos);
 
 const S = {user:null,ans:{},stepIdx:-1,inFU:false,fuQ:"",lilAck:"",uploads:null,day:1,fileOn:false,fileName:null,behaviorAnswer:null,lilDone:false,recDay:1,adSel:null,adRv:{},devMode:false,plans:{}};
 function getDur(){return S.user?.duration||S.ans?.duration||15;}
+function _rawDayCount(){
+  if(!S.user?.startDate)return 1;
+  const start=new Date(S.user.startDate);const now=new Date();
+  start.setHours(0,0,0,0);now.setHours(0,0,0,0);
+  return Math.max(1,Math.floor((now-start)/(1000*60*60*24))+1);
+}
+function isChallengeComplete(){
+  if(!S.user||S.devMode)return false;
+  return _rawDayCount()>getDur();
+}
 
 
 /* ── PERSISTENCE ── */
