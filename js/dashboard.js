@@ -198,7 +198,7 @@ async function initD15(){
   if(u.photo){pfUser.innerHTML=`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;pfUser.style.background="none";}
   else{pfUser.textContent=u.name?u.name[0].toUpperCase():"?";}
   el("pf-txt").innerHTML=`<div class="row" style="gap:10px">${spn()}<span class="muted" style="font-size:13px">Lil is writing your summary...</span></div>`;
-  el("genie-d15-msg").textContent=`${u.name}, what you just did in ${dur} days is something most people spend months talking about. You have the evidence now. No one gave it to you — you built it, day by day.`;
+  el("genie-d15-msg").textContent=`${u.name}, the evidence is yours. Screenshot it, share it, or just keep it. Now — what's next?`;
   const journey=buildJourneyNarrative();
   const planStats=_buildPlanStats();
   const proofPrompt=`Write ONE sentence — max 20 words — that states what this person just proved about themselves. Grounded, specific, no fluff. Reference their goal directly.${journey?`\n\nJourney context: ${journey}`:""}\n\nName: ${u.name}\nGoal: "${u.answers.goal}"`;
