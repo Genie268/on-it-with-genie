@@ -54,6 +54,18 @@ function openMod(){
     <div style="height:1px;background:#222;margin-bottom:14px"></div>`;
   }
 
+  /* Show today's plan context if it exists */
+  const _plan=typeof _todayPlan==="function"?_todayPlan():null;
+  if(_plan&&_plan.mainStep&&!_plan.skipped){
+    const _pd=(_plan.subSteps||[]).filter(s=>s.done).length;
+    const _pt=(_plan.subSteps||[]).length;
+    html+=`<div style="padding:10px 12px;margin-bottom:14px;background:rgba(196,154,28,.04);border:1px solid rgba(196,154,28,.1);border-radius:8px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:10px;font-weight:700;color:#5a5a5a;letter-spacing:.06em">TODAY'S PLAN</span><span style="font-size:10px;color:${_pd===_pt?"#4dc98a":"#888"}">${_pd}/${_pt} done</span></div>
+      <p style="font-size:11px;color:#999;margin-bottom:4px">${(_plan.mainStep||"").replace(/</g,"&lt;")}</p>
+      ${_plan.subSteps.map(s=>`<span style="font-size:11px;color:${s.done?"#4dc98a":"#666"};margin-right:8px">${s.done?"✓":"○"} ${(s.text||"").replace(/</g,"&lt;")}</span>`).join("")}
+    </div>`;
+  }
+
   html+=`<p style="font-size:12px;font-weight:700;color:#5a5a5a;letter-spacing:.06em;margin-bottom:10px">ADD YOUR EVIDENCE</p>`;
 
   /* Build slides based on selected proof methods */

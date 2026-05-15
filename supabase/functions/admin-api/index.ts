@@ -58,7 +58,8 @@ async function loadData() {
   const ids = challengers.map((c: P) => c.id);
   const { data: uploads } = await sb.from("uploads").select("*").in("challenger_id", ids);
   const { data: energy_logs } = await sb.from("energy_logs").select("*").in("challenger_id", ids);
-  return { ok: true, challengers, uploads: uploads ?? [], energy_logs: energy_logs ?? [] };
+  const { data: daily_plans } = await sb.from("daily_plans").select("*").in("challenger_id", ids);
+  return { ok: true, challengers, uploads: uploads ?? [], energy_logs: energy_logs ?? [], daily_plans: daily_plans ?? [] };
 }
 
 async function loadMessages() {
@@ -173,7 +174,7 @@ async function markAllReviewed(p: P) {
 async function deleteChallenger(p: P) {
   const uid = p.challenger_id as string;
   if (!uid) return { ok: false, error: "missing_challenger_id" };
-  const tables = ["uploads", "energy_logs", "chat_messages", "push_subscriptions", "genie_messages"];
+  const tables = ["uploads", "energy_logs", "chat_messages", "push_subscriptions", "genie_messages", "daily_plans"];
   for (const t of tables) {
     await sb.from(t).delete().eq("challenger_id", uid);
   }
@@ -189,7 +190,7 @@ async function deleteFree() {
   let deleted = 0;
   for (const c of free) {
     const uid = c.id as string;
-    const tables = ["uploads", "energy_logs", "chat_messages", "push_subscriptions", "genie_messages"];
+    const tables = ["uploads", "energy_logs", "chat_messages", "push_subscriptions", "genie_messages", "daily_plans"];
     for (const t of tables) {
       await sb.from(t).delete().eq("challenger_id", uid);
     }

@@ -98,7 +98,7 @@ function setGeniePhotos(){
 }
 document.addEventListener("DOMContentLoaded", setGeniePhotos);
 
-const S = {user:null,ans:{},stepIdx:-1,inFU:false,fuQ:"",lilAck:"",uploads:null,day:1,fileOn:false,fileName:null,behaviorAnswer:null,lilDone:false,recDay:1,adSel:null,adRv:{},devMode:false};
+const S = {user:null,ans:{},stepIdx:-1,inFU:false,fuQ:"",lilAck:"",uploads:null,day:1,fileOn:false,fileName:null,behaviorAnswer:null,lilDone:false,recDay:1,adSel:null,adRv:{},devMode:false,plans:{}};
 function getDur(){return S.user?.duration||S.ans?.duration||15;}
 
 
@@ -112,7 +112,7 @@ function calcDay(){
   S.day=Math.max(1,Math.min(getDur(),diff));
 }
 function saveState(){
-  try{localStorage.setItem("oiwg_state",JSON.stringify({user:S.user,uploads:S.uploads,day:S.day}));}catch(e){
+  try{localStorage.setItem("oiwg_state",JSON.stringify({user:S.user,uploads:S.uploads,day:S.day,plans:S.plans||{}}));}catch(e){
     console.error("saveState failed:",e);
     if(!document.getElementById("storage-warn")){
       const w=document.createElement("div");
@@ -129,7 +129,7 @@ function loadState(){
     const raw=localStorage.getItem("oiwg_state");
     if(!raw)return false;
     const d=JSON.parse(raw);
-    if(d.user){S.user=d.user;S.ans=d.user.answers||{};S.uploads=d.uploads||Array(d.user.duration||15).fill(null);S.day=d.day||1;if(!S.user.energyLog)S.user.energyLog={};calcDay();return true;}
+    if(d.user){S.user=d.user;S.ans=d.user.answers||{};S.uploads=d.uploads||Array(d.user.duration||15).fill(null);S.day=d.day||1;S.plans=d.plans||{};if(!S.user.energyLog)S.user.energyLog={};calcDay();return true;}
   }catch(e){}
   return false;
 }

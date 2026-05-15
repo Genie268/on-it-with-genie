@@ -30,10 +30,12 @@ async function loadAdminData(){
     if(!challengers.length){liveChallengers=[];adminDataLoaded=true;return;}
     const allUploads=res.uploads||[];
     const allEnergy=res.energy_logs||[];
-    
+    const allPlans=res.daily_plans||[];
+
     liveChallengers=challengers.map(c=>{
       const uploads=(allUploads||[]).filter(u=>u.challenger_id===c.id);
       const energy=(allEnergy||[]).filter(e=>e.challenger_id===c.id);
+      const plans=(allPlans||[]).filter(p=>p.challenger_id===c.id);
       const dur=c.duration||15;
       const upArr=Array(dur).fill(0);
       const noteArr=Array(dur).fill("—");
@@ -77,7 +79,8 @@ async function loadAdminData(){
         goalRaw:c.goal_raw,goalSummary:c.goal_summary,
         proofDescription:c.proof_description,proofType:c.proof_type||"output",
         threat:c.threat,startDate:c.start_date,lastSeen:c.last_seen,
-        createdAt:c.created_at
+        createdAt:c.created_at,
+        plans:plans.sort((a,b)=>a.day_number-b.day_number)
       };
     });
     adminDataLoaded=true;
@@ -915,14 +918,16 @@ function renderAdminOverview(c){
 
   /* Stats grid */
   const avgProgress=total>0?Math.round(all.reduce((a,u)=>a+Math.round(u.up.filter(Boolean).length/(u.dur||15)*100),0)/total):0;
+  const plannedToday=all.filter(u=>(u.plans||[]).some(p=>p.day_number===u.day&&!p.skipped&&p.main_step)).length;
 
   c.innerHTML=`
     ${alerts}
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px">
       <div class="admin-stat"><div class="admin-stat-val" style="color:#c49a1c">${total}</div><div class="admin-stat-lbl">Challengers</div></div>
       <div class="admin-stat"><div class="admin-stat-val" style="color:#4dc98a">${onlineNow.length}</div><div class="admin-stat-lbl">Online</div></div>
       <div class="admin-stat"><div class="admin-stat-val" style="color:#4dc98a">${uploadsTotal}</div><div class="admin-stat-lbl">Uploads</div></div>
       <div class="admin-stat"><div class="admin-stat-val" style="color:${avgProgress>=50?"#4dc98a":"#c49a1c"}">${avgProgress}%</div><div class="admin-stat-lbl">Avg Progress</div></div>
+      <div class="admin-stat"><div class="admin-stat-val" style="color:${plannedToday>0?"#4dc98a":"#5a5a5a"}">${plannedToday}/${total}</div><div class="admin-stat-lbl">Planned Today</div></div>
       <div class="admin-stat"><div class="admin-stat-val" style="color:${atRiskUsers.length?"#d9503a":"#5a5a5a"}">${atRiskUsers.length}</div><div class="admin-stat-lbl">At Risk</div></div>
     </div>
 

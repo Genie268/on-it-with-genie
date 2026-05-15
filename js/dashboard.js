@@ -31,7 +31,8 @@ function renderDash(){
   /* Start realtime + polling (startChallengerPoll handles both) */
   if(typeof startChallengerPoll==="function") startChallengerPoll();
   if(typeof startHeartbeat==="function") startHeartbeat();
-  renderEnergyCheck();
+  renderPlanArea();
+  if(_hasPlanToday()) renderEnergyCheck(); else el("energy-check-area").innerHTML="";
   showChatFab();
   if(!_chatRenderedOnce){_chatRenderedOnce=true;renderChat();}
   _check2ndVisitPush();
@@ -314,6 +315,126 @@ function skipEnergyCheck(){
   if(!S.user.energyLog) S.user.energyLog={};
   S.user.energyLog[S.day]={type:"skip",value:null};
   el("energy-check-area").innerHTML="";
+}
+
+
+/* ── DAILY PLANNING ── */
+function _todayPlan(){return S.plans[S.day]||null;}
+function _hasPlanToday(){const p=_todayPlan();return p&&!p.skipped&&p.mainStep;}
+
+function renderPlanArea(){
+  const area=el("plan-area");if(!area)return;
+  if(!S.user||!S.uploads)return;
+  const d=S.day;
+  const p=_todayPlan();
+  if(p&&p.skipped){area.innerHTML="";return;}
+  if(p&&p.mainStep){_renderPlanSummary(area,p,d);return;}
+  if(d===1&&S.uploads.every(v=>v===null)&&!localStorage.getItem("oiwg_wt_"+S.user?.supabaseId)){area.innerHTML="";return;}
+  _renderPlanPrompt(area,d);
+}
+
+function _renderPlanPrompt(area,d){
+  const goal=S.user.answers?.goalSummary||S.user.answers?.goal||"your goal";
+  area.innerHTML=`<div class="card mb10" style="border:1px solid rgba(196,154,28,.15);background:rgba(196,154,28,.03)">
+    <span class="lbl lbl-a" style="display:block;text-align:center;margin-bottom:6px">DAILY PLAN · DAY ${d}</span>
+    <p style="font-size:14px;font-weight:600;text-align:center;margin-bottom:12px">What's the one thing you're doing today?</p>
+    <p class="muted" style="font-size:11px;text-align:center;margin-bottom:10px">Toward: ${goal}</p>
+    <textarea id="plan-main-input" rows="2" placeholder="Be specific. What will you actually do?" style="font-size:14px;width:100%;margin-bottom:10px"></textarea>
+    <button class="bp" style="width:100%;padding:12px;font-size:14px" onclick="_planStep2()" id="plan-continue-btn">Continue</button>
+    <button class="bg" style="width:100%;margin-top:6px;font-size:11px" onclick="_skipPlan()">Skip for today</button>
+  </div>`;
+}
+
+function _planStep2(){
+  const input=el("plan-main-input");
+  const mainStep=(input?.value||"").trim();
+  if(mainStep.length<10){input.style.border="1px solid #d9503a";input.placeholder="Tell me more. What exactly?";return;}
+  const area=el("plan-area");
+  area.innerHTML=`<div class="card mb10" style="border:1px solid rgba(196,154,28,.15);background:rgba(196,154,28,.03)">
+    <span class="lbl lbl-a" style="display:block;text-align:center;margin-bottom:4px">YOUR ONE THING</span>
+    <p style="font-size:13px;font-weight:600;text-align:center;margin-bottom:12px;color:#ccc">"${_esc(mainStep)}"</p>
+    <p style="font-size:14px;font-weight:600;text-align:center;margin-bottom:10px">How does that break down? Give me three.</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+      <input id="plan-s1" type="text" placeholder="Step 1" style="font-size:14px;padding:12px 14px">
+      <input id="plan-s2" type="text" placeholder="Step 2" style="font-size:14px;padding:12px 14px">
+      <input id="plan-s3" type="text" placeholder="Step 3" style="font-size:14px;padding:12px 14px">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="bg" style="flex:1;font-size:12px;padding:10px" onclick="_planAISuggest('${_esc(mainStep)}')" id="plan-ai-btn">Stuck? Get suggestions</button>
+      <button class="bp" style="flex:1;font-size:14px;padding:10px" onclick="_submitPlan('${_esc(mainStep)}')">Set my plan</button>
+    </div>
+  </div>`;
+  el("plan-s1")?.focus();
+}
+
+function _esc(s){return s.replace(/'/g,"\\'").replace(/"/g,"&quot;");}
+
+async function _planAISuggest(mainStep){
+  const btn=el("plan-ai-btn");if(!btn)return;
+  btn.innerHTML=spn();btn.disabled=true;
+  try{
+    const goal=S.user.answers?.goalSummary||S.user.answers?.goal||"";
+    const threat=S.user.answers?.threat||"";
+    const prompt=`Goal: "${goal}"\nToday's main step: "${mainStep}"\nBiggest blocker: "${threat}"\n\nSuggest 3 specific, actionable sub-steps for today. Each starts with a verb. Doable in under 2 hours. Return ONLY 3 lines, numbered 1-3. Max 12 words each. No intro.`;
+    const res=await lil(prompt,100);
+    const lines=(res||"").split("\n").map(l=>l.replace(/^\d+[\.\)]\s*/,"").trim()).filter(l=>l.length>3);
+    if(lines[0])el("plan-s1").value=lines[0];
+    if(lines[1])el("plan-s2").value=lines[1];
+    if(lines[2])el("plan-s3").value=lines[2];
+    S._planAiUsed=true;
+  }catch(e){}
+  btn.textContent="Stuck? Get suggestions";btn.disabled=false;
+}
+
+function _submitPlan(mainStep){
+  const s1=(el("plan-s1")?.value||"").trim();
+  const s2=(el("plan-s2")?.value||"").trim();
+  const s3=(el("plan-s3")?.value||"").trim();
+  if(!s1||!s2||!s3){
+    [el("plan-s1"),el("plan-s2"),el("plan-s3")].forEach(i=>{if(i&&!i.value.trim())i.style.border="1px solid #d9503a";});
+    return;
+  }
+  const plan={mainStep,subSteps:[{text:s1,done:false},{text:s2,done:false},{text:s3,done:false}],aiAssisted:!!S._planAiUsed,skipped:false};
+  S.plans[S.day]=plan;
+  S._planAiUsed=false;
+  saveState();
+  syncPlanToSupabase(S.day,plan);
+  const area=el("plan-area");
+  area.innerHTML=`<div style="text-align:center;padding:14px;font-size:13px;color:#c49a1c;animation:heroFadeUp .3s ease forwards">Plan set. Now go do it.</div>`;
+  setTimeout(()=>_renderPlanSummary(area,plan,S.day),1500);
+}
+
+function _renderPlanSummary(area,plan,d){
+  const done=plan.subSteps.filter(s=>s.done).length;
+  const total=plan.subSteps.length;
+  const allDone=done===total;
+  area.innerHTML=`<div class="card mb10" style="border:1px solid ${allDone?"rgba(77,201,138,.2)":"rgba(196,154,28,.1)"};padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">TODAY'S PLAN · DAY ${d}</span>
+      <span style="font-size:10px;color:${allDone?"#4dc98a":"#888"}">${done}/${total} done</span>
+    </div>
+    <p style="font-size:12px;color:#999;margin-bottom:10px">${_esc(plan.mainStep)}</p>
+    ${plan.subSteps.map((s,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;${i<total-1?"border-bottom:1px solid #1a1a1a":""}">
+      <div onclick="_togglePlanStep(${i})" style="width:20px;height:20px;border-radius:5px;border:1.5px solid ${s.done?"#4dc98a":"#333"};background:${s.done?"rgba(77,201,138,.15)":"transparent"};cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:#4dc98a">${s.done?"✓":""}</div>
+      <span style="font-size:13px;color:${s.done?"#666":"#ccc"};${s.done?"text-decoration:line-through":""}">${_esc(s.text)}</span>
+    </div>`).join("")}
+    ${allDone?`<p style="font-size:12px;color:#4dc98a;text-align:center;margin-top:10px;font-weight:600">All done. Upload your proof.</p>`:""}
+  </div>`;
+}
+
+function _togglePlanStep(idx){
+  const plan=S.plans[S.day];if(!plan||!plan.subSteps[idx])return;
+  plan.subSteps[idx].done=!plan.subSteps[idx].done;
+  saveState();
+  syncPlanToSupabase(S.day,plan);
+  _renderPlanSummary(el("plan-area"),plan,S.day);
+}
+
+function _skipPlan(){
+  S.plans[S.day]={mainStep:"",subSteps:[],aiAssisted:false,skipped:true};
+  saveState();
+  syncPlanToSupabase(S.day,S.plans[S.day]);
+  el("plan-area").innerHTML="";
 }
 
 

@@ -54,6 +54,32 @@ async function syncEnergyToSupabase(dayNum,entry){
   try{await sb.from("energy_logs").upsert({challenger_id:S.user.supabaseId,day_number:dayNum,log_type:entry.type,value:String(entry.value)},{onConflict:"challenger_id,day_number"});}catch(e){}
 }
 
+async function syncPlanToSupabase(dayNum,plan){
+  if(!sb||!S.user?.supabaseId||!plan)return;
+  try{await sb.from("daily_plans").upsert({
+    challenger_id:S.user.supabaseId,
+    day_number:dayNum,
+    main_step:plan.mainStep||"",
+    sub_steps:plan.subSteps||[],
+    ai_assisted:!!plan.aiAssisted,
+    skipped:!!plan.skipped,
+    completed_count:(plan.subSteps||[]).filter(s=>s.done).length
+  },{onConflict:"challenger_id,day_number"});}catch(e){}
+}
+
+async function loadPlansFromSupabase(){
+  if(!sb||!S.user?.supabaseId)return;
+  try{
+    const{data}=await sb.from("daily_plans").select("*").eq("challenger_id",S.user.supabaseId);
+    if(data){
+      data.forEach(p=>{
+        S.plans[p.day_number]={mainStep:p.main_step,subSteps:p.sub_steps||[],aiAssisted:p.ai_assisted,skipped:p.skipped};
+      });
+      saveState();
+    }
+  }catch(e){}
+}
+
 
 /* ── PAYMENT GATE ── */
 function initPayment(){
@@ -335,6 +361,10 @@ async function _restoreSession(data){
     const energyLog={};
     (energyData||[]).forEach(e=>{energyLog[e.day_number]={type:e.log_type,value:e.value};});
 
+    const {data:planData}=await sb.from("daily_plans").select("*").eq("challenger_id",data.id);
+    const plans={};
+    (planData||[]).forEach(p=>{plans[p.day_number]={mainStep:p.main_step,subSteps:p.sub_steps||[],aiAssisted:p.ai_assisted,skipped:p.skipped};});
+
     S.user={
       name:data.name,email:data.email,phone:data.phone,photo:data.photo_url,
       answers:{goal:data.goal_raw,goalSummary:data.goal_summary,proof:data.proof_description,proofMethods:data.proof_methods||[],proofType:data.proof_type,threat:data.threat},
@@ -344,6 +374,7 @@ async function _restoreSession(data){
       supabaseId:data.id,energyLog,genieMessages:[]
     };
     S.uploads=uploadArr;
+    S.plans=plans;
     S.day=curDay;
     S.ans=S.user.answers;
     saveState();

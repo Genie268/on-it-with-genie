@@ -1019,6 +1019,44 @@ function seekAudio(id,e){
 }
 
 
+/* ── PROFILE PLAN SECTION ──────────────────────────────── */
+function _buildProfilePlanSection(u){
+  const plans=(u.plans||[]).filter(p=>!p.skipped);
+  const todayPlan=plans.find(p=>p.day_number===u.day);
+  const totalPlanned=plans.length;
+  const totalDays=Math.max(u.day-1,1);
+  if(!totalPlanned&&!todayPlan)return "";
+  let html=`<div style="margin-top:16px;padding:14px;background:#111;border:1px solid #1e1e1e;border-radius:12px">`;
+  if(todayPlan){
+    const subs=todayPlan.sub_steps||[];
+    const done=subs.filter(s=>s.done).length;
+    const aiTag=todayPlan.ai_assisted?`<span style="font-size:9px;color:#555;margin-left:6px">AI assisted</span>`:"";
+    html+=`<p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:8px">TODAY'S PLAN · DAY ${u.day}${aiTag}</p>`;
+    html+=`<p style="font-size:13px;font-weight:600;margin-bottom:8px;line-height:1.4">${_esc(todayPlan.main_step)}</p>`;
+    if(subs.length){
+      html+=subs.map(s=>`<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px"><span style="font-size:13px;flex-shrink:0;margin-top:1px">${s.done?"<span style='color:#4dc98a'>&#10003;</span>":"<span style='color:#333'>&#9675;</span>"}</span><span style="font-size:12px;color:${s.done?"#666":"#aaa"};${s.done?"text-decoration:line-through;":""}">${_esc(s.text)}</span></div>`).join("");
+      html+=`<p style="font-size:10px;color:#555;margin-top:6px">${done}/${subs.length} done</p>`;
+    }
+  }
+  if(plans.length>1||(plans.length===1&&!todayPlan)){
+    const history=plans.filter(p=>p.day_number!==u.day).slice(-5).reverse();
+    if(history.length){
+      html+=`<div style="margin-top:${todayPlan?12:0}px;border-top:${todayPlan?"1px solid #1e1e1e":"none"};padding-top:${todayPlan?10:0}px">`;
+      html+=`<p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:8px">PLANNING HISTORY</p>`;
+      html+=history.map(p=>{
+        const subs=p.sub_steps||[];
+        const done=subs.filter(s=>s.done).length;
+        const allDone=subs.length>0&&done===subs.length;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:11px;color:#888;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">Day ${p.day_number}: ${_esc(p.main_step)}</span><span style="font-size:10px;font-weight:700;color:${allDone?"#4dc98a":"#555"};flex-shrink:0;margin-left:8px">${done}/${subs.length}${allDone?" ★":""}</span></div>`;
+      }).join("");
+      html+=`</div>`;
+    }
+  }
+  html+=`</div>`;
+  return html;
+}
+function _esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
 /* ── PROFILE SLIDE-OVER ─────────────────────────────────── */
 async function openProfilePanel(uid){
   const u=getAM().find(x=>x.id===uid);
@@ -1085,6 +1123,7 @@ async function openProfilePanel(uid){
         <div class="profile-field-group" style="flex:1"><p class="pf-lbl">PROOF TYPE</p><p class="pf-val">${u.proofType||"—"}</p></div>
         <div class="profile-field-group" style="flex:1"><p class="pf-lbl">DURATION</p><p class="pf-val">${u.dur} days</p></div>
       </div>
+      ${_buildProfilePlanSection(u)}
       <div style="margin-top:16px">
         <button onclick="switchToEditMode('${uid}')" style="width:100%;padding:10px;border-radius:10px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:13px;font-weight:700;cursor:pointer">Edit Profile →</button>
       </div>
