@@ -198,10 +198,10 @@ async function initD15(){
   if(u.photo){pfUser.innerHTML=`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;pfUser.style.background="none";}
   else{pfUser.textContent=u.name?u.name[0].toUpperCase():"?";}
   el("pf-txt").innerHTML=`<div class="row" style="gap:10px">${spn()}<span class="muted" style="font-size:13px">Lil is writing your summary...</span></div>`;
-  el("genie-d15-msg").textContent=`${u.name}, the evidence is yours. Screenshot it, share it, or just keep it. Now — what's next?`;
+  el("genie-d15-msg").textContent=`${dur} days ago this was just an idea. Now you decide what to do with the momentum.`;
   const journey=buildJourneyNarrative();
   const planStats=_buildPlanStats();
-  const proofPrompt=`Write ONE sentence — max 20 words — that states what this person just proved about themselves. Grounded, specific, no fluff. Reference their goal directly.${journey?`\n\nJourney context: ${journey}`:""}\n\nName: ${u.name}\nGoal: "${u.answers.goal}"`;
+  const proofPrompt=`Write ONE sentence — max 18 words — about what this person proved through action. Use "you" not their name. Don't repeat their goal words. Be specific about the character trait or capability they demonstrated. No fluff, no cliches.${journey?`\n\nJourney context: ${journey}`:""}\n\nGoal: "${u.answers.goal}"`;
   const pf=await lil(proofPrompt,80);
   let finalText=pf||FB.proof(u.name,u.answers.goal);
   if(journey) finalText+=`<br><br><span style="font-size:12px;color:#888;line-height:1.7">${journey}</span>`;
