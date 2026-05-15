@@ -25,7 +25,7 @@ async function _renderOBContent(b,idx,tot){
   /* Name */
   if(idx===-1){
     b.innerHTML=`<span class="lbl lbl-a">WELCOME</span>
-      <h2 style="font-size:22px;font-weight:900;line-height:1.2;margin-bottom:6px">Before we begin — what do I call you?</h2>
+      <h2 style="font-size:22px;font-weight:900;line-height:1.2;margin-bottom:6px">Before we begin, what do I call you?</h2>
       <p class="muted mb18" style="font-size:13px">This is how Lil and Genie will address you throughout the challenge.</p>
       <input id="n-in" type="text" placeholder="Your first name" class="mb14">
       <button class="bp" style="width:100%;padding:12px" onclick="advOB()">Continue</button>`;
@@ -67,7 +67,7 @@ async function _renderOBContent(b,idx,tot){
         <div><strong style="font-size:14px">${PT[pt]||"Output Proof"}</strong><p class="muted" style="font-size:12px;margin-top:2px">${PTD[pt]||""}</p></div>
       </div>
       <div class="card mb16"><span class="lbl">DAILY EVIDENCE</span><p style="font-size:13px;line-height:1.55;color:#888">${S.ans.proof||""}</p></div>
-      <button class="bp" style="width:100%;font-size:15px;padding:13px" onclick="finishOB()">This is correct — Continue →</button>
+      <button class="bp" style="width:100%;font-size:15px;padding:13px" onclick="finishOB()">This is correct. Continue →</button>
       <button class="bg" style="width:100%;margin-top:6px" onclick="S.stepIdx=0;S.inFU=false;renderOB()">← Edit my answers</button>`;
     return;
   }
@@ -167,7 +167,7 @@ async function advOB(){
   /* Short answer nudge — only for goal, only if too short, no AI involved */
   if(step.minLen&&txt.length<step.minLen){
     S.inFU=true;
-    S.fuQ="Tell me more about this goal — what specifically are you trying to achieve?";
+    S.fuQ="Tell me more about this goal. What specifically are you trying to achieve?";
     renderOB();
     return;
   }
@@ -242,7 +242,7 @@ async function _prepareCommitScreen(){
   const si=el("sig");
   si.value="";
   si.placeholder=`Type "${S.ans.name}" to confirm`;
-  el("commit-sub").textContent=`You're in. Now make it official — sign your commitment for the next ${dur} days.`;
+  el("commit-sub").textContent=`You're in. Now make it official. Sign your commitment for the next ${dur} days.`;
   el("commit-btn").textContent=`I Commit. Let's Go →`;
   el("commit-btn").disabled=true;
   si.oninput=()=>{ el("commit-btn").disabled=!si.value.trim(); };
@@ -286,7 +286,7 @@ async function advProofPick(){
 
 async function adaptProofDescriptions(goal){
   try{
-    const prompt=`Given this goal: "${goal}", generate 4 short example descriptions (max 6 words each) for these proof types. Return ONLY a JSON object like {"photo":"...","link":"...","note":"...","voice":"..."} — no markdown, no backticks, no extra text.`;
+    const prompt=`Given this goal: "${goal}", generate 4 short example descriptions (max 6 words each) for these proof types. Return ONLY a JSON object like {"photo":"...","link":"...","note":"...","voice":"..."} - no markdown, no backticks, no extra text.`;
     const result=await lil(prompt,80);
     if(!result)return;
     const clean=result.replace(/```json|```/g,"").trim();

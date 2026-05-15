@@ -199,7 +199,7 @@ async function draftIntervention(uid){
 Name: ${u.name}
 Goal: "${u.goal}"
 Day: ${u.day}/${u.dur||15}`,120);
-  ta.value=p||`${u.name} — ${missed} missed days on "${u.goal}". Let's talk before the gap becomes a habit.`;
+  ta.value=p||`${u.name}: ${missed} missed days on "${u.goal}". Let's talk before the gap becomes a habit.`;
   ta.disabled=false;ta.placeholder="";
 }
 
@@ -212,7 +212,7 @@ async function sendLilDraft(uid){
 
 Name: ${u.name}
 Goal: "${u.goal}"`,120);
-  ta.value=p||`${up} uploads toward "${u.goal}" — the evidence is building. Keep the same standard tomorrow.`;
+  ta.value=p||`${up} uploads toward "${u.goal}". The evidence is building. Keep the same standard tomorrow.`;
   ta.disabled=false;ta.placeholder=`Personal message to ${u.name}...`;
 }
 
@@ -232,12 +232,12 @@ async function lilInboxDraft(uid,i,note){
   const u=getAM().find(x=>x.id===uid);if(!u)return;
   const ta=el("inb-"+uid+"-"+i);if(!ta)return;
   ta.placeholder="Lil is drafting...";ta.disabled=true;
-  const p=await lil(`Write a 1-sentence review acknowledgment for a daily upload. Specific to what they did. Not praise — just direct acknowledgment.
+  const p=await lil(`Write a 1-sentence review acknowledgment for a daily upload. Specific to what they did. Not praise, just direct acknowledgment.
 
 Challenger: ${u.name}
 Goal: "${u.goal}"
 What they submitted: "${note}"`,80);
-  ta.value=p||`Noted — that's the standard. Keep it there.`;
+  ta.value=p||`Noted. That's the standard. Keep it there.`;
   ta.disabled=false;ta.placeholder="";
 }
 
@@ -310,6 +310,101 @@ function saveProfile(){
 }
 
 
+/* ── CHALLENGER SETTINGS PANEL ── */
+function openSettingsPanel(){
+  var panel=el("settings-panel"),backdrop=el("settings-backdrop");
+  if(!panel||!backdrop)return;
+  var nameInput=el("settings-name-input");
+  if(nameInput&&S.user) nameInput.value=S.user.name||"";
+  var circle=el("settings-photo-circle");
+  if(circle&&S.user){
+    if(S.user.photo){circle.innerHTML='<img src="'+S.user.photo+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';circle.style.background="none";}
+    else{circle.innerHTML="";circle.textContent=S.user.name?S.user.name[0].toUpperCase():"?";circle.style.background="#1e1e1e";}
+  }
+  var ns=el("settings-name-status");if(ns){ns.style.display="none";ns.textContent="";}
+  var ps=el("settings-photo-status");if(ps){ps.style.display="none";ps.textContent="";}
+  _renderSettingsPushToggle();
+  panel.style.transform="translateX(0)";
+  backdrop.style.display="block";
+}
+function closeSettingsPanel(){
+  var panel=el("settings-panel"),backdrop=el("settings-backdrop");
+  if(panel)panel.style.transform="translateX(100%)";
+  if(backdrop)backdrop.style.display="none";
+}
+async function _renderSettingsPushToggle(){
+  var toggle=el("settings-push-toggle"),knob=el("settings-push-knob"),sub=el("settings-push-sub");
+  if(!toggle||!knob||!sub)return;
+  var pref=localStorage.getItem("oiwg_push_pref");
+  if(!_pushSupported()){toggle.style.background="#333";knob.style.left="2px";knob.style.right="auto";sub.textContent="Not supported on this browser";sub.style.color="#666";return;}
+  var reg=await navigator.serviceWorker.getRegistration("/sw.js");
+  var pushSub=reg?await reg.pushManager.getSubscription():null;
+  if(Notification.permission==="denied"){toggle.style.background="#333";knob.style.left="2px";knob.style.right="auto";sub.textContent="Blocked in browser settings";sub.style.color="#d9503a";return;}
+  if(pushSub&&pref!=="off"){toggle.style.background="#4dc98a";knob.style.left="auto";knob.style.right="2px";sub.textContent="Push alerts are on";sub.style.color="#666";}
+  else{toggle.style.background="#333";knob.style.left="2px";knob.style.right="auto";sub.textContent=pref==="off"?"Turned off":"Tap to enable";sub.style.color="#666";}
+}
+async function toggleSettingsPush(){
+  if(!_pushSupported()){showToast("Push notifications not supported","error",3000);return;}
+  if(Notification.permission==="denied"){showToast("Notifications blocked by your browser. Open browser settings to allow this site.","error",5000);return;}
+  var reg=await navigator.serviceWorker.getRegistration("/sw.js");
+  var pushSub=reg?await reg.pushManager.getSubscription():null;
+  var pref=localStorage.getItem("oiwg_push_pref");
+  if(pushSub&&pref!=="off"){
+    await pushSub.unsubscribe();
+    if(sb&&S.user?.supabaseId){try{await sb.from("push_subscriptions").delete().eq("endpoint",pushSub.endpoint);}catch(e){}}
+    localStorage.setItem("oiwg_push_pref","off");
+    showToast("Notifications turned off","info");
+  }else{
+    var ok=await _subscribePush();
+    if(ok){localStorage.setItem("oiwg_push_pref","on");showToast("Notifications enabled","success");}
+    else{showToast("Could not enable notifications","error");}
+  }
+  _renderSettingsPushToggle();
+  if(typeof _renderNotifToggle==="function")_renderNotifToggle();
+}
+async function saveSettingsName(){
+  var input=el("settings-name-input"),status=el("settings-name-status"),btn=el("settings-name-btn");
+  if(!input||!S.user)return;
+  var name=input.value.trim();
+  if(!name){if(status){status.style.display="block";status.textContent="Name cannot be empty";status.style.color="#d9503a";}return;}
+  if(btn){btn.textContent="Saving...";btn.disabled=true;}
+  try{
+    if(sb&&S.user.supabaseId){await sb.from("challengers").update({name:name}).eq("id",S.user.supabaseId);}
+    S.user.name=name;saveState();renderDash();
+    if(status){status.style.display="block";status.textContent="Saved";status.style.color="#4dc98a";}
+    setTimeout(function(){if(status)status.style.display="none";},2000);
+  }catch(e){if(status){status.style.display="block";status.textContent="Failed to save";status.style.color="#d9503a";}}
+  if(btn){btn.textContent="Save";btn.disabled=false;}
+}
+async function handleSettingsPhoto(input){
+  if(!input.files||!input.files[0]||!S.user)return;
+  var file=input.files[0];
+  var status=el("settings-photo-status"),circle=el("settings-photo-circle");
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var url=e.target.result;
+    if(circle){circle.innerHTML='<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';circle.style.background="none";}
+  };
+  reader.readAsDataURL(file);
+  if(status){status.style.display="inline";status.textContent="Uploading...";status.style.color="#c49a1c";}
+  try{
+    var ext=file.name.split(".").pop()||"jpg";
+    var path="photos/"+S.user.supabaseId+"."+ext;
+    var publicUrl=await uploadToStorage("uploads",path,file,file.type||"image/jpeg");
+    if(publicUrl){
+      if(sb&&S.user.supabaseId){await sb.from("challengers").update({photo_url:publicUrl}).eq("id",S.user.supabaseId);}
+      S.user.photo=publicUrl;saveState();renderDash();
+      if(status){status.textContent="Saved";status.style.color="#4dc98a";}
+      setTimeout(function(){if(status)status.style.display="none";},2000);
+    }else{
+      var dataUrl=circle?.querySelector("img")?.src;
+      if(dataUrl){S.user.photo=dataUrl;saveState();renderDash();}
+      if(status){status.textContent="Upload failed, saved locally";status.style.color="#d9503a";}
+    }
+  }catch(e){if(status){status.textContent="Upload failed";status.style.color="#d9503a";}}
+}
+
+
 /* ── THEME TOGGLE ── */
 function toggleTheme(){
   document.body.classList.toggle("light");
@@ -332,7 +427,7 @@ async function _renderNotifToggle(){
     ns.textContent="Push alerts are on";
   }else if(Notification.permission==="denied"){
     nt.className="toggle-pill";
-    ns.textContent="Blocked — check browser settings";
+    ns.textContent="Blocked. Check browser settings";
     ns.style.color="#d9503a";
   }else{
     nt.className="toggle-pill";
@@ -385,7 +480,7 @@ function _renderProfilePayment(){
 /* ── DELETE ACCOUNT ── */
 async function deleteMyAccount(){
   if(!confirm("This will permanently delete your account and all challenge data. This cannot be undone.\n\nAre you sure?"))return;
-  if(!confirm("Last chance — type 'delete' in the next prompt to confirm."))return;
+  if(!confirm("Last chance. Type 'delete' in the next prompt to confirm."))return;
   const answer=prompt("Type DELETE to confirm:");
   if(!answer||answer.trim().toUpperCase()!=="DELETE"){showToast("Deletion cancelled","info");return;}
   if(sb&&S.user?.supabaseId){
@@ -684,9 +779,9 @@ function fireConfetti(){
 
 /* ── WALKTHROUGH ── */
 const WT_STEPS=[
-  {target:"d-grid",title:"YOUR CALENDAR",text:"Each cell is one day of your challenge. Gold means today — tap it to upload your proof.",pos:"below"},
-  {target:"up-btn",title:"DAILY UPLOAD",text:"This is your upload button. Photos, notes, links, voice — submit your evidence here every day.",pos:"above"},
-  {target:"stats-card",title:"YOUR STATS",text:"Uploads, streak, and hit rate — this card tracks your consistency at a glance.",pos:"below"},
+  {target:"d-grid",title:"YOUR CALENDAR",text:"Each cell is one day of your challenge. Gold means today. Tap it to upload your proof.",pos:"below"},
+  {target:"up-btn",title:"DAILY UPLOAD",text:"This is your upload button. Photos, notes, links, voice. Submit your evidence here every day.",pos:"above"},
+  {target:"stats-card",title:"YOUR STATS",text:"Uploads, streak, and hit rate. This card tracks your consistency at a glance.",pos:"below"},
   {target:"profile-area",title:"YOUR PROFILE",text:"Tap here to update your name, photo, and settings. This is how Genie sees you.",pos:"below"}
 ];
 let wtIdx=0;
@@ -786,13 +881,13 @@ async function toggleRecording(){
       const recMime=mediaRecorder.mimeType||"audio/webm";
       const vrStatus=el("vr-status");
       if(audioChunks.length===0){
-        if(vrStatus) vrStatus.textContent="Recording failed — try again";
+        if(vrStatus) vrStatus.textContent="Recording failed, try again";
         S.voiceBlob=null;S.voiceMime=null;
         return;
       }
       const blob=new Blob(audioChunks,{type:recMime});
       if(blob.size<100){
-        if(vrStatus) vrStatus.textContent="Recording too short — try again";
+        if(vrStatus) vrStatus.textContent="Recording too short, try again";
         S.voiceBlob=null;S.voiceMime=null;
         return;
       }
@@ -856,14 +951,14 @@ async function toggleChatRecording(){
       clearInterval(chatRecTimer);
       if(chatAudioChunks.length===0||new Blob(chatAudioChunks).size<100){
         chatVoiceBlob=null;
-        if(ta)ta.placeholder="Recording failed — try again";
+        if(ta)ta.placeholder="Recording failed, try again";
         setTimeout(()=>{if(ta)ta.placeholder="Message Genie...";},2500);
         return;
       }
       chatVoiceBlob=new Blob(chatAudioChunks,{type:chatMediaRecorder.mimeType||"audio/webm"});
       if(btn){btn.innerHTML=MIC_SVG;btn.style.color="#4dc98a";}
       if(pill){pill.classList.remove("recording");pill.classList.add("recorded");}
-      if(ta) ta.placeholder="✓ Voice note ready — tap ↑ to send";
+      if(ta) ta.placeholder="✓ Voice note ready, tap ↑ to send";
     };
     chatMediaRecorder.start();
     if(btn){btn.innerHTML=WAVE_HTML;btn.style.color="";}
@@ -872,9 +967,9 @@ async function toggleChatRecording(){
     chatRecTimer=setInterval(()=>{
       secs++;
       const m=Math.floor(secs/60),s=String(secs%60).padStart(2,"0");
-      if(ta) ta.placeholder=`● Recording ${m}:${s} — tap to stop`;
+      if(ta) ta.placeholder=`● Recording ${m}:${s}, tap to stop`;
     },1000);
-    if(ta) ta.placeholder="● Recording 0:00 — tap to stop";
+    if(ta) ta.placeholder="● Recording 0:00, tap to stop";
   }catch(e){
     if(ta) ta.placeholder="Microphone access denied";
     setTimeout(()=>{if(ta)ta.placeholder="Message Genie...";},2500);
@@ -898,14 +993,14 @@ async function toggleAdminRecording(){
       clearInterval(adminRecTimer);
       if(adminAudioChunks.length===0||new Blob(adminAudioChunks).size<100){
         adminVoiceBlob=null;
-        if(ta)ta.placeholder="Recording failed — try again";
+        if(ta)ta.placeholder="Recording failed, try again";
         setTimeout(()=>{if(ta)ta.placeholder="Message...";},2500);
         return;
       }
       adminVoiceBlob=new Blob(adminAudioChunks,{type:adminMediaRecorder.mimeType||"audio/webm"});
       if(btn){btn.innerHTML=MIC_SVG;btn.style.color="#4dc98a";}
       if(pill){pill.classList.remove("recording");pill.classList.add("recorded");}
-      if(ta) ta.placeholder="✓ Voice note ready — tap ↑ to send";
+      if(ta) ta.placeholder="✓ Voice note ready, tap ↑ to send";
       /* Show audio preview so admin can play back before sending */
       if(status){
         const previewUrl=URL.createObjectURL(adminVoiceBlob);
@@ -923,9 +1018,9 @@ async function toggleAdminRecording(){
     adminRecTimer=setInterval(()=>{
       secs++;
       const m=Math.floor(secs/60),s=String(secs%60).padStart(2,"0");
-      if(ta) ta.placeholder=`● Recording ${m}:${s} — tap to stop`;
+      if(ta) ta.placeholder=`● Recording ${m}:${s}, tap to stop`;
     },1000);
-    if(ta) ta.placeholder="● Recording 0:00 — tap to stop";
+    if(ta) ta.placeholder="● Recording 0:00, tap to stop";
   }catch(e){
     if(ta) ta.placeholder="Microphone access denied";
     setTimeout(()=>{if(ta&&ta.placeholder.includes("denied"))ta.placeholder="Message...";},2500);
@@ -977,10 +1072,10 @@ function showWelcomeOverlay(){
     </div>
     ${(!hasPhoto||!hasPhone)?`<div style="border-top:1px solid var(--bd);padding-top:14px;margin-bottom:16px">
       <p style="font-size:11px;font-weight:700;color:#c49a1c;margin-bottom:8px">QUICK SETUP</p>
-      ${!hasPhoto?`<p style="font-size:12px;color:var(--mid);margin-bottom:4px">📸 Add your photo — <span style="color:#c49a1c;cursor:pointer" onclick="dismissWelcome();openProfile()">set up now</span></p>`:""}
-      ${!hasPhone?`<p style="font-size:12px;color:var(--mid)">📱 Add your phone — <span style="color:#c49a1c;cursor:pointer" onclick="dismissWelcome();openProfile()">add now</span></p>`:""}
+      ${!hasPhoto?`<p style="font-size:12px;color:var(--mid);margin-bottom:4px">📸 Add your photo. <span style="color:#c49a1c;cursor:pointer" onclick="dismissWelcome();openProfile()">Set up now</span></p>`:""}
+      ${!hasPhone?`<p style="font-size:12px;color:var(--mid)">📱 Add your phone. <span style="color:#c49a1c;cursor:pointer" onclick="dismissWelcome();openProfile()">Add now</span></p>`:""}
     </div>`:""}
-    <button class="bp" style="width:100%;padding:13px;font-size:15px" onclick="dismissWelcome()">Got it — Let's go</button>
+    <button class="bp" style="width:100%;padding:13px;font-size:15px" onclick="dismissWelcome()">Got it. Let's go</button>
     <p style="font-size:10px;color:#5a5a5a;margin-top:10px">Add to your home screen for easy access ↓</p>
   </div>`;
   setTimeout(setGeniePhotos,100);
@@ -1078,7 +1173,7 @@ async function openProfilePanel(uid){
   /* Track which challenger's profile is open for realtime updates */
   const panel=document.getElementById("profile-panel");
   if(panel) panel.dataset.challengerId=uid;
-  const startFmt=u.startDate?new Date(u.startDate).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"—";
+  const startFmt=u.startDate?new Date(u.startDate).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"-";
   const avatarHTML=typeof _avatarWithStatus==="function"?_avatarWithStatus(u,52,"50%"):(u.photo
     ?`<img src="${u.photo}" style="width:52px;height:52px;object-fit:cover;border-radius:50%;border:2px solid #2a2a2a;flex-shrink:0">`
     :`<div style="width:52px;height:52px;border-radius:50%;background:#1e1e1e;border:2px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#c49a1c;flex-shrink:0">${(u.name||"?").charAt(0).toUpperCase()}</div>`);
@@ -1088,7 +1183,7 @@ async function openProfilePanel(uid){
       <div style="min-width:0">
         <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:4px">${u.status==="completed"?"CHALLENGER · COMPLETED ★":"CHALLENGER"}</p>
         <p style="font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}</p>
-        <p style="font-size:12px;color:#666;margin-top:2px">${u.status==="completed"?`${u.dur} days completed`:`Day ${u.day} of ${u.dur}`} · Started ${startFmt} · ${u.paymentStatus||"—"}</p>
+        <p style="font-size:12px;color:#666;margin-top:2px">${u.status==="completed"?`${u.dur} days completed`:`Day ${u.day} of ${u.dur}`} · Started ${startFmt} · ${u.paymentStatus||"-"}</p>
         <p style="font-size:10px;color:#555;margin-top:3px">${typeof _formatLastSeen==="function"?_formatLastSeen(u.lastSeen):""}</p>
       </div>
     </div>
@@ -1112,29 +1207,29 @@ async function openProfilePanel(uid){
 
     <div id="profile-view-mode">
       <div class="profile-field-group">
-        <p class="pf-lbl">NAME</p><p class="pf-val">${u.name||"—"}</p>
+        <p class="pf-lbl">NAME</p><p class="pf-val">${u.name||"-"}</p>
       </div>
       <div class="profile-field-group">
-        <p class="pf-lbl">EMAIL</p><p class="pf-val">${u.email||"—"}</p>
+        <p class="pf-lbl">EMAIL</p><p class="pf-val">${u.email||"-"}</p>
       </div>
       <div class="profile-field-group">
-        <p class="pf-lbl">PHONE</p><p class="pf-val">${u.phone||"—"}</p>
+        <p class="pf-lbl">PHONE</p><p class="pf-val">${u.phone||"-"}</p>
       </div>
       <div class="profile-field-group">
-        <p class="pf-lbl">GOAL</p><p class="pf-val">${u.goalRaw||u.goal||"—"}</p>
+        <p class="pf-lbl">GOAL</p><p class="pf-val">${u.goalRaw||u.goal||"-"}</p>
       </div>
       <div class="profile-field-group">
-        <p class="pf-lbl">GOAL SUMMARY</p><p class="pf-val">${u.goalSummary||"—"}</p>
+        <p class="pf-lbl">GOAL SUMMARY</p><p class="pf-val">${u.goalSummary||"-"}</p>
       </div>
       <div class="profile-field-group">
-        <p class="pf-lbl">DAILY PROOF</p><p class="pf-val">${u.proofDescription||"—"}</p>
+        <p class="pf-lbl">DAILY PROOF</p><p class="pf-val">${u.proofDescription||"-"}</p>
       </div>
       <div class="profile-field-group">
         <p class="pf-lbl">THEIR THREAT</p>
-        <p class="pf-val" style="color:#c49a1c;font-style:italic">"${u.threat||"—"}"</p>
+        <p class="pf-val" style="color:#c49a1c;font-style:italic">"${u.threat||"-"}"</p>
       </div>
       <div style="display:flex;gap:8px;margin-top:4px">
-        <div class="profile-field-group" style="flex:1"><p class="pf-lbl">PROOF TYPE</p><p class="pf-val">${u.proofType||"—"}</p></div>
+        <div class="profile-field-group" style="flex:1"><p class="pf-lbl">PROOF TYPE</p><p class="pf-val">${u.proofType||"-"}</p></div>
         <div class="profile-field-group" style="flex:1"><p class="pf-lbl">DURATION</p><p class="pf-val">${u.dur} days</p></div>
       </div>
       ${_buildProfilePlanSection(u)}
@@ -1178,6 +1273,18 @@ async function openProfilePanel(uid){
         <button onclick="switchToViewMode()" style="padding:10px 16px;border-radius:10px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:13px;cursor:pointer">Cancel</button>
       </div>
       <p id="pf-save-status" style="font-size:12px;margin-top:10px;text-align:center"></p>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid #1e1e1e">
+        <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">MANAGE CHALLENGE</p>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <select id="pf-extend-days" style="flex:1;padding:8px 10px;border-radius:8px;background:#111;border:1px solid #222;color:#ebebeb;font-size:12px;font-family:inherit">
+            <option value="3">+3 days</option><option value="5">+5 days</option><option value="7" selected>+7 days</option><option value="15">+15 days</option>
+          </select>
+          <button onclick="_extendChallenge('${uid}')" style="padding:8px 14px;border-radius:8px;background:rgba(77,201,138,.08);border:1px solid rgba(77,201,138,.2);color:#4dc98a;font-size:12px;font-weight:700;cursor:pointer">Extend</button>
+        </div>
+        ${u.status==="completed"
+          ?`<button onclick="_reactivateChallenger('${uid}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(77,201,138,.08);border:1px solid rgba(77,201,138,.2);color:#4dc98a;font-size:12px;font-weight:700;cursor:pointer">Reactivate Challenge</button>`
+          :`<button onclick="_markChallengerComplete('${uid}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">Mark as Completed</button>`}
+      </div>
     </div>
   `;
   document.getElementById("profile-panel").style.transform="translateX(0)";
@@ -1302,7 +1409,7 @@ async function pfChatDeleteMsg(msgId,uid,wasRead){
   if(!confirm(msg))return;
   try{
     await adminFetch("delete_message",{message_id:msgId});
-    showToast(wasRead?"Unsent — but they already saw it":"Message unsent",wasRead?"error":"info");
+    showToast(wasRead?"Unsent, but they already saw it":"Message unsent",wasRead?"error":"info");
   }catch(e){showToast("Failed to unsend","error");}
   loadProfilePanelChat(uid);
 }
@@ -1385,6 +1492,41 @@ async function saveProfile(uid){
     showToast("Save failed","error");
     btn.textContent="Save Changes";btn.disabled=false;
   }
+}
+
+async function _extendChallenge(uid){
+  const sel=document.getElementById("pf-extend-days");
+  const extra=parseInt(sel.value)||7;
+  const u=getAM().find(x=>x.id===uid);
+  if(!u||!sb)return;
+  const newDur=u.dur+extra;
+  try{
+    await sb.from("challengers").update({duration:newDur,status:"active"}).eq("id",uid);
+    u.dur=newDur;u.status="active";
+    showToast(`Extended to ${newDur} days`,"success");
+    adminDataLoaded=false;renderAdmin();
+    setTimeout(()=>openProfilePanel(uid),300);
+  }catch(e){showToast("Failed to extend","error");}
+}
+async function _markChallengerComplete(uid){
+  if(!sb)return;
+  try{
+    await sb.from("challengers").update({status:"completed"}).eq("id",uid);
+    const u=getAM().find(x=>x.id===uid);if(u)u.status="completed";
+    showToast("Marked as completed","success");
+    adminDataLoaded=false;renderAdmin();
+    setTimeout(()=>openProfilePanel(uid),300);
+  }catch(e){showToast("Failed to update","error");}
+}
+async function _reactivateChallenger(uid){
+  if(!sb)return;
+  try{
+    await sb.from("challengers").update({status:"active"}).eq("id",uid);
+    const u=getAM().find(x=>x.id===uid);if(u)u.status="active";
+    showToast("Reactivated","success");
+    adminDataLoaded=false;renderAdmin();
+    setTimeout(()=>openProfilePanel(uid),300);
+  }catch(e){showToast("Failed to reactivate","error");}
 }
 
 function closeProfilePanel(){

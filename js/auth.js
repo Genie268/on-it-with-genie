@@ -319,7 +319,7 @@ function _showSignInPicker(rows){
   const div=el("signin-results");
   if(!div)return;
   const msg=el("signin-msg");
-  if(msg){msg.textContent="Multiple challenges found — pick yours:";msg.style.color="#b0b0b0";}
+  if(msg){msg.textContent="Multiple challenges found. Pick yours:";msg.style.color="#b0b0b0";}
   div.innerHTML=rows.map((r,i)=>{
     const d=r.duration||15;
     const goal=(r.goal_summary||r.goal_raw||"").substring(0,50);
@@ -541,7 +541,7 @@ async function _acceptPushPrompt(){
     showToast("Notifications enabled","success");
     if(typeof _renderNotifToggle==="function") _renderNotifToggle();
   }else if(Notification.permission==="denied"){
-    showToast("Blocked by browser — check your browser's notification settings","error",5000);
+    showToast("Blocked by browser. Check your browser's notification settings","error",5000);
   }
 }
 

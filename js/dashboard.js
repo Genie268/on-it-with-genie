@@ -3,7 +3,7 @@ function renderTransition(){
   const u=S.user;
   const dur=u.duration||15;
   const msg=el("genie-transition-msg");
-  msg.textContent=`${u.name}, the commitment is signed. I'm watching. The only thing that matters now is what you upload today — and every day after it for the next ${dur} days.`;
+  msg.textContent=`${u.name}, the commitment is signed. I'm watching. The only thing that matters now is what you upload today, and every day after it for the next ${dur} days.`;
 }
 
 
@@ -82,9 +82,9 @@ async function renderCoachNotes(){
   /* Genie speaks at milestones */
   const genieNotes={};
   genieNotes[1]=`The commitment is signed. The only thing that matters now is whether you upload today.`;
-  if(mid>1) genieNotes[mid]=`Halfway. Most people quit right around here. That's the real test — showing up when it stops feeling new.`;
+  if(mid>1) genieNotes[mid]=`Halfway. Most people quit right around here. That's the real test: showing up when it stops feeling new.`;
   if(near&&near>mid) genieNotes[near]=`${near} days of evidence. You have proven something. ${dur-near} day${dur-near===1?"":"s"} left.`;
-  genieNotes[dur]=`${dur} days done. Whatever happens next — you now know you can execute.`;
+  genieNotes[dur]=`${dur} days done. Whatever happens next, you now know you can execute.`;
   
   if(genieNotes[d]){
     cn.innerHTML=`<div class="card mb10" style="border-color:rgba(196,154,28,.15);background:rgba(196,154,28,.03)">
@@ -105,7 +105,7 @@ async function renderCoachNotes(){
     </div>
   </div>`;
   const recContext=u.recovery&&u.recovery.length>0?`\nRecovery insight: "${u.recovery[u.recovery.length-1].text}"`:"";
-  const prompt=`One sentence only. Max 12 words. Sharp, direct — name their threat or goal. No filler.\n\nGoal: "${u.answers.goal}"\nThreat: "${u.answers.threat||"unknown"}"\nDay: ${d}/${dur}${recContext}`;
+  const prompt=`One sentence only. Max 12 words. Sharp, direct. Name their threat or goal. No filler.\n\nGoal: "${u.answers.goal}"\nThreat: "${u.answers.threat||"unknown"}"\nDay: ${d}/${dur}${recContext}`;
   let msg=await lil(prompt,80);
   if(!msg) msg=FB.nudge(u.answers.goal,u.answers.threat||"what you described",d);
   cn.innerHTML=`<div class="card mb10" style="border-color:rgba(196,154,28,.1)">
@@ -130,7 +130,7 @@ function renderGrid(){
     let cls="dc",ds="";
     if(isUp){cls+=" up";ds="✓";}
     else if(isT){cls+=" tod";ds="NOW";}
-    else if(isM){cls+=" ms";ds="—";}
+    else if(isM){cls+=" ms";ds="-";}
     else if(isF)cls+=" ft";
     if(isCall)cls+=" call-day";
     const c=document.createElement("div");
@@ -152,7 +152,7 @@ function renderUnlock(){
   el("ul-bar").style.background=ul?"#4dc98a":"#c49a1c";
   el("ul-ct").textContent=`${up}/12`;
   if(ul){
-    el("ul-msg").innerHTML=`<span class="ok" style="font-weight:700">Unlocked.</span> Multi-goal mode will be available in The Gauntlet — you've earned the right to hold two goals at once.`;
+    el("ul-msg").innerHTML=`<span class="ok" style="font-weight:700">Unlocked.</span> Multi-goal mode will be available in The Gauntlet. You've earned the right to hold two goals at once.`;
   } else {
     el("ul-msg").textContent=`${Math.max(0,12-up)} more upload${12-up===1?"":"s"} to unlock a second goal.`;
   }
@@ -170,12 +170,29 @@ function updateUpBtn(){
   if(done){
     btn.textContent=`View / Edit Day ${S.day} ✓`;
     btn.disabled=false;
+    btn.classList.remove("up-btn-glow");
     btn.onclick=()=>openViewMod(S.day-1);
   }else{
-    btn.textContent=`Upload Day ${S.day} Proof ↑`;
+    const plan=S.plans[S.day];
+    const planAllDone=plan&&plan.subSteps&&plan.subSteps.length&&plan.subSteps.every(s=>s.done);
+    if(planAllDone){
+      btn.textContent=`Upload Day ${S.day} Proof ↑ Plan complete`;
+      btn.classList.add("up-btn-glow");
+    }else{
+      btn.textContent=`Upload Day ${S.day} Proof ↑`;
+      btn.classList.remove("up-btn-glow");
+    }
     btn.disabled=false;
     btn.onclick=openMod;
   }
+}
+
+function _updateUpBtnForPlanComplete(){
+  const btn=el("up-btn");if(!btn)return;
+  const done=S.uploads[S.day-1]!==null;
+  if(done)return;
+  btn.textContent=`Upload Day ${S.day} Proof ↑ Plan complete`;
+  btn.classList.add("up-btn-glow");
 }
 
 function chDay(dir){ S.day=Math.min(getDur(),Math.max(1,S.day+dir)); S.lilDone=false; renderDash(); }
@@ -200,7 +217,7 @@ async function initD15(){
   el("pf-txt").innerHTML=`<div class="row" style="gap:10px">${spn()}<span class="muted" style="font-size:13px">Lil is writing your summary...</span></div>`;
   const journey=buildJourneyNarrative();
   const planStats=_buildPlanStats();
-  const proofPrompt=`Write ONE sentence — max 18 words — about what this person proved through action. Use "you" not their name. Don't repeat their goal words. Be specific about the character trait or capability they demonstrated. No fluff, no cliches.${journey?`\n\nJourney context: ${journey}`:""}\n\nGoal: "${u.answers.goal}"`;
+  const proofPrompt=`Write ONE sentence, max 18 words, about what this person proved through action. Use "you" not their name. Don't repeat their goal words. Be specific about the character trait or capability they demonstrated. No fluff, no cliches.${journey?`\n\nJourney context: ${journey}`:""}\n\nGoal: "${u.answers.goal}"`;
   const pf=await lil(proofPrompt,80);
   let finalText=pf||FB.proof(u.name,u.answers.goal);
   if(journey) finalText+=`<br><br><span style="font-size:12px;color:#888;line-height:1.7">${journey}</span>`;
@@ -229,7 +246,7 @@ function _buildPlanStats(){
 
 /* ── ENERGY & MOOD CHECK (Gamification) ── */
 const ENERGY_PROMPTS = [
-  {type:"energy",q:"How's your energy right now?",sub:"Be honest — this is just for you."},
+  {type:"energy",q:"How's your energy right now?",sub:"Be honest. This is just for you."},
   {type:"mood",q:"One word for today:",sub:"Whatever comes to mind first."},
   {type:"reflection",q:"What almost stopped you today?",sub:"Name it. That's how you beat it next time."}
 ];
@@ -300,7 +317,7 @@ function setEnergy(level){
     f.className="energy-flame"+(i<level?" active":"");
   });
   setTimeout(()=>{
-    el("energy-check-area").innerHTML=`<div style="text-align:center;padding:10px;font-size:12px;color:#c49a1c;animation:heroFadeUp .3s ease forwards">Energy logged: ${"🔥".repeat(level)} — noted.</div>`;
+    el("energy-check-area").innerHTML=`<div style="text-align:center;padding:10px;font-size:12px;color:#c49a1c;animation:heroFadeUp .3s ease forwards">Energy logged: ${"🔥".repeat(level)}. Noted.</div>`;
     setTimeout(()=>el("energy-check-area").innerHTML="",2000);
   },500);
 }
@@ -315,7 +332,7 @@ function setMood(mood){
     c.className="mood-chip"+(c.textContent===mood?" active":"");
   });
   setTimeout(()=>{
-    el("energy-check-area").innerHTML=`<div style="text-align:center;padding:10px;font-size:12px;color:#c49a1c;animation:heroFadeUp .3s ease forwards">"${mood}" — logged for Day ${S.day}.</div>`;
+    el("energy-check-area").innerHTML=`<div style="text-align:center;padding:10px;font-size:12px;color:#c49a1c;animation:heroFadeUp .3s ease forwards">"${mood}" logged for Day ${S.day}.</div>`;
     setTimeout(()=>el("energy-check-area").innerHTML="",2000);
   },400);
 }
@@ -354,14 +371,29 @@ function renderPlanArea(){
 
 function _renderPlanPrompt(area,d){
   const goal=S.user.answers?.goalSummary||S.user.answers?.goal||"your goal";
+  const yest=S.plans[d-1];
+  const hasYesterday=yest&&yest.mainStep&&!yest.skipped;
   area.innerHTML=`<div class="card mb10" style="border:1px solid rgba(196,154,28,.15);background:rgba(196,154,28,.03)">
     <span class="lbl lbl-a" style="display:block;text-align:center;margin-bottom:6px">DAILY PLAN · DAY ${d}</span>
     <p style="font-size:14px;font-weight:600;text-align:center;margin-bottom:12px">What's the one thing you're doing today?</p>
     <p class="muted" style="font-size:11px;text-align:center;margin-bottom:10px">Toward: ${goal}</p>
     <textarea id="plan-main-input" rows="2" placeholder="Be specific. What will you actually do?" style="font-size:14px;width:100%;margin-bottom:10px"></textarea>
+    ${hasYesterday?`<div style="text-align:center;margin-bottom:10px"><button class="same-yesterday-btn" onclick="_fillFromYesterday()">Same as yesterday?</button></div>`:""}
     <button class="bp" style="width:100%;padding:12px;font-size:14px" onclick="_planStep2()" id="plan-continue-btn">Continue</button>
     <button class="bg" style="width:100%;margin-top:6px;font-size:11px" onclick="_skipPlan()">Skip for today</button>
   </div>`;
+}
+
+function _fillFromYesterday(){
+  const d=S.day;
+  const yest=S.plans[d-1];
+  if(!yest||!yest.mainStep)return;
+  const ta=el("plan-main-input");
+  if(ta)ta.value=yest.mainStep;
+  /* Store yesterday's sub-steps so _planStep2 can pre-fill them */
+  S._yesterdaySubs=yest.subSteps||[];
+  /* Auto-advance to step 2 */
+  _planStep2();
 }
 
 function _planStep2(){
@@ -383,10 +415,17 @@ function _planStep2(){
       <button class="bp" style="flex:1;font-size:14px;padding:10px" onclick="_submitPlan('${_esc(mainStep)}')">Set my plan</button>
     </div>
   </div>`;
+  /* Pre-fill from yesterday if triggered by "Same as yesterday?" */
+  if(S._yesterdaySubs&&S._yesterdaySubs.length){
+    if(S._yesterdaySubs[0])el("plan-s1").value=S._yesterdaySubs[0].text||"";
+    if(S._yesterdaySubs[1])el("plan-s2").value=S._yesterdaySubs[1].text||"";
+    if(S._yesterdaySubs[2])el("plan-s3").value=S._yesterdaySubs[2].text||"";
+    S._yesterdaySubs=null;
+  }
   el("plan-s1")?.focus();
 }
 
-function _esc(s){return s.replace(/'/g,"\\'").replace(/"/g,"&quot;");}
+function _esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 
 async function _planAISuggest(mainStep){
   const btn=el("plan-ai-btn");if(!btn)return;
@@ -427,26 +466,39 @@ function _renderPlanSummary(area,plan,d){
   const done=plan.subSteps.filter(s=>s.done).length;
   const total=plan.subSteps.length;
   const allDone=done===total;
-  area.innerHTML=`<div class="card mb10" style="border:1px solid ${allDone?"rgba(77,201,138,.2)":"rgba(196,154,28,.1)"};padding:14px">
+  const dots=plan.subSteps.map(s=>`<div class="plan-progress-dot" style="background:${s.done?"#c49a1c":"#1e1e1e"};${s.done?"box-shadow:0 0 4px rgba(196,154,28,.3)":""}"></div>`).join("");
+  area.innerHTML=`<div class="card mb10${allDone?" plan-card-pulse":""}" id="plan-summary-card" style="border:1px solid ${allDone?"rgba(196,154,28,.4)":"rgba(196,154,28,.1)"};padding:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">TODAY'S PLAN · DAY ${d}</span>
-      <span style="font-size:10px;color:${allDone?"#4dc98a":"#888"}">${done}/${total} done</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="display:flex;gap:4px">${dots}</div>
+        <span style="font-size:10px;color:${allDone?"#4dc98a":"#888"}">${done}/${total}</span>
+      </div>
     </div>
     <p style="font-size:12px;color:#999;margin-bottom:10px">${_esc(plan.mainStep)}</p>
-    ${plan.subSteps.map((s,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;${i<total-1?"border-bottom:1px solid #1a1a1a":""}">
+    ${plan.subSteps.map((s,i)=>`<div class="plan-step-row" id="plan-step-${i}" style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-radius:6px;${i<total-1?"border-bottom:1px solid #1a1a1a":""}">
       <div onclick="_togglePlanStep(${i})" style="width:20px;height:20px;border-radius:5px;border:1.5px solid ${s.done?"#4dc98a":"#333"};background:${s.done?"rgba(77,201,138,.15)":"transparent"};cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:#4dc98a">${s.done?"✓":""}</div>
       <span style="font-size:13px;color:${s.done?"#666":"#ccc"};${s.done?"text-decoration:line-through":""}">${_esc(s.text)}</span>
     </div>`).join("")}
-    ${allDone?`<p style="font-size:12px;color:#4dc98a;text-align:center;margin-top:10px;font-weight:600">All done. Upload your proof.</p>`:""}
+    ${allDone?`<p class="plan-nudge" style="font-size:12px;color:#c49a1c;text-align:center;margin-top:10px;font-weight:600">All 3 done. Time to upload your proof.</p>`:""}
   </div>`;
 }
 
 function _togglePlanStep(idx){
   const plan=S.plans[S.day];if(!plan||!plan.subSteps[idx])return;
+  const wasChecked=plan.subSteps[idx].done;
   plan.subSteps[idx].done=!plan.subSteps[idx].done;
   saveState();
   syncPlanToSupabase(S.day,plan);
   _renderPlanSummary(el("plan-area"),plan,S.day);
+  /* Flash the toggled step row gold on check */
+  if(!wasChecked){
+    const row=document.getElementById("plan-step-"+idx);
+    if(row){row.classList.add("flash");setTimeout(()=>row.classList.remove("flash"),300);}
+  }
+  /* If all 3 done, update upload button state */
+  const allDone=plan.subSteps.every(s=>s.done);
+  if(allDone) _updateUpBtnForPlanComplete();
 }
 
 function _skipPlan(){
@@ -467,7 +519,7 @@ function openCallModal(day){
         <img class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
       </div>
       <p style="font-size:15px;font-weight:700;margin-bottom:4px">Call Day with Genie</p>
-      <p class="muted" style="font-size:12px;line-height:1.6;margin-bottom:16px">Day ${day} is your scheduled check-in. Book a time that works for you — Genie will be there.</p>
+      <p class="muted" style="font-size:12px;line-height:1.6;margin-bottom:16px">Day ${day} is your scheduled check-in. Book a time that works for you. Genie will be there.</p>
       <a href="${CALENDLY_URL}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:#c49a1c;color:#000;padding:12px 24px;border-radius:9px;font-size:14px;font-weight:700;text-decoration:none">Book Your Call →</a>
       <p class="muted" style="font-size:10px;margin-top:10px">You'll pick a time slot. Genie gets notified automatically.</p>
     </div>`;
@@ -487,9 +539,9 @@ function buildJourneyNarrative(){
   const lowEnergy=entries.filter(k=>log[k].type==="energy"&&log[k].value<=2);
   const highEnergy=entries.filter(k=>log[k].type==="energy"&&log[k].value>=4);
   const toughMoods=entries.filter(k=>log[k].type==="mood"&&["Tired","Anxious","Struggling"].includes(log[k].value));
-  if(lowEnergy.length>0) narrative+=`On Day${lowEnergy.length>1?"s":""} ${lowEnergy.join(", ")} your energy was at rock bottom — but you still showed up. `;
+  if(lowEnergy.length>0) narrative+=`On Day${lowEnergy.length>1?"s":""} ${lowEnergy.join(", ")} your energy was at rock bottom, but you still showed up. `;
   if(toughMoods.length>0) narrative+=`You logged "${toughMoods.map(k=>log[k].value).join(", ")}" and pushed through anyway. `;
-  if(highEnergy.length>0) narrative+=`Days ${highEnergy.join(", ")} — that's where the fire was. `;
+  if(highEnergy.length>0) narrative+=`Days ${highEnergy.join(", ")}: that's where the fire was. `;
   const reflections=entries.filter(k=>log[k].type==="reflection");
   if(reflections.length>0) narrative+=`You named what almost stopped you: "${log[reflections[0]].value}." And you uploaded anyway.`;
   return narrative;
@@ -698,7 +750,7 @@ async function nativeShareCard(){
     const blob=await new Promise(r=>c.toBlob(r,"image/png"));
     const file=new File([blob],`oiwg-day${S.day}.png`,{type:"image/png"});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:"My Progress — On It with Genie",text:`Day ${S.day} of ${getDur()} done.`});
+      await navigator.share({files:[file],title:"My Progress - On It with Genie",text:`Day ${S.day} of ${getDur()} done.`});
     }else{
       downloadShareCard();
     }
@@ -842,10 +894,10 @@ async function _accept2ndVisitPush(){
   if(typeof _subscribePush==="function"){
     const ok=await _subscribePush();
     if(ok){
-      showToast("Notifications enabled — you're all set","success");
+      showToast("Notifications enabled, you're all set","success");
       if(typeof _renderNotifToggle==="function")_renderNotifToggle();
     }else if(Notification.permission==="denied"){
-      showToast("Blocked by browser — check notification settings","error",5000);
+      showToast("Blocked by browser. Check notification settings","error",5000);
     }
   }
 }

@@ -309,6 +309,19 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 .mood-chip{padding:6px 14px;border-radius:100px;font-size:11px;font-weight:700;background:var(--s2);border:1px solid var(--bd);color:var(--mid);cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
 .mood-chip.active{border-color:#c49a1c;color:#c49a1c;background:rgba(196,154,28,.08)}
 
+/* ── PLAN STEP ANIMATIONS ── */
+@keyframes planStepFlash{0%{background:rgba(196,154,28,.12)}100%{background:transparent}}
+@keyframes planCardPulse{0%{border-color:rgba(196,154,28,.6);box-shadow:0 0 12px rgba(196,154,28,.15)}100%{border-color:rgba(196,154,28,.1);box-shadow:none}}
+@keyframes planNudgeFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.plan-step-row{transition:background .3s ease}
+.plan-step-row.flash{animation:planStepFlash .3s ease forwards}
+.plan-card-pulse{animation:planCardPulse .6s ease 2}
+.plan-progress-dot{width:8px;height:8px;border-radius:50%;transition:background .25s ease,box-shadow .25s ease}
+.plan-nudge{animation:planNudgeFade .3s ease forwards}
+.up-btn-glow{box-shadow:0 0 8px rgba(196,154,28,.25),0 0 2px rgba(196,154,28,.15)!important;border-color:rgba(196,154,28,.4)!important;transition:box-shadow .3s ease,border-color .3s ease}
+.same-yesterday-btn{background:transparent;border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:11px;padding:6px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.same-yesterday-btn:active{transform:scale(.97);background:rgba(196,154,28,.06)}
+
 /* ── CALL DAY GRID MARKER ── */
 .dc-call{position:relative}
 @keyframes callIconPop{from{opacity:0;transform:scale(0)}to{opacity:1;transform:scale(1)}}

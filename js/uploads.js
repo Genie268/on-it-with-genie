@@ -198,13 +198,13 @@ async function subUp(){
   if(S.voiceBlob&&S.user?.supabaseId){
     if(S.voiceBlob.size<100){
       console.warn("Voice blob too small:",S.voiceBlob.size,"bytes — skipping upload");
-      showToast("Voice note was empty — try recording again","error");
+      showToast("Voice note was empty, try recording again","error");
     } else {
       const vMime=S.voiceMime||S.voiceBlob.type||"audio/webm";
       const vExt=vMime.includes("mp4")?"mp4":vMime.includes("ogg")?"ogg":"webm";
       const path=`${S.user.supabaseId}/day${S.day}-voice-${Date.now()}.${vExt}`;
       voiceUrl=await uploadToStorage("uploads",path,S.voiceBlob,vMime);
-      if(!voiceUrl) showToast("Voice upload failed — proof saved without audio","error");
+      if(!voiceUrl) showToast("Voice upload failed. Proof saved without audio","error");
     }
   }
 
@@ -330,7 +330,7 @@ function openUploadDetail(uid, dayIndex){
       <span style="font-size:11px;padding:4px 10px;border-radius:100px;background:${isRv?"rgba(196,154,28,.12)":"rgba(77,201,138,.12)"};color:${isRv?"#c49a1c":"#4dc98a"};font-weight:700">${isRv?"Reviewed":"Pending"}</span>
     </div>
     ${behavior?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">BEHAVIOR</span><p style="margin-top:4px;font-size:14px;font-weight:700;color:${behavior==="yes"?"#4dc98a":"#d9503a"}">${behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p></div>`:""}
-    ${note&&note!=="—"?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">NOTE</span><p style="margin-top:4px;font-size:13px;line-height:1.7;color:#e0e0e0">${note}</p></div>`:""}
+    ${note&&note!=="-"?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">NOTE</span><p style="margin-top:4px;font-size:13px;line-height:1.7;color:#e0e0e0">${note}</p></div>`:""}
     ${link?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">LINK</span><a href="${link}" target="_blank" style="display:block;margin-top:4px;font-size:13px;color:#4dc98a;word-break:break-all">${link}</a></div>`:""}
     ${fileUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${thumbHtml(fileUrl,fileName)}</div>`:fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${fileName}</p></div>`:""}
     ${voiceUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span><audio controls src="${voiceUrl}" style="width:100%;margin-top:8px;border-radius:8px"></audio></div>`:""}

@@ -36,7 +36,7 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
         <span class="lmt" style="font-size:20px">ON IT <b>WITH GENIE</b></span>
       </div>
       <h1 class="hero-title land-h1" style="font-family:Helvetica,Arial,sans-serif;font-size:clamp(38px,8vw,62px);font-weight:700;line-height:1.05;letter-spacing:-0.03em;margin-bottom:18px">You already know what to do.<br><span class="ac">Do it here.</span></h1>
-      <p class="muted land-sub" style="font-size:15px;line-height:1.85;margin-bottom:20px">Pick a duration. Commit to one goal. Upload proof daily.<br>Reviewed by a real human — not an algorithm.</p>
+      <p class="muted land-sub" style="font-size:15px;line-height:1.85;margin-bottom:20px">Pick a duration. Commit to one goal. Upload proof daily.<br>Reviewed by a real human. Not an algorithm.</p>
 
       <div class="land-tiers" style="display:flex;gap:8px;justify-content:center;margin-bottom:28px">
         <div class="tier-pill" id="tp-7"><span style="font-size:14px">7</span> days</div>
@@ -50,7 +50,7 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
         </div>
         <div>
           <p style="font-size:13px;font-weight:700;color:#ebebeb;margin-bottom:2px">Genie <span style="font-size:10px;font-weight:600;color:#c49a1c;margin-left:4px">YOUR ACCOUNTABILITY COACH</span></p>
-          <p style="font-size:12px;color:#888;line-height:1.55">I review every upload personally. This is not automated encouragement — it's real accountability.</p>
+          <p style="font-size:12px;color:#888;line-height:1.55">I review every upload personally. This is not automated encouragement. It's real accountability.</p>
         </div>
       </div>
 
@@ -229,8 +229,9 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
         <p style="font-size:10px;color:var(--muted)">with Genie</p>
       </div>
     </div>
-    <div class="row">
+    <div class="row" style="gap:10px">
       <span class="bdg bdg-a" id="day-bdg" onclick="_adminTap()">Day 1 / 15</span>
+      <button id="settings-gear" onclick="openSettingsPanel()" style="background:none;border:none;color:#5a5a5a;font-size:18px;cursor:pointer;padding:2px 4px;line-height:1;transition:color .2s" onmouseenter="this.style.color='#c49a1c'" onmouseleave="this.style.color='#5a5a5a'">&#9881;</button>
     </div>
   </div>
   <div class="sb">
@@ -337,7 +338,7 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
     <div style="max-width:440px;width:100%">
       <span class="bdg bdg-e" style="margin-bottom:20px;display:inline-block">EARNED ACCESS ONLY</span>
       <h1 style="font-size:clamp(32px,6vw,50px);font-weight:900;line-height:1;letter-spacing:-0.04em;margin-bottom:14px">The <span class="ac">Gauntlet</span></h1>
-      <p class="muted mb20" style="font-size:14px;line-height:1.8">30 days. 2 goals. Weekly calls with Genie.<br>The structure is the same — the intensity is not.</p>
+      <p class="muted mb20" style="font-size:14px;line-height:1.8">30 days. 2 goals. Weekly calls with Genie.<br>The structure is the same. The intensity is not.</p>
       <div class="g2 mb20" style="text-align:left">
         <div class="card"><div style="font-weight:800;font-size:13px;margin-bottom:3px">30-day window</div><div class="muted" style="font-size:11px">Double the duration</div></div>
         <div class="card"><div style="font-weight:800;font-size:13px;margin-bottom:3px">2 active goals</div><div class="muted" style="font-size:11px">Simultaneous execution</div></div>
@@ -438,8 +439,8 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
     <div id="profile-payment-info" style="display:none;margin-bottom:16px;padding:12px 14px;background:rgba(77,201,138,.04);border:1px solid rgba(77,201,138,.12);border-radius:10px">
       <span class="lbl" style="color:#4dc98a;margin-bottom:8px;display:block">PAYMENT</span>
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="color:var(--muted)">Status</span><span id="profile-pay-status" style="font-weight:700;color:#4dc98a">Paid</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="color:var(--muted)">Amount</span><span id="profile-pay-amount" style="font-weight:600">—</span></div>
-      <div id="profile-pay-ref-row" style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--muted)">Reference</span><span id="profile-pay-ref" style="font-weight:600;font-size:11px;word-break:break-all;max-width:55%;text-align:right">—</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="color:var(--muted)">Amount</span><span id="profile-pay-amount" style="font-weight:600">-</span></div>
+      <div id="profile-pay-ref-row" style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--muted)">Reference</span><span id="profile-pay-ref" style="font-weight:600;font-size:11px;word-break:break-all;max-width:55%;text-align:right">-</span></div>
     </div>
 
     <button class="bp" style="width:100%;padding:12px;font-size:14px" onclick="saveProfile()">Save Changes</button>
@@ -448,6 +449,55 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
       <button onclick="if(confirm('This will end your current challenge and clear all data. Are you sure?'))clearState()" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(217,80,58,.3);border-radius:9px;color:#d9503a;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">Log Out & Reset</button>
       <button onclick="deleteMyAccount()" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(217,80,58,.5);border-radius:9px;color:#d9503a;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">Delete My Account</button>
     </div>
+  </div>
+</div>
+
+<!-- CHALLENGER SETTINGS PANEL -->
+<div id="settings-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100" onclick="closeSettingsPanel()"></div>
+<div id="settings-panel" style="position:fixed;top:0;right:0;height:100%;width:min(380px,100%);background:#111;border-left:1px solid #1e1e1e;z-index:1101;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #1e1e1e;flex-shrink:0">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">SETTINGS</span>
+    <button onclick="closeSettingsPanel()" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:0;line-height:1">&times;</button>
+  </div>
+  <div id="settings-panel-body" style="flex:1;overflow-y:auto;padding:20px">
+
+    <!-- Photo -->
+    <div style="margin-bottom:24px">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;display:block;margin-bottom:10px">PHOTO</span>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div id="settings-photo-circle" style="width:56px;height:56px;border-radius:50%;border:2px solid #2a2a2a;overflow:hidden;background:#1e1e1e;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#c49a1c;cursor:pointer;flex-shrink:0" onclick="el('settings-photo-file').click()">?</div>
+        <input type="file" id="settings-photo-file" accept="image/*" style="display:none" onchange="handleSettingsPhoto(this)">
+        <button onclick="el('settings-photo-file').click()" style="padding:8px 16px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;color:#ccc;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Change photo</button>
+        <span id="settings-photo-status" style="font-size:11px;color:#4dc98a;display:none"></span>
+      </div>
+    </div>
+
+    <!-- Name -->
+    <div style="margin-bottom:24px">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;display:block;margin-bottom:8px">NAME</span>
+      <div style="display:flex;gap:8px">
+        <input id="settings-name-input" type="text" placeholder="Your name" style="flex:1;font-size:14px;padding:10px 14px;background:#0a0a0a;border:1px solid #1e1e1e;border-radius:8px;color:#ebebeb;font-family:inherit">
+        <button id="settings-name-btn" onclick="saveSettingsName()" style="padding:10px 16px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;color:#ccc;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0">Save</button>
+      </div>
+      <p id="settings-name-status" style="font-size:11px;margin-top:6px;display:none"></p>
+    </div>
+
+    <!-- Notifications -->
+    <div style="margin-bottom:24px">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;display:block;margin-bottom:10px">NOTIFICATIONS</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:#0a0a0a;border:1px solid #1e1e1e;border-radius:10px">
+        <div>
+          <p style="font-size:13px;font-weight:600;color:#ccc">Daily reminders</p>
+          <p id="settings-push-sub" style="font-size:11px;color:#666;margin-top:2px">Push alerts are on</p>
+        </div>
+        <button id="settings-push-toggle" onclick="toggleSettingsPush()" style="width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;position:relative;background:#333;transition:background .2s">
+          <span id="settings-push-knob" style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:all .2s"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Done -->
+    <button onclick="closeSettingsPanel()" style="width:100%;padding:12px;border-radius:10px;background:#c49a1c;border:none;color:#000;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Done</button>
   </div>
 </div>
 

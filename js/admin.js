@@ -38,7 +38,7 @@ async function loadAdminData(){
       const plans=(allPlans||[]).filter(p=>p.challenger_id===c.id);
       const dur=c.duration||15;
       const upArr=Array(dur).fill(0);
-      const noteArr=Array(dur).fill("—");
+      const noteArr=Array(dur).fill("-");
       const rvArr=Array(dur).fill(0);
       const voiceArr=Array(dur).fill(0);
       const voiceUrlArr=Array(dur).fill(null);
@@ -236,7 +236,7 @@ async function checkAdminPin(){
     const data=await res.json();
     if(!data.ok){
       const msg=el("admin-pin-msg");
-      if(msg){msg.textContent=data.error==="invalid_pin"?"Incorrect PIN — try again":"Login failed";msg.style.color="#d9503a";}
+      if(msg){msg.textContent=data.error==="invalid_pin"?"Incorrect PIN, try again":"Login failed";msg.style.color="#d9503a";}
       const input=el("admin-pin-input");
       if(input){input.value="";input.focus();}
       if(btn){btn.disabled=false;btn.textContent="Enter →";}
@@ -443,7 +443,7 @@ async function renderAdminSettings(c){
       </div>
       <div id="set-about" style="display:none" class="admin-section-bd">
         <div style="font-size:12px;color:#888;line-height:1.8">
-          <p><strong style="color:#ccc">On It With Genie</strong> — Accountability Platform</p>
+          <p><strong style="color:#ccc">On It With Genie</strong> - Accountability Platform</p>
           <p>Admin Dashboard v2.0</p>
           <p style="margin-top:8px;font-size:11px;color:#555">Supabase · Vercel · Groq AI · Paystack</p>
         </div>
@@ -721,13 +721,13 @@ async function toggleMsgTabRecording(){
       clearInterval(_msgTabRecTimer);
       if(_msgTabRecChunks.length===0||new Blob(_msgTabRecChunks).size<100){
         _msgTabVoiceBlob=null;
-        if(ta)ta.placeholder="Recording failed — try again";
+        if(ta)ta.placeholder="Recording failed, try again";
         setTimeout(()=>{if(ta)ta.placeholder="Message...";},2500);
         return;
       }
       _msgTabVoiceBlob=new Blob(_msgTabRecChunks,{type:_msgTabRecorder.mimeType||"audio/webm"});
       if(btn){btn.textContent="🎙";btn.style.color="#4dc98a";}
-      if(ta)ta.placeholder="✓ Voice note ready — tap ↑ to send";
+      if(ta)ta.placeholder="✓ Voice note ready, tap ↑ to send";
       if(status){
         const previewUrl=URL.createObjectURL(_msgTabVoiceBlob);
         status.style.display="flex";status.style.alignItems="center";status.style.gap="8px";status.style.padding="6px 14px";
@@ -737,8 +737,8 @@ async function toggleMsgTabRecording(){
     _msgTabRecorder.start();
     if(btn){btn.textContent="⏹";btn.style.color="#d9503a";}
     let secs=0;
-    _msgTabRecTimer=setInterval(()=>{secs++;const m=Math.floor(secs/60),s=String(secs%60).padStart(2,"0");if(ta)ta.placeholder=`● Recording ${m}:${s} — tap to stop`;},1000);
-    if(ta)ta.placeholder="● Recording 0:00 — tap to stop";
+    _msgTabRecTimer=setInterval(()=>{secs++;const m=Math.floor(secs/60),s=String(secs%60).padStart(2,"0");if(ta)ta.placeholder=`● Recording ${m}:${s}, tap to stop`;},1000);
+    if(ta)ta.placeholder="● Recording 0:00, tap to stop";
   }catch(e){if(ta)ta.placeholder="Microphone access denied";setTimeout(()=>{if(ta&&ta.placeholder.includes("denied"))ta.placeholder="Message...";},2500);}
 }
 
@@ -756,7 +756,7 @@ async function _msgTabDeleteMsg(msgId,uid,wasRead){
   if(!confirm(msg))return;
   try{
     await adminFetch("delete_message",{message_id:msgId});
-    showToast(wasRead?"Unsent — but they already saw it":"Message unsent",wasRead?"error":"info");
+    showToast(wasRead?"Unsent, but they already saw it":"Message unsent",wasRead?"error":"info");
   }catch(e){showToast("Failed to unsend","error");}
   _msgTabLastHash="";
   _loadMsgTabChat(uid);
@@ -1095,7 +1095,7 @@ function renderChallengerDetail(u){
     let ds="";
     if(isUp){cls+=isRv?" up":" up";ds=isRv?"✓✓":"✓";}
     else if(d===u.day){cls+=" tod";ds="NOW";}
-    else if(isMiss){cls+=" ms";ds="—";}
+    else if(isMiss){cls+=" ms";ds="-";}
     else{cls+=" ft";}
     if(isCall)cls+=" call-day";
     const indicators=(hasVoice?"🎙":"")+(hasLink?"🔗":"");
@@ -1240,7 +1240,7 @@ function renderAdminInbox(c){
             ${_avatarWithStatus(u,30,"7px")}
             <div style="min-width:0">
               <p style="font-size:12px;font-weight:700">${u.name} <span class="muted" style="font-weight:400">· Day ${day}</span></p>
-              ${note&&note!=="—"?`<p style="font-size:12px;margin-top:4px;line-height:1.5;color:#ccc">${note}</p>`:""}
+              ${note&&note!=="-"?`<p style="font-size:12px;margin-top:4px;line-height:1.5;color:#ccc">${note}</p>`:""}
               ${behavior?`<p style="font-size:11px;margin-top:4px;color:#c49a1c">Behavior: ${behavior==="yes"?"✓ Did it":"✗ Missed"}</p>`:""}
               ${link?`<a href="${link}" target="_blank" style="font-size:11px;color:#4dc98a;margin-top:3px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔗 ${link}</a>`:""}
               ${fileUrl?thumbHtml(fileUrl,fileName):fileName?`<p style="font-size:11px;color:#888;margin-top:2px">📎 ${fileName}</p>`:""}
@@ -1356,8 +1356,8 @@ async function renderAdminAnalytics(c){
     const signIns=counts["sign_in_attempt"]||0;
 
     /* Funnel drop-off insights */
-    if(visits>5&&obStart===0) insights.push({type:"warning",text:"People are visiting but nobody starts onboarding. Your landing page might not be compelling enough — try a stronger CTA or social proof."});
-    if(obStart>3&&durPick===0) insights.push({type:"warning",text:"People start onboarding but never pick a duration. The onboarding questions might be causing friction — consider simplifying."});
+    if(visits>5&&obStart===0) insights.push({type:"warning",text:"People are visiting but nobody starts onboarding. Your landing page might not be compelling enough. Try a stronger CTA or social proof."});
+    if(obStart>3&&durPick===0) insights.push({type:"warning",text:"People start onboarding but never pick a duration. The onboarding questions might be causing friction. Consider simplifying."});
     if(durPick>2&&payInit===0) insights.push({type:"warning",text:"People pick a duration but never reach payment. The commitment screen or pricing might be scaring them off."});
     if(payInit>2&&payDone===0) insights.push({type:"error",text:"People reach payment but nobody completes it. Check if Paystack is working, or consider the price point."});
     if(payDone>0&&uploads===0) insights.push({type:"warning",text:"People paid but haven't uploaded any proof yet. Consider a welcome message nudging them to upload Day 1."});
@@ -1366,9 +1366,9 @@ async function renderAdminAnalytics(c){
 
     /* Engagement insights */
     if(uploads>5&&energy===0&&mood===0) insights.push({type:"info",text:"Nobody is using energy or mood check-ins. Consider making them more prominent or removing them to reduce clutter."});
-    if(uploads>3&&chatChallenger===0) insights.push({type:"info",text:"Challengers are uploading but not messaging you. They might not know the chat exists — consider a prompt after their first upload."});
+    if(uploads>3&&chatChallenger===0) insights.push({type:"info",text:"Challengers are uploading but not messaging you. They might not know the chat exists. Consider a prompt after their first upload."});
     if(chatChallenger>5&&chatAdmin===0) insights.push({type:"warning",text:"Challengers are messaging you but you haven't replied. Engagement drops when there's no response."});
-    if(signIns>3) insights.push({type:"success",text:`${signIns} return sign-ins — people are coming back. That's a strong retention signal.`});
+    if(signIns>3) insights.push({type:"success",text:`${signIns} return sign-ins. People are coming back. That's a strong retention signal.`});
     if(uploads>10) insights.push({type:"success",text:`${uploads} proofs uploaded. Your challengers are showing up.`});
 
     /* Not enough data yet */
@@ -1532,7 +1532,7 @@ function _openCalendlyForCall(uid,callDay,dateLabel){
   overlay.id="call-schedule-panel";
   overlay.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;flex-direction:column;animation:popIn .15s ease";
   const closeBar=`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#111;border-bottom:1px solid #222;flex-shrink:0">
-    <p style="font-size:13px;font-weight:700;color:#ebebeb">Book Day ${callDay} call — ${u.name} <span class="muted" style="font-weight:400;font-size:11px;margin-left:6px">${dateLabel}</span></p>
+    <p style="font-size:13px;font-weight:700;color:#ebebeb">Book Day ${callDay} call: ${u.name} <span class="muted" style="font-weight:400;font-size:11px;margin-left:6px">${dateLabel}</span></p>
     <button onclick="document.getElementById('call-schedule-panel').remove()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer;padding:2px 8px">×</button>
   </div>`;
   overlay.innerHTML=`${closeBar}
@@ -1551,7 +1551,7 @@ async function _notifyCallBooked(uid,callDay,dateLabel){
   if(btn){btn.disabled=true;btn.textContent="Sending...";}
   try{
     await adminFetch("send_message",{challenger_id:uid,message:msg});
-    adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Call Booked",body:`Day ${callDay} call — ${dateLabel}`}).catch(()=>{});
+    adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Call Booked",body:`Day ${callDay} call: ${dateLabel}`}).catch(()=>{});
     showToast(`${u.name} notified`,"success");
     if(btn){btn.textContent="Sent";btn.style.background="#4dc98a";}
   }catch(e){
