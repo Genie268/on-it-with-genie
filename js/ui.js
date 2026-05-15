@@ -310,100 +310,6 @@ function saveProfile(){
 }
 
 
-/* ── CHALLENGER SETTINGS PANEL ── */
-function openSettingsPanel(){
-  var panel=el("settings-panel"),backdrop=el("settings-backdrop");
-  if(!panel||!backdrop)return;
-  var nameInput=el("settings-name-input");
-  if(nameInput&&S.user) nameInput.value=S.user.name||"";
-  var circle=el("settings-photo-circle");
-  if(circle&&S.user){
-    if(S.user.photo){circle.innerHTML='<img src="'+S.user.photo+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';circle.style.background="none";}
-    else{circle.innerHTML="";circle.textContent=S.user.name?S.user.name[0].toUpperCase():"?";circle.style.background="#1e1e1e";}
-  }
-  var ns=el("settings-name-status");if(ns){ns.style.display="none";ns.textContent="";}
-  var ps=el("settings-photo-status");if(ps){ps.style.display="none";ps.textContent="";}
-  _renderSettingsPushToggle();
-  panel.style.transform="translateX(0)";
-  backdrop.style.display="block";
-}
-function closeSettingsPanel(){
-  var panel=el("settings-panel"),backdrop=el("settings-backdrop");
-  if(panel)panel.style.transform="translateX(100%)";
-  if(backdrop)backdrop.style.display="none";
-}
-async function _renderSettingsPushToggle(){
-  var toggle=el("settings-push-toggle"),knob=el("settings-push-knob"),sub=el("settings-push-sub");
-  if(!toggle||!knob||!sub)return;
-  var pref=localStorage.getItem("oiwg_push_pref");
-  if(!_pushSupported()){toggle.style.background="#333";knob.style.left="2px";knob.style.right="auto";sub.textContent="Not supported on this browser";sub.style.color="#666";return;}
-  var reg=await navigator.serviceWorker.getRegistration("/sw.js");
-  var pushSub=reg?await reg.pushManager.getSubscription():null;
-  if(Notification.permission==="denied"){toggle.style.background="#333";knob.style.left="2px";knob.style.right="auto";sub.textContent="Blocked in browser settings";sub.style.color="#d9503a";return;}
-  if(pushSub&&pref!=="off"){toggle.style.background="#4dc98a";knob.style.left="auto";knob.style.right="2px";sub.textContent="Push alerts are on";sub.style.color="#666";}
-  else{toggle.style.background="#333";knob.style.left="2px";knob.style.right="auto";sub.textContent=pref==="off"?"Turned off":"Tap to enable";sub.style.color="#666";}
-}
-async function toggleSettingsPush(){
-  if(!_pushSupported()){showToast("Push notifications not supported","error",3000);return;}
-  if(Notification.permission==="denied"){showToast("Notifications blocked by your browser. Open browser settings to allow this site.","error",5000);return;}
-  var reg=await navigator.serviceWorker.getRegistration("/sw.js");
-  var pushSub=reg?await reg.pushManager.getSubscription():null;
-  var pref=localStorage.getItem("oiwg_push_pref");
-  if(pushSub&&pref!=="off"){
-    await pushSub.unsubscribe();
-    if(sb&&S.user?.supabaseId){try{await sb.from("push_subscriptions").delete().eq("endpoint",pushSub.endpoint);}catch(e){}}
-    localStorage.setItem("oiwg_push_pref","off");
-    showToast("Notifications turned off","info");
-  }else{
-    var ok=await _subscribePush();
-    if(ok){localStorage.setItem("oiwg_push_pref","on");showToast("Notifications enabled","success");}
-    else{showToast("Could not enable notifications","error");}
-  }
-  _renderSettingsPushToggle();
-  if(typeof _renderNotifToggle==="function")_renderNotifToggle();
-}
-async function saveSettingsName(){
-  var input=el("settings-name-input"),status=el("settings-name-status"),btn=el("settings-name-btn");
-  if(!input||!S.user)return;
-  var name=input.value.trim();
-  if(!name){if(status){status.style.display="block";status.textContent="Name cannot be empty";status.style.color="#d9503a";}return;}
-  if(btn){btn.textContent="Saving...";btn.disabled=true;}
-  try{
-    if(sb&&S.user.supabaseId){await sb.from("challengers").update({name:name}).eq("id",S.user.supabaseId);}
-    S.user.name=name;saveState();renderDash();
-    if(status){status.style.display="block";status.textContent="Saved";status.style.color="#4dc98a";}
-    setTimeout(function(){if(status)status.style.display="none";},2000);
-  }catch(e){if(status){status.style.display="block";status.textContent="Failed to save";status.style.color="#d9503a";}}
-  if(btn){btn.textContent="Save";btn.disabled=false;}
-}
-async function handleSettingsPhoto(input){
-  if(!input.files||!input.files[0]||!S.user)return;
-  var file=input.files[0];
-  var status=el("settings-photo-status"),circle=el("settings-photo-circle");
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var url=e.target.result;
-    if(circle){circle.innerHTML='<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';circle.style.background="none";}
-  };
-  reader.readAsDataURL(file);
-  if(status){status.style.display="inline";status.textContent="Uploading...";status.style.color="#c49a1c";}
-  try{
-    var ext=file.name.split(".").pop()||"jpg";
-    var path="photos/"+S.user.supabaseId+"."+ext;
-    var publicUrl=await uploadToStorage("uploads",path,file,file.type||"image/jpeg");
-    if(publicUrl){
-      if(sb&&S.user.supabaseId){await sb.from("challengers").update({photo_url:publicUrl}).eq("id",S.user.supabaseId);}
-      S.user.photo=publicUrl;saveState();renderDash();
-      if(status){status.textContent="Saved";status.style.color="#4dc98a";}
-      setTimeout(function(){if(status)status.style.display="none";},2000);
-    }else{
-      var dataUrl=circle?.querySelector("img")?.src;
-      if(dataUrl){S.user.photo=dataUrl;saveState();renderDash();}
-      if(status){status.textContent="Upload failed, saved locally";status.style.color="#d9503a";}
-    }
-  }catch(e){if(status){status.textContent="Upload failed";status.style.color="#d9503a";}}
-}
-
 
 /* ── THEME TOGGLE ── */
 function toggleTheme(){
@@ -1233,7 +1139,19 @@ async function openProfilePanel(uid){
         <div class="profile-field-group" style="flex:1"><p class="pf-lbl">DURATION</p><p class="pf-val">${u.dur} days</p></div>
       </div>
       ${_buildProfilePlanSection(u)}
-      <div style="margin-top:16px">
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid #1e1e1e">
+        <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">MANAGE CHALLENGE</p>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <select id="pf-extend-days" style="flex:1;padding:8px 10px;border-radius:8px;background:#111;border:1px solid #222;color:#ebebeb;font-size:12px;font-family:inherit">
+            <option value="3">+3 days</option><option value="5">+5 days</option><option value="7" selected>+7 days</option><option value="15">+15 days</option>
+          </select>
+          <button onclick="_extendChallenge('${uid}')" style="padding:8px 14px;border-radius:8px;background:rgba(77,201,138,.08);border:1px solid rgba(77,201,138,.2);color:#4dc98a;font-size:12px;font-weight:700;cursor:pointer">Extend</button>
+        </div>
+        ${u.status==="completed"
+          ?`<button onclick="_reactivateChallenger('${uid}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(77,201,138,.08);border:1px solid rgba(77,201,138,.2);color:#4dc98a;font-size:12px;font-weight:700;cursor:pointer">Reactivate Challenge</button>`
+          :`<button onclick="_markChallengerComplete('${uid}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">Mark as Completed</button>`}
+      </div>
+      <div style="margin-top:12px">
         <button onclick="switchToEditMode('${uid}')" style="width:100%;padding:10px;border-radius:10px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:13px;font-weight:700;cursor:pointer">Edit Profile →</button>
       </div>
     </div>
@@ -1273,18 +1191,6 @@ async function openProfilePanel(uid){
         <button onclick="switchToViewMode()" style="padding:10px 16px;border-radius:10px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:13px;cursor:pointer">Cancel</button>
       </div>
       <p id="pf-save-status" style="font-size:12px;margin-top:10px;text-align:center"></p>
-      <div style="margin-top:20px;padding-top:16px;border-top:1px solid #1e1e1e">
-        <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">MANAGE CHALLENGE</p>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <select id="pf-extend-days" style="flex:1;padding:8px 10px;border-radius:8px;background:#111;border:1px solid #222;color:#ebebeb;font-size:12px;font-family:inherit">
-            <option value="3">+3 days</option><option value="5">+5 days</option><option value="7" selected>+7 days</option><option value="15">+15 days</option>
-          </select>
-          <button onclick="_extendChallenge('${uid}')" style="padding:8px 14px;border-radius:8px;background:rgba(77,201,138,.08);border:1px solid rgba(77,201,138,.2);color:#4dc98a;font-size:12px;font-weight:700;cursor:pointer">Extend</button>
-        </div>
-        ${u.status==="completed"
-          ?`<button onclick="_reactivateChallenger('${uid}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(77,201,138,.08);border:1px solid rgba(77,201,138,.2);color:#4dc98a;font-size:12px;font-weight:700;cursor:pointer">Reactivate Challenge</button>`
-          :`<button onclick="_markChallengerComplete('${uid}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">Mark as Completed</button>`}
-      </div>
     </div>
   `;
   document.getElementById("profile-panel").style.transform="translateX(0)";
