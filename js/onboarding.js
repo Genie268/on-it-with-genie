@@ -146,20 +146,21 @@ async function advOB(){
     S.ans.name=v; S.stepIdx=0; renderOB(); return;
   }
 
-  const ta=el("ob-ta"); if(!ta||!ta.value.trim())return;
-  const txt=ta.value.trim();
+  const ta=el("ob-ta");
+  const txt=(ta?.value||"").trim();
   const step=curStep();
 
-  /* Returning from "tell me more" nudge */
+  /* Returning from "tell me more" nudge — allow continuing with or without extra text */
   if(S.inFU){
-    /* Combine original + elaboration */
     const prev=S.ans[step.id]||"";
-    S.ans[step.id]=prev+". "+txt;
+    if(txt) S.ans[step.id]=prev+". "+txt;
     S.inFU=false;
     if(idx<tot-1){S.stepIdx++;renderOB();}
     else await detectPT();
     return;
   }
+
+  if(!txt)return;
 
   /* Save answer */
   S.ans[step.id]=txt;

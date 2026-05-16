@@ -62,7 +62,7 @@ const PTD = {output:"A deliverable that didn't exist yesterday",process:"Evidenc
 
 /* Adaptive form steps — simplified, AI only intervenes on short answers */
 const OB_STEPS = [
-  {id:"goal", q:"What is your most important goal right now?", h:"The one thing you're ready to stop avoiding.", placeholder:"e.g. Lose 10kg, write my novel, launch my store", minLen:25},
+  {id:"goal", q:"What is your most important goal right now?", h:"The one thing you're ready to stop avoiding.", placeholder:"e.g. Lose 10kg, write my novel, launch my store", minLen:15},
   {id:"proof", q:"How will you show proof each day?", h:"Pick the types of evidence you'll upload. You can use multiple.", placeholder:"", isProofPicker:true},
   {id:"threat", q:"If only one thing could stop you from achieving this goal, what would it be?", h:"Naming it now keeps you alert when it shows up.", placeholder:"e.g. I lose focus after the first week when the excitement fades"}
 ];

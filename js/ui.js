@@ -156,7 +156,9 @@ function _smartResume(){
   const ps=S.user.paymentStatus;
   if((ps==="paid"||ps==="free")&&isChallengeComplete()){
     _markCompleted();
-    goTo("d15");
+    localStorage.removeItem("oiwg_state");
+    S.user=null;S.uploads=[];S.ans={};
+    _activateScreen("land");
     return;
   }
   if(ps==="paid"||ps==="free"){
