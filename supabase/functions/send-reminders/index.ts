@@ -106,6 +106,141 @@ function buildMessage(
 
 Deno.serve(async (_req) => {
   try {
+    /* ── Completion detection (runs every invocation) ── */
+    {
+      // Find active challengers whose challenge period has elapsed
+      const { data: activeCandidates, error: compErr } = await sb
+        .from("challengers")
+        .select("id, name, start_date, duration, status, payment_status")
+        .eq("status", "active")
+        .in("payment_status", ["paid", "free"]);
+
+      if (compErr) {
+        console.error("completion-check query error:", compErr);
+      } else if (activeCandidates && activeCandidates.length > 0) {
+        const now = new Date();
+        const completed = activeCandidates.filter(
+          (c: { start_date: string; duration: number }) => {
+            const start = new Date(c.start_date);
+            const rawDay =
+              Math.floor(
+                (now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+              ) + 1;
+            return rawDay > c.duration;
+          }
+        );
+
+        if (completed.length > 0) {
+          const completedIds = completed.map((c: { id: string }) => c.id);
+
+          // Update status to 'completed'
+          const { error: updErr } = await sb
+            .from("challengers")
+            .update({ status: "completed" })
+            .in("id", completedIds);
+
+          if (updErr) {
+            console.error("completion-check update error:", updErr);
+          }
+
+          // Fetch push subscriptions for completed challengers
+          const { data: compSubs } = await sb
+            .from("push_subscriptions")
+            .select("challenger_id, endpoint, p256dh, auth")
+            .eq("is_active", true)
+            .in("challenger_id", completedIds);
+
+          // Group subscriptions by challenger
+          const compSubMap = new Map<string, typeof compSubs>();
+          for (const sub of compSubs ?? []) {
+            const arr = compSubMap.get(sub.challenger_id) || [];
+            arr.push(sub);
+            compSubMap.set(sub.challenger_id, arr);
+          }
+
+          // Send congratulatory notifications and log analytics
+          const analyticsRows: {
+            event_type: string;
+            event_data: Record<string, unknown>;
+          }[] = [];
+
+          await Promise.all(
+            completed.map(
+              async (c: { id: string; name: string; duration: number }) => {
+                const firstName = c.name.split(" ")[0] || "Challenger";
+                const payload = JSON.stringify({
+                  title: "Challenge Complete!",
+                  body: `Congratulations, ${firstName}! You completed your ${c.duration}-day challenge.`,
+                  url: "/",
+                  tag: "oiwg-completed",
+                });
+
+                const cSubs = compSubMap.get(c.id);
+                if (cSubs && cSubs.length > 0) {
+                  await Promise.all(
+                    cSubs.map(
+                      async (sub: {
+                        endpoint: string;
+                        p256dh: string;
+                        auth: string;
+                      }) => {
+                        try {
+                          await webpush.sendNotification(
+                            {
+                              endpoint: sub.endpoint,
+                              keys: { p256dh: sub.p256dh, auth: sub.auth },
+                            },
+                            payload
+                          );
+                        } catch (err: unknown) {
+                          const status = (err as { statusCode?: number })
+                            .statusCode;
+                          if (status === 410 || status === 404) {
+                            await sb
+                              .from("push_subscriptions")
+                              .update({ is_active: false })
+                              .eq("endpoint", sub.endpoint);
+                          }
+                          console.error(
+                            `completion push failed for ${c.id}:`,
+                            err
+                          );
+                        }
+                      }
+                    )
+                  );
+                }
+
+                analyticsRows.push({
+                  event_type: "challenge_completed",
+                  event_data: {
+                    challenger_id: c.id,
+                    name: c.name,
+                    duration: c.duration,
+                  },
+                });
+              }
+            )
+          );
+
+          // Insert analytics events
+          if (analyticsRows.length > 0) {
+            const { error: aErr } = await sb
+              .from("analytics_events")
+              .insert(analyticsRows);
+            if (aErr) {
+              console.error("completion analytics insert error:", aErr);
+            }
+          }
+
+          console.log(
+            `Completion check: marked ${completed.length} challenger(s) as completed`
+          );
+        }
+      }
+    }
+
+    /* ── Reminder logic ── */
     const slot = getCurrentSlot();
     if (!slot) {
       return new Response(

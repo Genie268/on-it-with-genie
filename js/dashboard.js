@@ -10,6 +10,11 @@ function renderTransition(){
 /* ── DASHBOARD ── */
 function renderDash(){
   if(!S.user)return;
+  if(isChallengeComplete()){
+    if(typeof _markCompleted==="function") _markCompleted();
+    _activateScreen("d15");
+    return;
+  }
   calcDay();
   const u=S.user,d=S.day;
   const dur=u.duration||15;

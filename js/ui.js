@@ -17,15 +17,18 @@ async function verifyResumeAllowed(){
   try{
     const {data,error}=await sb
       .from("challengers")
-      .select("payment_status")
+      .select("payment_status,status")
       .eq("id",S.user.supabaseId)
       .maybeSingle();
     if(error||!data) return false;
-    const status=data.payment_status;
-    if(status!=="paid"&&status!=="free") return false;
-    /* Reconcile localStorage with the server. */
-    if(S.user.paymentStatus!==status){
-      S.user.paymentStatus=status;
+    const ps=data.payment_status;
+    if(ps!=="paid"&&ps!=="free") return false;
+    if(S.user.paymentStatus!==ps){
+      S.user.paymentStatus=ps;
+      try{saveState();}catch(e){}
+    }
+    if(data.status==="completed"&&S.user.status!=="completed"){
+      S.user.status="completed";
       try{saveState();}catch(e){}
     }
     return true;

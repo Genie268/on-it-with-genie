@@ -920,6 +920,21 @@ function renderAdminOverview(c){
       <span style="color:#d9503a;font-size:14px;flex-shrink:0">→</span>
     </div>`;
   }
+  const ghosted=active.filter(u=>{
+    if(!_isPaid(u))return false;
+    const seenAgo=u.lastSeen?Date.now()-new Date(u.lastSeen).getTime():Infinity;
+    if(seenAgo<3*86400000)return false;
+    if(u.day<3)return false;
+    const last2=u.up.slice(u.day-2,u.day);
+    return last2.length>=2&&!last2[0]&&!last2[1];
+  });
+  if(ghosted.length>0){
+    alerts+=`<div class="admin-alert" onclick="adminTab('flagged')" style="background:rgba(140,140,140,.06);border:1px solid rgba(140,140,140,.18)">
+      <span style="font-size:18px">👻</span>
+      <div style="flex:1"><p style="font-size:13px;font-weight:700;color:#8c8c8c">${ghosted.length} ghosted user${ghosted.length>1?"s":""}</p><p class="muted" style="font-size:11px;margin-top:1px">${ghosted.map(u=>u.name).join(", ")}</p></div>
+      <span style="color:#8c8c8c;font-size:14px;flex-shrink:0">→</span>
+    </div>`;
+  }
   if(toReview>0){
     alerts+=`<div class="admin-alert" onclick="adminTab('inbox')" style="background:rgba(196,154,28,.05);border:1px solid rgba(196,154,28,.15)">
       <span style="font-size:18px">↑</span>
@@ -1312,6 +1327,7 @@ async function renderAdminAnalytics(c){
       {key:"checkout_started",label:"Clicked Pay",icon:"💳"},
       {key:"payment_completed",label:"Paid",icon:"✓"},
       {key:"upload_submitted",label:"Uploaded Proof",icon:"↑"},
+      {key:"challenge_completed",label:"Completed Challenge",icon:"★"},
     ];
     const funnelHtml=funnel.map(f=>{
       const ct=counts[f.key]||0;
@@ -1402,6 +1418,9 @@ async function renderAdminAnalytics(c){
     if(chatChallenger>5&&chatAdmin===0) insights.push({type:"warning",text:"Challengers are messaging you but you haven't replied. Engagement drops when there's no response."});
     if(signIns>3) insights.push({type:"success",text:`${signIns} return sign-ins. People are coming back. That's a strong retention signal.`});
     if(uploads>10) insights.push({type:"success",text:`${uploads} proofs uploaded. Your challengers are showing up.`});
+    const completions=counts["challenge_completed"]||0;
+    if(completions>0) insights.push({type:"success",text:`${completions} challenge${completions>1?"s":""} completed. People are finishing what they started.`});
+    if(payDone>2&&completions===0) insights.push({type:"info",text:"No completions yet. First batch of challengers is still in progress."});
 
     /* Not enough data yet */
     if(events.length<10) insights.push({type:"info",text:"Not enough data yet for strong recommendations. Keep using the app and insights will sharpen as events come in."});
