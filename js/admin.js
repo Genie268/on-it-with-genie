@@ -87,7 +87,9 @@ async function loadAdminData(){
   }catch(e){console.error("Admin load error:",e);liveChallengers=[];adminDataLoaded=true;}
 }
 
-function getAM(){return liveChallengers;}
+function _isPaid(u){return u.paymentStatus==="paid"||u.paymentStatus==="free"||u.paymentStatus==="completed";}
+function getAM(){return liveChallengers.filter(_isPaid);}
+function getAllAM(){return liveChallengers;}
 
 function _isOnline(lastSeen){
   if(!lastSeen)return false;
@@ -362,7 +364,7 @@ function _checkOnlineChanges(){
 async function renderAdminSettings(c){
   if(!c)c=el("admin-content");if(!c)return;
   const codes=await loadAccessCodes();
-  const all=getAM();
+  const all=getAllAM();
 
   const pushStatus=typeof Notification!=="undefined"?Notification.permission:"unsupported";
   const pushLabel=pushStatus==="granted"?'<span style="color:#4dc98a">Enabled</span>':pushStatus==="denied"?'<span style="color:#d9503a">Blocked</span>':pushStatus==="default"?'<span style="color:#c49a1c">Not yet allowed</span>':'<span style="color:#888">Not supported</span>';
@@ -873,6 +875,7 @@ function toggleAdminSection(id){
 
 function renderAdminOverview(c){
   const all=getAM();
+  const unpaidAll=getAllAM().filter(u=>!_isPaid(u));
   const total=all.length;
   const uploadsTotal=all.reduce((a,u)=>a+u.up.filter(Boolean).length,0);
   const toReview=all.reduce((a,u)=>a+Math.max(0,u.up.filter(Boolean).length-(u.rvCount||0)),0);
@@ -957,6 +960,22 @@ function renderAdminOverview(c){
         <div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isComplete?"#c49a1c":isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px"></div></div>
       </div>`;
     }).join("")}
+    ${unpaidAll.length?`
+    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin:18px 0 10px">INCOMPLETE SIGNUPS · ${unpaidAll.length}</p>
+    ${unpaidAll.map(u=>{
+      const timeSince=new Date()-new Date(u.createdAt);
+      const minsAgo=Math.floor(timeSince/60000);
+      const timeLabel=minsAgo<60?minsAgo+"m ago":minsAgo<1440?Math.floor(minsAgo/60)+"h ago":Math.floor(minsAgo/1440)+"d ago";
+      return `<div class="card mb10" style="opacity:.55;cursor:pointer" onclick="adminTab('challengers');setTimeout(()=>openChallenger('${u.id}'),60)">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div class="row" style="gap:10px">
+            <div style="width:34px;height:34px;border-radius:8px;background:#1a1a1a;border:1px dashed #333;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#555">${(u.name||"?").charAt(0).toUpperCase()}</div>
+            <div><p style="font-size:13px;font-weight:700;color:#888">${u.name}</p><p style="font-size:11px;color:#555">Started signup ${timeLabel} · Never paid</p></div>
+          </div>
+          <span style="font-size:10px;font-weight:700;color:#888;background:#1a1a1a;padding:3px 8px;border-radius:4px;border:1px solid #2a2a2a">Unpaid</span>
+        </div>
+      </div>`;
+    }).join("")}`:""}
 
     <div class="admin-section" style="margin-top:16px">
       <div class="admin-section-hd" onclick="toggleAdminSection('ov-calls')">
@@ -1015,11 +1034,9 @@ function renderAdminChallengers(c){
   const all=getAM();
   const total=all.length;
   if(!total){c.innerHTML=`<div style="text-align:center;padding:60px 20px"><p class="muted" style="font-size:14px;margin-bottom:6px">No challengers yet.</p><p class="muted" style="font-size:12px">People will appear here after completing payment.</p></div>`;return;}
-  const paid=all.filter(u=>u.paymentStatus==="paid"||u.paymentStatus==="completed").length;
-  const free=total-paid;
   c.innerHTML = `
     <div class="row mb12" style="justify-content:space-between;align-items:center">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">${total} CHALLENGER${total>1?"S":""} · ${paid} paid${free?` · ${free} free`:""}</p>
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">${total} CHALLENGER${total>1?"S":""}</p>
       <div style="position:relative">
         <input id="ch-search" type="text" placeholder="Search..." oninput="_filterChallengers(this.value)" style="font-size:12px;padding:6px 12px 6px 28px;border-radius:100px;background:#111;border:1px solid #222;color:#ebebeb;width:140px;font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#c49a1c'" onblur="this.style.borderColor='#222'">
         <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;color:#555">⌕</span>
@@ -1460,7 +1477,7 @@ async function deleteChallenger(uid, name){
 }
 
 async function deleteAllFreeAccounts(){
-  const freeUsers=getAM().filter(u=>u.paymentStatus==="free"||u.paymentStatus===null||u.paymentStatus==="pending");
+  const freeUsers=getAllAM().filter(u=>u.paymentStatus==="free"||u.paymentStatus===null||u.paymentStatus==="pending");
   if(!freeUsers.length){alert("No free or unpaid accounts found.");return;}
   const names=freeUsers.map(u=>u.name).join(", ");
   if(!confirm(`Delete ${freeUsers.length} free/unpaid account(s)?\n\n${names}\n\nThis cannot be undone.`))return;
