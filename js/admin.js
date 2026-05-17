@@ -84,7 +84,9 @@ async function loadAdminData(){
   }catch(e){console.error("Admin load error:",e);liveChallengers=[];adminDataLoaded=true;}
 }
 
-function getAM(){return liveChallengers;}
+function _isPaid(u){return u.paymentStatus==="paid"||u.paymentStatus==="free"||u.paymentStatus==="completed";}
+function getAM(){return liveChallengers.filter(_isPaid);}
+function getAllAM(){return liveChallengers;}
 
 function _isOnline(lastSeen){
   if(!lastSeen)return false;
@@ -306,7 +308,7 @@ async function deleteAccessCode(id){
 async function renderAdminSettings(c){
   if(!c)c=el("admin-content");if(!c)return;
   const codes=await loadAccessCodes();
-  const all=getAM();
+  const all=getAllAM();
   c.innerHTML=`
     <div class="admin-section">
       <div class="admin-section-hd" onclick="toggleAdminSection('set-security')">
@@ -794,17 +796,16 @@ function toggleAdminSection(id){
 
 function renderAdminOverview(c){
   const all=getAM();
-  const paidAll=all.filter(u=>u.paymentStatus==="paid"||u.paymentStatus==="free"||u.paymentStatus==="completed");
-  const unpaidAll=all.filter(u=>u.paymentStatus!=="paid"&&u.paymentStatus!=="free"&&u.paymentStatus!=="completed");
-  const total=paidAll.length;
-  const uploadsTotal=paidAll.reduce((a,u)=>a+u.up.filter(Boolean).length,0);
-  const toReview=paidAll.reduce((a,u)=>a+Math.max(0,u.up.filter(Boolean).length-(u.rvCount||0)),0);
-  const atRiskUsers=paidAll.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
+  const unpaidAll=getAllAM().filter(u=>!_isPaid(u));
+  const total=all.length;
+  const uploadsTotal=all.reduce((a,u)=>a+u.up.filter(Boolean).length,0);
+  const toReview=all.reduce((a,u)=>a+Math.max(0,u.up.filter(Boolean).length-(u.rvCount||0)),0);
+  const atRiskUsers=all.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
   const totalUnread=getTotalUnreadCount();
 
   /* Action alerts — only show what needs attention right now */
   let alerts="";
-  const onlineNow=paidAll.filter(u=>_isOnline(u.lastSeen));
+  const onlineNow=all.filter(u=>_isOnline(u.lastSeen));
   const newSignups=_getNewSignupCount();
   if(newSignups>0){
     const names=_adminNewSignups.slice(-3).map(s=>s.name).join(", ");
@@ -840,7 +841,7 @@ function renderAdminOverview(c){
   }
 
   /* Stats grid */
-  const avgProgress=total>0?Math.round(paidAll.reduce((a,u)=>a+Math.round(u.up.filter(Boolean).length/(u.dur||15)*100),0)/total):0;
+  const avgProgress=total>0?Math.round(all.reduce((a,u)=>a+Math.round(u.up.filter(Boolean).length/(u.dur||15)*100),0)/total):0;
 
   c.innerHTML=`
     ${alerts}
@@ -854,7 +855,7 @@ function renderAdminOverview(c){
 
     <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">CHALLENGERS</p>
     ${total===0?`<div class="card" style="text-align:center;padding:32px 16px"><p class="muted" style="font-size:14px;margin-bottom:6px">No challengers yet.</p><p class="muted" style="font-size:12px">When someone completes payment, they'll appear here.</p></div>`:
-    paidAll.map(u=>{
+    all.map(u=>{
       const up=u.up.filter(Boolean).length,missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
       const pct=Math.round((up/(u.dur||15))*100);
       const isAtRisk=missed>=3;
@@ -897,7 +898,7 @@ function renderAdminOverview(c){
         <span id="ov-calls-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
       </div>
       <div id="ov-calls" style="display:none" class="admin-section-bd">
-        ${paidAll.map(u=>{
+        ${all.map(u=>{
           const callDays=CALL_DAYS[u.dur||15]||[];
           const upcoming=callDays.filter(cd=>cd>=u.day);
           if(!upcoming.length)return "";
@@ -948,29 +949,25 @@ function renderAdminChallengers(c){
   const all=getAM();
   const total=all.length;
   if(!total){c.innerHTML=`<div style="text-align:center;padding:60px 20px"><p class="muted" style="font-size:14px;margin-bottom:6px">No challengers yet.</p><p class="muted" style="font-size:12px">People will appear here after completing payment.</p></div>`;return;}
-  const paidCh=all.filter(u=>u.paymentStatus==="paid"||u.paymentStatus==="free"||u.paymentStatus==="completed");
-  const unpaidCh=all.filter(u=>u.paymentStatus!=="paid"&&u.paymentStatus!=="free"&&u.paymentStatus!=="completed");
-  const sorted=[...paidCh,...unpaidCh];
   c.innerHTML = `
     <div class="row mb12" style="justify-content:space-between;align-items:center">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">${paidCh.length} PAID${unpaidCh.length?` · ${unpaidCh.length} unpaid`:""}</p>
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">${total} CHALLENGER${total>1?"S":""}</p>
       <div style="position:relative">
         <input id="ch-search" type="text" placeholder="Search..." oninput="_filterChallengers(this.value)" style="font-size:12px;padding:6px 12px 6px 28px;border-radius:100px;background:#111;border:1px solid #222;color:#ebebeb;width:140px;font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#c49a1c'" onblur="this.style.borderColor='#222'">
         <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;color:#555">⌕</span>
       </div>
     </div>
     <div id="ch-list">
-    ${sorted.map(u=>{
+    ${all.map(u=>{
       const unreadCt=getUnreadCountForChallenger(u.id);
       const up=u.up.filter(Boolean).length;
       const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
       const pct=Math.round((up/(u.dur||15))*100);
       const isAtRisk=missed>=3;
-      const isUnpaid=u.paymentStatus!=="paid"&&u.paymentStatus!=="free"&&u.paymentStatus!=="completed";
-      const statusLbl=isUnpaid?"Unpaid":isAtRisk?"At Risk":u.day>=u.dur?"Complete":"Active";
-      const statusColor=isUnpaid?"#888":isAtRisk?"#d9503a":u.day>=u.dur?"#4dc98a":"#c49a1c";
+      const statusLbl=isAtRisk?"At Risk":u.day>=u.dur?"Complete":"Active";
+      const statusColor=isAtRisk?"#d9503a":u.day>=u.dur?"#4dc98a":"#c49a1c";
       return `
-      <div class="card mb10 ch-item" data-name="${(u.name||'').toLowerCase()}" id="ch-card-${u.id}" style="${isUnpaid?"opacity:.5":""}">
+      <div class="card mb10 ch-item" data-name="${(u.name||'').toLowerCase()}" id="ch-card-${u.id}">
         <div class="row" style="justify-content:space-between;cursor:pointer" onclick="toggleCh('${u.id}')">
           <div class="row" style="gap:10px">
             ${_avatarWithStatus(u,38,"9px")}
@@ -1394,7 +1391,7 @@ async function deleteChallenger(uid, name){
 }
 
 async function deleteAllFreeAccounts(){
-  const freeUsers=getAM().filter(u=>u.paymentStatus==="free"||u.paymentStatus===null||u.paymentStatus==="pending");
+  const freeUsers=getAllAM().filter(u=>u.paymentStatus==="free"||u.paymentStatus===null||u.paymentStatus==="pending");
   if(!freeUsers.length){alert("No free or unpaid accounts found.");return;}
   const names=freeUsers.map(u=>u.name).join(", ");
   if(!confirm(`Delete ${freeUsers.length} free/unpaid account(s)?\n\n${names}\n\nThis cannot be undone.`))return;

@@ -526,14 +526,22 @@ function startAdminPoll(){
         .on("postgres_changes",{event:"INSERT",schema:"public",table:"uploads"},()=>{
           _adminSoftRefresh();
         })
-        .on("postgres_changes",{event:"INSERT",schema:"public",table:"challengers"},payload=>{
+        .on("postgres_changes",{event:"INSERT",schema:"public",table:"challengers"},()=>{
+          _adminSoftRefresh();
+        })
+        .on("postgres_changes",{event:"UPDATE",schema:"public",table:"challengers"},payload=>{
           const c=payload.new;
-          if(typeof _adminNewSignups!=="undefined"){
-            _adminNewSignups.push({id:c.id,name:c.name||"New challenger",time:Date.now()});
-            if(typeof _adminLastKnownIds!=="undefined") _adminLastKnownIds.add(c.id);
-          }
-          if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
-            _showNotification("New challenger signed up!",{body:(c.name||"Someone")+" just joined"});
+          const old=payload.old;
+          const nowPaid=c.payment_status==="paid"||c.payment_status==="free";
+          const wasPaid=old.payment_status==="paid"||old.payment_status==="free";
+          if(nowPaid&&!wasPaid){
+            if(typeof _adminNewSignups!=="undefined"){
+              _adminNewSignups.push({id:c.id,name:c.name||"New challenger",time:Date.now()});
+              if(typeof _adminLastKnownIds!=="undefined") _adminLastKnownIds.add(c.id);
+            }
+            if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){
+              _showNotification("New challenger joined!",{body:(c.name||"Someone")+" just paid and started their challenge"});
+            }
           }
           _adminSoftRefresh();
         })
