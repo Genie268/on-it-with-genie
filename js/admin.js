@@ -87,8 +87,10 @@ async function loadAdminData(){
   }catch(e){console.error("Admin load error:",e);liveChallengers=[];adminDataLoaded=true;}
 }
 
+function _isComplete(u){return u.day>=u.dur||u.status==="completed";}
 function _isPaid(u){return u.paymentStatus==="paid"||u.paymentStatus==="free"||u.paymentStatus==="completed";}
 function getAM(){return liveChallengers.filter(_isPaid);}
+function getActiveAM(){return liveChallengers.filter(u=>_isPaid(u)&&!_isComplete(u));}
 function getAllAM(){return liveChallengers;}
 
 function _isOnline(lastSeen){
@@ -455,7 +457,7 @@ async function renderAdminSettings(c){
 }
 
 function getPendingInbox(){
-  return getAM().flatMap(u=>{
+  return getActiveAM().flatMap(u=>{
     const items=[];
     for(let i=0;i<u.day;i++){
       if(u.up[i]&&!u.rv[i])items.push({u,day:i+1,note:u.notes[i],i,
@@ -474,7 +476,7 @@ const _dot=(show)=>show?`<span style="display:inline-block;width:6px;height:6px;
 function adminTab(tab){
   adminCurrentTab = tab;
   const reviewCount=getPendingInbox().length;
-  const flaggedCount=getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
+  const flaggedCount=getActiveAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
   const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
   const newSignups=_getNewSignupCount();
   ["overview","messages","challengers","flagged","inbox","analytics","settings"].forEach(t=>{
@@ -508,6 +510,7 @@ function renderAdminMessages(c){
     if(seen.has(m.challenger_id))return;
     seen.add(m.challenger_id);
     const u=challengers.find(x=>x.id===m.challenger_id);
+    const done=u?_isComplete(u):false;
     convos.push({
       id:m.challenger_id,
       name:u?u.name:"Unknown",
@@ -515,19 +518,22 @@ function renderAdminMessages(c){
       photo:u?u.photo:null,
       lastSeen:u?u.lastSeen:null,
       lastMsg:m,
-      unread:getUnreadCountForChallenger(m.challenger_id)
+      unread:getUnreadCountForChallenger(m.challenger_id),
+      done
     });
   });
   /* Add challengers with no messages yet */
   challengers.forEach(u=>{
     if(!seen.has(u.id)){
-      convos.push({id:u.id,name:u.name,ini:u.ini,photo:u.photo,lastSeen:u.lastSeen,lastMsg:null,unread:0});
+      convos.push({id:u.id,name:u.name,ini:u.ini,photo:u.photo,lastSeen:u.lastSeen,lastMsg:null,unread:0,done:_isComplete(u)});
     }
   });
-  /* Sort: unread first, then by last message time */
+  /* Sort: unread first, then active before completed, then by last message time */
   convos.sort((a,b)=>{
     if(a.unread&&!b.unread)return -1;
     if(!a.unread&&b.unread)return 1;
+    if(!a.done&&b.done)return -1;
+    if(a.done&&!b.done)return 1;
     if(a.lastMsg&&b.lastMsg) return new Date(b.lastMsg.created_at)-new Date(a.lastMsg.created_at);
     if(a.lastMsg)return -1;
     return 1;
@@ -546,11 +552,12 @@ function renderAdminMessages(c){
     const preview=cv.lastMsg?(cv.lastMsg.voice_url&&!cv.lastMsg.message?"🎙 Voice note":(cv.lastMsg.sender==="genie"?"You: ":"")+(cv.lastMsg.message||"").slice(0,40)):"No messages yet";
     const ta=cv.lastMsg?timeAgo(cv.lastMsg.created_at):"";
     const avatar=_avatarWithStatus(cv,36,"50%");
-    return `<div onclick="_msgTabLastHash='';_msgActiveChallengerId='${cv.id}';renderAdminMessages(el('admin-content'))" style="padding:10px 14px;cursor:pointer;display:flex;gap:10px;align-items:center;border-left:3px solid ${isActive?"#c49a1c":"transparent"};background:${isActive?"rgba(196,154,28,.06)":cv.unread?"rgba(217,80,58,.04)":"transparent"};transition:background .15s" onmouseenter="if(!${isActive})this.style.background='rgba(255,255,255,.03)'" onmouseleave="if(!${isActive})this.style.background='${cv.unread?"rgba(217,80,58,.04)":"transparent"}'">
+    const doneTag=cv.done&&!cv.unread?`<span style="font-size:9px;color:#c49a1c;font-weight:700;margin-left:4px">Done</span>`:"";
+    return `<div onclick="_msgTabLastHash='';_msgActiveChallengerId='${cv.id}';renderAdminMessages(el('admin-content'))" style="padding:10px 14px;cursor:pointer;display:flex;gap:10px;align-items:center;border-left:3px solid ${isActive?"#c49a1c":"transparent"};background:${isActive?"rgba(196,154,28,.06)":cv.unread?"rgba(217,80,58,.04)":"transparent"};${cv.done&&!cv.unread?"opacity:.6;":""}transition:background .15s" onmouseenter="if(!${isActive})this.style.background='rgba(255,255,255,.03)'" onmouseleave="if(!${isActive})this.style.background='${cv.unread?"rgba(217,80,58,.04)":"transparent"}'">
       ${avatar}
       <div style="flex:1;min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <p style="font-size:13px;font-weight:${cv.unread?"800":"600"};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cv.name}</p>
+          <p style="font-size:13px;font-weight:${cv.unread?"800":"600"};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cv.name}${doneTag}</p>
           <span class="muted" data-live-ts="${cv.lastMsg?cv.lastMsg.created_at:""}" style="font-size:10px;flex-shrink:0">${ta}</span>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
@@ -1036,49 +1043,53 @@ function renderAdminOverview(c){
 
 function renderAdminChallengers(c){
   const all=getAM();
-  const total=all.length;
-  if(!total){c.innerHTML=`<div style="text-align:center;padding:60px 20px"><p class="muted" style="font-size:14px;margin-bottom:6px">No challengers yet.</p><p class="muted" style="font-size:12px">People will appear here after completing payment.</p></div>`;return;}
+  const active=all.filter(u=>!_isComplete(u));
+  const completed=all.filter(u=>_isComplete(u));
+  if(!all.length){c.innerHTML=`<div style="text-align:center;padding:60px 20px"><p class="muted" style="font-size:14px;margin-bottom:6px">No challengers yet.</p><p class="muted" style="font-size:12px">People will appear here after completing payment.</p></div>`;return;}
+  const _renderCard=(u,dim)=>{
+    const unreadCt=getUnreadCountForChallenger(u.id);
+    const up=u.up.filter(Boolean).length;
+    const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
+    const pct=Math.round((up/(u.dur||15))*100);
+    const isDone=_isComplete(u);
+    const isAtRisk=!isDone&&missed>=3;
+    const statusLbl=isDone?"Done ★":isAtRisk?"At Risk":"Active";
+    const statusColor=isDone?"#c49a1c":isAtRisk?"#d9503a":"#4dc98a";
+    return `
+    <div class="card mb10 ch-item" data-name="${(u.name||'').toLowerCase()}" id="ch-card-${u.id}"${dim?' style="opacity:.6"':""}>
+      <div class="row" style="justify-content:space-between;cursor:pointer" onclick="toggleCh('${u.id}')">
+        <div class="row" style="gap:10px">
+          ${_avatarWithStatus(u,38,"9px")}
+          <div style="min-width:0">
+            <p style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}${_bdg(unreadCt)}</p>
+            <p class="muted" style="font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.goal||"No goal set"}</p>
+            <p style="font-size:10px;color:#555;margin-top:2px">${_formatLastSeen(u.lastSeen)}</p>
+          </div>
+        </div>
+        <div class="row" style="gap:10px;flex-shrink:0">
+          <div style="text-align:right">
+            <span style="font-size:10px;font-weight:700;color:${statusColor}">${statusLbl}</span>
+            <p class="muted" style="font-size:10px;margin-top:2px">${isDone?`${u.dur} days · ${up} uploads`:`Day ${u.day}/${u.dur}`}</p>
+          </div>
+          <span id="chev-${u.id}" style="font-size:18px;color:#5a5a5a;transition:transform .2s">›</span>
+        </div>
+      </div>
+      <div style="margin-top:10px"><div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isDone?"#c49a1c":isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px;transition:width .3s"></div></div><p class="muted" style="font-size:9px;margin-top:4px;text-align:right">${up}/${u.dur} uploaded · ${pct}%</p></div>
+      <div id="ch-det-${u.id}" style="display:none;border-top:1px solid #1b1b1b;padding-top:14px;margin-top:10px">${renderChallengerDetail(u)}</div>
+    </div>`;
+  };
   c.innerHTML = `
     <div class="row mb12" style="justify-content:space-between;align-items:center">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">${total} CHALLENGER${total>1?"S":""}</p>
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">${active.length} ACTIVE${completed.length?` · ${completed.length} completed`:""}</p>
       <div style="position:relative">
         <input id="ch-search" type="text" placeholder="Search..." oninput="_filterChallengers(this.value)" style="font-size:12px;padding:6px 12px 6px 28px;border-radius:100px;background:#111;border:1px solid #222;color:#ebebeb;width:140px;font-family:inherit;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#c49a1c'" onblur="this.style.borderColor='#222'">
         <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:11px;color:#555">⌕</span>
       </div>
     </div>
     <div id="ch-list">
-    ${all.map(u=>{
-      const unreadCt=getUnreadCountForChallenger(u.id);
-      const up=u.up.filter(Boolean).length;
-      const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
-      const pct=Math.round((up/(u.dur||15))*100);
-      const isComplete=u.status==="completed";
-      const isAtRisk=!isComplete&&missed>=3;
-      const statusLbl=isComplete?"Completed ★":isAtRisk?"At Risk":"Active";
-      const statusColor=isComplete?"#c49a1c":isAtRisk?"#d9503a":"#4dc98a";
-      return `
-      <div class="card mb10 ch-item" data-name="${(u.name||'').toLowerCase()}" id="ch-card-${u.id}"${isComplete?' style="opacity:.75"':""}>
-        <div class="row" style="justify-content:space-between;cursor:pointer" onclick="toggleCh('${u.id}')">
-          <div class="row" style="gap:10px">
-            ${_avatarWithStatus(u,38,"9px")}
-            <div style="min-width:0">
-              <p style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.name}${_bdg(unreadCt)}</p>
-              <p class="muted" style="font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.goal||"No goal set"}</p>
-              <p style="font-size:10px;color:#555;margin-top:2px">${_formatLastSeen(u.lastSeen)}</p>
-            </div>
-          </div>
-          <div class="row" style="gap:10px;flex-shrink:0">
-            <div style="text-align:right">
-              <span style="font-size:10px;font-weight:700;color:${statusColor}">${statusLbl}</span>
-              <p class="muted" style="font-size:10px;margin-top:2px">${isComplete?`${u.dur} days · ${up} uploads`:`Day ${u.day}/${u.dur}`}</p>
-            </div>
-            <span id="chev-${u.id}" style="font-size:18px;color:#5a5a5a;transition:transform .2s">›</span>
-          </div>
-        </div>
-        <div style="margin-top:10px"><div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isComplete?"#c49a1c":isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px;transition:width .3s"></div></div><p class="muted" style="font-size:9px;margin-top:4px;text-align:right">${up}/${u.dur} uploaded · ${pct}%</p></div>
-        <div id="ch-det-${u.id}" style="display:none;border-top:1px solid #1b1b1b;padding-top:14px;margin-top:10px">${renderChallengerDetail(u)}</div>
-      </div>
-    `;}).join("")}
+    ${active.map(u=>_renderCard(u,false)).join("")}
+    ${completed.length?`<p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin:18px 0 10px">COMPLETED</p>
+    ${completed.map(u=>_renderCard(u,true)).join("")}`:""}
     </div>
   `;
 }
@@ -1181,7 +1192,7 @@ function _getMissStreak(u){
 }
 
 function renderAdminFlagged(c){
-  const all=getAM();
+  const all=getActiveAM();
   const atRisk=all.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
   if(!atRisk.length){
     c.innerHTML=`<div style="text-align:center;padding:60px 20px">

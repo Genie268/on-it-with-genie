@@ -142,6 +142,15 @@ function _hideDashVerifying(){
 }
 
 
+function _startNewChallenge(){
+  const u=S.user||{};
+  S.uploads=[];S.day=1;S.lilDone=false;S.plans={};
+  S.ans={name:u.name||"",email:u.email||"",phone:u.phone||""};
+  S.user=null;
+  saveState();
+  _activateScreen("land");
+}
+
 function _markCompleted(){
   if(!S.user)return;
   S.user.status="completed";
@@ -156,9 +165,7 @@ function _smartResume(){
   const ps=S.user.paymentStatus;
   if((ps==="paid"||ps==="free")&&isChallengeComplete()){
     _markCompleted();
-    localStorage.removeItem("oiwg_state");
-    S.user=null;S.uploads=[];S.ans={};
-    _activateScreen("land");
+    _activateScreen("d15");
     return;
   }
   if(ps==="paid"||ps==="free"){
