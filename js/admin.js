@@ -875,18 +875,18 @@ function toggleAdminSection(id){
 
 function renderAdminOverview(c){
   const all=getAM();
-  const unpaidAll=getAllAM().filter(u=>!_isPaid(u));
-  const total=all.length;
-  const uploadsTotal=all.reduce((a,u)=>a+u.up.filter(Boolean).length,0);
-  const toReview=all.reduce((a,u)=>a+Math.max(0,u.up.filter(Boolean).length-(u.rvCount||0)),0);
-  const active=all.filter(u=>u.status!=="completed");
-  const completed=all.filter(u=>u.status==="completed");
+  const _isComplete=u=>u.day>=u.dur||u.status==="completed";
+  const active=all.filter(u=>!_isComplete(u));
+  const completed=all.filter(u=>_isComplete(u));
+  const total=active.length;
+  const uploadsTotal=active.reduce((a,u)=>a+u.up.filter(Boolean).length,0);
+  const toReview=active.reduce((a,u)=>a+Math.max(0,u.up.filter(Boolean).length-(u.rvCount||0)),0);
   const atRiskUsers=active.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
   const totalUnread=getTotalUnreadCount();
 
   /* Action alerts — only show what needs attention right now */
   let alerts="";
-  const onlineNow=all.filter(u=>_isOnline(u.lastSeen));
+  const onlineNow=active.filter(u=>_isOnline(u.lastSeen));
   const newSignups=_getNewSignupCount();
   if(newSignups>0){
     const names=_adminNewSignups.slice(-3).map(s=>s.name).join(", ");
@@ -922,8 +922,8 @@ function renderAdminOverview(c){
   }
 
   /* Stats grid */
-  const avgProgress=total>0?Math.round(all.reduce((a,u)=>a+Math.round(u.up.filter(Boolean).length/(u.dur||15)*100),0)/total):0;
-  const plannedToday=all.filter(u=>(u.plans||[]).some(p=>p.day_number===u.day&&!p.skipped&&p.main_step)).length;
+  const avgProgress=total>0?Math.round(active.reduce((a,u)=>a+Math.round(u.up.filter(Boolean).length/(u.dur||15)*100),0)/total):0;
+  const plannedToday=active.filter(u=>(u.plans||[]).some(p=>p.day_number===u.day&&!p.skipped&&p.main_step)).length;
 
   c.innerHTML=`
     ${alerts}
@@ -936,46 +936,50 @@ function renderAdminOverview(c){
       <div class="admin-stat"><div class="admin-stat-val" style="color:${atRiskUsers.length?"#d9503a":"#5a5a5a"}">${atRiskUsers.length}</div><div class="admin-stat-lbl">At Risk</div></div>
     </div>
 
-    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">CHALLENGERS</p>
-    ${total===0?`<div class="card" style="text-align:center;padding:32px 16px"><p class="muted" style="font-size:14px;margin-bottom:6px">No challengers yet.</p><p class="muted" style="font-size:12px">When someone completes payment, they'll appear here.</p></div>`:
-    all.map(u=>{
+    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">ACTIVE CHALLENGERS</p>
+    ${total===0?`<div class="card" style="text-align:center;padding:32px 16px"><p class="muted" style="font-size:14px;margin-bottom:6px">No active challengers.</p><p class="muted" style="font-size:12px">When someone completes payment, they'll appear here.</p></div>`:
+    active.map(u=>{
       const up=u.up.filter(Boolean).length,missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
       const pct=Math.round((up/(u.dur||15))*100);
-      const isComplete=u.status==="completed";
-      const isAtRisk=!isComplete&&missed>=3;
+      const isAtRisk=missed>=3;
       const pending=up-(u.rvCount||0);
       const unreadCt=getUnreadCountForChallenger(u.id);
-      const statusBadge=isComplete?`<span style="font-size:10px;font-weight:700;color:#c49a1c">Completed ★</span>`:isAtRisk?`<span style="font-size:10px;font-weight:700;color:#d9503a">At Risk</span>`:`<span style="font-size:10px;font-weight:700;color:#4dc98a">Active</span>`;
-      return `<div class="card mb10" style="cursor:pointer${isComplete?";opacity:.75":""}" onclick="adminTab('challengers');setTimeout(()=>openChallenger('${u.id}'),60)">
+      return `<div class="card mb10" style="cursor:pointer" onclick="adminTab('challengers');setTimeout(()=>openChallenger('${u.id}'),60)">
         <div class="row mb8" style="justify-content:space-between">
           <div class="row" style="gap:10px">
             ${_avatarWithStatus(u,34,"8px")}
-            <div><p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p><p class="muted" style="font-size:11px">${isComplete?`${u.dur} days · ${up} uploads`:`Day ${u.day}/${u.dur||15} · ${up} uploads`}</p></div>
+            <div><p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads</p></div>
           </div>
           <div style="text-align:right">
-            ${statusBadge}
+            ${isAtRisk?`<span style="font-size:10px;font-weight:700;color:#d9503a">At Risk</span>`:`<span style="font-size:10px;font-weight:700;color:#4dc98a">Active</span>`}
             ${pending>0?`<br><span style="font-size:9px;color:#c49a1c;font-weight:600">${pending} to review</span>`:""}
           </div>
         </div>
-        <div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isComplete?"#c49a1c":isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px"></div></div>
+        <div style="height:3px;background:#1b1b1b;border-radius:2px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${isAtRisk?"#d9503a":"#c49a1c"};border-radius:2px"></div></div>
       </div>`;
     }).join("")}
-    ${unpaidAll.length?`
-    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin:18px 0 10px">INCOMPLETE SIGNUPS · ${unpaidAll.length}</p>
-    ${unpaidAll.map(u=>{
-      const timeSince=new Date()-new Date(u.createdAt);
-      const minsAgo=Math.floor(timeSince/60000);
-      const timeLabel=minsAgo<60?minsAgo+"m ago":minsAgo<1440?Math.floor(minsAgo/60)+"h ago":Math.floor(minsAgo/1440)+"d ago";
-      return `<div class="card mb10" style="opacity:.55;cursor:pointer" onclick="adminTab('challengers');setTimeout(()=>openChallenger('${u.id}'),60)">
-        <div class="row" style="justify-content:space-between;align-items:center">
-          <div class="row" style="gap:10px">
-            <div style="width:34px;height:34px;border-radius:8px;background:#1a1a1a;border:1px dashed #333;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#555">${(u.name||"?").charAt(0).toUpperCase()}</div>
-            <div><p style="font-size:13px;font-weight:700;color:#888">${u.name}</p><p style="font-size:11px;color:#555">Started signup ${timeLabel} · Never paid</p></div>
-          </div>
-          <span style="font-size:10px;font-weight:700;color:#888;background:#1a1a1a;padding:3px 8px;border-radius:4px;border:1px solid #2a2a2a">Unpaid</span>
-        </div>
-      </div>`;
-    }).join("")}`:""}
+    ${completed.length?`
+    <div class="admin-section" style="margin-top:16px">
+      <div class="admin-section-hd" onclick="toggleAdminSection('ov-completed')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">COMPLETED · ${completed.length}</span>
+        <span id="ov-completed-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="ov-completed" style="display:none" class="admin-section-bd">
+        ${completed.map(u=>{
+          const up=u.up.filter(Boolean).length;
+          const pct=Math.round((up/(u.dur||15))*100);
+          return `<div class="card mb10" style="cursor:pointer;opacity:.6" onclick="adminTab('challengers');setTimeout(()=>openChallenger('${u.id}'),60)">
+            <div class="row" style="justify-content:space-between;align-items:center">
+              <div class="row" style="gap:10px">
+                <div style="width:34px;height:34px;border-radius:8px;background:rgba(196,154,28,.1);border:1.5px solid rgba(196,154,28,.25);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#c49a1c">${u.ini}</div>
+                <div><p style="font-size:13px;font-weight:700">${u.name}</p><p class="muted" style="font-size:11px">${u.dur} days · ${up} uploads · ${pct}% hit rate</p></div>
+              </div>
+              <span style="font-size:10px;font-weight:700;color:#c49a1c">Done ★</span>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`:""}
 
     <div class="admin-section" style="margin-top:16px">
       <div class="admin-section-hd" onclick="toggleAdminSection('ov-calls')">
@@ -983,7 +987,7 @@ function renderAdminOverview(c){
         <span id="ov-calls-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
       </div>
       <div id="ov-calls" style="display:none" class="admin-section-bd">
-        ${all.map(u=>{
+        ${active.map(u=>{
           const callDays=CALL_DAYS[u.dur||15]||[];
           const upcoming=callDays.filter(cd=>cd>=u.day);
           if(!upcoming.length)return "";
@@ -1294,7 +1298,7 @@ async function renderAdminAnalytics(c){
       {key:"screen_view",label:"Visits",icon:"👁"},
       {key:"onboarding_start",label:"Started Onboarding",icon:"✦"},
       {key:"duration_selected",label:"Picked Duration",icon:"📅"},
-      {key:"payment_initiated",label:"Reached Payment",icon:"💳"},
+      {key:"checkout_started",label:"Clicked Pay",icon:"💳"},
       {key:"payment_completed",label:"Paid",icon:"✓"},
       {key:"upload_submitted",label:"Uploaded Proof",icon:"↑"},
     ];
@@ -1363,7 +1367,7 @@ async function renderAdminAnalytics(c){
     const visits=counts["screen_view"]||0;
     const obStart=counts["onboarding_start"]||0;
     const durPick=counts["duration_selected"]||0;
-    const payInit=counts["payment_initiated"]||0;
+    const payInit=(counts["checkout_started"]||0)+(counts["payment_initiated"]||0);
     const payDone=counts["payment_completed"]||0;
     const uploads=counts["upload_submitted"]||0;
     const chatChallenger=counts["chat_msg_sent"]||0;
@@ -1375,8 +1379,8 @@ async function renderAdminAnalytics(c){
     /* Funnel drop-off insights */
     if(visits>5&&obStart===0) insights.push({type:"warning",text:"People are visiting but nobody starts onboarding. Your landing page might not be compelling enough. Try a stronger CTA or social proof."});
     if(obStart>3&&durPick===0) insights.push({type:"warning",text:"People start onboarding but never pick a duration. The onboarding questions might be causing friction. Consider simplifying."});
-    if(durPick>2&&payInit===0) insights.push({type:"warning",text:"People pick a duration but never reach payment. The commitment screen or pricing might be scaring them off."});
-    if(payInit>2&&payDone===0) insights.push({type:"error",text:"People reach payment but nobody completes it. Check if Paystack is working, or consider the price point."});
+    if(durPick>2&&payInit===0) insights.push({type:"warning",text:"People pick a duration but never click Pay. The commitment screen or pricing might be scaring them off."});
+    if(payInit>2&&payDone===0) insights.push({type:"error",text:"People click Pay but nobody completes payment. Check if Paystack is working, or consider the price point."});
     if(payDone>0&&uploads===0) insights.push({type:"warning",text:"People paid but haven't uploaded any proof yet. Consider a welcome message nudging them to upload Day 1."});
     if(visits>0&&obStart>0) insights.push({type:"success",text:`${Math.round(obStart/visits*100)}% of visitors start onboarding. ${obStart>visits*0.3?"That's solid.":"Try improving the landing page hook."}`});
     if(obStart>0&&payDone>0) insights.push({type:"success",text:`${Math.round(payDone/obStart*100)}% onboarding-to-paid conversion rate. ${payDone>obStart*0.5?"Excellent.":"There's room to improve."}`});

@@ -170,7 +170,7 @@ function payError(text){
 async function initiatePayment(){
   const dur=S.user?.duration||15;
   const email=el("pay-email")?.value?.trim();
-  trackEvent("payment_initiated",{duration:dur,has_discount:S._accessDiscount>0});
+  trackEvent("checkout_started",{duration:dur,has_discount:S._accessDiscount>0});
 
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
     payError("Enter a valid email to continue");
