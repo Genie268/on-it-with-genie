@@ -49,10 +49,6 @@ async function syncUploadToSupabase(dayNum,upload){
   try{await sb.from("uploads").upsert({challenger_id:S.user.supabaseId,day_number:dayNum,note:upload.note||null,link_url:upload.link||null,file_name:upload.fileName||null,file_url:upload.fileUrl||null,voice_url:upload.voiceUrl||null,proof_type:upload.proofType||null,behavior_answer:upload.behavior||null},{onConflict:"challenger_id,day_number"});}catch(e){}
 }
 
-async function syncEnergyToSupabase(dayNum,entry){
-  if(!sb||!S.user?.supabaseId)return;
-  try{await sb.from("energy_logs").upsert({challenger_id:S.user.supabaseId,day_number:dayNum,log_type:entry.type,value:String(entry.value)},{onConflict:"challenger_id,day_number"});}catch(e){}
-}
 
 async function syncPlanToSupabase(dayNum,plan){
   if(!sb||!S.user?.supabaseId||!plan)return;

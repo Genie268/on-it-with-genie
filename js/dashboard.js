@@ -148,17 +148,6 @@ function renderGrid(){
   }
 }
 
-function renderUnlock(){
-  const up=S.uploads.filter(v=>v!==null).length,ul=up>=12;
-  el("ul-bar").style.width=Math.min(100,Math.round((up/12)*100))+"%";
-  el("ul-bar").style.background=ul?"#4dc98a":"#c49a1c";
-  el("ul-ct").textContent=`${up}/12`;
-  if(ul){
-    el("ul-msg").innerHTML=`<span class="ok" style="font-weight:700">Unlocked.</span> Multi-goal mode will be available in The Gauntlet. You've earned the right to hold two goals at once.`;
-  } else {
-    el("ul-msg").textContent=`${Math.max(0,12-up)} more upload${12-up===1?"":"s"} to unlock a second goal.`;
-  }
-}
 
 function renderRecCard(){
   const missed=S.uploads.slice(0,S.day-1).filter(v=>v===null).length;
@@ -246,119 +235,11 @@ function _buildPlanStats(){
 }
 
 
-/* ── ENERGY & MOOD CHECK (Gamification) ── */
-const ENERGY_PROMPTS = [
-  {type:"energy",q:"How's your energy right now?",sub:"Be honest. This is just for you."},
-  {type:"mood",q:"One word for today:",sub:"Whatever comes to mind first."},
-  {type:"reflection",q:"What almost stopped you today?",sub:"Name it. That's how you beat it next time."}
-];
-const MOOD_OPTIONS=["Focused","Tired","Anxious","Motivated","Meh","Fired up","Struggling","Calm"];
-
-function shouldShowEnergyCheck(){
-  if(!S.user||!S.uploads)return false;
-  const d=S.day;
-  /* Show on ~40% of days, seeded by day number for consistency */
-  const seed=(d*7+13)%10;
-  if(seed>3)return false;
-  /* Don't show if already filled for today */
-  if(S.user.energyLog&&S.user.energyLog[d])return false;
-  /* Don't show on day 1 */
-  if(d===1)return false;
-  return true;
-}
-
-function renderEnergyCheck(){
-  const area=el("energy-check-area");
-  if(!shouldShowEnergyCheck()){area.innerHTML="";return;}
-  const d=S.day;
-  const promptIdx=(d*3+5)%ENERGY_PROMPTS.length;
-  const prompt=ENERGY_PROMPTS[promptIdx];
-  
-  if(prompt.type==="energy"){
-    area.innerHTML=`<div class="energy-card">
-      <span class="lbl lbl-a" style="text-align:center;display:block">DAILY CHECK-IN</span>
-      <p style="font-size:14px;font-weight:700;text-align:center;margin-bottom:2px">${prompt.q}</p>
-      <p class="muted" style="font-size:11px;text-align:center">${prompt.sub}</p>
-      <div class="energy-flames" id="energy-flames">
-        ${[1,2,3,4,5].map(n=>`<div class="energy-flame" onclick="setEnergy(${n})" id="ef-${n}">🔥</div>`).join("")}
-      </div>
-      <p class="muted" style="font-size:10px;text-align:center"><span style="color:#5a5a5a">1 = barely alive</span> · <span style="color:#c49a1c">5 = unstoppable</span></p>
-      <button class="bg" style="width:100%;margin-top:6px;font-size:11px" onclick="skipEnergyCheck()">Skip for today</button>
-    </div>`;
-  } else if(prompt.type==="mood"){
-    area.innerHTML=`<div class="energy-card">
-      <span class="lbl lbl-a" style="text-align:center;display:block">DAILY CHECK-IN</span>
-      <p style="font-size:14px;font-weight:700;text-align:center;margin-bottom:2px">${prompt.q}</p>
-      <p class="muted" style="font-size:11px;text-align:center">${prompt.sub}</p>
-      <div class="mood-chips" id="mood-chips">
-        ${MOOD_OPTIONS.map(m=>`<div class="mood-chip" onclick="setMood('${m}')">${m}</div>`).join("")}
-      </div>
-      <button class="bg" style="width:100%;margin-top:4px;font-size:11px" onclick="skipEnergyCheck()">Skip</button>
-    </div>`;
-  } else {
-    area.innerHTML=`<div class="energy-card">
-      <span class="lbl lbl-a" style="text-align:center;display:block">DAILY CHECK-IN</span>
-      <p style="font-size:14px;font-weight:700;text-align:center;margin-bottom:4px">${prompt.q}</p>
-      <p class="muted" style="font-size:11px;text-align:center;margin-bottom:10px">${prompt.sub}</p>
-      <input id="reflect-input" type="text" placeholder="Type a short answer..." style="text-align:center;font-size:13px">
-      <div class="row mt8" style="justify-content:center;gap:8px">
-        <button class="bp" style="padding:8px 18px;font-size:12px" onclick="setReflection()">Save</button>
-        <button class="bg" style="font-size:11px" onclick="skipEnergyCheck()">Skip</button>
-      </div>
-    </div>`;
-  }
-}
-
-function setEnergy(level){
-  trackEvent("energy_logged",{level});
-  if(!S.user.energyLog) S.user.energyLog={};
-  S.user.energyLog[S.day]={type:"energy",value:level};
-  saveState();
-  syncEnergyToSupabase(S.day,{type:"energy",value:level});
-  document.querySelectorAll(".energy-flame").forEach((f,i)=>{
-    f.className="energy-flame"+(i<level?" active":"");
-  });
-  setTimeout(()=>{
-    el("energy-check-area").innerHTML=`<div style="text-align:center;padding:10px;font-size:12px;color:#c49a1c;animation:heroFadeUp .3s ease forwards">Energy logged: ${"🔥".repeat(level)}. Noted.</div>`;
-    setTimeout(()=>el("energy-check-area").innerHTML="",2000);
-  },500);
-}
-
-function setMood(mood){
-  trackEvent("mood_logged",{mood});
-  if(!S.user.energyLog) S.user.energyLog={};
-  S.user.energyLog[S.day]={type:"mood",value:mood};
-  saveState();
-  syncEnergyToSupabase(S.day,{type:"mood",value:mood});
-  document.querySelectorAll(".mood-chip").forEach(c=>{
-    c.className="mood-chip"+(c.textContent===mood?" active":"");
-  });
-  setTimeout(()=>{
-    el("energy-check-area").innerHTML=`<div style="text-align:center;padding:10px;font-size:12px;color:#c49a1c;animation:heroFadeUp .3s ease forwards">"${mood}" logged for Day ${S.day}.</div>`;
-    setTimeout(()=>el("energy-check-area").innerHTML="",2000);
-  },400);
-}
-
-function setReflection(){
-  const v=el("reflect-input")?.value?.trim();
-  if(!v)return;
-  if(!S.user.energyLog) S.user.energyLog={};
-  S.user.energyLog[S.day]={type:"reflection",value:v};
-  saveState();
-  el("energy-check-area").innerHTML=`<div style="text-align:center;padding:10px;font-size:12px;color:#c49a1c;animation:heroFadeUp .3s ease forwards">Noted. That honesty matters.</div>`;
-  setTimeout(()=>el("energy-check-area").innerHTML="",2000);
-}
-
-function skipEnergyCheck(){
-  if(!S.user.energyLog) S.user.energyLog={};
-  S.user.energyLog[S.day]={type:"skip",value:null};
-  el("energy-check-area").innerHTML="";
-}
 
 
 /* ── DAILY PLANNING ── */
 function _todayPlan(){return S.plans[S.day]||null;}
-function _hasPlanToday(){const p=_todayPlan();return p&&!p.skipped&&p.mainStep;}
+
 
 function renderPlanArea(){
   const area=el("plan-area");if(!area)return;
@@ -788,48 +669,6 @@ function toggleFloatingChat(){
   }
 }
 
-
-/* ── PROOF WALL (subtle social proof) ── */
-let _proofWallTimer=null;
-let _proofWallData=null;
-
-function startProofWall(){
-  if(_proofWallTimer)return;
-  const pw=el("proof-wall");if(!pw)return;
-  _fetchProofWallData();
-  setTimeout(()=>_showProofWallItem(pw),3000);
-  _proofWallTimer=setInterval(()=>_showProofWallItem(pw),22000);
-}
-
-async function _fetchProofWallData(){
-  if(!sb)return;
-  try{
-    const {count}=await sb.from("uploads").select("id",{count:"exact",head:true});
-    const {count:active}=await sb.from("challengers").select("id",{count:"exact",head:true}).eq("status","active");
-    if(count||active)_proofWallData={totalUploads:count||0,activeChallengers:active||0};
-  }catch(e){}
-}
-
-function _showProofWallItem(pw){
-  if(!S.user)return;
-  pw.style.display="block";
-  const pool=[];
-  if(_proofWallData&&_proofWallData.totalUploads>5){
-    pool.push(`${_proofWallData.totalUploads} proofs uploaded across all challengers`);
-  }
-  if(_proofWallData&&_proofWallData.activeChallengers>1){
-    pool.push(`${_proofWallData.activeChallengers} challengers are active right now`);
-  }
-  pool.push("Someone just uploaded their daily proof");
-  pool.push("A challenger just completed a check-in");
-  pool.push("Someone is building their streak right now");
-  const text=pool[Math.floor(Math.random()*pool.length)];
-  pw.innerHTML=`<div class="proof-wall-item">
-    <div style="width:6px;height:6px;border-radius:50%;background:#4dc98a;flex-shrink:0;opacity:.6"></div>
-    <span>${text}</span>
-  </div>`;
-  setTimeout(()=>{pw.innerHTML="";},5000);
-}
 
 
 /* ── 2ND-VISIT PUSH NOTIFICATION CHECK ── */
