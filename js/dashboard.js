@@ -30,18 +30,15 @@ function renderDash(){
   const skColor=sk>0?"#c49a1c":"#3a3a3a";
   const skText=sk===0?"No streak yet":sk===1?"1 day streak":`${sk} day streak`;
   el("goal-c").innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${PT[u.answers.proofType]||"Proof"}</span><span class="muted" style="font-size:11px">${u.name}</span></div><span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span></div>`;
-  renderGrid(); renderUnlock(); renderRecCard(); renderStats();
+  renderGrid(); renderRecCard(); renderStats();
   updateMsgBadge();
   initPushNotifications();
-  /* Start realtime + polling (startChallengerPoll handles both) */
   if(typeof startChallengerPoll==="function") startChallengerPoll();
   if(typeof startHeartbeat==="function") startHeartbeat();
   renderPlanArea();
-  if(_hasPlanToday()) renderEnergyCheck(); else el("energy-check-area").innerHTML="";
   showChatFab();
   if(!_chatRenderedOnce){_chatRenderedOnce=true;renderChat();}
   _check2ndVisitPush();
-  startProofWall();
   const dnr=el("day-nav-row");
   if(S.devMode){dnr.style.display="flex";el("sim-l").textContent=`Sim day ${d}`;el("prev-b").disabled=d===1;el("next-b").disabled=d===getDur();}
   else{dnr.style.display="none";}
