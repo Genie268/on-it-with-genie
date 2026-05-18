@@ -27,7 +27,7 @@ async function _renderOBContent(b,idx,tot){
     b.innerHTML=`<span class="lbl lbl-a">WELCOME</span>
       <h2 style="font-size:22px;font-weight:900;line-height:1.2;margin-bottom:6px">Before we begin, what do I call you?</h2>
       <p class="muted mb18" style="font-size:13px">This is how Lil and Genie will address you throughout the challenge.</p>
-      <input id="n-in" type="text" placeholder="Your first name" class="mb14">
+      <input id="n-in" type="text" placeholder="Your first name" class="mb14" value="${(S.ans&&S.ans.name)||""}">
       <button class="bp" style="width:100%;padding:12px" onclick="advOB()">Continue</button>`;
     const ni=el("n-in");
     ni.addEventListener("keydown", e=>e.key==="Enter"&&advOB());
