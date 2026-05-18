@@ -3,7 +3,13 @@ function renderTransition(){
   const u=S.user;
   const dur=u.duration||15;
   const msg=el("genie-transition-msg");
-  msg.textContent=`${u.name}, the commitment is signed. I'm watching. The only thing that matters now is what you upload today, and every day after it for the next ${dur} days.`;
+  if(u._lateSignup){
+    msg.textContent=`${u.name}, the commitment is signed. It's late, so your challenge starts tomorrow morning. Rest up — Day 1 begins first thing.`;
+    delete u._lateSignup;
+    saveState();
+  } else {
+    msg.textContent=`${u.name}, the commitment is signed. I'm watching. The only thing that matters now is what you upload today, and every day after it for the next ${dur} days.`;
+  }
 }
 
 

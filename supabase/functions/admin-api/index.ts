@@ -248,6 +248,15 @@ async function sendPush(p: P) {
   }
 }
 
+async function adjustStartDate(p: P) {
+  const uid = p.challenger_id as string;
+  const newDate = p.start_date as string;
+  if (!uid || !newDate) return { ok: false, error: "missing_fields" };
+  const { error } = await sb.from("challengers").update({ start_date: newDate }).eq("id", uid);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 /* ── Router ─────────────────────────────────────────────────────────── */
 
 const ACTIONS: Record<string, (p: P) => Promise<P>> = {
@@ -269,6 +278,7 @@ const ACTIONS: Record<string, (p: P) => Promise<P>> = {
   load_analytics: loadAnalytics,
   health_check: healthCheck,
   send_push: sendPush,
+  adjust_start_date: adjustStartDate,
 };
 
 Deno.serve(async (req) => {

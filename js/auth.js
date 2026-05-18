@@ -244,7 +244,16 @@ async function initiatePayment(){
 async function completePayment(d){
   trackEvent("payment_completed",{status:d.status,duration:S.user?.duration});
   if(S.user){
-    if(!S.user.startDate) S.user.startDate=new Date().toISOString();
+    if(!S.user.startDate){
+      const watHour=(new Date().getUTCHours()+1)%24;
+      if(watHour>=20){
+        const tmr=new Date();tmr.setUTCDate(tmr.getUTCDate()+1);tmr.setUTCHours(6,0,0,0);
+        S.user.startDate=tmr.toISOString();
+        S.user._lateSignup=true;
+      } else {
+        S.user.startDate=new Date().toISOString();
+      }
+    }
     S.user.paymentRef=d.reference||S.user.paymentRef;
     S.user.paymentStatus=d.status;
     S.user.amountPaid=d.amount||0;

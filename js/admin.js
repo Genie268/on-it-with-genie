@@ -1192,6 +1192,13 @@ function renderChallengerDetail(u){
         <button class="bs" style="font-size:12px;padding:8px 14px" onclick="openCallSchedule('${u.id}')">📞 Call</button>
       </div>
     </div>
+    <div style="margin-top:16px;border-top:1px solid #1b1b1b;padding-top:14px">
+      <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:8px">MANAGE</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+        <span class="muted" style="font-size:11px">Started: ${new Date(u.startDate).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</span>
+        <button onclick="promptAdjustStart('${u.id}','${(u.name||'').replace(/'/g,"\\\\'")}')" style="padding:4px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">Adjust Start Date</button>
+      </div>
+    </div>
     <div style="margin-top:16px;border-top:1px solid rgba(217,80,58,.15);padding-top:14px">
       <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#d9503a;margin-bottom:8px">DANGER ZONE</p>
       <button onclick="deleteChallenger('${u.id}','${(u.name||'').replace(/'/g,"\\\\'")}')" style="padding:8px 14px;border-radius:8px;background:transparent;border:1px solid rgba(217,80,58,.3);color:#d9503a;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Delete ${u.name}'s Account</button>
@@ -1492,6 +1499,24 @@ async function batchMarkAllReviewed(){
     showToast(`${res.count||0} uploads marked as reviewed`,"success");
   }catch(e){showToast("Batch review failed","error");}
   renderAdminInbox(el("admin-content"));
+}
+
+async function promptAdjustStart(uid, name){
+  const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+  const tmrStr=tomorrow.toISOString().split("T")[0];
+  const input=prompt(`Set new start date for ${name}.\nFormat: YYYY-MM-DD\n\nTomorrow would be: ${tmrStr}`,tmrStr);
+  if(!input)return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(input.trim())){alert("Invalid date format. Use YYYY-MM-DD.");return;}
+  const newDate=input.trim()+"T06:00:00+00:00";
+  try{
+    await adminFetch("adjust_start_date",{challenger_id:uid,start_date:newDate});
+    adminDataLoaded=false;
+    await loadAdminData();
+    adminTab(adminCurrentTab);
+    alert(`${name}'s start date changed to ${input.trim()}.`);
+  }catch(e){
+    alert("Failed: "+(e.message||"Unknown error"));
+  }
 }
 
 async function deleteChallenger(uid, name){
