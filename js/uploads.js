@@ -80,8 +80,7 @@ function openMod(){
      content:`<div id="vr-container"></div>`}
   ];
   
-  /* Filter to only methods user selected (always include note) */
-  const activeSlides=slides.filter(s=>s.id==="note"||methods.includes(s.id));
+  const activeSlides=slides;
 
   html+=`<div class="ev-carousel" id="ev-carousel">
     <div class="ev-track" id="ev-track">

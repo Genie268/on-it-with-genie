@@ -93,7 +93,8 @@ async function _renderOBContent(b,idx,tot){
 
   /* Standard question */
   const placeholderText=step.placeholder||'Type your answer...';
-  
+  const prevVal=S.ans[step.id]||"";
+
   /* Special handler for proof type picker */
   if(step.isProofPicker){
     const goal=S.ans.goal||"";
@@ -119,6 +120,16 @@ async function _renderOBContent(b,idx,tot){
         ${idx>0?`<button class="bg" onclick="backOB()">← Back</button>`:"<div>"}
         <button class="bp" id="proof-next-btn" onclick="advProofPick()" disabled>Next →</button>
       </div>`;
+    /* Restore previous selections when editing */
+    if(S.ans.proofMethods&&S.ans.proofMethods.length>0){
+      selectedProofTypes=S.ans.proofMethods.slice();
+      document.querySelectorAll(".proof-pick-opt").forEach(o=>{
+        const active=selectedProofTypes.includes(o.dataset.pid);
+        o.style.borderColor=active?"#c49a1c":"var(--bd)";
+        o.style.background=active?"rgba(196,154,28,.08)":"var(--s2)";
+      });
+      const btn=el("proof-next-btn");if(btn)btn.disabled=false;
+    }
     /* Generate goal-adaptive descriptions */
     if(goal.length>10){
       adaptProofDescriptions(goal);
@@ -129,12 +140,12 @@ async function _renderOBContent(b,idx,tot){
   b.innerHTML=`<span class="lbl lbl-a">CLARITY FORM · ${idx+1}/${tot}</span>
     <h2 style="font-size:clamp(17px,3.2vw,22px);font-weight:800;line-height:1.3;margin-bottom:6px">${step.q}</h2>
     <p class="muted mb16" style="font-size:12px">${step.h}</p>
-    <textarea id="ob-ta" rows="4" placeholder="${placeholderText}" class="mb14"></textarea>
+    <textarea id="ob-ta" rows="4" placeholder="${placeholderText}" class="mb14">${prevVal}</textarea>
     <div class="row" style="justify-content:space-between">
       ${idx>0?`<button class="bg" onclick="backOB()">← Back</button>`:"<div>"}
       <button class="bp" onclick="advOB()">Next →</button>
     </div>`;
-  setTimeout(()=>el("ob-ta")&&el("ob-ta").focus(),80);
+  setTimeout(()=>{const t=el("ob-ta");if(t){t.focus();t.setSelectionRange(t.value.length,t.value.length);}},80);
 }
 
 async function advOB(){
