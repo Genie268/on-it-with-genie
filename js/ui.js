@@ -1216,7 +1216,7 @@ async function openProfilePanel(uid){
       </div>
       <p style="font-size:11px;color:#444;margin-bottom:16px">Duration and start date cannot be changed mid-challenge.</p>
       <div style="display:flex;gap:8px">
-        <button onclick="saveProfile('${uid}')" style="flex:1;padding:10px;border-radius:10px;background:#c49a1c;border:none;color:#000;font-size:13px;font-weight:800;cursor:pointer">Save Changes</button>
+        <button onclick="saveAdminProfile('${uid}')" style="flex:1;padding:10px;border-radius:10px;background:#c49a1c;border:none;color:#000;font-size:13px;font-weight:800;cursor:pointer">Save Changes</button>
         <button onclick="switchToViewMode()" style="padding:10px 16px;border-radius:10px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:13px;cursor:pointer">Cancel</button>
       </div>
       <p id="pf-save-status" style="font-size:12px;margin-top:10px;text-align:center"></p>
@@ -1394,39 +1394,29 @@ function switchToViewMode(){
   if(vm) vm.style.display="block";
 }
 
-async function saveProfile(uid){
+async function saveAdminProfile(uid){
   const u=getAM().find(x=>x.id===uid);
-  if(!u||!sb)return;
-  const name=document.getElementById("pf-name").value.trim();
-  const email=document.getElementById("pf-email").value.trim();
-  const phone=document.getElementById("pf-phone").value.trim();
-  const goalRaw=document.getElementById("pf-goal").value.trim();
-  const goalSummary=document.getElementById("pf-goal-summary").value.trim();
-  const proofDescription=document.getElementById("pf-proof").value.trim();
-  const threat=document.getElementById("pf-threat").value.trim();
-  if(!name||!goalRaw){document.getElementById("pf-save-status").textContent="Name and goal are required.";document.getElementById("pf-save-status").style.color="#d9503a";return;}
-  const btn=document.querySelector("#profile-edit-mode button");
-  btn.textContent="Saving...";btn.disabled=true;
+  if(!u)return;
+  const name=(el("pf-name")?.value||"").trim();
+  const email=(el("pf-email")?.value||"").trim();
+  const phone=(el("pf-phone")?.value||"").trim();
+  const goalRaw=(el("pf-goal")?.value||"").trim();
+  const goalSummary=(el("pf-goal-summary")?.value||"").trim();
+  const proof=(el("pf-proof")?.value||"").trim();
+  const threat=(el("pf-threat")?.value||"").trim();
+  if(!name){showToast("Name is required","error");return;}
+  if(!goalRaw){showToast("Goal is required","error");return;}
   try{
-    await sb.from("challengers").update({
-      name,email:email||null,phone:phone||null,
-      goal_raw:goalRaw,goal_summary:goalSummary||goalRaw,
-      proof_description:proofDescription||null,threat:threat||null
-    }).eq("id",uid);
-    // Update local state so list reflects change immediately
-    Object.assign(u,{name,email,phone,goalRaw,goalSummary:goalSummary||goalRaw,goal:goalSummary||goalRaw,proofDescription,threat,
+    await adminFetch("update_challenger",{
+      challenger_id:uid,name,email,phone,
+      goal_raw:goalRaw,goal_summary:goalSummary,
+      proof_description:proof,threat
+    });
+    Object.assign(u,{name,email,phone,goalRaw,goalSummary:goalSummary,proofDescription:proof,threat,
       ini:name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)});
-    document.getElementById("pf-save-status").textContent="✓ Saved";
-    document.getElementById("pf-save-status").style.color="#4dc98a";
-    showToast("Profile saved","success");
-    btn.textContent="Save Changes";btn.disabled=false;
-    setTimeout(()=>{switchToViewMode();openProfilePanel(uid);},800);
-  }catch(e){
-    document.getElementById("pf-save-status").textContent="Save failed. Try again.";
-    document.getElementById("pf-save-status").style.color="#d9503a";
-    showToast("Save failed","error");
-    btn.textContent="Save Changes";btn.disabled=false;
-  }
+    showToast("Profile updated","success");
+    setTimeout(()=>openProfilePanel(uid),800);
+  }catch(e){showToast("Save failed: "+(e.message||""),"error");}
 }
 
 async function _extendChallenge(uid){

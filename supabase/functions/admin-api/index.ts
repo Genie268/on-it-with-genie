@@ -270,6 +270,23 @@ async function adjustStartDate(p: P) {
   return { ok: true };
 }
 
+async function updateChallenger(p: P) {
+  const uid = p.challenger_id as string;
+  if (!uid) return { ok: false, error: "missing_challenger_id" };
+  const updates: Record<string, unknown> = {};
+  if (typeof p.name === "string" && p.name.trim()) updates.name = p.name.trim();
+  if (typeof p.email === "string") updates.email = p.email.trim() || null;
+  if (typeof p.phone === "string") updates.phone = p.phone.trim() || null;
+  if (typeof p.goal_raw === "string") updates.goal_raw = p.goal_raw.trim();
+  if (typeof p.goal_summary === "string") updates.goal_summary = p.goal_summary.trim();
+  if (typeof p.proof_description === "string") updates.proof_description = p.proof_description.trim();
+  if (typeof p.threat === "string") updates.threat = p.threat.trim();
+  if (Object.keys(updates).length === 0) return { ok: false, error: "no_fields" };
+  const { error } = await sb.from("challengers").update(updates).eq("id", uid);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 async function triggerReminders(p: P) {
   const forceSlot = typeof p.force_slot === "number" ? p.force_slot : null;
   const url = `${SUPABASE_URL}/functions/v1/send-reminders`;
@@ -317,6 +334,7 @@ const ACTIONS: Record<string, (p: P) => Promise<P>> = {
   health_check: healthCheck,
   send_push: sendPush,
   adjust_start_date: adjustStartDate,
+  update_challenger: updateChallenger,
   trigger_reminders: triggerReminders,
   load_notif_data: loadNotifData,
 };
