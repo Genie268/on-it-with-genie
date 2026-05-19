@@ -1420,45 +1420,56 @@ async function renderAdminNotifications(c){
     </div>
 
     <div style="margin-bottom:20px">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">CUSTOM BROADCAST</p>
-      <div style="background:#0e0e0e;border:1px solid #1a1a1a;border-radius:10px;padding:12px">
-        <input id="notif-bc-title" placeholder="Notification title" style="width:100%;padding:8px 10px;background:#141414;border:1px solid #222;border-radius:6px;color:#ebebeb;font-size:13px;margin-bottom:8px;box-sizing:border-box">
-        <textarea id="notif-bc-body" placeholder="Notification message..." rows="2" style="width:100%;padding:8px 10px;background:#141414;border:1px solid #222;border-radius:6px;color:#ebebeb;font-size:13px;resize:vertical;margin-bottom:8px;box-sizing:border-box"></textarea>
-        <button id="notif-bc-btn" class="bp" style="font-size:12px;padding:8px 16px" onclick="_sendBroadcast()">Broadcast to All</button>
-        <span id="notif-bc-result" style="font-size:11px;margin-left:8px;color:#888"></span>
-      </div>
-    </div>
-
-    <div style="margin-bottom:20px">
       <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">PUSH STATUS · <span style="color:#4dc98a">${withPush.length} enabled</span> · <span style="color:#d9503a">${noPush.length} no push</span></p>
-      <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="display:flex;flex-direction:column;gap:3px">
         ${allUsers.map(u=>{
-          const userLogs=logs.filter(l=>l.challenger_id===u.id);
-          const todayLogs=userLogs.filter(l=>l.sent_date===new Date().toISOString().split("T")[0]);
-          const todaySlots=todayLogs.map(l=>slotNames[l.slot]||"?").join(", ");
-          return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:8px">
-            <span style="width:8px;height:8px;border-radius:50%;background:${u.hasPush?"#4dc98a":"#d9503a"};flex-shrink:0"></span>
+          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:6px">
+            <span style="width:7px;height:7px;border-radius:50%;background:${u.hasPush?"#4dc98a":"#d9503a"};flex-shrink:0"></span>
             <span style="font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.name}</span>
             <span style="font-size:10px;color:#555;flex-shrink:0">${_isComplete(u)?"completed":u.paymentStatus||"—"}</span>
-            <span style="font-size:10px;color:#666;flex-shrink:0;min-width:80px;text-align:right">${todaySlots||"none today"}</span>
-            ${u.hasPush?`<button class="bs" style="font-size:10px;padding:4px 10px;flex-shrink:0" onclick="_pushToUser('${u.id}','${u.name.replace(/'/g,"\\'")}')">Push</button>`
+            ${u.hasPush?`<button class="bs" style="font-size:10px;padding:3px 10px;flex-shrink:0" onclick="_pushToUser('${u.id}','${u.name.replace(/'/g,"\\'")}')">Push</button>`
             :`<span style="font-size:9px;color:#555;flex-shrink:0">no sub</span>`}
           </div>`;
         }).join("")}
       </div>
     </div>
 
-    <div style="margin-bottom:20px">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">DELIVERY LOG (LAST 3 DAYS)</p>
-      ${_renderNotifLog(active,completed)}
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('notif-broadcast')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">CUSTOM BROADCAST</span>
+        <span id="notif-broadcast-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="notif-broadcast" style="display:none" class="admin-section-bd">
+        <div style="background:#0e0e0e;border:1px solid #1a1a1a;border-radius:10px;padding:12px">
+          <input id="notif-bc-title" placeholder="Notification title" style="width:100%;padding:8px 10px;background:#141414;border:1px solid #222;border-radius:6px;color:#ebebeb;font-size:13px;margin-bottom:8px;box-sizing:border-box">
+          <textarea id="notif-bc-body" placeholder="Notification message..." rows="2" style="width:100%;padding:8px 10px;background:#141414;border:1px solid #222;border-radius:6px;color:#ebebeb;font-size:13px;resize:vertical;margin-bottom:8px;box-sizing:border-box"></textarea>
+          <button id="notif-bc-btn" class="bp" style="font-size:12px;padding:8px 16px" onclick="_sendBroadcast()">Broadcast to All</button>
+          <span id="notif-bc-result" style="font-size:11px;margin-left:8px;color:#888"></span>
+        </div>
+      </div>
     </div>
 
-    <div style="margin-bottom:20px">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:8px">CRON SCHEDULE</p>
-      <div style="font-size:12px;color:#888;line-height:2;padding:8px 12px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:8px">
-        <div style="display:flex;justify-content:space-between"><span style="color:#c49a1c;font-weight:600">Morning</span><span>6 & 9 UTC → 7 & 10 AM WAT</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:#4dc98a;font-weight:600">Afternoon</span><span>12 & 14 UTC → 1 & 3 PM WAT</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:#888;font-weight:600">Evening</span><span>17 & 19 UTC → 6 & 8 PM WAT</span></div>
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('notif-delivery-log')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">DELIVERY LOG (LAST 3 DAYS)</span>
+        <span id="notif-delivery-log-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="notif-delivery-log" style="display:none" class="admin-section-bd">
+        ${_renderNotifLog(active,completed)}
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('notif-cron')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">CRON SCHEDULE</span>
+        <span id="notif-cron-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="notif-cron" style="display:none" class="admin-section-bd">
+        <div style="font-size:12px;color:#888;line-height:2;padding:8px 12px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:8px">
+          <div style="display:flex;justify-content:space-between"><span style="color:#c49a1c;font-weight:600">Morning</span><span>6 & 9 UTC → 7 & 10 AM WAT</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:#4dc98a;font-weight:600">Afternoon</span><span>12 & 14 UTC → 1 & 3 PM WAT</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:#888;font-weight:600">Evening</span><span>17 & 19 UTC → 6 & 8 PM WAT</span></div>
+        </div>
       </div>
     </div>
   `;
