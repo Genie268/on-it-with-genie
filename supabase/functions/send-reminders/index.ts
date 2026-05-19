@@ -160,7 +160,14 @@ function buildMessage(
   return { title: "On It With Genie", body: "Check in on your challenge." };
 }
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  let forceSlot: number | null = null;
+  try {
+    if (req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      if (body.force_slot) forceSlot = Number(body.force_slot);
+    }
+  } catch { /* ignore */ }
   try {
     /* ── Completion detection (runs every invocation) ── */
     {
@@ -397,7 +404,7 @@ Deno.serve(async (_req) => {
     }
 
     /* ── Reminder logic ── */
-    const slot = getCurrentSlot();
+    const slot = forceSlot || getCurrentSlot();
     if (!slot) {
       return new Response(
         JSON.stringify({ skipped: true, reason: "outside reminder window" }),

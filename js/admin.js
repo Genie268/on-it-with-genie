@@ -487,14 +487,14 @@ function adminTab(tab){
   const flaggedCount=getActiveAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
   const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
   const newSignups=_getNewSignupCount();
-  ["overview","messages","challengers","flagged","inbox","analytics","settings"].forEach(t=>{
+  ["overview","messages","challengers","flagged","inbox","notifications","analytics","settings"].forEach(t=>{
     const btn=el("tab-"+t);if(!btn)return;
     btn.className="admin-tab"+(t===tab?" active":"");
-    const labels={overview:`Overview${_dot(newSignups>0)}`,messages:`Messages${_bdg(unreadCount)}`,challengers:"Challengers",flagged:`Attention${_bdg(flaggedCount)}`,inbox:`Reviews${_bdg(reviewCount)}`,analytics:"Analytics",settings:"Settings"};
+    const labels={overview:`Overview${_dot(newSignups>0)}`,messages:`Messages${_bdg(unreadCount)}`,challengers:"Challengers",flagged:`Attention${_bdg(flaggedCount)}`,inbox:`Reviews${_bdg(reviewCount)}`,notifications:"Notifications",analytics:"Analytics",settings:"Settings"};
     btn.innerHTML=labels[t]||t;
   });
   const c=el("admin-content");if(!c)return;
-  const renderers={overview:renderAdminOverview,messages:renderAdminMessages,challengers:renderAdminChallengers,flagged:renderAdminFlagged,inbox:renderAdminInbox,analytics:renderAdminAnalytics,settings:renderAdminSettings};
+  const renderers={overview:renderAdminOverview,messages:renderAdminMessages,challengers:renderAdminChallengers,flagged:renderAdminFlagged,inbox:renderAdminInbox,notifications:renderAdminNotifications,analytics:renderAdminAnalytics,settings:renderAdminSettings};
   if(renderers[tab])renderers[tab](c);
 }
 
@@ -1398,6 +1398,133 @@ function renderAdminInbox(c){
         </div>
       </div>
     `).join("")}`;
+}
+
+/* ── NOTIFICATIONS TAB ── */
+let _notifLoading=false;
+
+async function renderAdminNotifications(c){
+  if(!c)c=el("admin-content");if(!c)return;
+  const all=getAM();
+  const active=all.filter(u=>!_isComplete(u));
+  const completed=all.filter(_isComplete);
+  const allUsers=[...active,...completed];
+  const withPush=allUsers.filter(u=>u.hasPush);
+  const noPush=allUsers.filter(u=>!u.hasPush);
+  const logs=window._adminReminderLogs||[];
+
+  const slotNames={1:"Morning",2:"Afternoon",3:"Evening"};
+  const slotDescriptions={1:"7-11 AM WAT",2:"12-3 PM WAT",3:"5-9 PM WAT"};
+  const slotColors={1:"#c49a1c",2:"#4dc98a",3:"#888"};
+
+  c.innerHTML=`
+    <div style="margin-bottom:20px">
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:12px">QUICK ACTIONS</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button id="notif-trigger-auto" class="bp" style="font-size:12px;padding:10px 16px" onclick="_triggerRemindersNow(0)">
+          Send Current Slot Now
+        </button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${[1,2,3].map(s=>`<button id="notif-trigger-${s}" class="bs" style="font-size:11px;padding:8px 14px;border-color:${slotColors[s]}" onclick="_triggerRemindersNow(${s})">
+          ${slotNames[s]} <span style="font-size:9px;color:#666">(${slotDescriptions[s]})</span>
+        </button>`).join("")}
+      </div>
+      <div id="notif-trigger-result" style="margin-top:10px;font-size:12px;display:none"></div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">CUSTOM BROADCAST</p>
+      <div style="background:#0e0e0e;border:1px solid #1a1a1a;border-radius:10px;padding:12px">
+        <input id="notif-bc-title" placeholder="Notification title" style="width:100%;padding:8px 10px;background:#141414;border:1px solid #222;border-radius:6px;color:#ebebeb;font-size:13px;margin-bottom:8px;box-sizing:border-box">
+        <textarea id="notif-bc-body" placeholder="Notification message..." rows="2" style="width:100%;padding:8px 10px;background:#141414;border:1px solid #222;border-radius:6px;color:#ebebeb;font-size:13px;resize:vertical;margin-bottom:8px;box-sizing:border-box"></textarea>
+        <button id="notif-bc-btn" class="bp" style="font-size:12px;padding:8px 16px" onclick="_sendBroadcast()">Broadcast to All</button>
+        <span id="notif-bc-result" style="font-size:11px;margin-left:8px;color:#888"></span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">PUSH STATUS · <span style="color:#4dc98a">${withPush.length} enabled</span> · <span style="color:#d9503a">${noPush.length} no push</span></p>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${allUsers.map(u=>{
+          const userLogs=logs.filter(l=>l.challenger_id===u.id);
+          const todayLogs=userLogs.filter(l=>l.sent_date===new Date().toISOString().split("T")[0]);
+          const todaySlots=todayLogs.map(l=>slotNames[l.slot]||"?").join(", ");
+          return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:8px">
+            <span style="width:8px;height:8px;border-radius:50%;background:${u.hasPush?"#4dc98a":"#d9503a"};flex-shrink:0"></span>
+            <span style="font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.name}</span>
+            <span style="font-size:10px;color:#555;flex-shrink:0">${_isComplete(u)?"completed":u.paymentStatus||"—"}</span>
+            <span style="font-size:10px;color:#666;flex-shrink:0;min-width:80px;text-align:right">${todaySlots||"none today"}</span>
+            ${u.hasPush?`<button class="bs" style="font-size:10px;padding:4px 10px;flex-shrink:0" onclick="_pushToUser('${u.id}','${u.name.replace(/'/g,"\\'")}')">Push</button>`
+            :`<span style="font-size:9px;color:#555;flex-shrink:0">no sub</span>`}
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">DELIVERY LOG (LAST 3 DAYS)</p>
+      ${_renderNotifLog(active,completed)}
+    </div>
+
+    <div style="margin-bottom:20px">
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:8px">CRON SCHEDULE</p>
+      <div style="font-size:12px;color:#888;line-height:2;padding:8px 12px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:8px">
+        <div style="display:flex;justify-content:space-between"><span style="color:#c49a1c;font-weight:600">Morning</span><span>6 & 9 UTC → 7 & 10 AM WAT</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#4dc98a;font-weight:600">Afternoon</span><span>12 & 14 UTC → 1 & 3 PM WAT</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#888;font-weight:600">Evening</span><span>17 & 19 UTC → 6 & 8 PM WAT</span></div>
+      </div>
+    </div>
+  `;
+}
+
+async function _triggerRemindersNow(forceSlot){
+  const resultEl=el("notif-trigger-result");
+  if(resultEl){resultEl.style.display="block";resultEl.style.color="#c49a1c";resultEl.textContent="Triggering...";}
+  try{
+    const params=forceSlot?{force_slot:forceSlot}:{};
+    const res=await adminFetch("trigger_reminders",params);
+    if(resultEl){
+      if(res.skipped){
+        resultEl.style.color="#888";
+        resultEl.textContent="Skipped: "+(res.reason||"no eligible users");
+      }else{
+        resultEl.style.color="#4dc98a";
+        resultEl.textContent=`Sent ${res.sent||0} notifications (slot ${res.slot||"auto"}, ${res.failed||0} failed, ${res.reminded||0} users)`;
+      }
+    }
+    adminDataLoaded=false;
+    await loadAdminData();
+  }catch(e){
+    if(resultEl){resultEl.style.color="#d9503a";resultEl.textContent="Error: "+(e.message||"failed");}
+  }
+}
+
+async function _sendBroadcast(){
+  const title=(el("notif-bc-title")?.value||"").trim();
+  const body=(el("notif-bc-body")?.value||"").trim();
+  const resultEl=el("notif-bc-result");
+  if(!title&&!body){if(resultEl)resultEl.textContent="Type a title and message";return;}
+  const btn=el("notif-bc-btn");if(btn)btn.disabled=true;
+  if(resultEl){resultEl.style.color="#c49a1c";resultEl.textContent="Sending...";}
+  try{
+    const res=await adminFetch("send_push",{push_type:"broadcast",title:title||"On It With Genie",body:body||"Check in on your challenge."});
+    if(resultEl){resultEl.style.color="#4dc98a";resultEl.textContent=`Sent to ${res.sent||0} devices (${res.failed||0} failed)`;}
+    if(el("notif-bc-title"))el("notif-bc-title").value="";
+    if(el("notif-bc-body"))el("notif-bc-body").value="";
+  }catch(e){
+    if(resultEl){resultEl.style.color="#d9503a";resultEl.textContent="Error: "+(e.message||"failed");}
+  }
+  if(btn)btn.disabled=false;
+}
+
+async function _pushToUser(uid,name){
+  const msg=prompt(`Push notification to ${name}:\n\nEnter message (or cancel):`);
+  if(!msg||!msg.trim())return;
+  try{
+    const res=await adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:`Hey ${name.split(" ")[0]}`,body:msg.trim()});
+    showToast(`Pushed to ${name}: ${res.sent||0} sent`,"success");
+  }catch(e){showToast("Push failed: "+(e.message||""),"error");}
 }
 
 async function renderAdminAnalytics(c){

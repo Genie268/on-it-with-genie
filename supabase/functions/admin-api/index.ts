@@ -270,6 +270,30 @@ async function adjustStartDate(p: P) {
   return { ok: true };
 }
 
+async function triggerReminders(p: P) {
+  const forceSlot = typeof p.force_slot === "number" ? p.force_slot : null;
+  const url = `${SUPABASE_URL}/functions/v1/send-reminders`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(forceSlot ? { force_slot: forceSlot } : {}),
+    });
+    const data = await res.json();
+    return { ok: true, ...data };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+async function loadNotifData() {
+  const { data: challengers } = await sb.from("challengers").select("id,name,status,payment_status").order("name");
+  const cIds = (challengers ?? []).map((c: P) => c.id);
+  const { data: subs } = await sb.from("push_subscriptions").select("challenger_id,is_active").in("challenger_id", cIds);
+  const { data: logs } = await sb.from("reminder_logs").select("*").gte("sent_date", new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0]).order("sent_date", { ascending: false });
+  return { ok: true, challengers: challengers ?? [], push_subs: subs ?? [], reminder_logs: logs ?? [] };
+}
+
 /* ── Router ─────────────────────────────────────────────────────────── */
 
 const ACTIONS: Record<string, (p: P) => Promise<P>> = {
@@ -293,6 +317,8 @@ const ACTIONS: Record<string, (p: P) => Promise<P>> = {
   health_check: healthCheck,
   send_push: sendPush,
   adjust_start_date: adjustStartDate,
+  trigger_reminders: triggerReminders,
+  load_notif_data: loadNotifData,
 };
 
 Deno.serve(async (req) => {
