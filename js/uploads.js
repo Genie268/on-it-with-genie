@@ -351,7 +351,7 @@ function openUploadDetail(uid, dayIndex){
     </div>
     <div style="border-top:1px solid #1f1f1f;padding-top:16px;margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
       <button onclick="togRv('${uid}',${dayIndex});closeUploadDetail()" style="padding:8px 16px;border-radius:100px;background:${isRv?"rgba(196,154,28,.1)":"#1b1b1b"};border:1px solid ${isRv?"rgba(196,154,28,.3)":"#333"};color:${isRv?"#c49a1c":"#888"};font-size:12px;font-weight:700;cursor:pointer">${isRv?"✓ Unmark Reviewed":"Mark Reviewed"}</button>
-      <button onclick="closeUploadDetail();setTimeout(()=>{_msgActiveChallengerId='${uid}';adminTab('messages')},150)" style="padding:8px 16px;border-radius:100px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">Message ${u.name} →</button>
+      <button onclick="closeUploadDetail();setTimeout(()=>{_msgActiveChallengerId='${uid}';_msgChatOpen=true;adminTab('messages')},150)" style="padding:8px 16px;border-radius:100px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">Message ${u.name} →</button>
     </div>
   `;
   panel.style.transform="translateX(0)";
@@ -363,8 +363,10 @@ async function _saveDetailReviewNote(uid,dayIndex){
   if(!ta||!ta.value.trim()){showToast("Type a note first","error");return;}
   ta.disabled=true;
   try{
-    await adminFetch("save_review_note",{challenger_id:uid,day_number:dayIndex+1,note:ta.value.trim()});
-    showToast("Review note saved","success");
+    const dayNum=dayIndex+1;
+    await adminFetch("save_review_note",{challenger_id:uid,day_number:dayNum,note:ta.value.trim()});
+    adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Genie reviewed your Day "+dayNum,body:ta.value.trim().slice(0,120)}).catch(()=>{});
+    showToast("Review note saved & notified","success");
     adminDataLoaded=false;
     await loadAdminData();
   }catch(e){showToast("Failed to save: "+(e.message||""),"error");}

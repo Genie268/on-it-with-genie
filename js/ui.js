@@ -235,7 +235,8 @@ async function sendInboxReply(uid,i){
   try{
     const dayNum=i+1;
     await adminFetch("save_review_note",{challenger_id:uid,day_number:dayNum,note:msg});
-    showToast("Review note saved","success");
+    adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Genie reviewed your Day "+dayNum,body:msg.slice(0,120)}).catch(()=>{});
+    showToast("Review note saved & notified","success");
   }catch(e){console.warn("Review note save error:",e);showToast("Failed to save","error");}
   ta.value="";ta.placeholder="✓ Saved";ta.style.borderColor="#4dc98a";
   ta.disabled=false;

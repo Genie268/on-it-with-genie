@@ -500,6 +500,7 @@ function adminTab(tab){
 
 /* ── MESSAGES TAB ── */
 let _msgActiveChallengerId=null;
+let _msgChatOpen=false;
 
 function renderAdminMessages(c){
   if(!c)c=el("admin-content");
@@ -510,6 +511,77 @@ function renderAdminMessages(c){
     return;
   }
 
+  const convos=_buildConvoList(challengers);
+
+  const convoListHtml=convos.map(cv=>{
+    const isActive=_msgChatOpen&&cv.id===_msgActiveChallengerId;
+    const preview=cv.lastMsg?(cv.lastMsg.voice_url&&!cv.lastMsg.message?"🎙 Voice note":(cv.lastMsg.sender==="genie"?"You: ":"")+(cv.lastMsg.message||"").slice(0,40)):"No messages yet";
+    const ta=cv.lastMsg?timeAgo(cv.lastMsg.created_at):"";
+    const avatar=_avatarWithStatus(cv,36,"50%");
+    const doneTag=cv.done&&!cv.unread?`<span style="font-size:9px;color:#c49a1c;font-weight:700;margin-left:4px">Done</span>`:"";
+    return `<div onclick="_openMsgConvo('${cv.id}')" style="padding:10px 12px;cursor:pointer;display:flex;gap:10px;align-items:center;border-left:3px solid ${isActive?"#c49a1c":"transparent"};background:${isActive?"rgba(196,154,28,.06)":cv.unread?"rgba(217,80,58,.04)":"transparent"};${cv.done&&!cv.unread?"opacity:.6;":""}transition:background .15s" onmouseenter="this.style.background='rgba(255,255,255,.03)'" onmouseleave="this.style.background='${isActive?"rgba(196,154,28,.06)":cv.unread?"rgba(217,80,58,.04)":"transparent"}'">
+      ${avatar}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <p style="font-size:13px;font-weight:${cv.unread?"800":"600"};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cv.name}${doneTag}</p>
+          <span class="muted" data-live-ts="${cv.lastMsg?cv.lastMsg.created_at:""}" style="font-size:10px;flex-shrink:0">${ta}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+          <p class="muted" style="font-size:11px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${cv.unread?"color:#ccc":""}">${preview}</p>
+          ${cv.unread?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 5px;flex-shrink:0;margin-left:6px">${cv.unread}</span>`:""}
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const activeConvo=_msgChatOpen?convos.find(x=>x.id===_msgActiveChallengerId):null;
+
+  c.innerHTML=`
+    <div style="display:flex;height:calc(100vh - 120px);margin:-18px;border-radius:0">
+      <div id="msg-sidebar" style="${_msgChatOpen?"width:280px;min-width:220px;flex-shrink:0;":"width:100%;"}border-right:${_msgChatOpen?"1px solid #1f1f1f":"none"};display:flex;flex-direction:column;overflow:hidden">
+        <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;padding:14px 12px 10px">CONVERSATIONS · ${convos.length}</p>
+        <div style="flex:1;overflow-y:auto">${convoListHtml}</div>
+      </div>
+      ${_msgChatOpen&&activeConvo?`
+      <div id="msg-chat-pane" style="flex:1;display:flex;flex-direction:column;min-width:0">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #1f1f1f;background:#0a0a0a">
+          <button onclick="_closeMsgConvo()" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px;padding:0 8px 0 0">←</button>
+          ${_avatarWithStatus(activeConvo,32,"50%")}
+          <div style="flex:1;min-width:0">
+            <p style="font-size:14px;font-weight:700;margin:0">${activeConvo.name}</p>
+            <p class="muted" style="font-size:10px;margin:0">${_formatLastSeen(activeConvo.lastSeen)}</p>
+          </div>
+          <button onclick="openProfilePanel('${activeConvo.id}')" style="padding:5px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer">Profile</button>
+        </div>
+        <div id="msg-tab-thread" style="flex:1;overflow-y:auto;padding:12px 14px">
+          <div style="text-align:center;padding:20px"><span class="muted" style="font-size:11px">Loading...</span></div>
+        </div>
+        <div id="msg-tab-voice-status" style="display:none;padding:4px 14px"></div>
+        <div id="msg-tab-reply-indicator" style="display:none"></div>
+        <div id="msg-input-bar" style="padding:10px 14px;border-top:1px solid #1f1f1f;background:#0a0a0a;display:flex;gap:8px;align-items:flex-end">
+          <div class="chat-input-pill" style="flex:1;display:flex;align-items:center;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:0 4px 0 14px">
+            <textarea id="msg-tab-input" class="chat-ta" rows="1" placeholder="Message ${activeConvo.name}..." style="flex:1;background:transparent;border:none;color:#ebebeb;font-size:14px;padding:10px 0;resize:none;outline:none;font-family:inherit;line-height:1.4;min-height:20px"></textarea>
+            <button id="msg-tab-mic" onclick="toggleMsgTabRecording()" style="background:none;border:none;color:#888;cursor:pointer;padding:6px 8px;font-size:14px" title="Voice note">🎙</button>
+          </div>
+          <button onclick="sendMsgTabMsg('${activeConvo.id}')" style="width:36px;height:36px;border-radius:50%;background:#c49a1c;border:none;color:#000;font-size:16px;font-weight:900;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">↑</button>
+        </div>
+      </div>`:(!_msgChatOpen?"":`
+      <div id="msg-chat-pane" style="flex:1;display:flex;align-items:center;justify-content:center">
+        <p class="muted" style="font-size:12px">Select a conversation</p>
+      </div>`)}
+    </div>`;
+
+  if(_msgChatOpen&&activeConvo){
+    setTimeout(()=>{
+      _loadMsgTabChat(_msgActiveChallengerId);
+      _markMsgTabRead(_msgActiveChallengerId);
+      const ta=document.getElementById("msg-tab-input");
+      if(ta) ta.focus();
+    },80);
+  }
+}
+
+function _buildConvoList(challengers){
   const convos=[];
   const seen=new Set();
   adminRecentMessages.forEach(m=>{
@@ -531,163 +603,21 @@ function renderAdminMessages(c){
     if(a.lastMsg)return -1;
     return 1;
   });
-
-  if(!_msgActiveChallengerId||!convos.find(x=>x.id===_msgActiveChallengerId)){
-    const firstUnread=convos.find(x=>x.unread>0);
-    const newId=firstUnread?firstUnread.id:(convos[0]?convos[0].id:null);
-    if(newId!==_msgActiveChallengerId) _msgTabLastHash="";
-    _msgActiveChallengerId=newId;
-  }
-
-  const convoListHtml=convos.map(cv=>{
-    const isActive=cv.id===_msgActiveChallengerId;
-    const preview=cv.lastMsg?(cv.lastMsg.voice_url&&!cv.lastMsg.message?"🎙 Voice note":(cv.lastMsg.sender==="genie"?"You: ":"")+(cv.lastMsg.message||"").slice(0,40)):"No messages yet";
-    const ta=cv.lastMsg?timeAgo(cv.lastMsg.created_at):"";
-    const avatar=_avatarWithStatus(cv,36,"50%");
-    const doneTag=cv.done&&!cv.unread?`<span style="font-size:9px;color:#c49a1c;font-weight:700;margin-left:4px">Done</span>`:"";
-    return `<div onclick="_msgTabLastHash='';_msgActiveChallengerId='${cv.id}';_renderMsgThread()" style="padding:10px 12px;cursor:pointer;display:flex;gap:10px;align-items:center;border-left:3px solid ${isActive?"#c49a1c":"transparent"};background:${isActive?"rgba(196,154,28,.06)":cv.unread?"rgba(217,80,58,.04)":"transparent"};${cv.done&&!cv.unread?"opacity:.6;":""}transition:background .15s" onmouseenter="if(!${isActive})this.style.background='rgba(255,255,255,.03)'" onmouseleave="if(!${isActive})this.style.background='${cv.unread?"rgba(217,80,58,.04)":"transparent"}'">
-      ${avatar}
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <p style="font-size:13px;font-weight:${cv.unread?"800":"600"};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cv.name}${doneTag}</p>
-          <span class="muted" data-live-ts="${cv.lastMsg?cv.lastMsg.created_at:""}" style="font-size:10px;flex-shrink:0">${ta}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
-          <p class="muted" style="font-size:11px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${cv.unread?"color:#ccc":""}">${preview}</p>
-          ${cv.unread?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 5px;flex-shrink:0;margin-left:6px">${cv.unread}</span>`:""}
-        </div>
-      </div>
-    </div>`;
-  }).join("");
-
-  const activeConvo=convos.find(x=>x.id===_msgActiveChallengerId);
-
-  c.innerHTML=`
-    <div style="display:flex;height:calc(100vh - 120px);margin:-18px;border-radius:0">
-      <!-- Left: Conversation list -->
-      <div id="msg-sidebar" style="width:280px;min-width:220px;border-right:1px solid #1f1f1f;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden">
-        <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;padding:14px 12px 10px">CONVERSATIONS · ${convos.length}</p>
-        <div style="flex:1;overflow-y:auto">${convoListHtml}</div>
-      </div>
-      <!-- Right: Active chat -->
-      <div id="msg-chat-pane" style="flex:1;display:flex;flex-direction:column;min-width:0">
-        <div id="msg-chat-header">
-          ${activeConvo?`
-          <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #1f1f1f;background:#0a0a0a">
-            <button onclick="_msgCloseThread()" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px;padding:0 6px 0 0;display:none" class="msg-back-btn">←</button>
-            ${_avatarWithStatus(activeConvo,32,"50%")}
-            <div style="flex:1;min-width:0">
-              <p style="font-size:14px;font-weight:700;margin:0">${activeConvo.name}</p>
-              <p class="muted" style="font-size:10px;margin:0">${_formatLastSeen(activeConvo.lastSeen)}</p>
-            </div>
-            <button onclick="openProfilePanel('${activeConvo.id}')" style="padding:5px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer">Profile</button>
-          </div>`:`<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#333;font-size:13px">Select a conversation</div>`}
-        </div>
-        <div id="msg-tab-thread" style="flex:1;overflow-y:auto;padding:12px 14px">
-          ${activeConvo?`<div style="text-align:center;padding:20px"><span class="muted" style="font-size:11px">Loading...</span></div>`:`<div style="display:flex;align-items:center;justify-content:center;height:100%"><p class="muted" style="font-size:12px">Pick someone to message</p></div>`}
-        </div>
-        <div id="msg-tab-voice-status" style="display:none;padding:4px 14px"></div>
-        <div id="msg-tab-reply-indicator" style="display:none"></div>
-        ${activeConvo?`<div style="padding:10px 14px;border-top:1px solid #1f1f1f;background:#0a0a0a;display:flex;gap:8px;align-items:flex-end">
-          <div class="chat-input-pill" style="flex:1;display:flex;align-items:center;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:0 4px 0 14px">
-            <textarea id="msg-tab-input" class="chat-ta" rows="1" placeholder="Message ${activeConvo.name}..." style="flex:1;background:transparent;border:none;color:#ebebeb;font-size:13px;padding:10px 0;resize:none;outline:none;font-family:inherit;line-height:1.4"></textarea>
-            <button id="msg-tab-mic" onclick="toggleMsgTabRecording()" style="background:none;border:none;color:#888;cursor:pointer;padding:6px 8px;font-size:14px" title="Voice note">🎙</button>
-          </div>
-          <button onclick="sendMsgTabMsg('${activeConvo.id}')" style="width:36px;height:36px;border-radius:50%;background:#c49a1c;border:none;color:#000;font-size:16px;font-weight:900;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">↑</button>
-        </div>`:""}
-      </div>
-    </div>`;
-
-  _applyMsgResponsive();
-  if(_msgActiveChallengerId){
-    setTimeout(()=>{
-      _loadMsgTabChat(_msgActiveChallengerId);
-      _markMsgTabRead(_msgActiveChallengerId);
-    },50);
-  }
+  return convos;
 }
 
-function _applyMsgResponsive(){
-  const w=window.innerWidth||document.documentElement.clientWidth;
-  const sidebar=document.getElementById("msg-sidebar");
-  const chatPane=document.getElementById("msg-chat-pane");
-  const backBtns=document.querySelectorAll(".msg-back-btn");
-  if(w<600){
-    if(sidebar)sidebar.style.width="100%";
-    if(_msgActiveChallengerId){
-      if(sidebar)sidebar.style.display="none";
-      if(chatPane)chatPane.style.display="flex";
-      backBtns.forEach(b=>b.style.display="inline");
-    }else{
-      if(sidebar)sidebar.style.display="flex";
-      if(chatPane)chatPane.style.display="none";
-    }
-  }else{
-    if(sidebar){sidebar.style.display="flex";sidebar.style.width="280px";}
-    if(chatPane)chatPane.style.display="flex";
-    backBtns.forEach(b=>b.style.display="none");
-  }
+function _openMsgConvo(uid){
+  _msgActiveChallengerId=uid;
+  _msgChatOpen=true;
+  _msgTabLastHash="";
+  renderAdminMessages(el("admin-content"));
 }
 
-function _msgCloseThread(){
+function _closeMsgConvo(){
+  _msgChatOpen=false;
   _msgActiveChallengerId=null;
   _msgTabLastHash="";
-  _applyMsgResponsive();
-  const sidebar=document.getElementById("msg-sidebar");
-  const chatPane=document.getElementById("msg-chat-pane");
-  if(sidebar)sidebar.style.display="flex";
-  if(chatPane)chatPane.style.display="none";
-}
-
-function _renderMsgThread(){
-  const chatPane=document.getElementById("msg-chat-pane");
-  const sidebar=document.getElementById("msg-sidebar");
-  if(!chatPane)return;
-  const challengers=getAM();
-  const u=challengers.find(x=>x.id===_msgActiveChallengerId);
-  const activeConvo=u?{id:u.id,name:u.name,ini:u.ini,photo:u.photo,lastSeen:u.lastSeen}:null;
-  const header=document.getElementById("msg-chat-header");
-  if(header&&activeConvo){
-    header.innerHTML=`
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #1f1f1f;background:#0a0a0a">
-        <button onclick="_msgCloseThread()" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px;padding:0 6px 0 0;display:none" class="msg-back-btn">←</button>
-        ${_avatarWithStatus(activeConvo,32,"50%")}
-        <div style="flex:1;min-width:0">
-          <p style="font-size:14px;font-weight:700;margin:0">${activeConvo.name}</p>
-          <p class="muted" style="font-size:10px;margin:0">${_formatLastSeen(activeConvo.lastSeen)}</p>
-        </div>
-        <button onclick="openProfilePanel('${activeConvo.id}')" style="padding:5px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer">Profile</button>
-      </div>`;
-  }
-  const thread=document.getElementById("msg-tab-thread");
-  if(thread) thread.innerHTML=`<div style="text-align:center;padding:20px"><span class="muted" style="font-size:11px">Loading...</span></div>`;
-  const inputArea=chatPane.querySelector("[style*='border-top']");
-  if(!inputArea&&activeConvo){
-    const existing=chatPane.querySelector("#msg-tab-reply-indicator");
-    const inputDiv=document.createElement("div");
-    inputDiv.style.cssText="padding:10px 14px;border-top:1px solid #1f1f1f;background:#0a0a0a;display:flex;gap:8px;align-items:flex-end";
-    inputDiv.innerHTML=`<div class="chat-input-pill" style="flex:1;display:flex;align-items:center;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:0 4px 0 14px">
-      <textarea id="msg-tab-input" class="chat-ta" rows="1" placeholder="Message ${activeConvo.name}..." style="flex:1;background:transparent;border:none;color:#ebebeb;font-size:13px;padding:10px 0;resize:none;outline:none;font-family:inherit;line-height:1.4"></textarea>
-      <button id="msg-tab-mic" onclick="toggleMsgTabRecording()" style="background:none;border:none;color:#888;cursor:pointer;padding:6px 8px;font-size:14px" title="Voice note">🎙</button>
-    </div>
-    <button onclick="sendMsgTabMsg('${activeConvo.id}')" style="width:36px;height:36px;border-radius:50%;background:#c49a1c;border:none;color:#000;font-size:16px;font-weight:900;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">↑</button>`;
-    chatPane.appendChild(inputDiv);
-  }
-  _applyMsgResponsive();
-  const convoItems=document.querySelectorAll("#msg-sidebar > div:last-child > div");
-  convoItems.forEach(item=>{
-    const isActive=item.style.borderLeftColor==="rgb(196, 154, 28)";
-    if(!isActive){
-      item.style.borderLeftColor="transparent";
-      item.style.background=item.querySelector("[style*='background:#d9503a']")?"rgba(217,80,58,.04)":"transparent";
-    }
-  });
-  if(_msgActiveChallengerId){
-    setTimeout(()=>{
-      _loadMsgTabChat(_msgActiveChallengerId);
-      _markMsgTabRead(_msgActiveChallengerId);
-    },50);
-  }
+  renderAdminMessages(el("admin-content"));
 }
 
 let _msgTabLastHash="";
