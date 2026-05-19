@@ -908,19 +908,6 @@ function _renderNotifLog(active,completed){
     </div>
   </div>`;
 
-  html+=`<div style="margin-bottom:14px">`;
-  allUsers.forEach(u=>{
-    const userLogs=logs.filter(l=>l.challenger_id===u.id);
-    const lastSlot=userLogs.length?slotNames[userLogs[0].slot]||"—":"—";
-    html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #141414">
-      <span style="width:8px;height:8px;border-radius:50%;background:${u.hasPush?"#4dc98a":"#d9503a"};flex-shrink:0"></span>
-      <span style="font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.name}</span>
-      <span style="font-size:10px;color:#666;flex-shrink:0">${userLogs.length} sent</span>
-      <span style="font-size:10px;color:#555;flex-shrink:0;width:65px;text-align:right">${lastSlot}</span>
-    </div>`;
-  });
-  html+=`</div>`;
-
   if(!logs.length){
     html+=`<p class="muted" style="font-size:12px;text-align:center;padding:8px 0">No notifications sent in the last 3 days.</p>`;
     return html;
@@ -934,7 +921,6 @@ function _renderNotifLog(active,completed){
     byDate[key].push({name,slot:l.slot,slotName:slotNames[l.slot]||`Slot ${l.slot}`,color:slotColors[l.slot]||"#888"});
   });
 
-  html+=`<p style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#555;margin:0 0 8px">DELIVERY LOG</p>`;
   Object.keys(byDate).sort().reverse().forEach(date=>{
     const d=new Date(date+"T12:00:00");
     const today=new Date().toISOString().split("T")[0];
