@@ -214,7 +214,7 @@ async function subUp(){
 
   const ackPrompt=`ONE sentence, max 12 words. Reference what they actually wrote. Not praise.\n\nThey wrote: "${summary||"[file/voice only]"}"\nGoal: "${S.user.answers.goal}"`;
   const ack=await lil(ackPrompt,50);
-  S.uploads[S.day-1]={note:summary,hasFile:S.fileOn,fileName:S.fileName||null,fileUrl,proofType:pt,link:link||null,behavior:S.behaviorAnswer,hasVoice:!!S.voiceBlob,voiceUrl};
+  S.uploads[S.day-1]={note:summary,hasFile:S.fileOn,fileName:S.fileName||null,fileUrl,proofType:pt,link:link||null,behavior:S.behaviorAnswer,hasVoice:!!S.voiceBlob,voiceUrl,time:new Date().toISOString()};
   saveState();
   el("ack-day").textContent=S.day;
   el("ack-t").textContent=ack||FB.ack(summary,S.day);
@@ -242,7 +242,9 @@ function openViewMod(dayIdx){
   const day=dayIdx+1;
   const isToday=day===S.day;
   el("view-mod-dl").textContent=`DAY ${day}`;
+  const viewTimeStr=upload.time?new Date(upload.time).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",hour12:false}):"";
   let html=`<div class="view-upload-card">`;
+  if(viewTimeStr) html+=`<p style="font-size:10px;color:#555;margin-bottom:12px">Uploaded ${viewTimeStr}</p>`;
   if(upload.behavior){
     html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">BEHAVIOR</span><p style="margin-top:4px;font-size:14px;font-weight:700;color:${upload.behavior==="yes"?"#4dc98a":"#d9503a"}">${upload.behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p></div>`;
   }
@@ -311,6 +313,8 @@ function openUploadDetail(uid, dayIndex){
   const behavior=u.behaviors&&u.behaviors[dayIndex];
   const isRv=u.rv&&u.rv[dayIndex];
   const energy=u.energyLog&&u.energyLog[d];
+  const upTime=u.uploadTimes&&u.uploadTimes[dayIndex];
+  const upTimeStr=upTime?new Date(upTime).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",hour12:false}):"";
 
   let energyHtml="";
   if(energy&&energy.type!=="skip"){
@@ -325,6 +329,7 @@ function openUploadDetail(uid, dayIndex){
       <div>
         <p style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">${u.name.toUpperCase()} · DAY ${d}</p>
         <p style="font-size:13px;color:#888;margin-top:2px">${u.goal}</p>
+        ${upTimeStr?`<p style="font-size:10px;color:#555;margin-top:3px">Uploaded ${upTimeStr}</p>`:""}
       </div>
       <span style="font-size:11px;padding:4px 10px;border-radius:100px;background:${isRv?"rgba(196,154,28,.12)":"rgba(77,201,138,.12)"};color:${isRv?"#c49a1c":"#4dc98a"};font-weight:700">${isRv?"Reviewed":"Pending"}</span>
     </div>

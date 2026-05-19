@@ -519,7 +519,7 @@ function startAdminPoll(){
             if(adminCurrentTab==="messages"&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId===m.challenger_id){
               if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(m.challenger_id);
               if(typeof _markMsgTabRead==="function") _markMsgTabRead(m.challenger_id);
-            } else {
+            } else if(!_adminIsTyping()){
               if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
             }
             /* Refresh profile panel chat if open for this challenger */
@@ -584,6 +584,10 @@ let _adminLastUnreadCount=-1;
 let _adminLastInboxCount=-1;
 let _adminPollRunning=false;
 let _adminPollCycle=0;
+function _adminIsTyping(){
+  const ae=document.activeElement;
+  return ae&&(ae.tagName==="TEXTAREA"||(ae.tagName==="INPUT"&&ae.type!=="checkbox")||ae.contentEditable==="true");
+}
 async function _adminLightPoll(){
   if(!getAdminToken()||_adminPollRunning)return;
   _adminPollRunning=true;
@@ -596,7 +600,7 @@ async function _adminLightPoll(){
       _adminLastUnreadCount=newUnreadCount;
       await loadAdminData();
       if(typeof _trackNewSignups==="function") _trackNewSignups();
-      if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+      if(!_adminIsTyping()&&typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
     }
     updateTabTitle();
     if(typeof _checkOnlineChanges==="function") _checkOnlineChanges();
@@ -611,7 +615,7 @@ async function _adminSoftRefresh(){
     await loadAdminData();
     if(typeof _trackNewSignups==="function") _trackNewSignups();
     _adminLastUnreadCount=adminUnreadMessages.length;
-    if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+    if(!_adminIsTyping()&&typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
     updateTabTitle();
   }catch(e){}
 }

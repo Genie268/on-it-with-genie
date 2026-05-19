@@ -59,7 +59,9 @@ async function loadData() {
   const { data: uploads } = await sb.from("uploads").select("*").in("challenger_id", ids);
   const { data: energy_logs } = await sb.from("energy_logs").select("*").in("challenger_id", ids);
   const { data: daily_plans } = await sb.from("daily_plans").select("*").in("challenger_id", ids);
-  return { ok: true, challengers, uploads: uploads ?? [], energy_logs: energy_logs ?? [], daily_plans: daily_plans ?? [] };
+  const { data: push_subs } = await sb.from("push_subscriptions").select("challenger_id,is_active").in("challenger_id", ids);
+  const { data: reminder_logs } = await sb.from("reminder_logs").select("challenger_id,sent_date,slot").gte("sent_date", new Date(Date.now() - 3 * 86400000).toISOString().split("T")[0]).order("sent_date", { ascending: false });
+  return { ok: true, challengers, uploads: uploads ?? [], energy_logs: energy_logs ?? [], daily_plans: daily_plans ?? [], push_subs: push_subs ?? [], reminder_logs: reminder_logs ?? [] };
 }
 
 async function loadMessages() {

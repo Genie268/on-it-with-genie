@@ -31,6 +31,9 @@ async function loadAdminData(){
     const allUploads=res.uploads||[];
     const allEnergy=res.energy_logs||[];
     const allPlans=res.daily_plans||[];
+    const allPushSubs=res.push_subs||[];
+    const allReminderLogs=res.reminder_logs||[];
+    window._adminReminderLogs=allReminderLogs;
 
     liveChallengers=challengers.map(c=>{
       const uploads=(allUploads||[]).filter(u=>u.challenger_id===c.id);
@@ -46,6 +49,7 @@ async function loadAdminData(){
       const linkArr=Array(dur).fill(null);
       const fileNameArr=Array(dur).fill(null);
       const behaviorArr=Array(dur).fill(null);
+      const uploadTimeArr=Array(dur).fill(null);
       uploads.forEach(u=>{
         if(u.day_number>=1&&u.day_number<=dur){
           const i=u.day_number-1;
@@ -58,6 +62,7 @@ async function loadAdminData(){
           linkArr[i]=u.link_url||null;
           fileNameArr[i]=u.file_name||null;
           behaviorArr[i]=u.behavior_answer||null;
+          uploadTimeArr[i]=u.created_at||null;
         }
       });
       const elog={};
@@ -72,7 +77,7 @@ async function loadAdminData(){
         goal:c.goal_summary||c.goal_raw,pt:c.proof_type||"output",
         day:curDay,dur,up:upArr,notes:noteArr,rv:rvArr,rvCount:(rvArr||[]).filter(Boolean).length,
         energyLog:elog,hasVoice:voiceArr,voiceUrls:voiceUrlArr,fileUrls:fileUrlArr,
-        links:linkArr,fileNames:fileNameArr,behaviors:behaviorArr,
+        links:linkArr,fileNames:fileNameArr,behaviors:behaviorArr,uploadTimes:uploadTimeArr,
         flag:missed>=4?`${missed} missed days`:null,
         email:c.email,phone:c.phone,
         paymentStatus:c.payment_status,supabaseId:c.id,status:c.status,
@@ -80,6 +85,7 @@ async function loadAdminData(){
         proofDescription:c.proof_description,proofType:c.proof_type||"output",
         threat:c.threat,startDate:c.start_date,lastSeen:c.last_seen,
         createdAt:c.created_at,
+        hasPush:allPushSubs.some(s=>s.challenger_id===c.id&&s.is_active),
         plans:plans.sort((a,b)=>a.day_number-b.day_number)
       };
     });
@@ -880,6 +886,33 @@ function toggleAdminSection(id){
   if(chev)chev.style.transform=open?"rotate(0deg)":"rotate(90deg)";
 }
 
+function _renderNotifLog(active,completed){
+  const logs=window._adminReminderLogs||[];
+  const allUsers=[...active,...completed];
+  const slotNames={1:"Morning",2:"Afternoon",3:"Evening",99:"Ghost Nudge"};
+  const pushStatus=allUsers.map(u=>`<div class="row mb6" style="justify-content:space-between;align-items:center">
+    <span style="font-size:12px">${u.name}</span>
+    <span style="font-size:10px;font-weight:700;color:${u.hasPush?"#4dc98a":"#d9503a"}">${u.hasPush?"Push enabled":"No push"}</span>
+  </div>`).join("");
+  if(!logs.length) return `<p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:8px">PUSH STATUS</p>${pushStatus}<p class="muted" style="font-size:12px;margin-top:12px">No recent notification logs.</p>`;
+  const byDate={};
+  logs.forEach(l=>{
+    const key=l.sent_date;
+    if(!byDate[key])byDate[key]=[];
+    const name=allUsers.find(u=>u.id===l.challenger_id)?.name||"Unknown";
+    byDate[key].push({name,slot:l.slot,slotName:slotNames[l.slot]||`Slot ${l.slot}`});
+  });
+  let html=`<p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:8px">PUSH STATUS</p>${pushStatus}<div style="margin-top:14px;border-top:1px solid #1b1b1b;padding-top:12px"><p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:8px">RECENT NOTIFICATIONS (3 DAYS)</p>`;
+  Object.keys(byDate).sort().reverse().forEach(date=>{
+    html+=`<p style="font-size:11px;font-weight:700;color:#888;margin:8px 0 4px">${date}</p>`;
+    byDate[date].forEach(e=>{
+      html+=`<div class="row mb4" style="justify-content:space-between"><span style="font-size:11px;color:#ccc">${e.name}</span><span style="font-size:10px;color:#888">${e.slotName}</span></div>`;
+    });
+  });
+  html+=`</div>`;
+  return html;
+}
+
 function renderAdminOverview(c){
   const all=getAM();
   const _isComplete=u=>u.day>=u.dur||u.status==="completed";
@@ -970,7 +1003,7 @@ function renderAdminOverview(c){
         <div class="row mb8" style="justify-content:space-between">
           <div class="row" style="gap:10px">
             ${_avatarWithStatus(u,34,"8px")}
-            <div><p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads</p></div>
+            <div><p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}${u.hasPush?"":" <span style=\"font-size:9px;color:#d9503a;font-weight:600\">no push</span>"}</p><p class="muted" style="font-size:11px">Day ${u.day}/${u.dur||15} · ${up} uploads</p></div>
           </div>
           <div style="text-align:right">
             ${isAtRisk?`<span style="font-size:10px;font-weight:700;color:#d9503a">At Risk</span>`:`<span style="font-size:10px;font-weight:700;color:#4dc98a">Active</span>`}
@@ -1025,6 +1058,16 @@ function renderAdminOverview(c){
             <button onclick="openCallSchedule('${u.id}')" style="padding:4px 10px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0">Book</button>
           </div>`;
         }).join("")||`<p class="muted" style="font-size:12px">No upcoming calls.</p>`}
+      </div>
+    </div>
+
+    <div class="admin-section" style="margin-top:16px">
+      <div class="admin-section-hd" onclick="toggleAdminSection('ov-notif-log')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">NOTIFICATION LOG</span>
+        <span id="ov-notif-log-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="ov-notif-log" style="display:none" class="admin-section-bd">
+        ${_renderNotifLog(active,completed)}
       </div>
     </div>
 
@@ -1146,10 +1189,14 @@ function renderChallengerDetail(u){
     else{cls+=" ft";}
     if(isCall)cls+=" call-day";
     const indicators=(hasVoice?"🎙":"")+(hasLink?"🔗":"");
+    const upTime=u.uploadTimes&&u.uploadTimes[i];
+    const timeStr=upTime?new Date(upTime).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",hour12:false}):"";
+    const titleText=isUp?`Day ${d} · Uploaded at ${timeStr}`:fut?`Day ${d} · upcoming`:`Day ${d}`;
     const onclick=isUp?`onclick="openUploadDetail('${u.id}',${i})" style="cursor:pointer"`:"";
-    gridCells+=`<div class="${cls}" ${onclick} title="Day ${d}${isUp?": tap to view":fut?" · upcoming":""}">
+    gridCells+=`<div class="${cls}" ${onclick} title="${titleText}">
       <span class="dn">D${d}</span>
       ${ds?`<span class="ds">${ds}</span>`:""}
+      ${isUp&&timeStr?`<span style="font-size:7px;color:#888;line-height:1">${timeStr}</span>`:""}
       ${indicators?`<span style="font-size:7px;line-height:1;margin-top:1px">${indicators}</span>`:""}
       ${isCall?`<span style="position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:#c49a1c;display:flex;align-items:center;justify-content:center;font-size:5px">C</span>`:""}
     </div>`;
