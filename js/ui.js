@@ -1405,11 +1405,10 @@ async function saveAdminProfile(uid){
   const proof=(el("pf-proof")?.value||"").trim();
   const threat=(el("pf-threat")?.value||"").trim();
   if(!name){showToast("Name is required","error");return;}
-  if(!goalRaw){showToast("Goal is required","error");return;}
   try{
     await adminFetch("update_challenger",{
       challenger_id:uid,name,email,phone,
-      goal_raw:goalRaw,goal_summary:goalSummary,
+      goal_raw:goalRaw||goalSummary,goal_summary:goalSummary||goalRaw,
       proof_description:proof,threat
     });
     Object.assign(u,{name,email,phone,goalRaw,goalSummary:goalSummary,proofDescription:proof,threat,
