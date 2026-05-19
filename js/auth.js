@@ -428,8 +428,15 @@ async function initPushNotifications(){
       return;
     }
     if(Notification.permission==="denied")return;
-    if(!localStorage.getItem("oiwg_push_prompted")){
-      setTimeout(()=>_showPushPrompt(),2000);
+    try{
+      const perm=await Notification.requestPermission();
+      if(perm==="granted"){
+        sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
+        await _syncPushSub(sub);
+        return;
+      }
+    }catch(e){
+      setTimeout(()=>_showPushPrompt(),1500);
     }
   }catch(e){console.warn("Push init:",e);}
 }
@@ -517,23 +524,19 @@ async function _enableAdminPush(){
 
 function _showPushPrompt(){
   if(document.getElementById("push-prompt"))return;
-  localStorage.setItem("oiwg_push_prompted","1");
   const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone=window.navigator.standalone||window.matchMedia("(display-mode: standalone)").matches;
   const banner=document.createElement("div");
   banner.id="push-prompt";
   banner.style.cssText="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid rgba(196,154,28,.3);color:#e0e0e0;font-size:13px;padding:16px 18px;border-radius:14px;z-index:9999;max-width:320px;width:calc(100% - 32px);text-align:center;box-shadow:0 8px 30px #0008;animation:popIn .25s ease";
   if(isIOS&&!isStandalone){
-    banner.innerHTML=`<p style="font-weight:700;color:#c49a1c;margin-bottom:6px">Stay in the loop</p>
-      <p style="font-size:12px;color:#999;line-height:1.5;margin-bottom:12px">To get notifications on iPhone, add this app to your Home Screen: tap <strong style="color:#ddd">Share</strong> → <strong style="color:#ddd">Add to Home Screen</strong></p>
-      <button onclick="this.parentElement.remove()" style="padding:8px 20px;border-radius:8px;background:#222;border:1px solid #333;color:#888;font-size:12px;cursor:pointer;font-family:inherit">Got it</button>`;
+    banner.innerHTML=`<p style="font-weight:700;color:#c49a1c;margin-bottom:6px">Enable Notifications</p>
+      <p style="font-size:12px;color:#999;line-height:1.5;margin-bottom:12px">To get reminders and updates, add this app to your Home Screen: tap <strong style="color:#ddd">Share</strong> → <strong style="color:#ddd">Add to Home Screen</strong></p>
+      <button onclick="this.parentElement.remove()" style="padding:8px 20px;border-radius:8px;background:#c49a1c;border:none;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Got it</button>`;
   }else{
-    banner.innerHTML=`<p style="font-weight:700;color:#c49a1c;margin-bottom:6px">Stay in the loop</p>
-      <p style="font-size:12px;color:#999;line-height:1.5;margin-bottom:12px">Get notified when Genie sends you a message or review.</p>
-      <div style="display:flex;gap:8px;justify-content:center">
-        <button onclick="_acceptPushPrompt()" style="padding:8px 20px;border-radius:8px;background:#c49a1c;border:none;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Enable</button>
-        <button onclick="this.parentElement.parentElement.remove()" style="padding:8px 20px;border-radius:8px;background:#222;border:1px solid #333;color:#888;font-size:12px;cursor:pointer;font-family:inherit">Not now</button>
-      </div>`;
+    banner.innerHTML=`<p style="font-weight:700;color:#c49a1c;margin-bottom:6px">Enable Notifications</p>
+      <p style="font-size:12px;color:#999;line-height:1.5;margin-bottom:12px">Genie needs to send you daily reminders, reviews, and updates. Tap below to enable.</p>
+      <button onclick="_acceptPushPrompt()" style="padding:10px 28px;border-radius:8px;background:#c49a1c;border:none;color:#000;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Enable Notifications</button>`;
   }
   document.body.appendChild(banner);
 }
