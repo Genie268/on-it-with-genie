@@ -1419,18 +1419,23 @@ async function renderAdminNotifications(c){
       <div id="notif-trigger-result" style="margin-top:10px;font-size:12px;display:none"></div>
     </div>
 
-    <div style="margin-bottom:20px">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">PUSH STATUS · <span style="color:#4dc98a">${withPush.length} enabled</span> · <span style="color:#d9503a">${noPush.length} no push</span></p>
-      <div style="display:flex;flex-direction:column;gap:3px">
-        ${allUsers.map(u=>{
-          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:6px">
-            <span style="width:7px;height:7px;border-radius:50%;background:${u.hasPush?"#4dc98a":"#d9503a"};flex-shrink:0"></span>
-            <span style="font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.name}</span>
-            <span style="font-size:10px;color:#555;flex-shrink:0">${_isComplete(u)?"completed":u.paymentStatus||"—"}</span>
-            ${u.hasPush?`<button class="bs" style="font-size:10px;padding:3px 10px;flex-shrink:0" onclick="_pushToUser('${u.id}','${u.name.replace(/'/g,"\\'")}')">Push</button>`
-            :`<span style="font-size:9px;color:#555;flex-shrink:0">no sub</span>`}
-          </div>`;
-        }).join("")}
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('notif-people')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">PEOPLE · <span style="color:#4dc98a">${withPush.length} push</span> · <span style="color:#d9503a">${noPush.length} no push</span></span>
+        <span id="notif-people-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="notif-people" style="display:none" class="admin-section-bd">
+        <div style="display:flex;flex-direction:column;gap:3px">
+          ${allUsers.map(u=>{
+            return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:6px">
+              <span style="width:7px;height:7px;border-radius:50%;background:${u.hasPush?"#4dc98a":"#d9503a"};flex-shrink:0"></span>
+              <span style="font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.name}</span>
+              <span style="font-size:10px;color:#555;flex-shrink:0">${_isComplete(u)?"done":u.paymentStatus||"—"}</span>
+              ${u.hasPush?`<button class="bs" style="font-size:10px;padding:3px 10px;flex-shrink:0" onclick="_pushToUser('${u.id}','${u.name.replace(/'/g,"\\'")}')">Push</button>`
+              :`<span style="font-size:9px;color:#555;flex-shrink:0">no sub</span>`}
+            </div>`;
+          }).join("")}
+        </div>
       </div>
     </div>
 

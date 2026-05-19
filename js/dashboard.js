@@ -245,24 +245,39 @@ function _buildPlanStats(){
 
 /* ── DAILY PLANNING ── */
 function _todayPlan(){return S.plans[S.day]||null;}
+var _planCollapsed=false;
 
+function _showPlanOverlay(html){
+  _closePlanOverlay();
+  const ov=document.createElement("div");
+  ov.id="plan-overlay";
+  ov.style.cssText="position:fixed;inset:0;z-index:960;display:flex;align-items:center;justify-content:center;padding:20px;animation:heroFadeIn .3s ease";
+  ov.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)"></div><div style="position:relative;z-index:1;width:100%;max-width:420px">${html}</div>`;
+  document.body.appendChild(ov);
+}
+
+function _closePlanOverlay(){
+  const ov=document.getElementById("plan-overlay");
+  if(ov)ov.remove();
+}
 
 function renderPlanArea(){
   const area=el("plan-area");if(!area)return;
   if(!S.user||!S.uploads)return;
   const d=S.day;
   const p=_todayPlan();
-  if(p&&p.skipped){area.innerHTML="";return;}
-  if(p&&p.mainStep){_renderPlanSummary(area,p,d);return;}
+  if(p&&p.skipped){area.innerHTML="";_closePlanOverlay();return;}
+  if(p&&p.mainStep){_closePlanOverlay();_renderPlanSummary(area,p,d);return;}
   if(d===1&&S.uploads.every(v=>v===null)&&!localStorage.getItem("oiwg_wt_"+S.user?.supabaseId)){area.innerHTML="";return;}
-  _renderPlanPrompt(area,d);
+  area.innerHTML="";
+  _renderPlanPrompt(d);
 }
 
-function _renderPlanPrompt(area,d){
+function _renderPlanPrompt(d){
   const goal=S.user.answers?.goalSummary||S.user.answers?.goal||"your goal";
   const yest=S.plans[d-1];
   const hasYesterday=yest&&yest.mainStep&&!yest.skipped;
-  area.innerHTML=`<div class="card mb10" style="border:1px solid rgba(196,154,28,.15);background:rgba(196,154,28,.03)">
+  _showPlanOverlay(`<div class="card" style="border:1px solid rgba(196,154,28,.15);background:rgba(196,154,28,.03)">
     <span class="lbl lbl-a" style="display:block;text-align:center;margin-bottom:6px">DAILY PLAN · DAY ${d}</span>
     <p style="font-size:14px;font-weight:600;text-align:center;margin-bottom:12px">What's the one thing you're doing today?</p>
     <p class="muted" style="font-size:11px;text-align:center;margin-bottom:10px">Toward: ${goal}</p>
@@ -270,7 +285,7 @@ function _renderPlanPrompt(area,d){
     ${hasYesterday?`<div style="text-align:center;margin-bottom:10px"><button class="same-yesterday-btn" onclick="_fillFromYesterday()">Same as yesterday?</button></div>`:""}
     <button class="bp" style="width:100%;padding:12px;font-size:14px" onclick="_planStep2()" id="plan-continue-btn">Continue</button>
     <button class="bg" style="width:100%;margin-top:6px;font-size:11px" onclick="_skipPlan()">Skip for today</button>
-  </div>`;
+  </div>`);
 }
 
 function _fillFromYesterday(){
@@ -289,8 +304,7 @@ function _planStep2(){
   const input=el("plan-main-input");
   const mainStep=(input?.value||"").trim();
   if(mainStep.length<10){input.style.border="1px solid #d9503a";input.placeholder="Tell me more. What exactly?";return;}
-  const area=el("plan-area");
-  area.innerHTML=`<div class="card mb10" style="border:1px solid rgba(196,154,28,.15);background:rgba(196,154,28,.03)">
+  _showPlanOverlay(`<div class="card" style="border:1px solid rgba(196,154,28,.15);background:rgba(196,154,28,.03)">
     <span class="lbl lbl-a" style="display:block;text-align:center;margin-bottom:4px">YOUR ONE THING</span>
     <p style="font-size:13px;font-weight:600;text-align:center;margin-bottom:12px;color:#ccc">"${_esc(mainStep)}"</p>
     <p style="font-size:14px;font-weight:600;text-align:center;margin-bottom:10px">How does that break down? Give me three.</p>
@@ -303,7 +317,7 @@ function _planStep2(){
       <button class="bg" style="flex:1;font-size:12px;padding:10px" onclick="_planAISuggest('${_esc(mainStep)}')" id="plan-ai-btn">Stuck? Get suggestions</button>
       <button class="bp" style="flex:1;font-size:14px;padding:10px" onclick="_submitPlan('${_esc(mainStep)}')">Set my plan</button>
     </div>
-  </div>`;
+  </div>`);
   /* Pre-fill from yesterday if triggered by "Same as yesterday?" */
   if(S._yesterdaySubs&&S._yesterdaySubs.length){
     if(S._yesterdaySubs[0])el("plan-s1").value=S._yesterdaySubs[0].text||"";
@@ -344,8 +358,10 @@ function _submitPlan(mainStep){
   const plan={mainStep,subSteps:[{text:s1,done:false},{text:s2,done:false},{text:s3,done:false}],aiAssisted:!!S._planAiUsed,skipped:false};
   S.plans[S.day]=plan;
   S._planAiUsed=false;
+  _planCollapsed=false;
   saveState();
   syncPlanToSupabase(S.day,plan);
+  _closePlanOverlay();
   const area=el("plan-area");
   area.innerHTML=`<div style="text-align:center;padding:14px;font-size:13px;color:#c49a1c;animation:heroFadeUp .3s ease forwards">Plan set. Now go do it.</div>`;
   setTimeout(()=>_renderPlanSummary(area,plan,S.day),1500);
@@ -355,6 +371,16 @@ function _renderPlanSummary(area,plan,d){
   const done=plan.subSteps.filter(s=>s.done).length;
   const total=plan.subSteps.length;
   const allDone=done===total;
+  /* Collapsed: single-line reminder */
+  if(_planCollapsed){
+    area.innerHTML=`<div class="card mb10" style="border:1px solid rgba(196,154,28,.08);padding:10px 14px;cursor:pointer" onclick="_expandPlan()">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:#888">Today's plan set &#10003;</span>
+        <span style="font-size:10px;color:#5a5a5a">${done}/${total} done &middot; tap to expand</span>
+      </div>
+    </div>`;
+    return;
+  }
   const dots=plan.subSteps.map(s=>`<div class="plan-progress-dot" style="background:${s.done?"#c49a1c":"#1e1e1e"};${s.done?"box-shadow:0 0 4px rgba(196,154,28,.3)":""}"></div>`).join("");
   area.innerHTML=`<div class="card mb10${allDone?" plan-card-pulse":""}" id="plan-summary-card" style="border:1px solid ${allDone?"rgba(196,154,28,.4)":"rgba(196,154,28,.1)"};padding:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -362,6 +388,7 @@ function _renderPlanSummary(area,plan,d){
       <div style="display:flex;align-items:center;gap:6px">
         <div style="display:flex;gap:4px">${dots}</div>
         <span style="font-size:10px;color:${allDone?"#4dc98a":"#888"}">${done}/${total}</span>
+        <button onclick="_collapsePlan()" style="background:none;border:none;color:#5a5a5a;font-size:11px;cursor:pointer;padding:2px 6px;font-family:inherit" title="Hide plan">&#9660;</button>
       </div>
     </div>
     <p style="font-size:12px;color:#999;margin-bottom:10px">${_esc(plan.mainStep)}</p>
@@ -369,8 +396,26 @@ function _renderPlanSummary(area,plan,d){
       <div onclick="_togglePlanStep(${i})" style="width:20px;height:20px;border-radius:5px;border:1.5px solid ${s.done?"#4dc98a":"#333"};background:${s.done?"rgba(77,201,138,.15)":"transparent"};cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:#4dc98a">${s.done?"✓":""}</div>
       <span style="font-size:13px;color:${s.done?"#666":"#ccc"};${s.done?"text-decoration:line-through":""}">${_esc(s.text)}</span>
     </div>`).join("")}
-    ${allDone?`<p class="plan-nudge" style="font-size:12px;color:#c49a1c;text-align:center;margin-top:10px;font-weight:600">All 3 done. Time to upload your proof.</p>`:""}
+    ${allDone?`<div style="text-align:center;margin-top:12px;animation:planNudgeFade .3s ease forwards">
+      <p style="font-size:14px;color:#4dc98a;font-weight:700;margin-bottom:8px">All done!</p>
+      <p class="plan-nudge" style="font-size:12px;color:#c49a1c;margin-bottom:10px">Time to upload your proof.</p>
+      <button onclick="_collapsePlan()" style="background:none;border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:11px;padding:6px 16px;border-radius:8px;cursor:pointer;font-family:inherit">Hide plan</button>
+    </div>`:""}
   </div>`;
+}
+
+function _collapsePlan(){
+  _planCollapsed=true;
+  const area=el("plan-area");if(!area)return;
+  const plan=_todayPlan();if(!plan)return;
+  _renderPlanSummary(area,plan,S.day);
+}
+
+function _expandPlan(){
+  _planCollapsed=false;
+  const area=el("plan-area");if(!area)return;
+  const plan=_todayPlan();if(!plan)return;
+  _renderPlanSummary(area,plan,S.day);
 }
 
 function _togglePlanStep(idx){
@@ -394,6 +439,7 @@ function _skipPlan(){
   S.plans[S.day]={mainStep:"",subSteps:[],aiAssisted:false,skipped:true};
   saveState();
   syncPlanToSupabase(S.day,S.plans[S.day]);
+  _closePlanOverlay();
   el("plan-area").innerHTML="";
 }
 
