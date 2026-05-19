@@ -358,7 +358,7 @@ async function _restoreSession(data){
     const uploadArr=Array(dur).fill(null);
     (uploads||[]).forEach(u=>{
       if(u.day_number>=1&&u.day_number<=dur){
-        uploadArr[u.day_number-1]={note:u.note,hasFile:!!u.file_url,fileName:u.file_name,fileUrl:u.file_url||null,proofType:u.proof_type,link:u.link_url,behavior:u.behavior_answer,hasVoice:!!u.voice_url,voiceUrl:u.voice_url||null};
+        uploadArr[u.day_number-1]={note:u.note,hasFile:!!u.file_url,fileName:u.file_name,fileUrl:u.file_url||null,proofType:u.proof_type,link:u.link_url,behavior:u.behavior_answer,hasVoice:!!u.voice_url,voiceUrl:u.voice_url||null,reviewNote:u.review_note||null};
       }
     });
 

@@ -267,6 +267,9 @@ function openViewMod(dayIdx){
   if(upload.proofType){
     html+=`<span class="tag mt6" style="display:inline-block;margin-top:6px">${PT[upload.proofType]||"Proof"}</span>`;
   }
+  if(upload.reviewNote){
+    html+=`<div style="margin-top:14px;padding:10px 12px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);border-radius:8px"><span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#c49a1c">GENIE'S NOTE</span><p style="margin:4px 0 0;font-size:13px;line-height:1.6;color:#e0e0e0">${upload.reviewNote}</p></div>`;
+  }
   html+=`</div>`;
   el("view-mod-body").innerHTML=html;
   if(isToday){
@@ -312,6 +315,7 @@ function openUploadDetail(uid, dayIndex){
   const fileName=u.fileNames&&u.fileNames[dayIndex];
   const behavior=u.behaviors&&u.behaviors[dayIndex];
   const isRv=u.rv&&u.rv[dayIndex];
+  const reviewNote=u.reviewNotes&&u.reviewNotes[dayIndex];
   const energy=u.energyLog&&u.energyLog[d];
   const upTime=u.uploadTimes&&u.uploadTimes[dayIndex];
   const upTimeStr=upTime?new Date(upTime).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",hour12:false}):"";
@@ -339,13 +343,32 @@ function openUploadDetail(uid, dayIndex){
     ${fileUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${thumbHtml(fileUrl,fileName)}</div>`:fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${fileName}</p></div>`:""}
     ${voiceUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span><audio controls src="${voiceUrl}" style="width:100%;margin-top:8px;border-radius:8px"></audio></div>`:""}
     ${energyHtml}
-    <div style="border-top:1px solid #1f1f1f;padding-top:16px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
+    <div style="margin-top:14px;padding:12px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px">
+      <span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#c49a1c">YOUR REVIEW NOTE</span>
+      ${reviewNote?`<p style="margin:6px 0 8px;font-size:12px;line-height:1.6;color:#ccc">${reviewNote}</p>`:""}
+      <textarea id="ud-review-note-${dayIndex}" rows="2" placeholder="${reviewNote?"Update your note...":"Add a review note..."}" style="font-size:12px;margin-top:6px;width:100%;box-sizing:border-box">${reviewNote||""}</textarea>
+      <button onclick="_saveDetailReviewNote('${uid}',${dayIndex})" class="bp" style="font-size:11px;padding:5px 12px;margin-top:6px">Save Note</button>
+    </div>
+    <div style="border-top:1px solid #1f1f1f;padding-top:16px;margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
       <button onclick="togRv('${uid}',${dayIndex});closeUploadDetail()" style="padding:8px 16px;border-radius:100px;background:${isRv?"rgba(196,154,28,.1)":"#1b1b1b"};border:1px solid ${isRv?"rgba(196,154,28,.3)":"#333"};color:${isRv?"#c49a1c":"#888"};font-size:12px;font-weight:700;cursor:pointer">${isRv?"✓ Unmark Reviewed":"Mark Reviewed"}</button>
-      <button onclick="closeUploadDetail();setTimeout(()=>openProfilePanel('${uid}'),150)" style="padding:8px 16px;border-radius:100px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">Message ${u.name} →</button>
+      <button onclick="closeUploadDetail();setTimeout(()=>{_msgActiveChallengerId='${uid}';adminTab('messages')},150)" style="padding:8px 16px;border-radius:100px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">Message ${u.name} →</button>
     </div>
   `;
   panel.style.transform="translateX(0)";
   document.getElementById("upload-detail-backdrop").style.display="block";
+}
+
+async function _saveDetailReviewNote(uid,dayIndex){
+  const ta=document.getElementById("ud-review-note-"+dayIndex);
+  if(!ta||!ta.value.trim()){showToast("Type a note first","error");return;}
+  ta.disabled=true;
+  try{
+    await adminFetch("save_review_note",{challenger_id:uid,day_number:dayIndex+1,note:ta.value.trim()});
+    showToast("Review note saved","success");
+    adminDataLoaded=false;
+    await loadAdminData();
+  }catch(e){showToast("Failed to save: "+(e.message||""),"error");}
+  ta.disabled=false;
 }
 
 function closeUploadDetail(){

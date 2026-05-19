@@ -50,6 +50,7 @@ async function loadAdminData(){
       const fileNameArr=Array(dur).fill(null);
       const behaviorArr=Array(dur).fill(null);
       const uploadTimeArr=Array(dur).fill(null);
+      const reviewNoteArr=Array(dur).fill(null);
       uploads.forEach(u=>{
         if(u.day_number>=1&&u.day_number<=dur){
           const i=u.day_number-1;
@@ -63,6 +64,7 @@ async function loadAdminData(){
           fileNameArr[i]=u.file_name||null;
           behaviorArr[i]=u.behavior_answer||null;
           uploadTimeArr[i]=u.created_at||null;
+          reviewNoteArr[i]=u.review_note||null;
         }
       });
       const elog={};
@@ -77,7 +79,7 @@ async function loadAdminData(){
         goal:c.goal_summary||c.goal_raw,pt:c.proof_type||"output",
         day:curDay,dur,up:upArr,notes:noteArr,rv:rvArr,rvCount:(rvArr||[]).filter(Boolean).length,
         energyLog:elog,hasVoice:voiceArr,voiceUrls:voiceUrlArr,fileUrls:fileUrlArr,
-        links:linkArr,fileNames:fileNameArr,behaviors:behaviorArr,uploadTimes:uploadTimeArr,
+        links:linkArr,fileNames:fileNameArr,behaviors:behaviorArr,uploadTimes:uploadTimeArr,reviewNotes:reviewNoteArr,
         flag:missed>=4?`${missed} missed days`:null,
         email:c.email,phone:c.phone,
         paymentStatus:c.payment_status,supabaseId:c.id,status:c.status,
@@ -508,33 +510,18 @@ function renderAdminMessages(c){
     return;
   }
 
-  /* Build conversation list — sorted by most recent message, with unread on top */
   const convos=[];
   const seen=new Set();
-  /* Start with recent messages to get ordering */
   adminRecentMessages.forEach(m=>{
     if(seen.has(m.challenger_id))return;
     seen.add(m.challenger_id);
     const u=challengers.find(x=>x.id===m.challenger_id);
     const done=u?_isComplete(u):false;
-    convos.push({
-      id:m.challenger_id,
-      name:u?u.name:"Unknown",
-      ini:u?u.ini:"?",
-      photo:u?u.photo:null,
-      lastSeen:u?u.lastSeen:null,
-      lastMsg:m,
-      unread:getUnreadCountForChallenger(m.challenger_id),
-      done
-    });
+    convos.push({id:m.challenger_id,name:u?u.name:"Unknown",ini:u?u.ini:"?",photo:u?u.photo:null,lastSeen:u?u.lastSeen:null,lastMsg:m,unread:getUnreadCountForChallenger(m.challenger_id),done});
   });
-  /* Add challengers with no messages yet */
   challengers.forEach(u=>{
-    if(!seen.has(u.id)){
-      convos.push({id:u.id,name:u.name,ini:u.ini,photo:u.photo,lastSeen:u.lastSeen,lastMsg:null,unread:0,done:_isComplete(u)});
-    }
+    if(!seen.has(u.id)) convos.push({id:u.id,name:u.name,ini:u.ini,photo:u.photo,lastSeen:u.lastSeen,lastMsg:null,unread:0,done:_isComplete(u)});
   });
-  /* Sort: unread first, then active before completed, then by last message time */
   convos.sort((a,b)=>{
     if(a.unread&&!b.unread)return -1;
     if(!a.unread&&b.unread)return 1;
@@ -545,7 +532,6 @@ function renderAdminMessages(c){
     return 1;
   });
 
-  /* If no active conversation or it doesn't exist, pick the first with unread or first overall */
   if(!_msgActiveChallengerId||!convos.find(x=>x.id===_msgActiveChallengerId)){
     const firstUnread=convos.find(x=>x.unread>0);
     const newId=firstUnread?firstUnread.id:(convos[0]?convos[0].id:null);
@@ -559,7 +545,7 @@ function renderAdminMessages(c){
     const ta=cv.lastMsg?timeAgo(cv.lastMsg.created_at):"";
     const avatar=_avatarWithStatus(cv,36,"50%");
     const doneTag=cv.done&&!cv.unread?`<span style="font-size:9px;color:#c49a1c;font-weight:700;margin-left:4px">Done</span>`:"";
-    return `<div onclick="_msgTabLastHash='';_msgActiveChallengerId='${cv.id}';renderAdminMessages(el('admin-content'))" style="padding:10px 14px;cursor:pointer;display:flex;gap:10px;align-items:center;border-left:3px solid ${isActive?"#c49a1c":"transparent"};background:${isActive?"rgba(196,154,28,.06)":cv.unread?"rgba(217,80,58,.04)":"transparent"};${cv.done&&!cv.unread?"opacity:.6;":""}transition:background .15s" onmouseenter="if(!${isActive})this.style.background='rgba(255,255,255,.03)'" onmouseleave="if(!${isActive})this.style.background='${cv.unread?"rgba(217,80,58,.04)":"transparent"}'">
+    return `<div onclick="_msgTabLastHash='';_msgActiveChallengerId='${cv.id}';_renderMsgThread()" style="padding:10px 12px;cursor:pointer;display:flex;gap:10px;align-items:center;border-left:3px solid ${isActive?"#c49a1c":"transparent"};background:${isActive?"rgba(196,154,28,.06)":cv.unread?"rgba(217,80,58,.04)":"transparent"};${cv.done&&!cv.unread?"opacity:.6;":""}transition:background .15s" onmouseenter="if(!${isActive})this.style.background='rgba(255,255,255,.03)'" onmouseleave="if(!${isActive})this.style.background='${cv.unread?"rgba(217,80,58,.04)":"transparent"}'">
       ${avatar}
       <div style="flex:1;min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -574,30 +560,31 @@ function renderAdminMessages(c){
     </div>`;
   }).join("");
 
-  /* Build the active chat thread */
   const activeConvo=convos.find(x=>x.id===_msgActiveChallengerId);
-  const chatHeaderHtml=activeConvo?`
-    <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #1f1f1f;background:#0a0a0a">
-      ${_avatarWithStatus(activeConvo,32,"50%")}
-      <div style="flex:1;min-width:0">
-        <p style="font-size:14px;font-weight:700;margin:0">${activeConvo.name}</p>
-        <p class="muted" style="font-size:10px;margin:0">${_formatLastSeen(activeConvo.lastSeen)}</p>
-      </div>
-      <button onclick="openProfilePanel('${activeConvo.id}')" style="padding:5px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer">Profile →</button>
-    </div>`:"";
 
   c.innerHTML=`
-    <div style="display:flex;flex-direction:column;height:calc(100vh - 120px);margin:-18px;border-radius:0">
-      <!-- Conversation list -->
-      <div style="border-bottom:1px solid #1f1f1f;max-height:220px;overflow-y:auto;flex-shrink:0">
-        <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;padding:12px 14px 8px">CONVERSATIONS · ${convos.length}</p>
-        ${convoListHtml}
+    <div style="display:flex;height:calc(100vh - 120px);margin:-18px;border-radius:0">
+      <!-- Left: Conversation list -->
+      <div id="msg-sidebar" style="width:280px;min-width:220px;border-right:1px solid #1f1f1f;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden">
+        <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;padding:14px 12px 10px">CONVERSATIONS · ${convos.length}</p>
+        <div style="flex:1;overflow-y:auto">${convoListHtml}</div>
       </div>
-      <!-- Active chat -->
-      <div style="flex:1;display:flex;flex-direction:column;min-height:0">
-        ${chatHeaderHtml}
+      <!-- Right: Active chat -->
+      <div id="msg-chat-pane" style="flex:1;display:flex;flex-direction:column;min-width:0">
+        <div id="msg-chat-header">
+          ${activeConvo?`
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #1f1f1f;background:#0a0a0a">
+            <button onclick="_msgCloseThread()" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px;padding:0 6px 0 0;display:none" class="msg-back-btn">←</button>
+            ${_avatarWithStatus(activeConvo,32,"50%")}
+            <div style="flex:1;min-width:0">
+              <p style="font-size:14px;font-weight:700;margin:0">${activeConvo.name}</p>
+              <p class="muted" style="font-size:10px;margin:0">${_formatLastSeen(activeConvo.lastSeen)}</p>
+            </div>
+            <button onclick="openProfilePanel('${activeConvo.id}')" style="padding:5px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer">Profile</button>
+          </div>`:`<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#333;font-size:13px">Select a conversation</div>`}
+        </div>
         <div id="msg-tab-thread" style="flex:1;overflow-y:auto;padding:12px 14px">
-          <div style="text-align:center;padding:20px"><span class="muted" style="font-size:11px">Loading...</span></div>
+          ${activeConvo?`<div style="text-align:center;padding:20px"><span class="muted" style="font-size:11px">Loading...</span></div>`:`<div style="display:flex;align-items:center;justify-content:center;height:100%"><p class="muted" style="font-size:12px">Pick someone to message</p></div>`}
         </div>
         <div id="msg-tab-voice-status" style="display:none;padding:4px 14px"></div>
         <div id="msg-tab-reply-indicator" style="display:none"></div>
@@ -611,7 +598,90 @@ function renderAdminMessages(c){
       </div>
     </div>`;
 
-  /* Load chat thread async — slight delay to ensure DOM is ready */
+  _applyMsgResponsive();
+  if(_msgActiveChallengerId){
+    setTimeout(()=>{
+      _loadMsgTabChat(_msgActiveChallengerId);
+      _markMsgTabRead(_msgActiveChallengerId);
+    },50);
+  }
+}
+
+function _applyMsgResponsive(){
+  const w=window.innerWidth||document.documentElement.clientWidth;
+  const sidebar=document.getElementById("msg-sidebar");
+  const chatPane=document.getElementById("msg-chat-pane");
+  const backBtns=document.querySelectorAll(".msg-back-btn");
+  if(w<600){
+    if(sidebar)sidebar.style.width="100%";
+    if(_msgActiveChallengerId){
+      if(sidebar)sidebar.style.display="none";
+      if(chatPane)chatPane.style.display="flex";
+      backBtns.forEach(b=>b.style.display="inline");
+    }else{
+      if(sidebar)sidebar.style.display="flex";
+      if(chatPane)chatPane.style.display="none";
+    }
+  }else{
+    if(sidebar){sidebar.style.display="flex";sidebar.style.width="280px";}
+    if(chatPane)chatPane.style.display="flex";
+    backBtns.forEach(b=>b.style.display="none");
+  }
+}
+
+function _msgCloseThread(){
+  _msgActiveChallengerId=null;
+  _msgTabLastHash="";
+  _applyMsgResponsive();
+  const sidebar=document.getElementById("msg-sidebar");
+  const chatPane=document.getElementById("msg-chat-pane");
+  if(sidebar)sidebar.style.display="flex";
+  if(chatPane)chatPane.style.display="none";
+}
+
+function _renderMsgThread(){
+  const chatPane=document.getElementById("msg-chat-pane");
+  const sidebar=document.getElementById("msg-sidebar");
+  if(!chatPane)return;
+  const challengers=getAM();
+  const u=challengers.find(x=>x.id===_msgActiveChallengerId);
+  const activeConvo=u?{id:u.id,name:u.name,ini:u.ini,photo:u.photo,lastSeen:u.lastSeen}:null;
+  const header=document.getElementById("msg-chat-header");
+  if(header&&activeConvo){
+    header.innerHTML=`
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #1f1f1f;background:#0a0a0a">
+        <button onclick="_msgCloseThread()" style="background:none;border:none;color:#888;cursor:pointer;font-size:18px;padding:0 6px 0 0;display:none" class="msg-back-btn">←</button>
+        ${_avatarWithStatus(activeConvo,32,"50%")}
+        <div style="flex:1;min-width:0">
+          <p style="font-size:14px;font-weight:700;margin:0">${activeConvo.name}</p>
+          <p class="muted" style="font-size:10px;margin:0">${_formatLastSeen(activeConvo.lastSeen)}</p>
+        </div>
+        <button onclick="openProfilePanel('${activeConvo.id}')" style="padding:5px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer">Profile</button>
+      </div>`;
+  }
+  const thread=document.getElementById("msg-tab-thread");
+  if(thread) thread.innerHTML=`<div style="text-align:center;padding:20px"><span class="muted" style="font-size:11px">Loading...</span></div>`;
+  const inputArea=chatPane.querySelector("[style*='border-top']");
+  if(!inputArea&&activeConvo){
+    const existing=chatPane.querySelector("#msg-tab-reply-indicator");
+    const inputDiv=document.createElement("div");
+    inputDiv.style.cssText="padding:10px 14px;border-top:1px solid #1f1f1f;background:#0a0a0a;display:flex;gap:8px;align-items:flex-end";
+    inputDiv.innerHTML=`<div class="chat-input-pill" style="flex:1;display:flex;align-items:center;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:0 4px 0 14px">
+      <textarea id="msg-tab-input" class="chat-ta" rows="1" placeholder="Message ${activeConvo.name}..." style="flex:1;background:transparent;border:none;color:#ebebeb;font-size:13px;padding:10px 0;resize:none;outline:none;font-family:inherit;line-height:1.4"></textarea>
+      <button id="msg-tab-mic" onclick="toggleMsgTabRecording()" style="background:none;border:none;color:#888;cursor:pointer;padding:6px 8px;font-size:14px" title="Voice note">🎙</button>
+    </div>
+    <button onclick="sendMsgTabMsg('${activeConvo.id}')" style="width:36px;height:36px;border-radius:50%;background:#c49a1c;border:none;color:#000;font-size:16px;font-weight:900;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">↑</button>`;
+    chatPane.appendChild(inputDiv);
+  }
+  _applyMsgResponsive();
+  const convoItems=document.querySelectorAll("#msg-sidebar > div:last-child > div");
+  convoItems.forEach(item=>{
+    const isActive=item.style.borderLeftColor==="rgb(196, 154, 28)";
+    if(!isActive){
+      item.style.borderLeftColor="transparent";
+      item.style.background=item.querySelector("[style*='background:#d9503a']")?"rgba(217,80,58,.04)":"transparent";
+    }
+  });
   if(_msgActiveChallengerId){
     setTimeout(()=>{
       _loadMsgTabChat(_msgActiveChallengerId);
@@ -890,26 +960,66 @@ function _renderNotifLog(active,completed){
   const logs=window._adminReminderLogs||[];
   const allUsers=[...active,...completed];
   const slotNames={1:"Morning",2:"Afternoon",3:"Evening",99:"Ghost Nudge"};
-  const pushStatus=allUsers.map(u=>`<div class="row mb6" style="justify-content:space-between;align-items:center">
-    <span style="font-size:12px">${u.name}</span>
-    <span style="font-size:10px;font-weight:700;color:${u.hasPush?"#4dc98a":"#d9503a"}">${u.hasPush?"Push enabled":"No push"}</span>
-  </div>`).join("");
-  if(!logs.length) return `<p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:8px">PUSH STATUS</p>${pushStatus}<p class="muted" style="font-size:12px;margin-top:12px">No recent notification logs.</p>`;
+  const slotColors={1:"#c49a1c",2:"#4dc98a",3:"#888",99:"#d9503a"};
+  const enabledCount=allUsers.filter(u=>u.hasPush).length;
+
+  let html=`<div style="display:flex;gap:12px;margin-bottom:14px">
+    <div style="flex:1;padding:10px 12px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;text-align:center">
+      <p style="font-size:18px;font-weight:800;color:${enabledCount>0?"#4dc98a":"#d9503a"};margin:0">${enabledCount}</p>
+      <p style="font-size:9px;font-weight:700;color:#555;margin:2px 0 0;letter-spacing:.05em">PUSH ON</p>
+    </div>
+    <div style="flex:1;padding:10px 12px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;text-align:center">
+      <p style="font-size:18px;font-weight:800;color:${allUsers.length-enabledCount>0?"#d9503a":"#4dc98a"};margin:0">${allUsers.length-enabledCount}</p>
+      <p style="font-size:9px;font-weight:700;color:#555;margin:2px 0 0;letter-spacing:.05em">NO PUSH</p>
+    </div>
+    <div style="flex:1;padding:10px 12px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;text-align:center">
+      <p style="font-size:18px;font-weight:800;color:#c49a1c;margin:0">${logs.length}</p>
+      <p style="font-size:9px;font-weight:700;color:#555;margin:2px 0 0;letter-spacing:.05em">SENT (3D)</p>
+    </div>
+  </div>`;
+
+  html+=`<div style="margin-bottom:14px">`;
+  allUsers.forEach(u=>{
+    const userLogs=logs.filter(l=>l.challenger_id===u.id);
+    const lastSlot=userLogs.length?slotNames[userLogs[0].slot]||"—":"—";
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #141414">
+      <span style="width:8px;height:8px;border-radius:50%;background:${u.hasPush?"#4dc98a":"#d9503a"};flex-shrink:0"></span>
+      <span style="font-size:12px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.name}</span>
+      <span style="font-size:10px;color:#666;flex-shrink:0">${userLogs.length} sent</span>
+      <span style="font-size:10px;color:#555;flex-shrink:0;width:65px;text-align:right">${lastSlot}</span>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  if(!logs.length){
+    html+=`<p class="muted" style="font-size:12px;text-align:center;padding:8px 0">No notifications sent in the last 3 days.</p>`;
+    return html;
+  }
+
   const byDate={};
   logs.forEach(l=>{
     const key=l.sent_date;
     if(!byDate[key])byDate[key]=[];
     const name=allUsers.find(u=>u.id===l.challenger_id)?.name||"Unknown";
-    byDate[key].push({name,slot:l.slot,slotName:slotNames[l.slot]||`Slot ${l.slot}`});
+    byDate[key].push({name,slot:l.slot,slotName:slotNames[l.slot]||`Slot ${l.slot}`,color:slotColors[l.slot]||"#888"});
   });
-  let html=`<p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:8px">PUSH STATUS</p>${pushStatus}<div style="margin-top:14px;border-top:1px solid #1b1b1b;padding-top:12px"><p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:8px">RECENT NOTIFICATIONS (3 DAYS)</p>`;
+
+  html+=`<p style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#555;margin:0 0 8px">DELIVERY LOG</p>`;
   Object.keys(byDate).sort().reverse().forEach(date=>{
-    html+=`<p style="font-size:11px;font-weight:700;color:#888;margin:8px 0 4px">${date}</p>`;
+    const d=new Date(date+"T12:00:00");
+    const today=new Date().toISOString().split("T")[0];
+    const yest=new Date(Date.now()-86400000).toISOString().split("T")[0];
+    const label=date===today?"Today":date===yest?"Yesterday":d.toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"});
+    html+=`<p style="font-size:10px;font-weight:700;color:#666;margin:10px 0 4px">${label}</p>`;
     byDate[date].forEach(e=>{
-      html+=`<div class="row mb4" style="justify-content:space-between"><span style="font-size:11px;color:#ccc">${e.name}</span><span style="font-size:10px;color:#888">${e.slotName}</span></div>`;
+      html+=`<div style="display:flex;align-items:center;gap:6px;padding:4px 0">
+        <span style="width:6px;height:6px;border-radius:50%;background:${e.color};flex-shrink:0"></span>
+        <span style="font-size:11px;color:#ccc;flex:1">${e.name}</span>
+        <span style="font-size:10px;color:${e.color};font-weight:600">${e.slotName}</span>
+      </div>`;
     });
   });
-  html+=`</div>`;
+
   return html;
 }
 
@@ -1063,7 +1173,7 @@ function renderAdminOverview(c){
 
     <div class="admin-section" style="margin-top:16px">
       <div class="admin-section-hd" onclick="toggleAdminSection('ov-notif-log')">
-        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">NOTIFICATION LOG</span>
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">NOTIFICATIONS <span style="color:#888;font-weight:400">· ${all.filter(u=>u.hasPush).length}/${all.length} push · ${(window._adminReminderLogs||[]).length} sent</span></span>
         <span id="ov-notif-log-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
       </div>
       <div id="ov-notif-log" style="display:none" class="admin-section-bd">
@@ -1350,10 +1460,11 @@ function renderAdminInbox(c){
           </div>
           <button onclick="togRv('${u.id}',${i});renderAdminInbox(el('admin-content'))" style="padding:5px 12px;border-radius:100px;background:rgba(77,201,138,.06);border:1px solid rgba(77,201,138,.25);color:#4dc98a;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px;transition:background .15s" onmouseenter="this.style.background='rgba(77,201,138,.12)'" onmouseleave="this.style.background='rgba(77,201,138,.06)'">✓ Done</button>
         </div>
-        <textarea id="inb-${u.id}-${i}" rows="2" placeholder="Reply to ${u.name}..." style="font-size:12px;margin-top:4px"></textarea>
+        ${u.reviewNotes&&u.reviewNotes[i]?`<div style="margin-top:6px;padding:8px 10px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);border-radius:8px;font-size:11px;color:#ccc;line-height:1.5"><span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#c49a1c">YOUR NOTE</span><p style="margin:3px 0 0">${u.reviewNotes[i]}</p></div>`:""}
+        <textarea id="inb-${u.id}-${i}" rows="2" placeholder="${u.reviewNotes&&u.reviewNotes[i]?"Update your note...":"Add a review note..."}" style="font-size:12px;margin-top:4px">${u.reviewNotes&&u.reviewNotes[i]?u.reviewNotes[i]:""}</textarea>
         <div class="row mt8" style="gap:7px">
-          <button class="bp" style="font-size:11px;padding:6px 12px" onclick="sendInboxReply('${u.id}',${i})">Send →</button>
-          <button class="bs" style="font-size:11px;padding:6px 12px" onclick="lilInboxDraft('${u.id}',${i},'${(note||"").replace(/'/g,"\\'")}')">✦ Lil Draft</button>
+          <button class="bp" style="font-size:11px;padding:6px 12px" onclick="sendInboxReply('${u.id}',${i})">Save Note</button>
+          <button class="bs" style="font-size:11px;padding:6px 12px" onclick="lilInboxDraft('${u.id}',${i},'${(note||"").replace(/'/g,"\\'")}')">✦ Draft</button>
         </div>
       </div>
     `).join("")}`;

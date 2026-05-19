@@ -146,6 +146,17 @@ async function deleteCode(p: P) {
   return { ok: true };
 }
 
+async function saveReviewNote(p: P) {
+  const uid = p.challenger_id as string;
+  const dayNum = p.day_number as number;
+  const note = typeof p.note === "string" ? p.note.trim() : "";
+  if (!uid || !dayNum) return { ok: false, error: "missing_params" };
+  const { data: existing } = await sb.from("uploads").select("id").eq("challenger_id", uid).eq("day_number", dayNum).single();
+  if (!existing) return { ok: false, error: "upload_not_found" };
+  await sb.from("uploads").update({ review_note: note || null, reviewed: true, reviewed_at: new Date().toISOString() }).eq("id", existing.id);
+  return { ok: true };
+}
+
 async function toggleReviewed(p: P) {
   const uid = p.challenger_id as string;
   const dayNum = p.day_number as number;
@@ -273,6 +284,7 @@ const ACTIONS: Record<string, (p: P) => Promise<P>> = {
   create_code: createCode,
   toggle_code: toggleCode,
   delete_code: deleteCode,
+  save_review_note: saveReviewNote,
   toggle_reviewed: toggleReviewed,
   mark_all_reviewed: markAllReviewed,
   delete_challenger: deleteChallenger,

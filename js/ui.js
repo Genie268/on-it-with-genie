@@ -233,18 +233,22 @@ async function sendInboxReply(uid,i){
   const msg=ta.value.trim();
   ta.disabled=true;
   try{
-    await adminFetch("send_message",{challenger_id:uid,message:msg});
-    adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Message from Genie 💬",body:msg.slice(0,120)}).catch(()=>{});
-    showToast("Reply sent","success");
-  }catch(e){console.warn("Inbox reply send error:",e);showToast("Failed to send","error");}
-  ta.value="";ta.placeholder="✓ Sent";ta.style.borderColor="#4dc98a";
+    const dayNum=i+1;
+    await adminFetch("save_review_note",{challenger_id:uid,day_number:dayNum,note:msg});
+    showToast("Review note saved","success");
+  }catch(e){console.warn("Review note save error:",e);showToast("Failed to save","error");}
+  ta.value="";ta.placeholder="✓ Saved";ta.style.borderColor="#4dc98a";
+  ta.disabled=false;
+  adminDataLoaded=false;
+  await loadAdminData();
+  if(adminCurrentTab==="inbox")renderAdminInbox(el("admin-content"));
 }
 
 async function lilInboxDraft(uid,i,note){
   const u=getAM().find(x=>x.id===uid);if(!u)return;
   const ta=el("inb-"+uid+"-"+i);if(!ta)return;
   ta.placeholder="Lil is drafting...";ta.disabled=true;
-  const p=await lil(`Write a 1-sentence review acknowledgment for a daily upload. Specific to what they did. Not praise, just direct acknowledgment.
+  const p=await lil(`Write a 1-sentence review note for a daily upload. Specific to what they did. Not praise, just direct acknowledgment. This is a private note on their upload, not a message.
 
 Challenger: ${u.name}
 Goal: "${u.goal}"
