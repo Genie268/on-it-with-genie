@@ -88,6 +88,30 @@ async function incrementCodeUsage(row: AccessCodeRow) {
     .eq("id", row.id);
 }
 
+/* Insert a Day-1 Genie welcome message into the challenger's chat, but only
+   if they don't already have one from genie. Safe to call repeatedly. */
+async function ensureWelcomeMessage(challengerId: string, name: string | null) {
+  try {
+    const { data: existing } = await sb
+      .from("chat_messages")
+      .select("id")
+      .eq("challenger_id", challengerId)
+      .eq("sender", "genie")
+      .limit(1)
+      .maybeSingle();
+    if (existing) return;
+    const first = (name || "Challenger").split(" ")[0] || "Challenger";
+    const message = `${first}, you're in. The grid is yours now. I read every upload personally — text, photo, voice, link. Upload your first proof today and let's get this thing moving.`;
+    await sb.from("chat_messages").insert({
+      challenger_id: challengerId,
+      sender: "genie",
+      message,
+    });
+  } catch (e) {
+    console.error("welcome message insert failed:", e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
@@ -110,7 +134,7 @@ Deno.serve(async (req) => {
   // Load challenger record — it must already exist (client creates it during onboarding).
   const { data: challenger, error: cErr } = await sb
     .from("challengers")
-    .select("id, duration, payment_status")
+    .select("id, duration, payment_status, name")
     .eq("id", challenger_id)
     .maybeSingle();
 
@@ -145,6 +169,7 @@ Deno.serve(async (req) => {
       .eq("id", challenger_id);
 
     if (upErr) return json({ ok: false, error: "update_failed" }, 500);
+    await ensureWelcomeMessage(challenger_id, (challenger as { name?: string }).name ?? null);
     return json({ ok: true, status: "free" });
   }
 
@@ -223,6 +248,7 @@ Deno.serve(async (req) => {
       .eq("id", challenger_id);
 
     if (upErr) return json({ ok: false, error: "update_failed" }, 500);
+    await ensureWelcomeMessage(challenger_id, (challenger as { name?: string }).name ?? null);
     return json({ ok: true, status: "paid", amount: txAmount });
   }
 

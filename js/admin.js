@@ -498,6 +498,32 @@ function adminTab(tab){
   if(renderers[tab])renderers[tab](c);
 }
 
+/* ── TYPING INDICATOR (admin → challenger) ──
+   Broadcasts a 'typing' event on the per-challenger Realtime channel each
+   time the admin types in their message thread. Debounced to once per 2s
+   so we don't flood the channel. Subscribes lazily per challenger and
+   reuses the channel across keystrokes. */
+const _typingChannelsByUid={};
+let _lastTypingSentAt=0;
+function _ensureTypingChannel(uid){
+  if(!sb||!uid)return null;
+  if(_typingChannelsByUid[uid])return _typingChannelsByUid[uid];
+  try{
+    const ch=sb.channel("typing-"+uid);
+    ch.subscribe();
+    _typingChannelsByUid[uid]=ch;
+    return ch;
+  }catch(e){return null;}
+}
+function _sendTyping(uid){
+  if(!sb||!uid)return;
+  const now=Date.now();
+  if(now-_lastTypingSentAt<2000)return;
+  _lastTypingSentAt=now;
+  const ch=_ensureTypingChannel(uid);
+  if(ch){try{ch.send({type:"broadcast",event:"typing",payload:{}});}catch(e){}}
+}
+
 /* ── MESSAGES TAB ── */
 let _msgActiveChallengerId=null;
 let _msgChatOpen=false;
@@ -560,7 +586,7 @@ function renderAdminMessages(c){
         <div id="msg-tab-reply-indicator" style="display:none"></div>
         <div id="msg-input-bar" style="padding:10px 14px;border-top:1px solid #1f1f1f;background:#0a0a0a;display:flex;gap:8px;align-items:flex-end">
           <div class="chat-input-pill" style="flex:1;display:flex;align-items:center;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:0 4px 0 14px">
-            <textarea id="msg-tab-input" class="chat-ta" rows="1" placeholder="Message ${activeConvo.name}..." style="flex:1;background:transparent;border:none;color:#ebebeb;font-size:14px;padding:10px 0;resize:none;outline:none;font-family:inherit;line-height:1.4;min-height:20px"></textarea>
+            <textarea id="msg-tab-input" class="chat-ta" rows="1" placeholder="Message ${activeConvo.name}..." oninput="_sendTyping('${activeConvo.id}')" style="flex:1;background:transparent;border:none;color:#ebebeb;font-size:14px;padding:10px 0;resize:none;outline:none;font-family:inherit;line-height:1.4;min-height:20px"></textarea>
             <button id="msg-tab-mic" onclick="toggleMsgTabRecording()" style="background:none;border:none;color:#888;cursor:pointer;padding:6px 8px;font-size:14px" title="Voice note">🎙</button>
           </div>
           <button onclick="sendMsgTabMsg('${activeConvo.id}')" style="width:36px;height:36px;border-radius:50%;background:#c49a1c;border:none;color:#000;font-size:16px;font-weight:900;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">↑</button>
@@ -610,6 +636,7 @@ function _openMsgConvo(uid){
   _msgActiveChallengerId=uid;
   _msgChatOpen=true;
   _msgTabLastHash="";
+  _ensureTypingChannel(uid);
   renderAdminMessages(el("admin-content"));
 }
 

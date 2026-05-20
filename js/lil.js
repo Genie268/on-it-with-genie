@@ -22,10 +22,47 @@ async function lil(prompt, maxTokens=300){
 }
 
 
+/* ── TYPING INDICATOR (Genie → challenger) ──
+   Subscribes once per session to a Realtime broadcast channel keyed by the
+   challenger's supabase id. When admin types into a message thread for this
+   challenger, a 'typing' event is broadcast and we render a small "Genie is
+   typing…" line at the bottom of the chat thread for ~3.5 seconds. */
+let _typingChannel=null;
+let _typingHideTimer=null;
+function _setupTypingChannel(){
+  if(_typingChannel||!sb||!S.user?.supabaseId)return;
+  try{
+    _typingChannel=sb.channel("typing-"+S.user.supabaseId)
+      .on("broadcast",{event:"typing"},()=>_showTypingIndicator())
+      .subscribe();
+  }catch(e){console.warn("typing channel setup failed:",e);}
+}
+function _showTypingIndicator(){
+  const panel=document.getElementById("chat-float");
+  if(!panel||panel.style.display==="none")return;
+  const scroll=document.getElementById("chat-scroll");
+  if(!scroll)return;
+  let ind=document.getElementById("chat-typing-ind");
+  if(!ind){
+    ind=document.createElement("div");
+    ind.id="chat-typing-ind";
+    ind.style.cssText="padding:6px 14px 4px;font-size:11px;color:#888;display:flex;align-items:center;gap:8px;animation:popIn .2s ease";
+    ind.innerHTML=`<span style="display:inline-flex;gap:3px;align-items:flex-end"><span class="typing-dot"></span><span class="typing-dot" style="animation-delay:.15s"></span><span class="typing-dot" style="animation-delay:.3s"></span></span><span>Genie is typing…</span>`;
+    scroll.appendChild(ind);
+    scroll.scrollTop=scroll.scrollHeight;
+  }
+  if(_typingHideTimer)clearTimeout(_typingHideTimer);
+  _typingHideTimer=setTimeout(()=>{
+    const e=document.getElementById("chat-typing-ind");
+    if(e)e.remove();
+  },3500);
+}
+
 /* ── CHAT INTERFACE ── */
 async function renderChat(){
   const container=el("chat-container");
   if(!container||!S.user)return;
+  _setupTypingChannel();
   
   /* Load messages from Supabase if available */
   let messages=[];

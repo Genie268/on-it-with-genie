@@ -151,9 +151,24 @@ async function saveReviewNote(p: P) {
   const dayNum = p.day_number as number;
   const note = typeof p.note === "string" ? p.note.trim() : "";
   if (!uid || !dayNum) return { ok: false, error: "missing_params" };
-  const { data: existing } = await sb.from("uploads").select("id").eq("challenger_id", uid).eq("day_number", dayNum).single();
+  const { data: existing } = await sb.from("uploads").select("id,review_note").eq("challenger_id", uid).eq("day_number", dayNum).single();
   if (!existing) return { ok: false, error: "upload_not_found" };
+  const prevNote = (existing as { review_note?: string | null }).review_note ?? "";
   await sb.from("uploads").update({ review_note: note || null, reviewed: true, reviewed_at: new Date().toISOString() }).eq("id", existing.id);
+  /* Mirror the review note into the chat so the challenger actually sees it
+     (the upload-detail view is easy to miss). Only post when the note text
+     actually changes — avoid spamming chat on re-saves of identical notes. */
+  if (note && note !== prevNote) {
+    try {
+      await sb.from("chat_messages").insert({
+        challenger_id: uid,
+        sender: "genie",
+        message: `On Day ${dayNum}: ${note}`,
+      });
+    } catch (e) {
+      console.error("chat mirror of review note failed:", e);
+    }
+  }
   return { ok: true };
 }
 
