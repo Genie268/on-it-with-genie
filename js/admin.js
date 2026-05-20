@@ -498,6 +498,33 @@ function adminTab(tab){
   if(renderers[tab])renderers[tab](c);
 }
 
+/* ── QUICK REPLY TEMPLATES ──
+   Short, voice-y starter lines that the admin can one-tap into any message
+   composer (Messages tab, Flagged tab, Reviews tab). Click sets the textarea
+   value and focuses, so the admin can edit before sending instead of
+   typing from scratch every time. */
+const _QUICK_REPLIES=[
+  "Saw it. Strong work.",
+  "Tell me what got in the way today.",
+  "Show me what changed since yesterday.",
+  "Day done. Rest up.",
+  "You're slipping. What's going on?",
+  "Let's hop on a quick call.",
+];
+function _quickReplyChips(targetId){
+  return `<div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:6px 0;margin-bottom:6px">
+    ${_QUICK_REPLIES.map(t=>`<button onclick="_fillQuickReply('${targetId}',${JSON.stringify(t).replace(/"/g,"&quot;")})" style="flex-shrink:0;padding:5px 11px;border-radius:100px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.18);color:#c49a1c;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s" onmouseenter="this.style.background='rgba(196,154,28,.14)'" onmouseleave="this.style.background='rgba(196,154,28,.06)'">${t}</button>`).join("")}
+  </div>`;
+}
+function _fillQuickReply(targetId,text){
+  const ta=document.getElementById(targetId);
+  if(!ta)return;
+  ta.value=text+" ";
+  ta.focus();
+  /* Place cursor at end */
+  try{ta.selectionStart=ta.selectionEnd=ta.value.length;}catch(e){}
+}
+
 /* ── TYPING INDICATOR (admin → challenger) ──
    Broadcasts a 'typing' event on the per-challenger Realtime channel each
    time the admin types in their message thread. Debounced to once per 2s
@@ -584,7 +611,8 @@ function renderAdminMessages(c){
         </div>
         <div id="msg-tab-voice-status" style="display:none;padding:4px 14px"></div>
         <div id="msg-tab-reply-indicator" style="display:none"></div>
-        <div id="msg-input-bar" style="padding:10px 14px;border-top:1px solid #1f1f1f;background:#0a0a0a;display:flex;gap:8px;align-items:flex-end">
+        <div style="padding:0 14px;background:#0a0a0a;border-top:1px solid #1f1f1f">${_quickReplyChips("msg-tab-input")}</div>
+        <div id="msg-input-bar" style="padding:6px 14px 10px;background:#0a0a0a;display:flex;gap:8px;align-items:flex-end">
           <div class="chat-input-pill" style="flex:1;display:flex;align-items:center;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:0 4px 0 14px">
             <textarea id="msg-tab-input" class="chat-ta" rows="1" placeholder="Message ${activeConvo.name}..." oninput="_sendTyping('${activeConvo.id}')" style="flex:1;background:transparent;border:none;color:#ebebeb;font-size:14px;padding:10px 0;resize:none;outline:none;font-family:inherit;line-height:1.4;min-height:20px"></textarea>
             <button id="msg-tab-mic" onclick="toggleMsgTabRecording()" style="background:none;border:none;color:#888;cursor:pointer;padding:6px 8px;font-size:14px" title="Voice note">🎙</button>
@@ -977,35 +1005,12 @@ function renderAdminOverview(c){
   const atRiskUsers=active.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
   const totalUnread=getTotalUnreadCount();
 
-  /* Action alerts — only show what needs attention right now */
-  let alerts="";
+  /* TODAY'S QUEUE — concrete, one-tap-action list of what needs Genie's
+     attention right now. Replaces the abstract summary alerts that just
+     navigated to other tabs. Items prioritised: unread > reviews > at-risk
+     > ghosted > calls today > new signups. */
   const onlineNow=active.filter(u=>_isOnline(u.lastSeen));
   const newSignups=_getNewSignupCount();
-  if(newSignups>0){
-    const names=_adminNewSignups.slice(-3).map(s=>s.name).join(", ");
-    alerts+=`<div class="admin-alert" onclick="_clearNewSignups();adminTab('challengers')" style="background:rgba(77,201,138,.06);border:1px solid rgba(77,201,138,.2)">
-      <span style="font-size:18px">🆕</span>
-      <div style="flex:1;min-width:0"><p style="font-size:13px;font-weight:700;color:#4dc98a">${newSignups} new signup${newSignups>1?"s":""}</p><p class="muted" style="font-size:11px;margin-top:1px">${names}</p></div>
-      <span style="color:#4dc98a;font-size:14px;flex-shrink:0">→</span>
-    </div>`;
-  }
-  if(totalUnread>0){
-    const latestMsg=adminRecentMessages[0];
-    const who=latestMsg?all.find(u=>u.id===latestMsg.challenger_id)?.name||"Someone":"Someone";
-    const preview=latestMsg?(latestMsg.voice_url&&!latestMsg.message?"sent a voice note":latestMsg.message?.slice(0,35)+"…"):"";
-    alerts+=`<div class="admin-alert" onclick="adminTab('messages')" style="background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.2)">
-      <span style="font-size:18px">💬</span>
-      <div style="flex:1;min-width:0"><p style="font-size:13px;font-weight:700;color:#d9503a">${totalUnread} unread message${totalUnread>1?"s":""}</p>${preview?`<p class="muted" style="font-size:11px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${who}: ${preview}</p>`:""}</div>
-      <span style="color:#d9503a;font-size:14px;flex-shrink:0">→</span>
-    </div>`;
-  }
-  if(atRiskUsers.length>0){
-    alerts+=`<div class="admin-alert" onclick="adminTab('flagged')" style="background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.15)">
-      <span style="font-size:18px">⚑</span>
-      <div style="flex:1"><p style="font-size:13px;font-weight:700;color:#d9503a">${atRiskUsers.length} need${atRiskUsers.length===1?"s":""} attention</p><p class="muted" style="font-size:11px;margin-top:1px">${atRiskUsers.map(u=>u.name).join(", ")}</p></div>
-      <span style="color:#d9503a;font-size:14px;flex-shrink:0">→</span>
-    </div>`;
-  }
   const ghosted=active.filter(u=>{
     if(!_isPaid(u))return false;
     const seenAgo=u.lastSeen?Date.now()-new Date(u.lastSeen).getTime():Infinity;
@@ -1014,20 +1019,74 @@ function renderAdminOverview(c){
     const last2=u.up.slice(u.day-2,u.day);
     return last2.length>=2&&!last2[0]&&!last2[1];
   });
-  if(ghosted.length>0){
-    alerts+=`<div class="admin-alert" onclick="adminTab('flagged')" style="background:rgba(140,140,140,.06);border:1px solid rgba(140,140,140,.18)">
-      <span style="font-size:18px">👻</span>
-      <div style="flex:1"><p style="font-size:13px;font-weight:700;color:#8c8c8c">${ghosted.length} ghosted user${ghosted.length>1?"s":""}</p><p class="muted" style="font-size:11px;margin-top:1px">${ghosted.map(u=>u.name).join(", ")}</p></div>
-      <span style="color:#8c8c8c;font-size:14px;flex-shrink:0">→</span>
-    </div>`;
+
+  const queue=[];
+  /* Unread message conversations — distinct, top 5 */
+  const seenUnread=new Set();
+  (adminRecentMessages||[]).forEach(m=>{
+    if(m.sender!=="challenger"||m.read_at)return;
+    if(seenUnread.has(m.challenger_id)||seenUnread.size>=5)return;
+    seenUnread.add(m.challenger_id);
+    const u=all.find(x=>x.id===m.challenger_id);if(!u)return;
+    const preview=m.voice_url&&!m.message?"🎙 voice note":(m.message||"").slice(0,50);
+    queue.push({pri:1,icon:"💬",color:"#d9503a",label:"Reply needed",name:u.name,meta:preview,
+      actionLabel:"Reply →",onClick:`adminTab('messages');setTimeout(()=>_openMsgConvo('${u.id}'),100)`});
+  });
+  /* Pending reviews — top 5 */
+  getPendingInbox().slice(0,5).forEach(({u,day,note,i})=>{
+    const previewText=(note&&note!=="-")?note:"Awaiting your review";
+    queue.push({pri:2,icon:"↑",color:"#c49a1c",label:`Day ${day} upload`,name:u.name,meta:previewText.slice(0,55),
+      actionLabel:"Review →",onClick:`openUploadDetail('${u.id}',${i})`});
+  });
+  /* At-risk users */
+  atRiskUsers.forEach(u=>{
+    const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
+    queue.push({pri:3,icon:"⚑",color:"#d9503a",label:"At risk",name:u.name,meta:`${missed} missed · Day ${u.day}/${u.dur||15}`,
+      actionLabel:"Message →",onClick:`adminTab('flagged');setTimeout(()=>{const t=document.getElementById('int-ta-${u.id}');if(t)t.focus()},150)`});
+  });
+  /* Ghosted */
+  ghosted.forEach(u=>{
+    const seenAgo=u.lastSeen?Math.floor((Date.now()-new Date(u.lastSeen).getTime())/86400000):99;
+    queue.push({pri:4,icon:"👻",color:"#8c8c8c",label:"Ghosted",name:u.name,meta:`${seenAgo}d silent · Day ${u.day}/${u.dur||15}`,
+      actionLabel:"Message →",onClick:`adminTab('messages');setTimeout(()=>_openMsgConvo('${u.id}'),100)`});
+  });
+  /* Calls today */
+  active.forEach(u=>{
+    const callDays=CALL_DAYS[u.dur||15]||[];
+    if(callDays.includes(u.day)){
+      queue.push({pri:5,icon:"📞",color:"#c49a1c",label:`Call day · D${u.day}`,name:u.name,meta:"Book a slot",
+        actionLabel:"Book →",onClick:`openCallSchedule('${u.id}')`});
+    }
+  });
+  /* New signups (informational) */
+  if(newSignups>0){
+    _adminNewSignups.slice(-3).forEach(s=>{
+      queue.push({pri:6,icon:"🆕",color:"#4dc98a",label:"New signup",name:s.name,meta:"Welcome them",
+        actionLabel:"View →",onClick:`_clearNewSignups();adminTab('challengers')`});
+    });
   }
-  if(toReview>0){
-    alerts+=`<div class="admin-alert" onclick="adminTab('inbox')" style="background:rgba(196,154,28,.05);border:1px solid rgba(196,154,28,.15)">
-      <span style="font-size:18px">↑</span>
-      <div style="flex:1"><p style="font-size:13px;font-weight:700;color:#c49a1c">${toReview} upload${toReview>1?"s":""} to review</p></div>
-      <span style="color:#c49a1c;font-size:14px;flex-shrink:0">→</span>
-    </div>`;
-  }
+  queue.sort((a,b)=>a.pri-b.pri);
+
+  const queueHtml=queue.length===0
+    ? `<div class="card" style="text-align:center;padding:22px 14px;background:rgba(77,201,138,.04);border-color:rgba(77,201,138,.18)">
+        <p style="font-size:14px;font-weight:700;color:#4dc98a;margin:0">All clear ✓</p>
+        <p class="muted" style="font-size:11px;margin-top:4px">Nothing needs your attention right now. Take a breath.</p>
+       </div>`
+    : queue.map(q=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:9px;margin-bottom:6px">
+        <span style="font-size:14px;width:22px;text-align:center;flex-shrink:0">${q.icon}</span>
+        <div style="flex:1;min-width:0">
+          <p style="font-size:12px;font-weight:700;margin:0;color:${q.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.label} · ${q.name}</p>
+          <p style="font-size:11px;color:#666;margin:1px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.meta}</p>
+        </div>
+        <button onclick="${q.onClick}" style="padding:5px 11px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;font-family:inherit">${q.actionLabel}</button>
+      </div>`).join("");
+
+  const alerts=`<div class="row mb10" style="justify-content:space-between;align-items:center">
+      <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">TODAY'S QUEUE${queue.length?` · ${queue.length}`:""}</span>
+      ${queue.length?`<span class="muted" style="font-size:10px">tap to action</span>`:""}
+    </div>
+    ${queueHtml}
+    <div style="height:14px"></div>`;
 
   /* Stats grid */
   const avgProgress=total>0?Math.round(active.reduce((a,u)=>a+Math.round(u.up.filter(Boolean).length/(u.dur||15)*100),0)/total):0;
@@ -1284,7 +1343,8 @@ function renderChallengerDetail(u){
     <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">UPLOADS · ${up}/${dur} · ${rv} reviewed <span style="color:#444;font-weight:400">· tap a cell to view proof</span></p>
     <div class="g15" style="margin-bottom:14px">${gridCells}</div>
     <div style="margin-top:14px;border-top:1px solid #1b1b1b;padding-top:14px" id="fb-area-${u.id}">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">MESSAGE</p>
+      <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:6px">MESSAGE</p>
+      ${_quickReplyChips("fb-ta-"+u.id)}
       <textarea id="fb-ta-${u.id}" rows="2" placeholder="Message ${u.name}..." class="mb8" style="font-size:13px"></textarea>
       <div class="row" style="gap:8px;flex-wrap:wrap">
         <button class="bp" style="font-size:12px;padding:8px 14px" onclick="sendFBLive('${u.id}')">Send →</button>
@@ -1361,6 +1421,7 @@ function renderAdminFlagged(c){
         </div>
         ${u.flag?`<div style="font-size:12px;background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.15);padding:8px 10px;border-radius:6px;margin-bottom:10px;line-height:1.5;color:#ccc">${u.flag}</div>`:""}
         <div id="intv-${u.id}">
+          ${_quickReplyChips("int-ta-"+u.id)}
           <textarea id="int-ta-${u.id}" rows="2" placeholder="Send ${u.name} a message..." style="font-size:13px;margin-bottom:8px"></textarea>
           <div class="row" style="gap:8px">
             <button class="bd" style="font-size:12px;padding:7px 14px" onclick="sendIntervention('${u.id}')">Send Now →</button>
@@ -1404,6 +1465,7 @@ function renderAdminInbox(c){
           <button onclick="togRv('${u.id}',${i});renderAdminInbox(el('admin-content'))" style="padding:5px 12px;border-radius:100px;background:rgba(77,201,138,.06);border:1px solid rgba(77,201,138,.25);color:#4dc98a;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px;transition:background .15s" onmouseenter="this.style.background='rgba(77,201,138,.12)'" onmouseleave="this.style.background='rgba(77,201,138,.06)'">✓ Done</button>
         </div>
         ${u.reviewNotes&&u.reviewNotes[i]?`<div style="margin-top:6px;padding:8px 10px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);border-radius:8px;font-size:11px;color:#ccc;line-height:1.5"><span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#c49a1c">YOUR NOTE</span><p style="margin:3px 0 0">${u.reviewNotes[i]}</p></div>`:""}
+        ${_quickReplyChips("inb-"+u.id+"-"+i)}
         <textarea id="inb-${u.id}-${i}" rows="2" placeholder="${u.reviewNotes&&u.reviewNotes[i]?"Update your note...":"Add a review note..."}" style="font-size:12px;margin-top:4px">${u.reviewNotes&&u.reviewNotes[i]?u.reviewNotes[i]:""}</textarea>
         <div class="row mt8" style="gap:7px">
           <button class="bp" style="font-size:11px;padding:6px 12px" onclick="sendInboxReply('${u.id}',${i})">Save Note</button>
