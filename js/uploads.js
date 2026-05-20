@@ -216,6 +216,24 @@ async function subUp(){
   const ack=await lil(ackPrompt,50);
   S.uploads[S.day-1]={note:summary,hasFile:S.fileOn,fileName:S.fileName||null,fileUrl,proofType:pt,link:link||null,behavior:S.behaviorAnswer,hasVoice:!!S.voiceBlob,voiceUrl,time:new Date().toISOString()};
   saveState();
+
+  /* Compute new streak (consecutive uploads ending at today) */
+  let newStreak=0;
+  for(let i=S.day-1;i>=0;i--){if(S.uploads[i]!==null)newStreak++;else break;}
+
+  /* Inject celebratory streak pill into the ack screen */
+  const ackIcon=el("mod-ack-icon");
+  if(ackIcon&&!el("ack-streak-pill")){
+    const pill=document.createElement("div");
+    pill.id="ack-streak-pill";
+    pill.style.cssText="margin:0 auto 14px;padding:8px 18px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.25);border-radius:100px;display:inline-flex;align-items:center;gap:6px;animation:popIn .4s ease .15s backwards";
+    ackIcon.insertAdjacentElement("afterend",pill);
+  }
+  const pillEl=el("ack-streak-pill");
+  if(pillEl){
+    pillEl.innerHTML=`<span style="font-size:15px">🔥</span><span style="font-weight:800;color:#c49a1c;font-size:13px">${newStreak} day streak</span>`;
+  }
+
   el("ack-day").textContent=S.day;
   el("ack-t").textContent=ack||FB.ack(summary,S.day);
   el("mod-form").style.display="none"; el("mod-ack").style.display="";
@@ -227,6 +245,14 @@ async function subUp(){
     el("ack-next").textContent="";
   }
   playUploadSound();
+  /* Short success haptic on devices that support it (iOS PWA, Android) */
+  try{ if(navigator.vibrate) navigator.vibrate([60,40,60]); }catch(e){}
+
+  /* Milestone confetti — Day 1, halfway, near-end, last day */
+  const mid=Math.ceil(dur/2);
+  const isMilestone=S.day===1||S.day===mid||S.day===dur-2||S.day===dur;
+  if(isMilestone&&typeof fireConfetti==="function") setTimeout(fireConfetti,200);
+
   syncUploadToSupabase(S.day,S.uploads[S.day-1]);
   showToast("Day "+S.day+" proof submitted","success");
   trackEvent("upload_submitted",{day:S.day,has_file:!!S.uploads[S.day-1]?.fileUrl,has_note:!!S.uploads[S.day-1]?.note,has_voice:!!S.uploads[S.day-1]?.voiceUrl});

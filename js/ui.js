@@ -68,7 +68,7 @@ function _activateScreen(s){
     if(typeof _chatOpen!=="undefined")_chatOpen=false;
   }
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
-  const map={land:"s-land",ob:"s-ob",duration:"s-duration",commit:"s-commit",pay:"s-pay",photo:"s-photo",transition:"s-transition",dash:"s-dash",d15:"s-d15",gauntlet:"s-gauntlet",rec:"s-rec",admin:"s-admin"};
+  const map={land:"s-land",ob:"s-ob",duration:"s-duration",commit:"s-commit",pay:"s-pay",photo:"s-photo",transition:"s-transition",dash:"s-dash",d15:"s-d15",rec:"s-rec",admin:"s-admin"};
   const target=el(map[s]||"s-land");
   if(!target){console.error("goTo: no element for screen",s);el("s-land").classList.add("active");return;}
   target.classList.add("active");

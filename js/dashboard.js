@@ -87,10 +87,14 @@ async function renderCoachNotes(){
   const mid=Math.ceil(dur/2);
   const near=dur-2>mid?dur-2:null;
   
-  /* Genie speaks at milestones */
+  /* Genie speaks at milestones — fixed early-stage days + duration-relative ones */
   const genieNotes={};
   genieNotes[1]=`The commitment is signed. The only thing that matters now is whether you upload today.`;
-  if(mid>1) genieNotes[mid]=`Halfway. Most people quit right around here. That's the real test: showing up when it stops feeling new.`;
+  if(dur>=2) genieNotes[2]=`Day 2. The novelty's gone. This is where it starts being work.`;
+  if(dur>=3) genieNotes[3]=`Three uploads. That's a pattern. Don't break it now.`;
+  if(dur>=7&&mid!==7&&(near||0)!==7&&dur!==7) genieNotes[7]=`One week in. The baseline is set. Keep raising it.`;
+  if(dur>=21&&mid!==21&&(near||0)!==21&&dur!==21) genieNotes[21]=`Three weeks. Research says this is where habits actually take. You're proof.`;
+  if(mid>3) genieNotes[mid]=`Halfway. Most people quit right around here. That's the real test: showing up when it stops feeling new.`;
   if(near&&near>mid) genieNotes[near]=`${near} days of evidence. You have proven something. ${dur-near} day${dur-near===1?"":"s"} left.`;
   genieNotes[dur]=`${dur} days done. Whatever happens next, you now know you can execute.`;
   
@@ -248,13 +252,13 @@ function _todayPlan(){return S.plans[S.day]||null;}
 var _planCollapsed=false;
 var _planAutoCollapseScheduled=false;
 
-function _showPlanOverlay(html){
+/* Plan is rendered inline in the plan-area div (above goal card) — no modal overlay.
+   These helpers write directly to that container so the dashboard remains visible
+   and scrollable while the prompt sits at the top. */
+function _writePlanArea(html){
   _closePlanOverlay();
-  const ov=document.createElement("div");
-  ov.id="plan-overlay";
-  ov.style.cssText="position:fixed;inset:0;z-index:960;display:flex;align-items:center;justify-content:center;padding:20px";
-  ov.innerHTML=`<div style="position:absolute;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:heroFadeIn .3s ease"></div><div style="position:relative;z-index:1;width:100%;max-width:420px;animation:popIn .3s ease">${html}</div>`;
-  document.body.appendChild(ov);
+  const area=el("plan-area");
+  if(area) area.innerHTML=html;
 }
 
 function _closePlanOverlay(){
@@ -270,7 +274,6 @@ function renderPlanArea(){
   if(p&&p.skipped){area.innerHTML="";_closePlanOverlay();return;}
   if(p&&p.mainStep){_closePlanOverlay();_renderPlanSummary(area,p,d);return;}
   if(d===1&&S.uploads.every(v=>v===null)&&!localStorage.getItem("oiwg_wt_"+S.user?.supabaseId)){area.innerHTML="";return;}
-  area.innerHTML="";
   _renderPlanPrompt(d);
 }
 
@@ -278,14 +281,16 @@ function _renderPlanPrompt(d){
   const goal=S.user.answers?.goalSummary||S.user.answers?.goal||"your goal";
   const yest=S.plans[d-1];
   const hasYesterday=yest&&yest.mainStep&&!yest.skipped;
-  _showPlanOverlay(`<div class="card" style="border:1px solid rgba(196,154,28,.25);background:#1a1a1a;box-shadow:0 12px 40px rgba(0,0,0,.6)">
-    <span class="lbl lbl-a" style="display:block;text-align:center;margin-bottom:6px">DAILY PLAN · DAY ${d}</span>
-    <p style="font-size:14px;font-weight:600;text-align:center;margin-bottom:12px">What's the one thing you're doing today?</p>
-    <p class="muted" style="font-size:11px;text-align:center;margin-bottom:10px">Toward: ${goal}</p>
-    <textarea id="plan-main-input" rows="2" placeholder="Be specific. What will you actually do?" style="font-size:14px;width:100%;margin-bottom:10px"></textarea>
-    ${hasYesterday?`<div style="text-align:center;margin-bottom:10px"><button class="same-yesterday-btn" onclick="_fillFromYesterday()">Same as yesterday?</button></div>`:""}
-    <button class="bp" style="width:100%;padding:12px;font-size:14px" onclick="_planStep2()" id="plan-continue-btn">Continue</button>
-    <button class="bg" style="width:100%;margin-top:6px;font-size:11px" onclick="_skipPlan()">Skip for today</button>
+  _writePlanArea(`<div class="card mb10" style="border:1px solid rgba(196,154,28,.18);background:rgba(196,154,28,.03);padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span class="lbl lbl-a m0">DAILY PLAN · DAY ${d}</span>
+      <button onclick="_skipPlan()" style="background:none;border:none;color:#666;font-size:11px;cursor:pointer;padding:0;font-family:inherit">Skip for today</button>
+    </div>
+    <p style="font-size:14px;font-weight:600;margin-bottom:4px">What's the one thing you're doing today?</p>
+    <p class="muted" style="font-size:11px;margin-bottom:10px">Toward: ${_esc(goal)}</p>
+    <textarea id="plan-main-input" rows="2" placeholder="Be specific. What will you actually do?" style="font-size:14px;width:100%;margin-bottom:8px"></textarea>
+    ${hasYesterday?`<div style="margin-bottom:8px"><button class="same-yesterday-btn" onclick="_fillFromYesterday()">Same as yesterday?</button></div>`:""}
+    <button class="bp" style="width:100%;padding:10px;font-size:13px" onclick="_planStep2()" id="plan-continue-btn">Continue →</button>
   </div>`);
 }
 
@@ -305,18 +310,21 @@ function _planStep2(){
   const input=el("plan-main-input");
   const mainStep=(input?.value||"").trim();
   if(mainStep.length<10){input.style.border="1px solid #d9503a";input.placeholder="Tell me more. What exactly?";return;}
-  _showPlanOverlay(`<div class="card" style="border:1px solid rgba(196,154,28,.25);background:#1a1a1a;box-shadow:0 12px 40px rgba(0,0,0,.6)">
-    <span class="lbl lbl-a" style="display:block;text-align:center;margin-bottom:4px">YOUR ONE THING</span>
-    <p style="font-size:13px;font-weight:600;text-align:center;margin-bottom:12px;color:#ccc">"${_esc(mainStep)}"</p>
-    <p style="font-size:14px;font-weight:600;text-align:center;margin-bottom:10px">How does that break down? Give me three.</p>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
-      <input id="plan-s1" type="text" placeholder="Step 1" style="font-size:14px;padding:12px 14px">
-      <input id="plan-s2" type="text" placeholder="Step 2" style="font-size:14px;padding:12px 14px">
-      <input id="plan-s3" type="text" placeholder="Step 3" style="font-size:14px;padding:12px 14px">
+  _writePlanArea(`<div class="card mb10" style="border:1px solid rgba(196,154,28,.25);background:rgba(196,154,28,.04);padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span class="lbl lbl-a m0">YOUR ONE THING</span>
+      <button onclick="_backToPlanStep1('${_esc(mainStep)}')" style="background:none;border:none;color:#666;font-size:11px;cursor:pointer;padding:0;font-family:inherit">← Back</button>
+    </div>
+    <p style="font-size:13px;font-weight:600;margin-bottom:10px;color:#ccc">"${_esc(mainStep)}"</p>
+    <p style="font-size:13px;font-weight:600;margin-bottom:8px">Break it down. Give me three steps.</p>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+      <input id="plan-s1" type="text" placeholder="Step 1" style="font-size:14px;padding:10px 12px">
+      <input id="plan-s2" type="text" placeholder="Step 2" style="font-size:14px;padding:10px 12px">
+      <input id="plan-s3" type="text" placeholder="Step 3" style="font-size:14px;padding:10px 12px">
     </div>
     <div style="display:flex;gap:8px">
-      <button class="bg" style="flex:1;font-size:12px;padding:10px" onclick="_planAISuggest('${_esc(mainStep)}')" id="plan-ai-btn">Stuck? Get suggestions</button>
-      <button class="bp" style="flex:1;font-size:14px;padding:10px" onclick="_submitPlan('${_esc(mainStep)}')">Set my plan</button>
+      <button class="bg" style="flex:1;font-size:12px;padding:9px" onclick="_planAISuggest('${_esc(mainStep)}')" id="plan-ai-btn">Stuck? Get suggestions</button>
+      <button class="bp" style="flex:1;font-size:13px;padding:9px" onclick="_submitPlan('${_esc(mainStep)}')">Set my plan</button>
     </div>
   </div>`);
   /* Pre-fill from yesterday if triggered by "Same as yesterday?" */
@@ -364,8 +372,14 @@ function _submitPlan(mainStep){
   syncPlanToSupabase(S.day,plan);
   _closePlanOverlay();
   const area=el("plan-area");
-  area.innerHTML=`<div style="text-align:center;padding:14px;font-size:13px;color:#c49a1c;animation:heroFadeUp .3s ease forwards">Plan set. Now go do it.</div>`;
+  area.innerHTML=`<div class="card mb10" style="text-align:center;padding:14px;font-size:13px;color:#c49a1c;border:1px solid rgba(196,154,28,.2);background:rgba(196,154,28,.06);animation:heroFadeUp .3s ease forwards">Plan set. Now go do it.</div>`;
   setTimeout(()=>_renderPlanSummary(area,plan,S.day),1500);
+}
+
+function _backToPlanStep1(prevMain){
+  _renderPlanPrompt(S.day);
+  const ta=el("plan-main-input");
+  if(ta&&prevMain){ta.value=prevMain;}
 }
 
 function _renderPlanSummary(area,plan,d){
@@ -447,7 +461,8 @@ function _skipPlan(){
   saveState();
   syncPlanToSupabase(S.day,S.plans[S.day]);
   _closePlanOverlay();
-  el("plan-area").innerHTML="";
+  const area=el("plan-area");
+  if(area) area.innerHTML="";
 }
 
 
@@ -567,7 +582,7 @@ function renderStats(){
     </div>
   </div>
   <div class="row" style="justify-content:space-between;font-size:11px;color:var(--muted,#5a5a5a)">
-    <span>${missed} missed</span>
+    ${missed>0?`<span style="color:#d9503a;font-weight:600">${missed} missed</span>`:`<span style="color:#4dc98a;font-weight:600">On track ✓</span>`}
     <span>${remaining} day${remaining!==1?"s":""} left</span>
   </div>`;
 }
