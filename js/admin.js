@@ -1559,10 +1559,12 @@ async function renderAdminNotifications(c){
         <span id="notif-cron-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
       </div>
       <div id="notif-cron" style="display:none" class="admin-section-bd">
-        <div style="font-size:12px;color:#888;line-height:2;padding:8px 12px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:8px">
-          <div style="display:flex;justify-content:space-between"><span style="color:#c49a1c;font-weight:600">Morning</span><span>6 & 9 UTC → 7 & 10 AM WAT</span></div>
-          <div style="display:flex;justify-content:space-between"><span style="color:#4dc98a;font-weight:600">Afternoon</span><span>12 & 14 UTC → 1 & 3 PM WAT</span></div>
-          <div style="display:flex;justify-content:space-between"><span style="color:#888;font-weight:600">Evening</span><span>17 & 19 UTC → 6 & 8 PM WAT</span></div>
+        <div style="font-size:12px;color:#888;line-height:1.8;padding:10px 12px;background:#0e0e0e;border:1px solid #1a1a1a;border-radius:8px">
+          <p style="margin-bottom:8px">Reminders fire in each challenger's local timezone (auto-detected from their browser). The cron runs across UTC hours to cover every TZ.</p>
+          <div style="display:flex;justify-content:space-between"><span style="color:#c49a1c;font-weight:600">Morning</span><span>7–11 AM local</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:#4dc98a;font-weight:600">Afternoon</span><span>12–3 PM local</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:#888;font-weight:600">Evening</span><span>5–9 PM local</span></div>
+          <p style="margin-top:8px;font-size:11px;color:#666">Users without a timezone fall back to Africa/Lagos.</p>
         </div>
       </div>
     </div>

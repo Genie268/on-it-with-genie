@@ -12,6 +12,16 @@ async function syncToSupabase(){
   if(!sb||!S.user)return;
   try{
     const u=S.user;
+    /* Auto-detect IANA timezone from browser. send-reminders uses this so
+       reminders fire at the user's local morning/afternoon/evening instead
+       of West Africa Time. Detected once and stored; users can stay paused
+       across timezones without re-detecting. */
+    if(!u.timezone){
+      try{
+        const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if(tz) u.timezone=tz;
+      }catch(e){}
+    }
     const row={
       id:u.supabaseId||undefined,
       name:u.name,email:u.email||null,phone:u.phone||null,
@@ -21,6 +31,7 @@ async function syncToSupabase(){
       duration:u.duration,signature:u.sig,
       payment_ref:u.paymentRef||null,payment_status:u.paymentStatus||"pending",
       amount_paid:u.amountPaid||0,access_code:u.accessCode||null,
+      timezone:u.timezone||null,
       status:"active",current_day:S.day
     };
     if(u.startDate) row.start_date=u.startDate;
@@ -376,6 +387,7 @@ async function _restoreSession(data){
       sig:data.signature,startDate:data.start_date,duration:dur,
       paymentRef:data.payment_ref,paymentStatus:data.payment_status,
       amountPaid:data.amount_paid,accessCode:data.access_code,
+      timezone:data.timezone||null,
       supabaseId:data.id,energyLog,genieMessages:[]
     };
     S.uploads=uploadArr;

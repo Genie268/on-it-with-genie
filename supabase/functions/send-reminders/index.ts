@@ -70,14 +70,52 @@ function ghostNudgeEmailHtml(name: string, daysMissed: number): string {
 </div>`;
 }
 
-/* ── Determine current slot based on WAT (UTC+1) ── */
-function getCurrentSlot(): number | null {
-  const now = new Date();
-  const watHour = (now.getUTCHours() + 1) % 24;
-  if (watHour >= 7 && watHour < 11) return 1;   // morning
-  if (watHour >= 12 && watHour < 15) return 2;  // afternoon
-  if (watHour >= 17 && watHour < 21) return 3;  // evening
+/* ── Slot windows (local time, any timezone) ──
+   Morning  7-11 AM
+   Afternoon 12-3 PM
+   Evening  5-9 PM */
+function slotForLocalHour(hour: number): number | null {
+  if (hour >= 7 && hour < 11) return 1;
+  if (hour >= 12 && hour < 15) return 2;
+  if (hour >= 17 && hour < 21) return 3;
   return null;
+}
+
+/* Compute the current hour (0-23) in a given IANA timezone. Falls back to
+   WAT (Africa/Lagos) when the timezone is null or invalid. */
+function getLocalHour(timezone: string | null): number | null {
+  const tz = timezone || "Africa/Lagos";
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, hour: "numeric", hour12: false,
+    }).formatToParts(new Date());
+    const hourPart = parts.find((p) => p.type === "hour");
+    if (!hourPart) return null;
+    const h = parseInt(hourPart.value, 10);
+    return isNaN(h) ? null : h % 24;
+  } catch {
+    return null;
+  }
+}
+
+function getCurrentSlotForUser(timezone: string | null): number | null {
+  const h = getLocalHour(timezone);
+  if (h === null) return null;
+  return slotForLocalHour(h);
+}
+
+/* Get the "today" date string (YYYY-MM-DD) in a given timezone. Used for
+   per-user reminder dedup so a user in EST who gets a 9pm-local push isn't
+   blocked from a 7am-local push the next morning by UTC date confusion. */
+function getLocalDateString(timezone: string | null): string {
+  const tz = timezone || "Africa/Lagos";
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().split("T")[0];
+  }
 }
 
 /* ── Compute challenger's current day number ── */
@@ -403,21 +441,18 @@ Deno.serve(async (req) => {
       }
     }
 
-    /* ── Reminder logic ── */
-    const slot = forceSlot || getCurrentSlot();
-    if (!slot) {
-      return new Response(
-        JSON.stringify({ skipped: true, reason: "outside reminder window" }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    const today = new Date().toISOString().split("T")[0];
+    /* ── Reminder logic ──
+       Per-user slot detection: each challenger's slot is computed in their
+       own timezone, so morning/afternoon/evening windows fire at their
+       local time instead of WAT. The cron fires multiple times across UTC
+       hours so every timezone gets covered. A forceSlot=N from admin
+       overrides per-user detection and pushes to everyone regardless of
+       their local clock (used for "send slot N now" buttons). */
 
     // Get active challengers with paid/free status
     const { data: challengers, error: cErr } = await sb
       .from("challengers")
-      .select("id, name, start_date, duration, status, payment_status")
+      .select("id, name, start_date, duration, status, payment_status, timezone")
       .eq("status", "active")
       .in("payment_status", ["paid", "free"]);
 
@@ -429,34 +464,78 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get already-sent reminders for today + this slot (dedup)
-    const { data: alreadySent } = await sb
-      .from("reminder_logs")
-      .select("challenger_id")
-      .eq("sent_date", today)
-      .eq("slot", slot);
+    type Challenger = {
+      id: string; name: string; start_date: string; duration: number;
+      timezone: string | null; _slot: number; _localDate: string;
+    };
 
-    const sentIds = new Set((alreadySent ?? []).map((r: { challenger_id: string }) => r.challenger_id));
+    // Attach per-user slot + local date. Drop anyone outside their window.
+    const withSlot: Challenger[] = [];
+    for (const c of challengers) {
+      const userSlot = forceSlot || getCurrentSlotForUser(c.timezone);
+      if (!userSlot) continue;
+      withSlot.push({ ...c, _slot: userSlot, _localDate: getLocalDateString(c.timezone) });
+    }
 
-    // Filter out challengers already reminded this slot
-    const eligible = challengers.filter((c: { id: string }) => !sentIds.has(c.id));
-    if (eligible.length === 0) {
+    if (withSlot.length === 0) {
       return new Response(
-        JSON.stringify({ skipped: true, reason: "all already sent for slot " + slot }),
+        JSON.stringify({ skipped: true, reason: "no users in any reminder window right now" }),
         { headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const challengerIds = eligible.map((c: { id: string }) => c.id);
+    // Dedup against reminder_logs using each user's local date + computed slot.
+    // Query covers a 2-day window so we catch users near UTC date boundaries.
+    const twoDayWindow = [
+      new Date(Date.now() - 86400000).toISOString().split("T")[0],
+      new Date().toISOString().split("T")[0],
+      new Date(Date.now() + 86400000).toISOString().split("T")[0],
+    ];
+    const { data: alreadySent } = await sb
+      .from("reminder_logs")
+      .select("challenger_id, sent_date, slot")
+      .in("challenger_id", withSlot.map((c) => c.id))
+      .in("sent_date", twoDayWindow);
 
-    // Fetch today's uploads for all eligible challengers
-    const { data: todayUploads } = await sb
+    const sentKeys = new Set(
+      (alreadySent ?? []).map(
+        (r: { challenger_id: string; sent_date: string; slot: number }) =>
+          `${r.challenger_id}|${r.sent_date}|${r.slot}`
+      )
+    );
+
+    const eligible = withSlot.filter((c) => !sentKeys.has(`${c.id}|${c._localDate}|${c._slot}`));
+    if (eligible.length === 0) {
+      return new Response(
+        JSON.stringify({ skipped: true, reason: "all eligible users already reminded for their current slot" }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const challengerIds = eligible.map((c) => c.id);
+
+    // Fetch the last 36h of uploads — wider than a single UTC day so we can
+    // bucket each by the uploader's local date and check "uploaded today"
+    // accurately regardless of timezone.
+    const lookback = new Date(Date.now() - 36 * 3600 * 1000).toISOString();
+    const { data: recentUploads } = await sb
       .from("uploads")
-      .select("challenger_id")
+      .select("challenger_id, created_at")
       .in("challenger_id", challengerIds)
-      .gte("created_at", today + "T00:00:00Z");
+      .gte("created_at", lookback);
 
-    const uploadedIds = new Set((todayUploads ?? []).map((u: { challenger_id: string }) => u.challenger_id));
+    const uploadedIds = new Set<string>();
+    const userTzById = new Map(eligible.map((c) => [c.id, c.timezone] as const));
+    const localDateById = new Map(eligible.map((c) => [c.id, c._localDate] as const));
+    for (const u of recentUploads ?? []) {
+      const tz = userTzById.get(u.challenger_id) ?? "Africa/Lagos";
+      const uploadLocalDate = new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz || "Africa/Lagos", year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(new Date(u.created_at));
+      if (uploadLocalDate === localDateById.get(u.challenger_id)) {
+        uploadedIds.add(u.challenger_id);
+      }
+    }
 
     // Fetch daily plans for each challenger's current day
     // We need to query all plans for these challengers and match by day_number
@@ -503,21 +582,21 @@ Deno.serve(async (req) => {
       subsByChallenger.set(sub.challenger_id, arr);
     }
 
-    // Send notifications per challenger
+    // Send notifications per challenger — each uses their own computed slot.
     await Promise.all(
-      eligible.map(async (c: { id: string; name: string; start_date: string; duration: number }) => {
+      eligible.map(async (c) => {
         const cSubs = subsByChallenger.get(c.id);
         if (!cSubs || cSubs.length === 0) return;
 
         const plan = planMap.get(c.id) || null;
         const hasUpload = uploadedIds.has(c.id);
-        const { title, body } = buildMessage(slot, c.name, plan, hasUpload);
+        const { title, body } = buildMessage(c._slot, c.name, plan, hasUpload);
 
         const payload = JSON.stringify({
           title,
           body,
           url: "/",
-          tag: "oiwg-reminder-" + slot,
+          tag: "oiwg-reminder-" + c._slot,
         });
 
         let anySent = false;
@@ -541,7 +620,7 @@ Deno.serve(async (req) => {
         );
 
         if (anySent) {
-          logRows.push({ challenger_id: c.id, sent_date: today, slot });
+          logRows.push({ challenger_id: c.id, sent_date: c._localDate, slot: c._slot });
         }
       })
     );
@@ -556,8 +635,20 @@ Deno.serve(async (req) => {
       await sb.from("reminder_logs").insert(logRows);
     }
 
+    /* slotsHit: count of users we sent to per slot, useful for admin to
+       see "morning: 3, afternoon: 1, evening: 2" in one trigger. */
+    const slotsHit: Record<number, number> = {};
+    for (const r of logRows) slotsHit[r.slot] = (slotsHit[r.slot] || 0) + 1;
+
     return new Response(
-      JSON.stringify({ slot, sent, failed, reminded: logRows.length }),
+      JSON.stringify({
+        slot: forceSlot || null,
+        slots_hit: slotsHit,
+        sent,
+        failed,
+        reminded: logRows.length,
+        eligible_users: eligible.length,
+      }),
       { headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {
