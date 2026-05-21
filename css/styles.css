@@ -21,6 +21,16 @@ html[data-route="admin"] #s-admin.screen{display:flex!important;flex-direction:c
 .admin-section-hd{padding:11px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#0a0a0a}
 .admin-section-hd:hover{background:#0e0e0e}
 .admin-section-bd{padding:12px 14px;border-top:1px solid #141414}
+.ch-block{background:#0e0e0e;border:1px solid #1a1a1a;border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.ch-block-msg{background:rgba(196,154,28,.04);border-color:rgba(196,154,28,.15)}
+.ch-block-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;display:block;margin-bottom:6px}
+.ch-flag-banner{padding:10px 12px;background:rgba(217,80,58,.07);border:1px solid rgba(217,80,58,.22);border-radius:8px;margin-bottom:8px;display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5;color:#ebebeb}
+.ch-flag-banner .ch-flag-icon{color:#d9503a;flex-shrink:0;font-size:14px;line-height:1.2}
+.ch-contact-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.ch-contact-row a{font-size:12px;color:#4dc98a;text-decoration:none}
+.ch-contact-row a:hover{text-decoration:underline}
+.inbox-proof{background:#0a0a0a;border:1px solid #161616;border-radius:8px;padding:10px 12px;margin:8px 0;display:flex;flex-direction:column;gap:6px}
+.inbox-divider{height:1px;background:linear-gradient(to right,transparent,#1f1f1f 20%,#1f1f1f 80%,transparent);margin:10px 0 8px}
 .admin-alert{padding:12px 14px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:10px;margin-bottom:10px;transition:opacity .15s}
 .admin-alert:hover{opacity:.85}
 @media(max-width:500px){.admin-stat-val{font-size:20px}.admin-stat{padding:12px 4px}.admin-stat-lbl{font-size:9px}}

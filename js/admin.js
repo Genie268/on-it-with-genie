@@ -1314,36 +1314,44 @@ function renderChallengerDetail(u){
     </div>`;
   }
   const up=u.up.filter(Boolean).length,rv=u.rvCount||0;
-  /* Energy summary */
-  let energySummary="";
+  const escName=(u.name||"").replace(/'/g,"\\\\'");
+  const startDateStr=u.startDate?new Date(u.startDate).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"—";
+
+  /* Energy & mood entries (only built if there's anything to show) */
+  let energyEntries=[];
   if(u.energyLog){
-    const entries=Object.entries(u.energyLog).filter(([k,v])=>v.type!=="skip");
-    if(entries.length>0){
-      energySummary=`<div style="margin-bottom:14px;padding:10px 12px;background:rgba(196,154,28,.04);border:1px solid rgba(196,154,28,.12);border-radius:8px">
-        <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#c49a1c;margin-bottom:6px">ENERGY & MOOD LOG</p>
-        <div style="display:flex;flex-wrap:wrap;gap:4px">${entries.map(([day,v])=>{
-          if(v.type==="energy") return `<span class="tag" style="font-size:10px">D${day}: ${"🔥".repeat(v.value)}</span>`;
-          if(v.type==="mood") return `<span class="tag" style="font-size:10px">D${day}: ${v.value}</span>`;
-          return `<span class="tag" style="font-size:10px" title="${v.value}">D${day}: 💭</span>`;
-        }).join("")}</div>
-      </div>`;
-    }
+    energyEntries=Object.entries(u.energyLog).filter(([k,v])=>v.type!=="skip");
   }
-  const contactSection=`<div style="margin-bottom:14px;padding:10px 12px;background:rgba(255,255,255,.02);border:1px solid #1f1f1f;border-radius:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;flex-shrink:0">CONTACT</span>
-      ${u.email?`<a href="mailto:${u.email}" style="font-size:12px;color:#4dc98a;text-decoration:none">✉ ${u.email}</a>`:"<span class='muted' style='font-size:12px'>No email</span>"}
-      ${u.phone?`<a href="https://wa.me/${u.phone.replace(/\D/g,'')}" target="_blank" style="font-size:12px;color:#4dc98a;text-decoration:none">📱 ${u.phone}</a>`:""}
+  const energyTags=energyEntries.map(([day,v])=>{
+    if(v.type==="energy") return `<span class="tag" style="font-size:10px">D${day}: ${"🔥".repeat(v.value)}</span>`;
+    if(v.type==="mood") return `<span class="tag" style="font-size:10px">D${day}: ${v.value}</span>`;
+    return `<span class="tag" style="font-size:10px" title="${(v.value||"").replace(/"/g,"&quot;")}">D${day}: 💭</span>`;
+  }).join("");
+
+  return `
+    ${u.flag?`<div class="ch-flag-banner"><span class="ch-flag-icon">⚑</span><p style="margin:0;font-size:12px;line-height:1.5">${u.flag}</p></div>`:""}
+
+    <div class="ch-block">
+      <div class="ch-contact-row" style="justify-content:space-between">
+        <div class="ch-contact-row">
+          <span class="ch-block-lbl" style="margin:0">CONTACT</span>
+          ${u.email?`<a href="mailto:${u.email}">✉ ${u.email}</a>`:`<span class="muted" style="font-size:12px">No email</span>`}
+          ${u.phone?`<a href="https://wa.me/${u.phone.replace(/\D/g,'')}" target="_blank">📱 ${u.phone}</a>`:""}
+        </div>
+        <button onclick="openProfilePanel('${u.id}')" style="padding:4px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;font-family:inherit">View / Edit Profile →</button>
+      </div>
     </div>
-    <button onclick="openProfilePanel('${u.id}')" style="padding:4px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0">View / Edit Profile →</button>
-  </div>`;
-  return `${u.flag?`<div style="padding:10px 12px;background:rgba(217,80,58,.07);border:1px solid rgba(217,80,58,.22);border-radius:8px;margin-bottom:14px;display:flex;gap:8px"><span class="er">⚑</span><p style="font-size:12px;line-height:1.5">${u.flag}</p></div>`:""}
-    ${contactSection}
-    ${energySummary}
-    <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">UPLOADS · ${up}/${dur} · ${rv} reviewed <span style="color:#444;font-weight:400">· tap a cell to view proof</span></p>
-    <div class="g15" style="margin-bottom:14px">${gridCells}</div>
-    <div style="margin-top:14px;border-top:1px solid #1b1b1b;padding-top:14px" id="fb-area-${u.id}">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:6px">MESSAGE</p>
+
+    <div class="ch-block">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+        <span class="ch-block-lbl" style="margin:0">ACTIVITY · ${up}/${dur} uploaded · ${rv} reviewed</span>
+        <span class="muted" style="font-size:10px">tap a cell</span>
+      </div>
+      <div class="g15">${gridCells}</div>
+    </div>
+
+    <div class="ch-block ch-block-msg" id="fb-area-${u.id}">
+      <span class="ch-block-lbl">MESSAGE ${(u.name||"").toUpperCase()}</span>
       ${_quickReplyChips("fb-ta-"+u.id)}
       <textarea id="fb-ta-${u.id}" rows="2" placeholder="Message ${u.name}..." class="mb8" style="font-size:13px"></textarea>
       <div class="row" style="gap:8px;flex-wrap:wrap">
@@ -1352,16 +1360,39 @@ function renderChallengerDetail(u){
         <button class="bs" style="font-size:12px;padding:8px 14px" onclick="openCallSchedule('${u.id}')">📞 Call</button>
       </div>
     </div>
-    <div style="margin-top:16px;border-top:1px solid #1b1b1b;padding-top:14px">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:8px">MANAGE</p>
-      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
-        <span class="muted" style="font-size:11px">Started: ${new Date(u.startDate).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</span>
-        <button onclick="promptAdjustStart('${u.id}','${(u.name||'').replace(/'/g,"\\\\'")}')" style="padding:4px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">Adjust Start Date</button>
+
+    ${energyEntries.length?`
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('chen-${u.id}')">
+        <span class="ch-block-lbl" style="margin:0;color:#c49a1c">ENERGY & MOOD · ${energyEntries.length}</span>
+        <span id="chen-${u.id}-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="chen-${u.id}" style="display:none" class="admin-section-bd">
+        <div style="display:flex;flex-wrap:wrap;gap:4px">${energyTags}</div>
+      </div>
+    </div>`:""}
+
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('chmg-${u.id}')">
+        <span class="ch-block-lbl" style="margin:0">MANAGE</span>
+        <span id="chmg-${u.id}-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="chmg-${u.id}" style="display:none" class="admin-section-bd">
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center">
+          <span class="muted" style="font-size:11px">Started ${startDateStr}</span>
+          <button onclick="promptAdjustStart('${u.id}','${escName}')" style="padding:4px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">Adjust Start Date</button>
+        </div>
       </div>
     </div>
-    <div style="margin-top:16px;border-top:1px solid rgba(217,80,58,.15);padding-top:14px">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#d9503a;margin-bottom:8px">DANGER ZONE</p>
-      <button onclick="deleteChallenger('${u.id}','${(u.name||'').replace(/'/g,"\\\\'")}')" style="padding:8px 14px;border-radius:8px;background:transparent;border:1px solid rgba(217,80,58,.3);color:#d9503a;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Delete ${u.name}'s Account</button>
+
+    <div class="admin-section" style="border-color:rgba(217,80,58,.18)">
+      <div class="admin-section-hd" onclick="toggleAdminSection('chdz-${u.id}')">
+        <span class="ch-block-lbl" style="margin:0;color:#d9503a">DANGER ZONE</span>
+        <span id="chdz-${u.id}-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="chdz-${u.id}" style="display:none" class="admin-section-bd">
+        <button onclick="deleteChallenger('${u.id}','${escName}')" style="padding:8px 14px;border-radius:8px;background:transparent;border:1px solid rgba(217,80,58,.3);color:#d9503a;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Delete ${u.name}'s Account</button>
+      </div>
     </div>`;
 }
 
@@ -1406,20 +1437,21 @@ function renderAdminFlagged(c){
       const lastUpload=u.up.lastIndexOf(1);
       const daysSinceUpload=lastUpload>=0?u.day-1-lastUpload:u.day-1;
       return `<div class="card mb10" style="border-left:3px solid ${missed>=5?"#d9503a":"rgba(217,80,58,.4)"}">
-        <div class="row mb10" style="justify-content:space-between">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
           <div class="row" style="gap:10px">
             ${_avatarWithStatus(u,36,"9px")}
             <div>
-              <p style="font-size:13px;font-weight:700">${u.name}${_bdg(unreadCt)}</p>
-              <p style="font-size:11px;color:#d9503a;margin-top:2px">${reasons.join(" · ")}</p>
+              <p style="font-size:13px;font-weight:700;margin:0">${u.name}${_bdg(unreadCt)}</p>
+              <p style="font-size:11px;color:#d9503a;margin:2px 0 0">${reasons.join(" · ")}</p>
             </div>
           </div>
           <div style="text-align:right">
-            <p style="font-size:10px;color:#888">Day ${u.day}/${u.dur}</p>
-            <p style="font-size:10px;color:#555;margin-top:2px">${daysSinceUpload>0?daysSinceUpload+"d since upload":"uploaded today"}</p>
+            <p style="font-size:10px;color:#888;margin:0">Day ${u.day}/${u.dur}</p>
+            <p style="font-size:10px;color:#555;margin:2px 0 0">${daysSinceUpload>0?daysSinceUpload+"d since upload":"uploaded today"}</p>
           </div>
         </div>
-        ${u.flag?`<div style="font-size:12px;background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.15);padding:8px 10px;border-radius:6px;margin-bottom:10px;line-height:1.5;color:#ccc">${u.flag}</div>`:""}
+        ${u.flag?`<div style="font-size:12px;background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.15);padding:8px 10px;border-radius:6px;margin-top:10px;line-height:1.5;color:#ccc">${u.flag}</div>`:""}
+        <div class="inbox-divider"></div>
         <div id="intv-${u.id}">
           ${_quickReplyChips("int-ta-"+u.id)}
           <textarea id="int-ta-${u.id}" rows="2" placeholder="Send ${u.name} a message..." style="font-size:13px;margin-bottom:8px"></textarea>
@@ -1448,31 +1480,37 @@ function renderAdminInbox(c){
         ${pending.length>=2?`<button class="bs" style="font-size:10px;padding:5px 10px" onclick="batchMarkAllReviewed()">✓ All Done (${pending.length})</button>`:""}
       </div>
     </div>
-    ${pending.map(({u,day,note,i,hasVoice,voiceUrl,fileUrl,link,fileName,behavior})=>`
+    ${pending.map(({u,day,note,i,hasVoice,voiceUrl,fileUrl,link,fileName,behavior})=>{
+      const hasExistingNote=u.reviewNotes&&u.reviewNotes[i];
+      const hasProofContent=(note&&note!=="-")||behavior||link||fileUrl||fileName||voiceUrl||hasVoice;
+      return `
       <div class="card mb10">
-        <div class="row mb8" style="justify-content:space-between;align-items:flex-start">
+        <div class="row" style="justify-content:space-between;align-items:center">
           <div class="row" style="gap:8px;flex:1;min-width:0">
             ${_avatarWithStatus(u,30,"7px")}
             <div style="min-width:0">
-              <p style="font-size:12px;font-weight:700">${u.name} <span class="muted" style="font-weight:400">· Day ${day}</span></p>
-              ${note&&note!=="-"?`<p style="font-size:12px;margin-top:4px;line-height:1.5;color:#ccc">${note}</p>`:""}
-              ${behavior?`<p style="font-size:11px;margin-top:4px;color:#c49a1c">Behavior: ${behavior==="yes"?"✓ Did it":"✗ Missed"}</p>`:""}
-              ${link?`<a href="${link}" target="_blank" style="font-size:11px;color:#4dc98a;margin-top:3px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔗 ${link}</a>`:""}
-              ${fileUrl?thumbHtml(fileUrl,fileName):fileName?`<p style="font-size:11px;color:#888;margin-top:2px">📎 ${fileName}</p>`:""}
-              ${voiceUrl?`<audio controls src="${voiceUrl}" style="width:100%;margin-top:6px;height:32px"></audio>`:(hasVoice?`<p style="font-size:11px;color:#888;margin-top:2px">🎙 Voice note</p>`:"")}
+              <p style="font-size:12px;font-weight:700;margin:0">${u.name} <span class="muted" style="font-weight:400">· Day ${day}</span></p>
             </div>
           </div>
           <button onclick="togRv('${u.id}',${i});renderAdminInbox(el('admin-content'))" style="padding:5px 12px;border-radius:100px;background:rgba(77,201,138,.06);border:1px solid rgba(77,201,138,.25);color:#4dc98a;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px;transition:background .15s" onmouseenter="this.style.background='rgba(77,201,138,.12)'" onmouseleave="this.style.background='rgba(77,201,138,.06)'">✓ Done</button>
         </div>
-        ${u.reviewNotes&&u.reviewNotes[i]?`<div style="margin-top:6px;padding:8px 10px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);border-radius:8px;font-size:11px;color:#ccc;line-height:1.5"><span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#c49a1c">YOUR NOTE</span><p style="margin:3px 0 0">${u.reviewNotes[i]}</p></div>`:""}
+        ${hasProofContent?`<div class="inbox-proof">
+          ${note&&note!=="-"?`<p style="font-size:12px;line-height:1.5;color:#ccc;margin:0">${note}</p>`:""}
+          ${behavior?`<p style="font-size:11px;color:#c49a1c;margin:0">Behavior: ${behavior==="yes"?"✓ Did it":"✗ Missed"}</p>`:""}
+          ${link?`<a href="${link}" target="_blank" style="font-size:11px;color:#4dc98a;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔗 ${link}</a>`:""}
+          ${fileUrl||fileName?`<div>${fileUrl?thumbHtml(fileUrl,fileName):fileName?`<p style="font-size:11px;color:#888;margin:0">📎 ${fileName}</p>`:""}</div>`:""}
+          ${voiceUrl?`<audio controls src="${voiceUrl}" style="width:100%;height:32px"></audio>`:(hasVoice?`<p style="font-size:11px;color:#888;margin:0">🎙 Voice note</p>`:"")}
+        </div>`:""}
+        ${hasExistingNote?`<div style="padding:8px 10px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);border-radius:8px;font-size:11px;color:#ccc;line-height:1.5;margin-bottom:8px"><span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#c49a1c">YOUR NOTE</span><p style="margin:3px 0 0">${u.reviewNotes[i]}</p></div>`:""}
+        <div class="inbox-divider"></div>
         ${_quickReplyChips("inb-"+u.id+"-"+i)}
-        <textarea id="inb-${u.id}-${i}" rows="2" placeholder="${u.reviewNotes&&u.reviewNotes[i]?"Update your note...":"Add a review note..."}" style="font-size:12px;margin-top:4px">${u.reviewNotes&&u.reviewNotes[i]?u.reviewNotes[i]:""}</textarea>
+        <textarea id="inb-${u.id}-${i}" rows="2" placeholder="${hasExistingNote?"Update your note...":"Reply / leave a review note..."}" style="font-size:12px;margin-top:4px">${hasExistingNote?u.reviewNotes[i]:""}</textarea>
         <div class="row mt8" style="gap:7px">
-          <button class="bp" style="font-size:11px;padding:6px 12px" onclick="sendInboxReply('${u.id}',${i})">Save Note</button>
+          <button class="bp" style="font-size:11px;padding:6px 12px" onclick="sendInboxReply('${u.id}',${i})">Save & send</button>
           <button class="bs" style="font-size:11px;padding:6px 12px" onclick="lilInboxDraft('${u.id}',${i},'${(note||"").replace(/'/g,"\\'")}')">✦ Draft</button>
         </div>
-      </div>
-    `).join("")}`;
+      </div>`;
+    }).join("")}`;
 }
 
 /* ── NOTIFICATIONS TAB ── */
