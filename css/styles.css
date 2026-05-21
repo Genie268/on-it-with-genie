@@ -246,9 +246,12 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 @media(max-width:600px){.welcome-card{padding:24px 18px;border-radius:14px}}
 
 /* ── FLOATING CHAT ── */
-#chat-fab{position:fixed;bottom:80px;right:18px;width:52px;height:52px;border-radius:50%;background:#c49a1c;color:#000;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:900;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:transform .15s,box-shadow .15s}
-#chat-fab:active{transform:scale(.92)}
-.chat-fab-badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;border-radius:9px;background:#d9503a;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #0a0a0a}
+#chat-fab{position:fixed;bottom:84px;right:18px;height:42px;padding:0 16px 0 14px;border-radius:100px;background:#c49a1c;color:#000;display:flex;align-items:center;gap:8px;cursor:pointer;z-index:900;box-shadow:0 4px 20px rgba(0,0,0,.4);font-weight:800;font-size:13px;font-family:inherit;letter-spacing:-0.005em;transition:transform .15s,box-shadow .15s}
+#chat-fab:active{transform:scale(.96)}
+#chat-fab .chat-fab-label{white-space:nowrap;line-height:1}
+#chat-fab.has-unread{animation:fabBreathe 2.4s ease infinite}
+@keyframes fabBreathe{0%,100%{box-shadow:0 4px 20px rgba(0,0,0,.4),0 0 0 0 rgba(196,154,28,.55)}50%{box-shadow:0 4px 20px rgba(0,0,0,.4),0 0 0 10px rgba(196,154,28,0)}}
+.chat-fab-badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:#d9503a;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid #0a0a0a}
 .chat-float{position:fixed;bottom:0;left:0;right:0;z-index:950;background:#0a0a0a;border-top:1px solid #1a1a1a;border-radius:16px 16px 0 0;max-height:70vh;display:flex;flex-direction:column;animation:chatSlideUp .25s ease forwards}
 @keyframes chatSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .chat-float-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 8px;border-bottom:1px solid #141414}
@@ -310,6 +313,9 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 .up-btn-glow{box-shadow:0 0 8px rgba(196,154,28,.25),0 0 2px rgba(196,154,28,.15)!important;border-color:rgba(196,154,28,.4)!important;transition:box-shadow .3s ease,border-color .3s ease}
 .same-yesterday-btn{background:transparent;border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:11px;padding:6px 14px;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s;-webkit-tap-highlight-color:transparent}
 .same-yesterday-btn:active{transform:scale(.97);background:rgba(196,154,28,.06)}
+.plan-prompt-card{background:var(--card-bg);border:1px solid rgba(196,154,28,.18);border-radius:13px;padding:16px 16px 14px;margin-bottom:10px;background-image:radial-gradient(ellipse at top left,rgba(196,154,28,.06),transparent 65%);animation:planPromptIn .35s ease}
+.plan-prompt-card-step2{border-color:rgba(196,154,28,.28)}
+@keyframes planPromptIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
 /* ── CALL DAY GRID MARKER ── */
 .dc-call{position:relative}

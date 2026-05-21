@@ -279,18 +279,21 @@ function renderPlanArea(){
 
 function _renderPlanPrompt(d){
   const goal=S.user.answers?.goalSummary||S.user.answers?.goal||"your goal";
+  const firstName=(S.user.name||"").split(" ")[0]||"";
   const yest=S.plans[d-1];
   const hasYesterday=yest&&yest.mainStep&&!yest.skipped;
-  _writePlanArea(`<div class="card mb10" style="border:1px solid rgba(196,154,28,.18);background:rgba(196,154,28,.03);padding:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <span class="lbl lbl-a m0">DAILY PLAN · DAY ${d}</span>
-      <button onclick="_skipPlan()" style="background:none;border:none;color:#666;font-size:11px;cursor:pointer;padding:0;font-family:inherit">Skip for today</button>
+  const goalShort=goal.length>52?goal.slice(0,52).trim()+"…":goal;
+  _writePlanArea(`<div class="plan-prompt-card" id="plan-prompt-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
+      <h3 style="font-size:17px;font-weight:700;line-height:1.35;margin:0;letter-spacing:-0.01em">What are you doing today${firstName?", "+firstName:""}?</h3>
+      <button onclick="_skipPlan()" style="background:none;border:none;color:#666;font-size:11px;cursor:pointer;padding:2px 0;font-family:inherit;flex-shrink:0">Skip</button>
     </div>
-    <p style="font-size:14px;font-weight:600;margin-bottom:4px">What's the one thing you're doing today?</p>
-    <p class="muted" style="font-size:11px;margin-bottom:10px">Toward: ${_esc(goal)}</p>
-    <textarea id="plan-main-input" rows="2" placeholder="Be specific. What will you actually do?" style="font-size:14px;width:100%;margin-bottom:8px"></textarea>
-    ${hasYesterday?`<div style="margin-bottom:8px"><button class="same-yesterday-btn" onclick="_fillFromYesterday()">Same as yesterday?</button></div>`:""}
-    <button class="bp" style="width:100%;padding:10px;font-size:13px" onclick="_planStep2()" id="plan-continue-btn">Continue →</button>
+    <p style="font-size:11px;color:#888;margin:0 0 12px">Day ${d} · toward <span style="color:#c49a1c">${_esc(goalShort)}</span></p>
+    <textarea id="plan-main-input" rows="2" placeholder="One thing. Make it specific." style="font-size:14px;width:100%;margin-bottom:10px"></textarea>
+    <div style="display:flex;gap:8px;align-items:center">
+      ${hasYesterday?`<button class="same-yesterday-btn" onclick="_fillFromYesterday()">↻ Same as yesterday</button>`:`<div style="flex:1"></div>`}
+      <button class="bp" id="plan-continue-btn" style="${hasYesterday?"margin-left:auto;padding:9px 18px":"flex:1;padding:10px"};font-size:13px" onclick="_planStep2()">Continue →</button>
+    </div>
   </div>`);
 }
 
@@ -310,21 +313,21 @@ function _planStep2(){
   const input=el("plan-main-input");
   const mainStep=(input?.value||"").trim();
   if(mainStep.length<10){input.style.border="1px solid #d9503a";input.placeholder="Tell me more. What exactly?";return;}
-  _writePlanArea(`<div class="card mb10" style="border:1px solid rgba(196,154,28,.25);background:rgba(196,154,28,.04);padding:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+  _writePlanArea(`<div class="plan-prompt-card plan-prompt-card-step2">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <span class="lbl lbl-a m0">YOUR ONE THING</span>
       <button onclick="_backToPlanStep1('${_esc(mainStep)}')" style="background:none;border:none;color:#666;font-size:11px;cursor:pointer;padding:0;font-family:inherit">← Back</button>
     </div>
-    <p style="font-size:13px;font-weight:600;margin-bottom:10px;color:#ccc">"${_esc(mainStep)}"</p>
-    <p style="font-size:13px;font-weight:600;margin-bottom:8px">Break it down. Give me three steps.</p>
+    <p style="font-size:14px;font-weight:600;margin-bottom:14px;color:#e8e8e8;line-height:1.5">${_esc(mainStep)}</p>
+    <p style="font-size:12px;color:#888;margin-bottom:8px">Break it into three steps.</p>
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
       <input id="plan-s1" type="text" placeholder="Step 1" style="font-size:14px;padding:10px 12px">
       <input id="plan-s2" type="text" placeholder="Step 2" style="font-size:14px;padding:10px 12px">
       <input id="plan-s3" type="text" placeholder="Step 3" style="font-size:14px;padding:10px 12px">
     </div>
     <div style="display:flex;gap:8px">
-      <button class="bg" style="flex:1;font-size:12px;padding:9px" onclick="_planAISuggest('${_esc(mainStep)}')" id="plan-ai-btn">Stuck? Get suggestions</button>
-      <button class="bp" style="flex:1;font-size:13px;padding:9px" onclick="_submitPlan('${_esc(mainStep)}')">Set my plan</button>
+      <button class="bg" style="flex:1;font-size:12px;padding:9px" onclick="_planAISuggest('${_esc(mainStep)}')" id="plan-ai-btn">Stuck? Suggest some</button>
+      <button class="bp" style="flex:1;font-size:13px;padding:9px" onclick="_submitPlan('${_esc(mainStep)}')">Set plan</button>
     </div>
   </div>`);
   /* Pre-fill from yesterday if triggered by "Same as yesterday?" */

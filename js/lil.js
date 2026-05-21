@@ -275,6 +275,9 @@ async function updateMsgBadge(){
   } else {
     badge.style.display="none";
   }
+  /* Pulse the FAB pill when there's something unread so the eye catches it */
+  const fab=el("chat-fab");
+  if(fab) fab.classList.toggle("has-unread",count>0);
   /* Update browser tab title */
   if(typeof updateTabTitle==="function") updateTabTitle();
 }
