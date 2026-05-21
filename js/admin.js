@@ -1498,8 +1498,8 @@ function renderAdminInbox(c){
           ${note&&note!=="-"?`<p style="font-size:12px;line-height:1.5;color:#ccc;margin:0">${note}</p>`:""}
           ${behavior?`<p style="font-size:11px;color:#c49a1c;margin:0">Behavior: ${behavior==="yes"?"✓ Did it":"✗ Missed"}</p>`:""}
           ${link?`<a href="${link}" target="_blank" style="font-size:11px;color:#4dc98a;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🔗 ${link}</a>`:""}
-          ${fileUrl||fileName?`<div>${fileUrl?thumbHtml(fileUrl,fileName):fileName?`<p style="font-size:11px;color:#888;margin:0">📎 ${fileName}</p>`:""}</div>`:""}
-          ${voiceUrl?`<audio controls src="${voiceUrl}" style="width:100%;height:32px"></audio>`:(hasVoice?`<p style="font-size:11px;color:#888;margin:0">🎙 Voice note</p>`:"")}
+          ${fileUrl?largeFilePreview(fileUrl,fileName):fileName?`<p style="font-size:11px;color:#888;margin:0">📎 ${fileName}</p>`:""}
+          ${voiceUrl?buildVoicePlayer(voiceUrl):(hasVoice?`<p style="font-size:11px;color:#888;margin:0">🎙 Voice note</p>`:"")}
         </div>`:""}
         ${hasExistingNote?`<div style="padding:8px 10px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);border-radius:8px;font-size:11px;color:#ccc;line-height:1.5;margin-bottom:8px"><span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#c49a1c">YOUR NOTE</span><p style="margin:3px 0 0">${u.reviewNotes[i]}</p></div>`:""}
         <div class="inbox-divider"></div>
@@ -1511,6 +1511,7 @@ function renderAdminInbox(c){
         </div>
       </div>`;
     }).join("")}`;
+  if(typeof _vpAttachAll==="function") _vpAttachAll(c);
 }
 
 /* ── NOTIFICATIONS TAB ── */

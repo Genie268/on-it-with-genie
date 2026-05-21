@@ -1,3 +1,127 @@
+/* Large file preview — used in the detail/modal views where the proof
+   image deserves a proper, full-width display rather than a 80×80 thumb.
+   Image renders inline at the card's full width, capped at a reasonable
+   max height with object-fit:contain so portraits aren't awkwardly
+   cropped. Tap to open the full-size lightbox. Falls back to a paperclip
+   card if the image fails to load. */
+function largeFilePreview(url,fileName){
+  if(!url){
+    if(!fileName)return "";
+    return `<div class="file-prev file-prev-empty"><span class="file-prev-clip">📎</span><span class="file-prev-name">${(fileName||"").replace(/</g,"&lt;")}</span></div>`;
+  }
+  const safeUrl=url.replace(/'/g,"\\'");
+  const rawName=fileName||url.split("/").pop()||"File";
+  const escName=rawName.replace(/</g,"&lt;").replace(/"/g,"&quot;");
+  const shortName=escName.length>34?escName.slice(0,32)+"…":escName;
+  return `<div class="file-prev" onclick="event.stopPropagation();openLightbox('${safeUrl}')" title="${escName}">
+    <img src="${url}" loading="lazy" alt="" onerror="this.style.display='none';this.parentElement.classList.add('file-prev-broken')">
+    <div class="file-prev-fallback"><span class="file-prev-clip">📎</span><span class="file-prev-name">${shortName}</span></div>
+    <div class="file-prev-zoom" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></div>
+  </div>`;
+}
+
+/* Custom voice-note player.
+   The native <audio controls> renders as a sterile white pill on most
+   browsers, which clashes with the matte/gold theme. This builds a
+   dark-themed pill: gold play/pause, slim gold progress, tabular time
+   stamp. Multiple players on the same screen auto-pause each other when
+   one starts. Wire it up by calling _vpAttachAll() once the markup is
+   in the DOM. */
+let _vpIdCounter=0;
+function buildVoicePlayer(url){
+  if(!url)return "";
+  const id="vp"+(++_vpIdCounter)+"-"+Date.now().toString(36);
+  const safeUrl=String(url).replace(/"/g,"&quot;");
+  return `<div class="vp-shell" data-vp-id="${id}">
+    <audio id="${id}-aud" src="${safeUrl}" preload="metadata" style="display:none"></audio>
+    <button class="vp-btn" onclick="_vpToggle('${id}')" aria-label="Play voice note" type="button">
+      <svg class="vp-icon-play" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>
+      <svg class="vp-icon-pause" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+    </button>
+    <div class="vp-wave">
+      <div class="vp-track" onclick="_vpSeek('${id}',event)">
+        <div class="vp-fill" id="${id}-fill"></div>
+        <div class="vp-knob" id="${id}-knob"></div>
+      </div>
+    </div>
+    <span class="vp-time" id="${id}-time">0:00</span>
+  </div>`;
+}
+
+function _vpFmt(s){
+  s=Math.max(0,Math.floor(s||0));
+  const m=Math.floor(s/60),r=s%60;
+  return m+":"+(r<10?"0":"")+r;
+}
+
+function _vpUpdateBtn(id,playing){
+  const shell=document.querySelector('.vp-shell[data-vp-id="'+id+'"]');
+  if(!shell)return;
+  const play=shell.querySelector(".vp-icon-play");
+  const pause=shell.querySelector(".vp-icon-pause");
+  if(play) play.style.display=playing?"none":"block";
+  if(pause) pause.style.display=playing?"block":"none";
+  shell.classList.toggle("vp-playing",playing);
+}
+
+function _vpToggle(id){
+  const a=document.getElementById(id+"-aud");
+  if(!a)return;
+  if(a.paused){
+    /* Pause any other playing voice notes on the page first */
+    document.querySelectorAll(".vp-shell audio").forEach(other=>{
+      if(other!==a&&!other.paused){
+        other.pause();
+        const oid=other.id.replace(/-aud$/,"");
+        _vpUpdateBtn(oid,false);
+      }
+    });
+    a.play().catch(()=>{});
+    _vpUpdateBtn(id,true);
+  }else{
+    a.pause();
+    _vpUpdateBtn(id,false);
+  }
+}
+
+function _vpSeek(id,event){
+  const a=document.getElementById(id+"-aud");
+  const track=event.currentTarget;
+  if(!a||!track||!a.duration)return;
+  const rect=track.getBoundingClientRect();
+  const pct=Math.min(1,Math.max(0,(event.clientX-rect.left)/rect.width));
+  a.currentTime=pct*a.duration;
+  _vpRenderProgress(id);
+}
+
+function _vpRenderProgress(id){
+  const a=document.getElementById(id+"-aud");
+  const fill=document.getElementById(id+"-fill");
+  const knob=document.getElementById(id+"-knob");
+  const time=document.getElementById(id+"-time");
+  if(!a)return;
+  const dur=a.duration||0;
+  const pct=dur?(a.currentTime/dur*100):0;
+  if(fill) fill.style.width=pct+"%";
+  if(knob) knob.style.left=pct+"%";
+  if(time) time.textContent=_vpFmt(a.currentTime)+(dur?" / "+_vpFmt(dur):"");
+}
+
+function _vpAttachAll(root){
+  const scope=root||document;
+  scope.querySelectorAll(".vp-shell").forEach(shell=>{
+    const id=shell.getAttribute("data-vp-id");
+    const a=document.getElementById(id+"-aud");
+    if(!a||a._vpWired)return;
+    a._vpWired=true;
+    a.addEventListener("timeupdate",()=>_vpRenderProgress(id));
+    a.addEventListener("loadedmetadata",()=>_vpRenderProgress(id));
+    a.addEventListener("ended",()=>{_vpUpdateBtn(id,false);_vpRenderProgress(id);});
+    /* Initial render in case metadata is already loaded */
+    if(a.readyState>=1) _vpRenderProgress(id);
+  });
+}
+
 /* ── UPLOAD MODAL ── */
 
 /* Lightbox for full-size image viewing */
@@ -282,12 +406,12 @@ function openViewMod(dayIdx){
     html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">LINK</span><a href="${upload.link}" target="_blank" style="display:block;margin-top:4px;font-size:13px;color:#4dc98a;word-break:break-all">${upload.link}</a></div>`;
   }
   if(upload.fileUrl){
-    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${thumbHtml(upload.fileUrl,upload.fileName)}</div>`;
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${largeFilePreview(upload.fileUrl,upload.fileName)}</div>`;
   }else if(upload.hasFile&&upload.fileName){
     html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${upload.fileName}</p></div>`;
   }
   if(upload.voiceUrl){
-    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span><audio controls src="${upload.voiceUrl}" style="width:100%;margin-top:8px;border-radius:8px"></audio></div>`;
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span>${buildVoicePlayer(upload.voiceUrl)}</div>`;
   }else if(upload.hasVoice){
     html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span><p style="margin-top:4px;font-size:12px;color:#888">🎙 Voice note recorded</p></div>`;
   }
@@ -309,6 +433,7 @@ function openViewMod(dayIdx){
     el("view-mod-actions").innerHTML=`<button class="bs" style="width:100%;padding:10px;font-size:13px" onclick="closeViewMod()">Close</button>`;
   }
   el("view-mod").classList.add("show");
+  _vpAttachAll(el("view-mod-body"));
 }
 function closeViewMod(){el("view-mod").classList.remove("show");}
 function editTodayUpload(){
@@ -367,8 +492,8 @@ function openUploadDetail(uid, dayIndex){
     ${behavior?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">BEHAVIOR</span><p style="margin-top:4px;font-size:14px;font-weight:700;color:${behavior==="yes"?"#4dc98a":"#d9503a"}">${behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p></div>`:""}
     ${note&&note!=="-"?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">NOTE</span><p style="margin-top:4px;font-size:13px;line-height:1.7;color:#e0e0e0">${note}</p></div>`:""}
     ${link?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">LINK</span><a href="${link}" target="_blank" style="display:block;margin-top:4px;font-size:13px;color:#4dc98a;word-break:break-all">${link}</a></div>`:""}
-    ${fileUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${thumbHtml(fileUrl,fileName)}</div>`:fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${fileName}</p></div>`:""}
-    ${voiceUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span><audio controls src="${voiceUrl}" style="width:100%;margin-top:8px;border-radius:8px"></audio></div>`:""}
+    ${fileUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${largeFilePreview(fileUrl,fileName)}</div>`:fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${fileName}</p></div>`:""}
+    ${voiceUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span>${buildVoicePlayer(voiceUrl)}</div>`:""}
     ${energyHtml}
     <div style="margin-top:14px;padding:12px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px">
       <span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#c49a1c">YOUR REVIEW NOTE</span>
@@ -383,6 +508,7 @@ function openUploadDetail(uid, dayIndex){
   `;
   panel.style.transform="translateX(0)";
   document.getElementById("upload-detail-backdrop").style.display="block";
+  _vpAttachAll(document.getElementById("upload-detail-body"));
 }
 
 async function _saveDetailReviewNote(uid,dayIndex){
