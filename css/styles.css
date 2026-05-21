@@ -41,20 +41,6 @@ html[data-route="admin"] #s-admin.screen{display:flex!important;flex-direction:c
 @keyframes typingBlink{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-2px)}}
 .typing-dot{width:5px;height:5px;border-radius:50%;background:#c49a1c;display:inline-block;animation:typingBlink 1s ease infinite}
 
-/* ── PROOF FILE PREVIEW (large, used in detail / modal views) ── */
-.file-prev{position:relative;display:block;width:100%;margin-top:8px;border-radius:12px;overflow:hidden;background:#0a0a0a;border:1px solid #1f1f1f;cursor:pointer;line-height:0;transition:border-color .15s,transform .15s}
-.file-prev:hover{border-color:rgba(196,154,28,.35)}
-.file-prev:active{transform:scale(.995)}
-.file-prev img{display:block;width:100%;max-height:280px;object-fit:contain;background:#000}
-.file-prev-fallback{display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:38px 18px;gap:10px;color:#888;font-size:12px;line-height:1.4;min-height:120px}
-.file-prev-fallback .file-prev-clip{font-size:26px;opacity:.55}
-.file-prev-fallback .file-prev-name{max-width:80%;word-break:break-word}
-.file-prev.file-prev-broken .file-prev-fallback{display:flex}
-.file-prev-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 18px;gap:10px;color:#888;font-size:12px;line-height:1.4}
-.file-prev-empty .file-prev-clip{font-size:24px;opacity:.55}
-.file-prev-zoom{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;color:#fff;opacity:.85;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:none}
-.file-prev.file-prev-broken .file-prev-zoom{display:none}
-
 /* ── CUSTOM VOICE NOTE PLAYER ── */
 .vp-shell{display:flex;align-items:center;gap:11px;padding:8px 14px 8px 8px;background:linear-gradient(135deg,#141414,#0e0e0e);border:1px solid #1f1f1f;border-radius:100px;margin-top:8px;min-height:44px;transition:border-color .2s,box-shadow .2s}
 .vp-shell.vp-playing{border-color:rgba(196,154,28,.35);box-shadow:0 0 0 1px rgba(196,154,28,.15),0 4px 14px rgba(0,0,0,.25)}

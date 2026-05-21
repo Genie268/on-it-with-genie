@@ -1,25 +1,3 @@
-/* Large file preview — used in the detail/modal views where the proof
-   image deserves a proper, full-width display rather than a 80×80 thumb.
-   Image renders inline at the card's full width, capped at a reasonable
-   max height with object-fit:contain so portraits aren't awkwardly
-   cropped. Tap to open the full-size lightbox. Falls back to a paperclip
-   card if the image fails to load. */
-function largeFilePreview(url,fileName){
-  if(!url){
-    if(!fileName)return "";
-    return `<div class="file-prev file-prev-empty"><span class="file-prev-clip">📎</span><span class="file-prev-name">${(fileName||"").replace(/</g,"&lt;")}</span></div>`;
-  }
-  const safeUrl=url.replace(/'/g,"\\'");
-  const rawName=fileName||url.split("/").pop()||"File";
-  const escName=rawName.replace(/</g,"&lt;").replace(/"/g,"&quot;");
-  const shortName=escName.length>34?escName.slice(0,32)+"…":escName;
-  return `<div class="file-prev" onclick="event.stopPropagation();openLightbox('${safeUrl}')" title="${escName}">
-    <img src="${url}" loading="lazy" alt="" onerror="this.style.display='none';this.parentElement.classList.add('file-prev-broken')">
-    <div class="file-prev-fallback"><span class="file-prev-clip">📎</span><span class="file-prev-name">${shortName}</span></div>
-    <div class="file-prev-zoom" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></div>
-  </div>`;
-}
-
 /* Custom voice-note player.
    The native <audio controls> renders as a sterile white pill on most
    browsers, which clashes with the matte/gold theme. This builds a
@@ -287,14 +265,73 @@ function setBehavior(val){
 }
 
 function handleProofFile(input){
+/* Compress a picked image down to a max-1600px JPEG before it ever touches
+   network. Raw phone photos routinely exceed 8–15 MB which silently fails
+   against the 20 MB storage cap; this keeps every proof image well under
+   1 MB without losing detail. Non-images pass through unchanged. */
+function _compressProofImage(file,maxDim,quality){
+  maxDim=maxDim||1600; quality=quality||0.85;
+  return new Promise((resolve,reject)=>{
+    if(!file||!file.type||!file.type.startsWith("image/")){
+      resolve({blob:file,dataUrl:null,compressed:false});return;
+    }
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        /* Skip canvas roundtrip when the file is already small enough */
+        if(Math.max(img.width,img.height)<=maxDim && file.size<1.5*1024*1024){
+          resolve({blob:file,dataUrl:ev.target.result,compressed:false});return;
+        }
+        const scale=Math.min(1,maxDim/Math.max(img.width,img.height));
+        const w=Math.max(1,Math.round(img.width*scale));
+        const h=Math.max(1,Math.round(img.height*scale));
+        const canvas=document.createElement("canvas");
+        canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext("2d");
+        ctx.drawImage(img,0,0,w,h);
+        canvas.toBlob(blob=>{
+          if(!blob){reject(new Error("compress failed"));return;}
+          const stem=(file.name||"upload").replace(/\.[^.]+$/,"");
+          let out;
+          try{out=new File([blob],stem+".jpg",{type:"image/jpeg"});}
+          catch(e){out=blob; out.name=stem+".jpg";}
+          resolve({blob:out,dataUrl:canvas.toDataURL("image/jpeg",quality),compressed:true});
+        },"image/jpeg",quality);
+      };
+      img.onerror=reject;
+      img.src=ev.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleProofFile(input){
   if(!input.files||!input.files[0]){S.fileOn=false;S.fileName=null;S.pendingFile=null;return;}
   const file=input.files[0];
-  S.fileOn=true; S.fileName=file.name; S.pendingFile=file;
-  const fdEl=el("fd"); if(fdEl){fdEl.className="fd on";fdEl.innerHTML=`<span style="font-size:28px">✓</span><span style="font-size:13px;color:#4dc98a">${file.name}</span>`;}
-  if(file.type.startsWith("image/")){
-    const reader=new FileReader();
-    reader.onload=e=>{el("mod-file-thumb").src=e.target.result;el("mod-file-thumb").style.display="block";el("mod-file-preview").style.display="block";};
-    reader.readAsDataURL(file);
+  const fdEl=el("fd");
+  if(fdEl){fdEl.className="fd";fdEl.innerHTML=`<div class="spinner" style="margin-right:8px"></div><span style="font-size:13px;color:#888">Processing…</span>`;}
+  try{
+    const {blob,dataUrl}=await _compressProofImage(file);
+    S.fileOn=true;
+    S.fileName=blob.name||file.name;
+    S.pendingFile=blob;
+    if(fdEl){
+      fdEl.className="fd on";
+      fdEl.innerHTML=`<span style="font-size:28px">✓</span><span style="font-size:13px;color:#4dc98a;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${S.fileName}</span>`;
+    }
+    if(dataUrl){
+      const thumb=el("mod-file-thumb");
+      const preview=el("mod-file-preview");
+      if(thumb){thumb.src=dataUrl;thumb.style.display="block";}
+      if(preview)preview.style.display="block";
+    }
+  }catch(e){
+    console.error("Proof image processing failed:",e);
+    /* Fall back to the original file so the user can still try to upload */
+    S.fileOn=true;S.fileName=file.name;S.pendingFile=file;
+    if(fdEl){fdEl.className="fd on";fdEl.innerHTML=`<span style="font-size:28px">✓</span><span style="font-size:13px;color:#4dc98a">${file.name}</span>`;}
   }
 }
 
@@ -309,12 +346,22 @@ async function subUp(){
 
   const btn=el("mod-sub"); btn.textContent="Uploading..."; btn.disabled=true;
 
-  /* Upload file to Supabase Storage */
+  /* Upload file to Supabase Storage — must succeed if a file was picked.
+     A silent null here used to mark the submission "done" with a filename
+     but no URL, leaving the user with nothing to preview. Now we block
+     submission, restore the button, and tell the user. */
   let fileUrl=null;
   if(S.pendingFile&&S.user?.supabaseId){
     const ext=(S.pendingFile.name.split(".").pop()||"bin").toLowerCase();
     const path=`${S.user.supabaseId}/day${S.day}-${Date.now()}.${ext}`;
-    fileUrl=await uploadToStorage("uploads",path,S.pendingFile,S.pendingFile.type);
+    const ctype=S.pendingFile.type||"image/jpeg";
+    fileUrl=await uploadToStorage("uploads",path,S.pendingFile,ctype);
+    if(!fileUrl){
+      showToast("Photo upload failed. Check your connection and try again.","error",4500);
+      btn.textContent="Submit Proof ↑";
+      btn.disabled=false;
+      return;
+    }
   }
 
   /* Upload voice proof to Supabase Storage */
@@ -328,7 +375,12 @@ async function subUp(){
       const vExt=vMime.includes("mp4")?"mp4":vMime.includes("ogg")?"ogg":"webm";
       const path=`${S.user.supabaseId}/day${S.day}-voice-${Date.now()}.${vExt}`;
       voiceUrl=await uploadToStorage("uploads",path,S.voiceBlob,vMime);
-      if(!voiceUrl) showToast("Voice upload failed. Proof saved without audio","error");
+      if(!voiceUrl){
+        showToast("Voice upload failed. Try again.","error",4500);
+        btn.textContent="Submit Proof ↑";
+        btn.disabled=false;
+        return;
+      }
     }
   }
 
@@ -406,14 +458,16 @@ function openViewMod(dayIdx){
     html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">LINK</span><a href="${upload.link}" target="_blank" style="display:block;margin-top:4px;font-size:13px;color:#4dc98a;word-break:break-all">${upload.link}</a></div>`;
   }
   if(upload.fileUrl){
-    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${largeFilePreview(upload.fileUrl,upload.fileName)}</div>`;
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">FILE</span>${thumbHtml(upload.fileUrl,upload.fileName)}</div>`;
   }else if(upload.hasFile&&upload.fileName){
-    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${upload.fileName}</p></div>`;
+    /* File name was saved but the storage URL is missing — the upload
+       didn't complete. Tell the user explicitly so they know to retry. */
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">FILE</span><div style="padding:10px 12px;background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.2);border-radius:8px;font-size:12px;color:#d9503a;line-height:1.5">⚠ Photo upload didn't complete. Tap <strong>Edit Upload</strong> to add it again.<p style="margin-top:4px;font-size:11px;color:#888">${upload.fileName}</p></div></div>`;
   }
   if(upload.voiceUrl){
-    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span>${buildVoicePlayer(upload.voiceUrl)}</div>`;
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">VOICE NOTE</span>${buildVoicePlayer(upload.voiceUrl)}</div>`;
   }else if(upload.hasVoice){
-    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span><p style="margin-top:4px;font-size:12px;color:#888">🎙 Voice note recorded</p></div>`;
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">VOICE NOTE</span><p style="margin-top:4px;font-size:12px;color:#888">🎙 Voice note recorded</p></div>`;
   }
   if(upload.proofType){
     html+=`<span class="tag mt6" style="display:inline-block;margin-top:6px">${PT[upload.proofType]||"Proof"}</span>`;
@@ -492,8 +546,8 @@ function openUploadDetail(uid, dayIndex){
     ${behavior?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">BEHAVIOR</span><p style="margin-top:4px;font-size:14px;font-weight:700;color:${behavior==="yes"?"#4dc98a":"#d9503a"}">${behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p></div>`:""}
     ${note&&note!=="-"?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">NOTE</span><p style="margin-top:4px;font-size:13px;line-height:1.7;color:#e0e0e0">${note}</p></div>`:""}
     ${link?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">LINK</span><a href="${link}" target="_blank" style="display:block;margin-top:4px;font-size:13px;color:#4dc98a;word-break:break-all">${link}</a></div>`:""}
-    ${fileUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span>${largeFilePreview(fileUrl,fileName)}</div>`:fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${fileName}</p></div>`:""}
-    ${voiceUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">VOICE NOTE</span>${buildVoicePlayer(voiceUrl)}</div>`:""}
+    ${fileUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">FILE</span>${thumbHtml(fileUrl,fileName)}</div>`:fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">FILE</span><div style="padding:10px 12px;background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.2);border-radius:8px;font-size:12px;color:#d9503a;line-height:1.5">⚠ Upload didn't complete. <span style="color:#888;font-size:11px">${fileName}</span></div></div>`:""}
+    ${voiceUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">VOICE NOTE</span>${buildVoicePlayer(voiceUrl)}</div>`:""}
     ${energyHtml}
     <div style="margin-top:14px;padding:12px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px">
       <span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#c49a1c">YOUR REVIEW NOTE</span>
