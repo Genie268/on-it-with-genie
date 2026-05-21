@@ -258,33 +258,87 @@ What they submitted: "${note}"`,80);
   ta.disabled=false;ta.placeholder="";
 }
 
-/* ── PHOTO UPLOAD ── */
-function handlePhoto(input){
-  if(!input.files||!input.files[0])return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    const url=e.target.result;
-    const lg=el("photo-preview-large");
-    if(lg){lg.src=url;lg.style.display="block";el("photo-placeholder").style.display="none";}
-    const sm=el("photo-preview-circle");
-    if(sm){sm.innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;sm.style.background="none";}
-    if(S.user){S.user.photo=url;saveState();}
-  };
-  reader.readAsDataURL(input.files[0]);
+/* ── PHOTO UPLOAD ──
+   Two-step flow: show a local preview immediately for snappy UX, then
+   downscale + upload to Supabase Storage in the background. The DB row
+   stores the resulting public URL via syncToSupabase. Falls back to a
+   compressed data URL if the user has no supabaseId yet (still in
+   onboarding) or storage is unreachable; the upload retries on next
+   photo change. */
+function _resizeImage(file,maxDim=480,quality=0.85){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const scale=Math.min(1,maxDim/Math.max(img.width,img.height));
+        const w=Math.max(1,Math.round(img.width*scale));
+        const h=Math.max(1,Math.round(img.height*scale));
+        const canvas=document.createElement("canvas");
+        canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext("2d");
+        ctx.drawImage(img,0,0,w,h);
+        canvas.toBlob(blob=>{
+          if(!blob){reject(new Error("blob failed"));return;}
+          resolve({blob,dataUrl:canvas.toDataURL("image/jpeg",quality)});
+        },"image/jpeg",quality);
+      };
+      img.onerror=reject;
+      img.src=ev.target.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
 }
 
-function handleProfilePhoto(input){
+async function _uploadAvatarToStorage(blob){
+  if(!S.user?.supabaseId||typeof uploadToStorage!=="function")return null;
+  const path=`avatars/${S.user.supabaseId}/${Date.now()}.jpg`;
+  return await uploadToStorage("uploads",path,blob,"image/jpeg");
+}
+
+async function handlePhoto(input){
   if(!input.files||!input.files[0])return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    const url=e.target.result;
+  try{
+    const {blob,dataUrl}=await _resizeImage(input.files[0]);
+    const lg=el("photo-preview-large");
+    if(lg){lg.src=dataUrl;lg.style.display="block";el("photo-placeholder").style.display="none";}
+    const sm=el("photo-preview-circle");
+    if(sm){sm.innerHTML=`<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;sm.style.background="none";}
+    if(S.user){S.user.photo=dataUrl;saveState();}
+    const url=await _uploadAvatarToStorage(blob);
+    if(url&&S.user){
+      S.user.photo=url;
+      saveState();
+      try{await syncToSupabase();}catch(e){}
+    }
+  }catch(e){
+    console.error("Photo upload failed:",e);
+    showToast("Photo upload failed, try a smaller image","error");
+  }
+}
+
+async function handleProfilePhoto(input){
+  if(!input.files||!input.files[0])return;
+  try{
+    const {blob,dataUrl}=await _resizeImage(input.files[0]);
     const pv=el("profile-photo-preview");
-    if(pv){pv.src=url;pv.style.display="block";el("profile-photo-placeholder").style.display="none";}
-    if(S.user){S.user.photo=url;saveState();}
+    if(pv){pv.src=dataUrl;pv.style.display="block";el("profile-photo-placeholder").style.display="none";}
+    if(S.user){S.user.photo=dataUrl;saveState();}
     const uc=el("dash-user-circle");
-    if(uc&&S.user?.photo){uc.innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;uc.style.background="none";}
-  };
-  reader.readAsDataURL(input.files[0]);
+    if(uc){uc.innerHTML=`<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;uc.style.background="none";}
+    const url=await _uploadAvatarToStorage(blob);
+    if(url&&S.user){
+      S.user.photo=url;
+      saveState();
+      if(pv)pv.src=url;
+      if(uc)uc.innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      try{await syncToSupabase();}catch(e){}
+    }
+  }catch(e){
+    console.error("Photo upload failed:",e);
+    showToast("Photo upload failed, try a smaller image","error");
+  }
 }
 
 

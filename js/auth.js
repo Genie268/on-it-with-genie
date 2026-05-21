@@ -22,9 +22,14 @@ async function syncToSupabase(){
         if(tz) u.timezone=tz;
       }catch(e){}
     }
+    /* Only persist photo_url to the DB if it's a real (https) storage URL.
+       Data URLs would bloat the row and break across devices, so we hold
+       them in localStorage until the storage upload promotes to a URL. */
+    const photoForDb=(u.photo&&typeof u.photo==="string"&&u.photo.startsWith("http"))?u.photo:null;
     const row={
       id:u.supabaseId||undefined,
       name:u.name,email:u.email||null,phone:u.phone||null,
+      photo_url:photoForDb,
       goal_raw:u.answers.goal,goal_summary:u.answers.goalSummary||u.answers.goal,
       proof_description:u.answers.proof||null,proof_methods:u.answers.proofMethods||[],
       proof_type:u.answers.proofType||"output",threat:u.answers.threat||null,
