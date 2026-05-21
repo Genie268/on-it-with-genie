@@ -1,11 +1,5 @@
 /* ── UPLOAD MODAL ── */
 
-/* Image detection helper */
-function isImageUrl(url){
-  if(!url)return false;
-  return /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url)||url.includes("image");
-}
-
 /* Lightbox for full-size image viewing */
 function openLightbox(src){
   const ov=document.createElement("div");
@@ -21,17 +15,24 @@ function openLightbox(src){
   document.body.appendChild(ov);
 }
 
-/* Thumbnail HTML builder */
+/* Thumbnail HTML builder — always renders an 80×80 tile when a URL exists.
+   We attempt the image first regardless of extension (Supabase storage URLs
+   sometimes lack obvious file extensions); the onerror handler swaps in a
+   paperclip placeholder if the image truly fails to load. Tapping anywhere
+   on the tile opens the full-size lightbox. */
 function thumbHtml(url,fileName){
-  if(isImageUrl(url)){
-    return `<div style="margin-top:8px;cursor:pointer;display:inline-block" onclick="event.stopPropagation();openLightbox('${url.replace(/'/g,"\\'")}')">`
-      +`<img src="${url}" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #2a2a2a;display:block" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />`
-      +`<div style="display:none;width:80px;height:80px;border-radius:8px;background:#1a1a1a;border:1px solid #2a2a2a;align-items:center;justify-content:center;font-size:11px;color:#666;text-align:center;padding:4px">📎 Image unavailable</div>`
-      +`</div>`;
+  if(!url){
+    if(!fileName)return "";
+    return `<p style="margin-top:6px;font-size:11px;color:#888"><span style="opacity:.55">📎</span> ${(fileName||"").replace(/</g,"&lt;")}</p>`;
   }
-  /* Non-image file — show file icon */
-  const name=fileName||url.split("/").pop()||"File";
-  return `<a href="${url}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:#4dc98a;text-decoration:none;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 12px">📎 <span style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span></a>`;
+  const safeUrl=url.replace(/'/g,"\\'");
+  const rawName=fileName||url.split("/").pop()||"File";
+  const escName=rawName.replace(/</g,"&lt;").replace(/"/g,"&quot;");
+  const shortName=escName.length>16?escName.slice(0,14)+"…":escName;
+  return `<div style="margin-top:8px;display:inline-block;position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid #2a2a2a;background:#0e0e0e;cursor:pointer" onclick="event.stopPropagation();openLightbox('${safeUrl}')" title="${escName}">
+    <img src="${url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex'">
+    <div style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6px;font-size:10px;color:#888;line-height:1.3"><span style="font-size:18px;opacity:.55">📎</span><span style="margin-top:3px">${shortName}</span></div>
+  </div>`;
 }
 
 function openMod(){
@@ -73,7 +74,7 @@ function openMod(){
     {id:"note",icon:`<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c49a1c" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,label:"Note",
      content:`<textarea id="mod-note" rows="4" placeholder="What did you work on? Be specific." style="font-size:14px;width:100%"></textarea>`},
     {id:"photo",icon:`<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c49a1c" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,label:"Photo / Screenshot",
-     content:`<div class="fd" id="fd" onclick="el('mod-file-input').click()" style="padding:24px;justify-content:center;flex-direction:column;gap:8px;text-align:center;border-radius:10px;min-height:80px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c49a1c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span style="font-size:13px;color:#888">Tap to upload</span></div><input type="file" id="mod-file-input" accept="image/*" style="display:none" onchange="handleProofFile(this)"><div id="mod-file-preview" style="display:none;margin-top:8px;border-radius:8px;overflow:hidden;max-height:140px"><img id="mod-file-thumb" style="width:100%;object-fit:cover;display:none"></div>`},
+     content:`<div class="fd" id="fd" onclick="el('mod-file-input').click()" style="padding:24px;justify-content:center;flex-direction:column;gap:8px;text-align:center;border-radius:10px;min-height:80px"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c49a1c" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" style="opacity:.78"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span style="font-size:13px;color:#888">Tap to upload a photo</span></div><input type="file" id="mod-file-input" accept="image/*" style="display:none" onchange="handleProofFile(this)"><div id="mod-file-preview" style="display:none;margin-top:8px;border-radius:8px;overflow:hidden;max-height:140px"><img id="mod-file-thumb" style="width:100%;object-fit:cover;display:none"></div>`},
     {id:"link",icon:`<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c49a1c" stroke-width="1.5"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>`,label:"Link",
      content:`<input id="mod-link" type="url" placeholder="https://..." style="font-size:14px;margin-bottom:6px"><p class="muted" style="font-size:10px">Paste a link to your work</p>`},
     {id:"voice",icon:`<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c49a1c" stroke-width="1.5"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>`,label:"Voice Note",
