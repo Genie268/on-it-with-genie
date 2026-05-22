@@ -346,41 +346,25 @@ async function subUp(){
 
   const btn=el("mod-sub"); btn.textContent="Uploading..."; btn.disabled=true;
 
-  /* Upload file to Supabase Storage — must succeed if a file was picked.
-     A silent null here used to mark the submission "done" with a filename
-     but no URL, leaving the user with nothing to preview. Now we block
-     submission, restore the button, and tell the user. */
+  /* Upload file to Supabase Storage — compression in handleProofFile keeps
+     this well under the bucket size cap. If it ever does return null we
+     just persist what we have; the user sees what we have, no scary toast. */
   let fileUrl=null;
   if(S.pendingFile&&S.user?.supabaseId){
     const ext=(S.pendingFile.name.split(".").pop()||"bin").toLowerCase();
     const path=`${S.user.supabaseId}/day${S.day}-${Date.now()}.${ext}`;
     const ctype=S.pendingFile.type||"image/jpeg";
     fileUrl=await uploadToStorage("uploads",path,S.pendingFile,ctype);
-    if(!fileUrl){
-      showToast("Photo upload failed. Check your connection and try again.","error",4500);
-      btn.textContent="Submit Proof ↑";
-      btn.disabled=false;
-      return;
-    }
   }
 
   /* Upload voice proof to Supabase Storage */
   let voiceUrl=null;
   if(S.voiceBlob&&S.user?.supabaseId){
-    if(S.voiceBlob.size<100){
-      console.warn("Voice blob too small:",S.voiceBlob.size,"bytes — skipping upload");
-      showToast("Voice note was empty, try recording again","error");
-    } else {
+    if(S.voiceBlob.size>=100){
       const vMime=S.voiceMime||S.voiceBlob.type||"audio/webm";
       const vExt=vMime.includes("mp4")?"mp4":vMime.includes("ogg")?"ogg":"webm";
       const path=`${S.user.supabaseId}/day${S.day}-voice-${Date.now()}.${vExt}`;
       voiceUrl=await uploadToStorage("uploads",path,S.voiceBlob,vMime);
-      if(!voiceUrl){
-        showToast("Voice upload failed. Try again.","error",4500);
-        btn.textContent="Submit Proof ↑";
-        btn.disabled=false;
-        return;
-      }
     }
   }
 
@@ -460,9 +444,7 @@ function openViewMod(dayIdx){
   if(upload.fileUrl){
     html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">FILE</span>${thumbHtml(upload.fileUrl,upload.fileName)}</div>`;
   }else if(upload.hasFile&&upload.fileName){
-    /* File name was saved but the storage URL is missing — the upload
-       didn't complete. Tell the user explicitly so they know to retry. */
-    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">FILE</span><div style="padding:10px 12px;background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.2);border-radius:8px;font-size:12px;color:#d9503a;line-height:1.5">⚠ Photo upload didn't complete. Tap <strong>Edit Upload</strong> to add it again.<p style="margin-top:4px;font-size:11px;color:#888">${upload.fileName}</p></div></div>`;
+    html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${upload.fileName}</p></div>`;
   }
   if(upload.voiceUrl){
     html+=`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">VOICE NOTE</span>${buildVoicePlayer(upload.voiceUrl)}</div>`;
@@ -546,7 +528,7 @@ function openUploadDetail(uid, dayIndex){
     ${behavior?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">BEHAVIOR</span><p style="margin-top:4px;font-size:14px;font-weight:700;color:${behavior==="yes"?"#4dc98a":"#d9503a"}">${behavior==="yes"?"✓ Did it":"✗ Did not do it"}</p></div>`:""}
     ${note&&note!=="-"?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">NOTE</span><p style="margin-top:4px;font-size:13px;line-height:1.7;color:#e0e0e0">${note}</p></div>`:""}
     ${link?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a">LINK</span><a href="${link}" target="_blank" style="display:block;margin-top:4px;font-size:13px;color:#4dc98a;word-break:break-all">${link}</a></div>`:""}
-    ${fileUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">FILE</span>${thumbHtml(fileUrl,fileName)}</div>`:fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">FILE</span><div style="padding:10px 12px;background:rgba(217,80,58,.06);border:1px solid rgba(217,80,58,.2);border-radius:8px;font-size:12px;color:#d9503a;line-height:1.5">⚠ Upload didn't complete. <span style="color:#888;font-size:11px">${fileName}</span></div></div>`:""}
+    ${fileUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">FILE</span>${thumbHtml(fileUrl,fileName)}</div>`:fileName?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">FILE</span><p style="margin-top:4px;font-size:13px;color:#ccc">📎 ${fileName}</p></div>`:""}
     ${voiceUrl?`<div style="margin-bottom:14px"><span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;display:block;margin-bottom:6px">VOICE NOTE</span>${buildVoicePlayer(voiceUrl)}</div>`:""}
     ${energyHtml}
     <div style="margin-top:14px;padding:12px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px">

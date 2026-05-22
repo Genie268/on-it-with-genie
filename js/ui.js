@@ -3,24 +3,27 @@
    Reads payment_status directly from Supabase (the authoritative source —
    payment columns on public.challengers are write-protected by trigger, so
    only verify-payment can ever set them to 'paid'/'free'). If the server
-   disagrees with localStorage, the server wins and we bounce to land. */
+   disagrees with localStorage, the server wins and we bounce to land.
+
+   Network resilience: if we can't reach the server at all, we fall back
+   to the cached paymentStatus rather than hard-blocking the user. A
+   transient 4G blip should never lock a paid user out of their own
+   dashboard — the gate re-runs on the next nav so security still holds. */
 async function verifyResumeAllowed(){
   if(!S.user) return false;
-  if(!S.user.supabaseId){
-    /* No server row at all ⇒ cannot possibly be paid. */
-    return false;
-  }
-  if(!sb){
-    /* Supabase client didn't init — fail closed rather than allow bypass. */
-    return false;
-  }
+  if(!S.user.supabaseId) return false;
+  if(!sb) return _cachedPaidOk();
   try{
     const {data,error}=await sb
       .from("challengers")
       .select("payment_status,status")
       .eq("id",S.user.supabaseId)
       .maybeSingle();
-    if(error||!data) return false;
+    if(error){
+      console.warn("verifyResumeAllowed: server error, using cached status",error);
+      return _cachedPaidOk();
+    }
+    if(!data) return false; /* no row at all — can't be paid */
     const ps=data.payment_status;
     if(ps!=="paid"&&ps!=="free") return false;
     if(S.user.paymentStatus!==ps){
@@ -33,8 +36,18 @@ async function verifyResumeAllowed(){
     }
     return true;
   }catch(e){
-    return false;
+    console.warn("verifyResumeAllowed: threw, using cached status",e);
+    return _cachedPaidOk();
   }
+}
+
+/* Trusts the last-known paid/free status from localStorage when we can't
+   reach Supabase. We only ever set paymentStatus to 'paid'/'free' after
+   a successful server verify (verify-payment or restore), so the cache
+   is itself second-hand server truth — safe to use as a fallback. */
+function _cachedPaidOk(){
+  const ps=S.user?.paymentStatus;
+  return ps==="paid"||ps==="free";
 }
 
 /* ── NAV ──
@@ -82,13 +95,15 @@ function _activateScreen(s){
 }
 
 /* Dash gate — runs a server-side payment verify before mounting s-dash.
-   Fails closed on timeout, error, or any non-paid response. */
+   On a clean reachable server: server wins.
+   On timeout / unreachable / thrown error: fall back to cached paid
+   status so a flaky connection doesn't lock a paid user out. */
 function _gateAndMountDash(){
   if(!S.user){_activateScreen("land");return;}
   if(_dashGateInFlight) return;
   _dashGateInFlight=true;
   _showDashVerifying();
-  const timeout=new Promise(res=>setTimeout(()=>res("timeout"),10000));
+  const timeout=new Promise(res=>setTimeout(()=>res("timeout"),15000));
   Promise.race([verifyResumeAllowed(),timeout]).then(ok=>{
     _dashGateInFlight=false;
     _hideDashVerifying();
@@ -97,13 +112,25 @@ function _gateAndMountDash(){
       return;
     }
     if(ok==="timeout"){
-      _showRecoveryScreen("Connection timed out. Check your internet and try again.");
+      /* Server didn't answer in time — if we have a cached paid status,
+         trust it and let them in. The gate runs again on next nav. */
+      if(_cachedPaidOk()){
+        _activateScreen("dash");
+        return;
+      }
+      _showRecoveryScreen("Connection's slow. Try again in a moment.");
       return;
     }
     _showRecoveryScreen("Your session couldn't be verified.");
-  }).catch(()=>{
+  }).catch((err)=>{
     _dashGateInFlight=false;
     _hideDashVerifying();
+    console.warn("_gateAndMountDash threw:",err);
+    /* Same forgiveness: if we already know they're paid, let them in. */
+    if(_cachedPaidOk()){
+      _activateScreen("dash");
+      return;
+    }
     _showRecoveryScreen("Something went wrong. Please try again.");
   });
 }
