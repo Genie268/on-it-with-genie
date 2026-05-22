@@ -11,8 +11,12 @@
    dashboard — the gate re-runs on the next nav so security still holds. */
 async function verifyResumeAllowed(){
   if(!S.user) return false;
-  if(!S.user.supabaseId) return false;
-  if(!sb) return _cachedPaidOk();
+  const cachedOk=_cachedPaidOk();
+  /* Anything before "server actually answered with a non-paid row" falls
+     back to the cache. A paid user can't be locked out by a missing id,
+     RLS quirk, dead Supabase client, or transient blip. */
+  if(!S.user.supabaseId) return cachedOk;
+  if(!sb) return cachedOk;
   try{
     const {data,error}=await sb
       .from("challengers")
@@ -21,11 +25,16 @@ async function verifyResumeAllowed(){
       .maybeSingle();
     if(error){
       console.warn("verifyResumeAllowed: server error, using cached status",error);
-      return _cachedPaidOk();
+      return cachedOk;
     }
-    if(!data) return false; /* no row at all — can't be paid */
+    if(!data){
+      /* Could be an id mismatch, deleted account, or empty RLS result.
+         If we already trust the cache, trust it. */
+      console.warn("verifyResumeAllowed: no row for",S.user.supabaseId,"— using cached status");
+      return cachedOk;
+    }
     const ps=data.payment_status;
-    if(ps!=="paid"&&ps!=="free") return false;
+    if(ps!=="paid"&&ps!=="free") return false; /* server explicitly says not paid */
     if(S.user.paymentStatus!==ps){
       S.user.paymentStatus=ps;
       try{saveState();}catch(e){}
@@ -37,7 +46,7 @@ async function verifyResumeAllowed(){
     return true;
   }catch(e){
     console.warn("verifyResumeAllowed: threw, using cached status",e);
-    return _cachedPaidOk();
+    return cachedOk;
   }
 }
 
@@ -97,7 +106,17 @@ function _activateScreen(s){
 /* Dash gate — runs a server-side payment verify before mounting s-dash.
    On a clean reachable server: server wins.
    On timeout / unreachable / thrown error: fall back to cached paid
-   status so a flaky connection doesn't lock a paid user out. */
+   status so a flaky connection doesn't lock a paid user out.
+   Errors thrown by renderDash itself are swallowed too — we leave the
+   user on the dashboard rather than firing them to recovery. */
+function _mountDashSafely(){
+  try{
+    _activateScreen("dash");
+  }catch(e){
+    console.error("renderDash threw, leaving user on dashboard:",e);
+  }
+}
+
 function _gateAndMountDash(){
   if(!S.user){_activateScreen("land");return;}
   if(_dashGateInFlight) return;
@@ -107,17 +126,9 @@ function _gateAndMountDash(){
   Promise.race([verifyResumeAllowed(),timeout]).then(ok=>{
     _dashGateInFlight=false;
     _hideDashVerifying();
-    if(ok===true){
-      _activateScreen("dash");
-      return;
-    }
+    if(ok===true){_mountDashSafely();return;}
     if(ok==="timeout"){
-      /* Server didn't answer in time — if we have a cached paid status,
-         trust it and let them in. The gate runs again on next nav. */
-      if(_cachedPaidOk()){
-        _activateScreen("dash");
-        return;
-      }
+      if(_cachedPaidOk()){_mountDashSafely();return;}
       _showRecoveryScreen("Connection's slow. Try again in a moment.");
       return;
     }
@@ -126,11 +137,7 @@ function _gateAndMountDash(){
     _dashGateInFlight=false;
     _hideDashVerifying();
     console.warn("_gateAndMountDash threw:",err);
-    /* Same forgiveness: if we already know they're paid, let them in. */
-    if(_cachedPaidOk()){
-      _activateScreen("dash");
-      return;
-    }
+    if(_cachedPaidOk()){_mountDashSafely();return;}
     _showRecoveryScreen("Something went wrong. Please try again.");
   });
 }

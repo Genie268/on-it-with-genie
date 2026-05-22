@@ -16,6 +16,15 @@ function renderTransition(){
 /* ── DASHBOARD ── */
 function renderDash(){
   if(!S.user)return;
+  /* Defensively backfill anything a half-restored session might be missing
+     so we never throw out of here — throwing here was bouncing paid users
+     to the recovery screen. */
+  if(!S.user.answers||typeof S.user.answers!=="object") S.user.answers={};
+  if(!Array.isArray(S.uploads)){
+    const dur0=S.user.duration||15;
+    S.uploads=Array(dur0).fill(null);
+  }
+  if(!S.plans||typeof S.plans!=="object") S.plans={};
   if(isChallengeComplete()){
     if(typeof _markCompleted==="function") _markCompleted();
     _activateScreen("d15");
@@ -24,18 +33,22 @@ function renderDash(){
   calcDay();
   const u=S.user,d=S.day;
   const dur=u.duration||15;
-  el("day-bdg").textContent=`Day ${d} / ${dur}`;
-  el("grid-lbl").textContent=`${dur}-DAY GRID`;
+  const ans=u.answers||{};
+  const dbg=el("day-bdg"); if(dbg) dbg.textContent=`Day ${d} / ${dur}`;
+  const gl=el("grid-lbl"); if(gl) gl.textContent=`${dur}-DAY GRID`;
   const uc=el("dash-user-circle");
-  if(u.photo){uc.innerHTML=`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;uc.style.background="none";}
-  else{uc.textContent=u.name?u.name[0].toUpperCase():"?";}
+  if(uc){
+    if(u.photo){uc.innerHTML=`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;uc.style.background="none";}
+    else{uc.textContent=u.name?u.name[0].toUpperCase():"?";}
+  }
   const un=el("dash-user-name"); if(un) un.textContent=u.name||"Challenger";
-  const goalDisplay=u.answers.goalSummary||u.answers.goal;
+  const goalDisplay=ans.goalSummary||ans.goal||"Your goal";
   /* Streak lives as a compact row at the bottom of the goal card */
-  let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i]!==null)sk++;else break;}
+  let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i])sk++;else break;}
   const skColor=sk>0?"#c49a1c":"#3a3a3a";
   const skText=sk===0?"No streak yet":sk===1?"1 day streak":`${sk} day streak`;
-  el("goal-c").innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${PT[u.answers.proofType]||"Proof"}</span><span class="muted" style="font-size:11px">${u.name}</span></div><span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span></div>`;
+  const gc=el("goal-c");
+  if(gc) gc.innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${(typeof PT!=="undefined"&&PT[ans.proofType])||"Proof"}</span><span class="muted" style="font-size:11px">${u.name||""}</span></div><span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span></div>`;
   renderGrid(); renderRecCard(); renderStats();
   updateMsgBadge();
   initPushNotifications();
