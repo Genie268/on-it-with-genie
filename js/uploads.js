@@ -380,7 +380,7 @@ async function subUp(){
 
   /* Compute new streak (consecutive uploads ending at today) */
   let newStreak=0;
-  for(let i=S.day-1;i>=0;i--){if(S.uploads[i]!==null)newStreak++;else break;}
+  for(let i=S.day-1;i>=0;i--){if(S.uploads[i])newStreak++;else break;}
 
   /* Inject celebratory streak pill into the ack screen */
   const ackIcon=el("mod-ack-icon");

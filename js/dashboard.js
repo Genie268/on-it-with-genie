@@ -82,7 +82,7 @@ function renderDash(){
   const callLinkEl=el("call-day-link");
   if(callLinkEl) callLinkEl.href=(typeof CALENDLY_URL!=="undefined"?CALENDLY_URL:"")||"#";
   /* First-timer walkthrough (no overlay gate) */
-  if(S.uploads.every(v=>v===null)&&!S.devMode){
+  if(S.uploads.every(v=>!v)&&!S.devMode){
     const wtKey="oiwg_wt_"+S.user.startDate;
     if(!localStorage.getItem(wtKey)){
       localStorage.setItem(wtKey,"1");
@@ -104,7 +104,7 @@ async function renderCoachNotes(){
   const cn=el("coach-notes");
   if(!cn||!S.user)return;
   const u=S.user,d=S.day,dur=getDur();
-  const up=S.uploads.filter(v=>v!==null).length;
+  const up=S.uploads.filter(v=>!!v).length;
   const mid=Math.ceil(dur/2);
   const near=dur-2>mid?dur-2:null;
   
@@ -158,7 +158,7 @@ function renderGrid(){
   const dur=getDur();
   const callDays=CALL_DAYS[dur]||[];
   for(let i=0;i<dur;i++){
-    const d=i+1,isUp=S.uploads[i]!==null,isT=d===S.day,isF=d>S.day,isM=d<S.day&&!isUp;
+    const d=i+1,isUp=!!S.uploads[i],isT=d===S.day,isF=d>S.day,isM=d<S.day&&!isUp;
     const isCall=callDays.includes(d);
     let cls="dc",ds="";
     if(isUp){cls+=" up";ds="✓";}
@@ -181,14 +181,14 @@ function renderGrid(){
 
 
 function renderRecCard(){
-  const missed=S.uploads.slice(0,S.day-1).filter(v=>v===null).length;
+  const missed=S.uploads.slice(0,S.day-1).filter(v=>!v).length;
   const rc=el("rec-c");
   if(missed>4&&S.day>6){ rc.innerHTML=`<div class="card ce mt10"><span class="lbl lbl-e">TOO MANY MISSED DAYS</span><p style="font-size:13px;line-height:1.6;margin-bottom:12px">You've missed ${missed} days. A Recovery Round will serve you better than pushing through.</p><button class="bd" style="padding:8px 16px;font-size:13px" onclick="goTo('rec')">Enter Recovery Round</button></div>`; }
   else rc.innerHTML="";
 }
 
 function updateUpBtn(){
-  const btn=el("up-btn"),done=S.uploads[S.day-1]!==null;
+  const btn=el("up-btn"),done=!!S.uploads[S.day-1];
   if(done){
     btn.textContent=`View / Edit Day ${S.day} ✓`;
     btn.disabled=false;
@@ -211,7 +211,7 @@ function updateUpBtn(){
 
 function _updateUpBtnForPlanComplete(){
   const btn=el("up-btn");if(!btn)return;
-  const done=S.uploads[S.day-1]!==null;
+  const done=!!S.uploads[S.day-1];
   if(done)return;
   btn.textContent=`Upload Day ${S.day} Proof ↑ Plan complete`;
   btn.classList.add("up-btn-glow");
@@ -224,8 +224,8 @@ function chDay(dir){ S.day=Math.min(getDur(),Math.max(1,S.day+dir)); S.lilDone=f
 async function initD15(){
   const u=S.user;
   const dur=getDur();
-  const uploads=S.uploads.filter(v=>v!==null).length;
-  let streak=0;for(let i=dur-1;i>=0;i--){if(S.uploads[i]!==null)streak++;else break;}
+  const uploads=S.uploads.filter(v=>!!v).length;
+  let streak=0;for(let i=dur-1;i>=0;i--){if(S.uploads[i])streak++;else break;}
   el("pf-dur-lbl").textContent=`${dur} DAYS COMPLETE`;
   el("pf-lbl").textContent=`PROOF OF EXECUTION · ${(u?.name||"").toUpperCase()}`;
   el("pf-days").textContent=dur;
@@ -252,9 +252,9 @@ function _buildPlanStats(){
   if(!days.length)return"";
   const dur=getDur();
   const plannedDays=days.length;
-  const uploadDaysWithPlan=days.filter(d=>S.uploads[+d-1]!==null).length;
+  const uploadDaysWithPlan=days.filter(d=>S.uploads[+d-1]).length;
   const uploadDaysWithoutPlan=S.uploads.filter((v,i)=>v!==null&&!days.includes(String(i+1))).length;
-  const totalUploads=S.uploads.filter(v=>v!==null).length;
+  const totalUploads=S.uploads.filter(v=>!!v).length;
   let s=`You planned ${plannedDays} out of ${dur} days.`;
   if(plannedDays>=3&&totalUploads>0){
     const planRate=Math.round(uploadDaysWithPlan/plannedDays*100);
@@ -294,7 +294,7 @@ function renderPlanArea(){
   const p=_todayPlan();
   if(p&&p.skipped){area.innerHTML="";_closePlanOverlay();return;}
   if(p&&p.mainStep){_closePlanOverlay();_renderPlanSummary(area,p,d);return;}
-  if(d===1&&S.uploads.every(v=>v===null)&&!localStorage.getItem("oiwg_wt_"+S.user?.supabaseId)){area.innerHTML="";return;}
+  if(d===1&&S.uploads.every(v=>!v)&&!localStorage.getItem("oiwg_wt_"+S.user?.supabaseId)){area.innerHTML="";return;}
   _renderPlanPrompt(d);
 }
 
@@ -580,11 +580,11 @@ function restartChallenge(){
 function renderStats(){
   const sc=el("stats-card");if(!sc||!S.user)return;
   const u=S.user,d=S.day,dur=getDur();
-  const uploads=S.uploads.filter(v=>v!==null).length;
+  const uploads=S.uploads.filter(v=>!!v).length;
   const missed=Math.max(0,d-1-uploads);
   const pct=d>1?Math.round((uploads/Math.max(d-1,1))*100):0;
   const remaining=Math.max(0,dur-d);
-  let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i]!==null)sk++;else break;}
+  let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i])sk++;else break;}
 
   sc.style.display="block";
   sc.innerHTML=`<div class="row mb8" style="justify-content:space-between">
@@ -621,8 +621,8 @@ function openShareCard(){
 function generateShareCanvas(){
   const c=el("share-canvas");if(!c)return;
   const u=S.user,d=S.day,dur=getDur();
-  const uploads=S.uploads.filter(v=>v!==null).length;
-  let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i]!==null)sk++;else break;}
+  const uploads=S.uploads.filter(v=>!!v).length;
+  let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i])sk++;else break;}
   const pct=d>1?Math.round((uploads/Math.max(d-1,1))*100):0;
 
   const W=600,H=800;
@@ -672,7 +672,7 @@ function generateShareCanvas(){
   for(let i=0;i<dur;i++){
     const col=i%cols,row=Math.floor(i/cols);
     const x=gridX+col*(cellSize+gap),y=gridTop+row*(cellSize+gap);
-    const isUp=S.uploads[i]!==null;
+    const isUp=!!S.uploads[i];
     const isPast=i+1<d;
     ctx.beginPath();
     ctx.roundRect(x,y,cellSize,cellSize,6);
