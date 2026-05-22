@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/styles.css?v=20260522a">
 </head>
 <body>
 <script>
@@ -514,14 +514,15 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
   <div id="upload-detail-body" style="flex:1;overflow-y:auto;padding:20px"></div>
 </div>
 
-<!-- JS Modules: config loads first, ui loads last -->
-<script src="js/config.js"></script>
-<script src="js/lil.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/onboarding.js"></script>
-<script src="js/dashboard.js"></script>
-<script src="js/uploads.js"></script>
-<script src="js/admin.js"></script>
-<script src="js/ui.js"></script>
+<!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
+     re-download after a deploy instead of serving the cached old build. -->
+<script src="js/config.js?v=20260522a"></script>
+<script src="js/lil.js?v=20260522a"></script>
+<script src="js/auth.js?v=20260522a"></script>
+<script src="js/onboarding.js?v=20260522a"></script>
+<script src="js/dashboard.js?v=20260522a"></script>
+<script src="js/uploads.js?v=20260522a"></script>
+<script src="js/admin.js?v=20260522a"></script>
+<script src="js/ui.js?v=20260522a"></script>
 </body>
 </html>

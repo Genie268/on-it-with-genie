@@ -16,14 +16,15 @@ function renderTransition(){
 /* ── DASHBOARD ── */
 function renderDash(){
   if(!S.user)return;
+  const dur0=(typeof S.user.duration==="number"&&S.user.duration>0)?S.user.duration:15;
   /* Defensively backfill anything a half-restored session might be missing
      so we never throw out of here — throwing here was bouncing paid users
-     to the recovery screen. */
+     to the recovery screen or leaving the dashboard half-rendered. */
   if(!S.user.answers||typeof S.user.answers!=="object") S.user.answers={};
-  if(!Array.isArray(S.uploads)){
-    const dur0=S.user.duration||15;
-    S.uploads=Array(dur0).fill(null);
-  }
+  if(!Array.isArray(S.uploads)) S.uploads=Array(dur0).fill(null);
+  /* Extend the uploads array if it's shorter than the duration so renderGrid
+     can iterate the full window even when localStorage holds a stale length. */
+  while(S.uploads.length<dur0) S.uploads.push(null);
   if(!S.plans||typeof S.plans!=="object") S.plans={};
   if(isChallengeComplete()){
     if(typeof _markCompleted==="function") _markCompleted();
@@ -43,43 +44,50 @@ function renderDash(){
   }
   const un=el("dash-user-name"); if(un) un.textContent=u.name||"Challenger";
   const goalDisplay=ans.goalSummary||ans.goal||"Your goal";
-  /* Streak lives as a compact row at the bottom of the goal card */
+  /* Streak — consecutive uploads ending at today */
   let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i])sk++;else break;}
   const skColor=sk>0?"#c49a1c":"#3a3a3a";
   const skText=sk===0?"No streak yet":sk===1?"1 day streak":`${sk} day streak`;
   const gc=el("goal-c");
   if(gc) gc.innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${(typeof PT!=="undefined"&&PT[ans.proofType])||"Proof"}</span><span class="muted" style="font-size:11px">${u.name||""}</span></div><span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span></div>`;
-  renderGrid(); renderRecCard(); renderStats();
-  updateMsgBadge();
-  initPushNotifications();
-  if(typeof startChallengerPoll==="function") startChallengerPoll();
-  if(typeof startHeartbeat==="function") startHeartbeat();
-  renderPlanArea();
-  showChatFab();
-  if(!_chatRenderedOnce){_chatRenderedOnce=true;renderChat();}
-  _check2ndVisitPush();
+  /* Each render section is isolated — one failing helper must not stop
+     the rest of the dashboard from drawing. */
+  const tries=[
+    ["renderGrid",renderGrid],["renderRecCard",renderRecCard],["renderStats",renderStats],
+    ["renderPlanArea",renderPlanArea],["showChatFab",showChatFab],
+    ["updateUpBtn",updateUpBtn],["renderCoachNotes",renderCoachNotes],
+  ];
+  for(const [name,fn] of tries){
+    try{ fn(); }catch(e){ console.warn("renderDash:",name,"failed:",e); }
+  }
+  try{ updateMsgBadge(); }catch(e){}
+  try{ initPushNotifications(); }catch(e){}
+  try{ if(typeof startChallengerPoll==="function") startChallengerPoll(); }catch(e){}
+  try{ if(typeof startHeartbeat==="function") startHeartbeat(); }catch(e){}
+  try{ if(!_chatRenderedOnce){_chatRenderedOnce=true;renderChat();} }catch(e){}
+  try{ _check2ndVisitPush(); }catch(e){}
   const dnr=el("day-nav-row");
-  if(S.devMode){dnr.style.display="flex";el("sim-l").textContent=`Sim day ${d}`;el("prev-b").disabled=d===1;el("next-b").disabled=d===getDur();}
-  else{dnr.style.display="none";}
+  if(dnr){
+    if(S.devMode){dnr.style.display="flex";const sl=el("sim-l");if(sl)sl.textContent=`Sim day ${d}`;const pb=el("prev-b");if(pb)pb.disabled=d===1;const nb=el("next-b");if(nb)nb.disabled=d===getDur();}
+    else{dnr.style.display="none";}
+  }
   /* Call day reminder — shown inline, never blocks upload */
   const callReminderEl=el("call-day-banner");
   if(callReminderEl){
-    const isTodayCallDay=(CALL_DAYS[dur]||[]).includes(d);
+    const isTodayCallDay=(typeof CALL_DAYS!=="undefined"?(CALL_DAYS[dur]||[]):[]).includes(d);
     callReminderEl.style.display=isTodayCallDay?"block":"none";
   }
-  updateUpBtn();
-  renderCoachNotes();
   if(!S.lilDone){ S.lilDone=true; }
   /* Call day banner link */
   const callLinkEl=el("call-day-link");
-  if(callLinkEl) callLinkEl.href=CALENDLY_URL||"#";
+  if(callLinkEl) callLinkEl.href=(typeof CALENDLY_URL!=="undefined"?CALENDLY_URL:"")||"#";
   /* First-timer walkthrough (no overlay gate) */
   if(S.uploads.every(v=>v===null)&&!S.devMode){
     const wtKey="oiwg_wt_"+S.user.startDate;
     if(!localStorage.getItem(wtKey)){
       localStorage.setItem(wtKey,"1");
-      setTimeout(fireConfetti,600);
-      setTimeout(()=>{showWalkthrough(wtKey);},2200);
+      try{setTimeout(fireConfetti,600);}catch(e){}
+      setTimeout(()=>{try{showWalkthrough(wtKey);}catch(e){}},2200);
     }
   }
 }

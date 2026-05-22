@@ -20,7 +20,7 @@ async function verifyResumeAllowed(){
   try{
     const {data,error}=await sb
       .from("challengers")
-      .select("payment_status,status")
+      .select("payment_status,status,duration,start_date")
       .eq("id",S.user.supabaseId)
       .maybeSingle();
     if(error){
@@ -33,16 +33,28 @@ async function verifyResumeAllowed(){
       console.warn("verifyResumeAllowed: no row for",S.user.supabaseId,"— using cached status");
       return cachedOk;
     }
+    /* Always re-sync the fields the dashboard reads — if duration or
+       start_date drifted in localStorage, the server's value wins. */
+    let touched=false;
+    if(typeof data.duration==="number"&&data.duration>0&&S.user.duration!==data.duration){
+      S.user.duration=data.duration;
+      touched=true;
+    }
+    if(data.start_date&&S.user.startDate!==data.start_date){
+      S.user.startDate=data.start_date;
+      touched=true;
+    }
     const ps=data.payment_status;
     if(ps!=="paid"&&ps!=="free") return false; /* server explicitly says not paid */
     if(S.user.paymentStatus!==ps){
       S.user.paymentStatus=ps;
-      try{saveState();}catch(e){}
+      touched=true;
     }
     if(data.status==="completed"&&S.user.status!=="completed"){
       S.user.status="completed";
-      try{saveState();}catch(e){}
+      touched=true;
     }
+    if(touched){try{saveState();}catch(e){}}
     return true;
   }catch(e){
     console.warn("verifyResumeAllowed: threw, using cached status",e);
