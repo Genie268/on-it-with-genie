@@ -496,6 +496,8 @@ function adminTab(tab){
   const c=el("admin-content");if(!c)return;
   const renderers={overview:renderAdminOverview,messages:renderAdminMessages,challengers:renderAdminChallengers,flagged:renderAdminFlagged,inbox:renderAdminInbox,notifications:renderAdminNotifications,analytics:renderAdminAnalytics,settings:renderAdminSettings};
   if(renderers[tab])renderers[tab](c);
+  /* Restore any admin accordion sections that were open before the re-render */
+  if(typeof _restoreOpenSections==="function") _restoreOpenSections();
 }
 
 /* ── QUICK REPLY TEMPLATES ──
@@ -870,7 +872,9 @@ async function sendMsgTabMsg(uid){
   if(ta){ta.disabled=false;ta.placeholder=`Message ${getAM().find(x=>x.id===uid)?.name||""}...`;}
   _msgTabLastHash="";
   _loadMsgTabChat(uid);
-  loadAdminMessages();
+  /* Don't call loadAdminMessages() here — the Realtime INSERT event
+     on chat_messages will trigger _adminSoftRefresh automatically,
+     which handles the sidebar update without destroying the chat pane. */
 }
 
 async function loadSystemHealth(){
@@ -932,6 +936,9 @@ async function loadSystemHealth(){
   }
 }
 
+/* Track which admin accordion sections are open */
+let _openAdminSections=new Set();
+
 function toggleAdminSection(id){
   const div=document.getElementById(id);
   const chev=document.getElementById(id+"-chev");
@@ -939,6 +946,17 @@ function toggleAdminSection(id){
   const open=div.style.display!=="none";
   div.style.display=open?"none":"block";
   if(chev)chev.style.transform=open?"rotate(0deg)":"rotate(90deg)";
+  if(open) _openAdminSections.delete(id);
+  else _openAdminSections.add(id);
+}
+
+/* Called after any tab render to restore previously-open sections */
+function _restoreOpenSections(){
+  _openAdminSections.forEach(id=>{
+    const div=document.getElementById(id);
+    const chev=document.getElementById(id+"-chev");
+    if(div){div.style.display="block";if(chev)chev.style.transform="rotate(90deg)";}
+  });
 }
 
 function _renderNotifLog(active,completed){
@@ -1262,6 +1280,11 @@ function renderAdminChallengers(c){
     ${completed.map(u=>_renderCard(u,true)).join("")}`:""}
     </div>
   `;
+  /* Restore any previously-open detail sections */
+  _openChallengerIds.forEach(uid=>{
+    const det=el("ch-det-"+uid),chev=el("chev-"+uid);
+    if(det){det.style.display="block";if(chev)chev.textContent="˅";}
+  });
 }
 
 function _filterChallengers(q){
@@ -1271,16 +1294,22 @@ function _filterChallengers(q){
   });
 }
 
+/* Track which challenger details are currently expanded */
+let _openChallengerIds=new Set();
+
 function toggleCh(uid){
   const det=el("ch-det-"+uid),chev=el("chev-"+uid);
   const open=det.style.display!=="none";
   det.style.display=open?"none":"block";
   chev.textContent=open?"›":"˅";
+  if(open) _openChallengerIds.delete(uid);
+  else _openChallengerIds.add(uid);
 }
 
 function openChallenger(uid){
   const det=el("ch-det-"+uid),chev=el("chev-"+uid);
   if(det){det.style.display="block";if(chev)chev.textContent="˅";}
+  _openChallengerIds.add(uid);
   el("ch-card-"+uid)?.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
@@ -1722,295 +1751,4 @@ async function renderAdminAnalytics(c){
       </div>`).join("")||`<p class="muted" style="font-size:12px">No screen data yet</p>`;
 
     /* Recent activity feed — skip screen_view noise, show 5 with expand */
-    const actionEvents=events.filter(e=>e.event_type!=="screen_view");
-    const feedRow=e=>{
-      const ago=timeAgo(e.created_at);
-      const who=e.event_data?.challenger_id?e.event_data.challenger_id.slice(0,8)+"…":(e.event_data?.is_admin?"Admin":"Visitor");
-      const detail=e.event_data?.day?` · Day ${e.event_data.day}`:"";
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #141414">
-        <div style="min-width:0;flex:1">
-          <span style="font-size:12px;font-weight:600;color:#ccc">${e.event_type.replace(/_/g," ")}</span>
-          <span style="font-size:11px;color:#555">${detail}</span>
-        </div>
-        <div style="text-align:right;flex-shrink:0;margin-left:10px">
-          <span style="font-size:10px;color:#555">${who}</span>
-          <span data-live-ts="${e.created_at}" style="font-size:10px;color:#444;margin-left:6px">${ago}</span>
-        </div>
-      </div>`;
-    };
-    const visibleFeed=actionEvents.slice(0,5).map(feedRow).join("");
-    const hiddenFeed=actionEvents.length>5?actionEvents.slice(5,20).map(feedRow).join(""):"";
-    const feedHtml=actionEvents.length===0?`<p class="muted" style="font-size:12px">No activity yet</p>`:
-      visibleFeed+(hiddenFeed?`<div id="feed-more" style="display:none">${hiddenFeed}</div><button onclick="document.getElementById('feed-more').style.display='block';this.remove()" style="width:100%;padding:8px;margin-top:6px;background:none;border:1px solid #222;border-radius:6px;color:#5a5a5a;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Show ${Math.min(actionEvents.length-5,15)} more</button>`:"");
-
-    /* Generate insights */
-    const insights=[];
-    const visits=counts["screen_view"]||0;
-    const obStart=counts["onboarding_start"]||0;
-    const durPick=counts["duration_selected"]||0;
-    const payInit=(counts["checkout_started"]||0)+(counts["payment_initiated"]||0);
-    const payDone=counts["payment_completed"]||0;
-    const uploads=counts["upload_submitted"]||0;
-    const chatChallenger=counts["chat_msg_sent"]||0;
-    const chatAdmin=counts["admin_msg_sent"]||0;
-    const energy=counts["energy_logged"]||0;
-    const mood=counts["mood_logged"]||0;
-    const signIns=counts["sign_in_attempt"]||0;
-
-    /* Funnel drop-off insights */
-    if(visits>5&&obStart===0) insights.push({type:"warning",text:"People are visiting but nobody starts onboarding. Your landing page might not be compelling enough. Try a stronger CTA or social proof."});
-    if(obStart>3&&durPick===0) insights.push({type:"warning",text:"People start onboarding but never pick a duration. The onboarding questions might be causing friction. Consider simplifying."});
-    if(durPick>2&&payInit===0) insights.push({type:"warning",text:"People pick a duration but never click Pay. The commitment screen or pricing might be scaring them off."});
-    if(payInit>2&&payDone===0) insights.push({type:"error",text:"People click Pay but nobody completes payment. Check if Paystack is working, or consider the price point."});
-    if(payDone>0&&uploads===0) insights.push({type:"warning",text:"People paid but haven't uploaded any proof yet. Consider a welcome message nudging them to upload Day 1."});
-    if(visits>0&&obStart>0) insights.push({type:"success",text:`${Math.round(obStart/visits*100)}% of visitors start onboarding. ${obStart>visits*0.3?"That's solid.":"Try improving the landing page hook."}`});
-    if(obStart>0&&payDone>0) insights.push({type:"success",text:`${Math.round(payDone/obStart*100)}% onboarding-to-paid conversion rate. ${payDone>obStart*0.5?"Excellent.":"There's room to improve."}`});
-
-    /* Engagement insights */
-    if(uploads>5&&energy===0&&mood===0) insights.push({type:"info",text:"Nobody is using energy or mood check-ins. Consider making them more prominent or removing them to reduce clutter."});
-    if(uploads>3&&chatChallenger===0) insights.push({type:"info",text:"Challengers are uploading but not messaging you. They might not know the chat exists. Consider a prompt after their first upload."});
-    if(chatChallenger>5&&chatAdmin===0) insights.push({type:"warning",text:"Challengers are messaging you but you haven't replied. Engagement drops when there's no response."});
-    if(signIns>3) insights.push({type:"success",text:`${signIns} return sign-ins. People are coming back. That's a strong retention signal.`});
-    if(uploads>10) insights.push({type:"success",text:`${uploads} proofs uploaded. Your challengers are showing up.`});
-    const completions=counts["challenge_completed"]||0;
-    if(completions>0) insights.push({type:"success",text:`${completions} challenge${completions>1?"s":""} completed. People are finishing what they started.`});
-    if(payDone>2&&completions===0) insights.push({type:"info",text:"No completions yet. First batch of challengers is still in progress."});
-
-    /* Not enough data yet */
-    if(events.length<10) insights.push({type:"info",text:"Not enough data yet for strong recommendations. Keep using the app and insights will sharpen as events come in."});
-
-    const insightIcons={success:"✓",warning:"⚠",error:"✕",info:"→"};
-    const insightColors={success:"#4dc98a",warning:"#c49a1c",error:"#d9503a",info:"#888"};
-    const insightsHtml=insights.map(ins=>`
-      <div style="display:flex;gap:10px;padding:10px 12px;background:${ins.type==="error"?"rgba(217,80,58,.06)":ins.type==="warning"?"rgba(196,154,28,.06)":ins.type==="success"?"rgba(77,201,138,.06)":"rgba(255,255,255,.02)"};border:1px solid ${ins.type==="error"?"rgba(217,80,58,.2)":ins.type==="warning"?"rgba(196,154,28,.18)":ins.type==="success"?"rgba(77,201,138,.18)":"#1a1a1a"};border-radius:8px;margin-bottom:6px">
-        <span style="color:${insightColors[ins.type]};font-weight:800;font-size:13px;flex-shrink:0;width:18px;text-align:center">${insightIcons[ins.type]}</span>
-        <p style="font-size:12px;line-height:1.6;color:#ccc;margin:0">${ins.text}</p>
-      </div>
-    `).join("");
-
-    c.innerHTML=`
-      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:14px">PRODUCT ANALYTICS · ${events.length} events</p>
-
-      ${insights.length?`<div class="card mb10" style="padding:16px">
-        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">INSIGHTS & NEXT BUILD</p>
-        ${insightsHtml}
-      </div>`:""}
-
-      <div class="card mb10" style="padding:16px">
-        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">CONVERSION FUNNEL</p>
-        ${funnelHtml}
-      </div>
-
-      <div class="card mb10" style="padding:16px">
-        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">ENGAGEMENT</p>
-        ${engHtml}
-      </div>
-
-      <div class="card mb10" style="padding:16px">
-        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">SCREENS VISITED</p>
-        ${screenRows}
-      </div>
-
-      <div class="card mb10" style="padding:16px">
-        <p style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#5a5a5a;margin-bottom:10px">RECENT ACTIVITY</p>
-        ${feedHtml}
-      </div>
-    `;
-  }catch(e){
-    c.innerHTML=`<div style="text-align:center;padding:40px 0"><p style="color:#d9503a;font-size:12px">Failed to load analytics: ${e.message}</p></div>`;
-  }
-}
-
-async function togRv(uid,i){
-  try{
-    const dayNum=i+1;
-    const res=await adminFetch("toggle_reviewed",{challenger_id:uid,day_number:dayNum});
-    showToast(res.reviewed?"Marked as reviewed":"Unmarked review","success");
-    await loadAdminData();
-  }catch(e){console.error("Review toggle error:",e);showToast("Review toggle failed","error");}
-  if(adminCurrentTab==="challengers")renderAdminChallengers(el("admin-content"));
-  if(adminCurrentTab==="inbox")renderAdminInbox(el("admin-content"));
-  if(adminCurrentTab==="overview")renderAdminOverview(el("admin-content"));
-}
-
-async function batchMarkAllReviewed(){
-  if(!confirm("Mark all pending uploads as reviewed?"))return;
-  const pending=getAM().flatMap(u=>{
-    const items=[];
-    for(let i=0;i<u.day;i++){if(u.up[i]&&!u.rv[i])items.push({challenger_id:u.id,day_number:i+1});}
-    return items;
-  });
-  try{
-    const res=await adminFetch("mark_all_reviewed",{items:pending});
-    await loadAdminData();
-    showToast(`${res.count||0} uploads marked as reviewed`,"success");
-  }catch(e){showToast("Batch review failed","error");}
-  renderAdminInbox(el("admin-content"));
-}
-
-async function promptAdjustStart(uid, name){
-  const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
-  const tmrStr=tomorrow.toISOString().split("T")[0];
-  const input=prompt(`Set new start date for ${name}.\nFormat: YYYY-MM-DD\n\nTomorrow would be: ${tmrStr}`,tmrStr);
-  if(!input)return;
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(input.trim())){alert("Invalid date format. Use YYYY-MM-DD.");return;}
-  const newDate=input.trim()+"T06:00:00+00:00";
-  try{
-    await adminFetch("adjust_start_date",{challenger_id:uid,start_date:newDate});
-    adminDataLoaded=false;
-    await loadAdminData();
-    adminTab(adminCurrentTab);
-    alert(`${name}'s start date changed to ${input.trim()}.`);
-  }catch(e){
-    alert("Failed: "+(e.message||"Unknown error"));
-  }
-}
-
-async function deleteChallenger(uid, name){
-  const typed=prompt(`Type "${name}" to permanently delete this account and all their data:`);
-  if(!typed||typed.trim()!==name){alert("Deletion cancelled. Name did not match.");return;}
-  if(!confirm(`FINAL CHECK: Delete ${name} and ALL their uploads, messages, and data? This cannot be undone.`))return;
-  try{
-    await adminFetch("delete_challenger",{challenger_id:uid});
-    adminDataLoaded=false;
-    await loadAdminData();
-    adminTab(adminCurrentTab);
-    alert(`${name} has been permanently deleted.`);
-  }catch(e){
-    console.error("Delete error:",e);
-    alert("Deletion failed: "+(e.message||"Unknown error"));
-  }
-}
-
-async function deleteAllFreeAccounts(){
-  const freeUsers=getAllAM().filter(u=>u.paymentStatus==="free"||u.paymentStatus===null||u.paymentStatus==="pending");
-  if(!freeUsers.length){alert("No free or unpaid accounts found.");return;}
-  const names=freeUsers.map(u=>u.name).join(", ");
-  if(!confirm(`Delete ${freeUsers.length} free/unpaid account(s)?\n\n${names}\n\nThis cannot be undone.`))return;
-  const typed=prompt(`Type "DELETE ALL FREE" to confirm:`);
-  if(typed!=="DELETE ALL FREE"){alert("Cancelled.");return;}
-  try{
-    const res=await adminFetch("delete_free");
-    adminDataLoaded=false;
-    await loadAdminData();
-    adminTab(adminCurrentTab);
-    alert(`Deleted ${res.deleted||0} of ${freeUsers.length} free accounts.`);
-  }catch(e){
-    console.error("Delete free error:",e);
-    alert("Deletion failed: "+(e.message||"Unknown error"));
-  }
-}
-
-/* ── ADMIN CALL SCHEDULE ── */
-function openCallSchedule(uid){
-  const u=getAM().find(x=>x.id===uid);if(!u)return;
-  const callDays=CALL_DAYS[u.dur||15]||[];
-  const upcoming=callDays.filter(cd=>cd>=u.day);
-  const startDate=new Date(u.startDate);
-
-  document.getElementById("call-schedule-panel")?.remove();
-  const overlay=document.createElement("div");
-  overlay.id="call-schedule-panel";
-  overlay.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px;animation:popIn .2s ease";
-  overlay.onclick=e=>{if(e.target===overlay)overlay.remove();};
-
-  const callRows=upcoming.map(cd=>{
-    const d=new Date(startDate);d.setDate(d.getDate()+cd-1);
-    const lbl=d.toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"});
-    return `<div class="row" style="justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1a1a">
-      <div><span style="font-size:13px;font-weight:700;color:#ebebeb">Day ${cd}</span><span class="muted" style="font-size:12px;margin-left:8px">${lbl}</span></div>
-      <button onclick="_openCalendlyForCall('${u.id}',${cd},'${lbl}')" style="padding:5px 14px;border-radius:100px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.25);color:#c49a1c;font-size:11px;font-weight:700;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='rgba(196,154,28,.15)'" onmouseleave="this.style.background='rgba(196,154,28,.08)'">Book</button>
-    </div>`;
-  }).join("");
-
-  overlay.innerHTML=`<div style="background:#111;border:1px solid #222;border-radius:14px;max-width:400px;width:100%;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
-    <div style="padding:20px 20px 0">
-      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px">
-        <p style="font-size:15px;font-weight:800">${u.name}</p>
-        <button onclick="document.getElementById('call-schedule-panel').remove()" style="background:none;border:none;color:#666;font-size:18px;cursor:pointer;padding:2px 6px;line-height:1">×</button>
-      </div>
-      <p class="muted" style="font-size:11px;margin-bottom:16px">Day ${u.day}/${u.dur} · ${upcoming.length} call${upcoming.length!==1?"s":""} remaining</p>
-    </div>
-    <div style="padding:0 20px 20px">
-      ${upcoming.length?callRows:`<p class="muted" style="font-size:13px;text-align:center;padding:16px 0">All calls completed.</p>`}
-      <div style="margin-top:16px;padding-top:16px;border-top:1px solid #1a1a1a;display:flex;gap:8px">
-        <button class="bs" style="flex:1;font-size:12px;padding:9px" onclick="window.open('${CALENDLY_URL}','_blank')">Open Calendly</button>
-        <button class="bs" style="flex:1;font-size:12px;padding:9px" onclick="_quickSendCallLink('${u.id}')">Send Link Only</button>
-      </div>
-    </div>
-  </div>`;
-  document.body.appendChild(overlay);
-}
-
-function _openCalendlyForCall(uid,callDay,dateLabel){
-  const u=getAM().find(x=>x.id===uid);if(!u)return;
-  const params=new URLSearchParams();
-  if(u.name) params.set("name",u.name);
-  if(u.email) params.set("email",u.email);
-  if(u.phone) params.set("a1",u.phone);
-  const url=CALENDLY_URL+"?"+params.toString();
-
-  document.getElementById("call-schedule-panel")?.remove();
-  const overlay=document.createElement("div");
-  overlay.id="call-schedule-panel";
-  overlay.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;flex-direction:column;animation:popIn .15s ease";
-  const closeBar=`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#111;border-bottom:1px solid #222;flex-shrink:0">
-    <p style="font-size:13px;font-weight:700;color:#ebebeb">Book Day ${callDay} call: ${u.name} <span class="muted" style="font-weight:400;font-size:11px;margin-left:6px">${dateLabel}</span></p>
-    <button onclick="document.getElementById('call-schedule-panel').remove()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer;padding:2px 8px">×</button>
-  </div>`;
-  overlay.innerHTML=`${closeBar}
-    <iframe src="${url}" style="flex:1;width:100%;border:none;background:#fff"></iframe>
-    <div style="padding:10px 16px;background:#111;border-top:1px solid #222;display:flex;gap:8px;flex-shrink:0">
-      <button class="bp" style="flex:1;font-size:12px;padding:9px" onclick="_notifyCallBooked('${uid}',${callDay},'${dateLabel}')">Notify ${u.name}</button>
-      <button onclick="document.getElementById('call-schedule-panel').remove()" class="bs" style="font-size:12px;padding:9px">Done</button>
-    </div>`;
-  document.body.appendChild(overlay);
-}
-
-async function _notifyCallBooked(uid,callDay,dateLabel){
-  const u=getAM().find(x=>x.id===uid);if(!u)return;
-  const msg=`Hey ${u.name}, your Day ${callDay} call (${dateLabel}) has been booked. Check your email for the calendar invite, or join here: ${CALENDLY_URL}`;
-  const btn=document.querySelector("#call-schedule-panel .bp");
-  if(btn){btn.disabled=true;btn.textContent="Sending...";}
-  try{
-    await adminFetch("send_message",{challenger_id:uid,message:msg});
-    adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Call Booked",body:`Day ${callDay} call: ${dateLabel}`}).catch(()=>{});
-    showToast(`${u.name} notified`,"success");
-    if(btn){btn.textContent="Sent";btn.style.background="#4dc98a";}
-  }catch(e){
-    showToast("Failed to notify","error");
-    if(btn){btn.disabled=false;btn.textContent=`Notify ${u.name}`;}
-  }
-}
-
-async function _quickSendCallLink(uid){
-  const u=getAM().find(x=>x.id===uid);if(!u)return;
-  const msg=`Here's the link to book your call: ${CALENDLY_URL}`;
-  try{
-    await adminFetch("send_message",{challenger_id:uid,message:msg});
-    adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Book Your Call",body:"Tap to schedule your call with Genie"}).catch(()=>{});
-    showToast(`Call link sent to ${u.name}`,"success");
-    document.getElementById("call-schedule-panel")?.remove();
-  }catch(e){showToast("Failed to send","error");}
-}
-
-function playUploadSound(){
-  try {
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const t = ctx.currentTime;
-    /* Two-tone success chime */
-    [523.25, 659.25].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, t + i * 0.12);
-      gain.gain.setValueAtTime(0, t + i * 0.12);
-      gain.gain.linearRampToValueAtTime(0.18, t + i * 0.12 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.35);
-      osc.start(t + i * 0.12);
-      osc.stop(t + i * 0.12 + 0.36);
-    });
-  } catch(e){}
-}
-
+    const actionEvents=events.filt
