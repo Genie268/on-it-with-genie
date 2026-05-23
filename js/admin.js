@@ -483,19 +483,32 @@ const _dot=(show)=>show?`<span style="display:inline-block;width:6px;height:6px;
 
 function adminTab(tab){
   adminCurrentTab = tab;
-  const reviewCount=getPendingInbox().length;
-  const flaggedCount=getActiveAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
-  const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
-  const newSignups=_getNewSignupCount();
-  ["overview","messages","challengers","flagged","inbox","notifications","analytics","settings"].forEach(t=>{
-    const btn=el("tab-"+t);if(!btn)return;
-    btn.className="admin-tab"+(t===tab?" active":"");
-    const labels={overview:`Overview${_dot(newSignups>0)}`,messages:`Messages${_bdg(unreadCount)}`,challengers:"Challengers",flagged:`Attention${_bdg(flaggedCount)}`,inbox:`Reviews${_bdg(reviewCount)}`,notifications:"Notifications",analytics:"Analytics",settings:"Settings"};
-    btn.innerHTML=labels[t]||t;
-  });
+  try{
+    const reviewCount=getPendingInbox().length;
+    const flaggedCount=getActiveAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
+    const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
+    const newSignups=_getNewSignupCount();
+    ["overview","messages","challengers","flagged","inbox","notifications","analytics","settings"].forEach(t=>{
+      const btn=el("tab-"+t);if(!btn)return;
+      btn.className="admin-tab"+(t===tab?" active":"");
+      const labels={overview:`Overview${_dot(newSignups>0)}`,messages:`Messages${_bdg(unreadCount)}`,challengers:"Challengers",flagged:`Attention${_bdg(flaggedCount)}`,inbox:`Reviews${_bdg(reviewCount)}`,notifications:"Notifications",analytics:"Analytics",settings:"Settings"};
+      btn.innerHTML=labels[t]||t;
+    });
+  }catch(e){console.warn("adminTab: tab-bar render failed:",e);}
   const c=el("admin-content");if(!c)return;
   const renderers={overview:renderAdminOverview,messages:renderAdminMessages,challengers:renderAdminChallengers,flagged:renderAdminFlagged,inbox:renderAdminInbox,notifications:renderAdminNotifications,analytics:renderAdminAnalytics,settings:renderAdminSettings};
-  if(renderers[tab])renderers[tab](c);
+  /* Never let a single tab's render bug strand the admin on a blank screen
+     (which reads as "can't log in"). Catch and show a recoverable error. */
+  try{
+    if(renderers[tab])renderers[tab](c);
+  }catch(e){
+    console.error("adminTab:",tab,"render failed:",e);
+    c.innerHTML=`<div style="text-align:center;padding:50px 20px">
+      <p style="color:#d9503a;font-size:14px;margin-bottom:8px">This tab hit an error.</p>
+      <p class="muted" style="font-size:12px;margin-bottom:18px">${(e&&e.message)||"Render error"}</p>
+      <button class="bp" style="padding:9px 20px;font-size:13px" onclick="adminTab('overview')">Back to Overview</button>
+    </div>`;
+  }
 }
 
 /* ── QUICK REPLY TEMPLATES ──
