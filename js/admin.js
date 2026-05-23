@@ -501,6 +501,8 @@ function adminTab(tab){
      (which reads as "can't log in"). Catch and show a recoverable error. */
   try{
     if(renderers[tab])renderers[tab](c);
+    /* Restore any admin accordion sections that were open before the re-render */
+    if(typeof _restoreOpenSections==="function") _restoreOpenSections();
   }catch(e){
     console.error("adminTab:",tab,"render failed:",e);
     c.innerHTML=`<div style="text-align:center;padding:50px 20px">
@@ -883,7 +885,9 @@ async function sendMsgTabMsg(uid){
   if(ta){ta.disabled=false;ta.placeholder=`Message ${getAM().find(x=>x.id===uid)?.name||""}...`;}
   _msgTabLastHash="";
   _loadMsgTabChat(uid);
-  loadAdminMessages();
+  /* Don't call loadAdminMessages() here — the Realtime INSERT event
+     on chat_messages will trigger _adminSoftRefresh automatically,
+     which handles the sidebar update without destroying the chat pane. */
 }
 
 async function loadSystemHealth(){
@@ -945,6 +949,9 @@ async function loadSystemHealth(){
   }
 }
 
+/* Track which admin accordion sections are open */
+let _openAdminSections=new Set();
+
 function toggleAdminSection(id){
   const div=document.getElementById(id);
   const chev=document.getElementById(id+"-chev");
@@ -952,6 +959,17 @@ function toggleAdminSection(id){
   const open=div.style.display!=="none";
   div.style.display=open?"none":"block";
   if(chev)chev.style.transform=open?"rotate(0deg)":"rotate(90deg)";
+  if(open) _openAdminSections.delete(id);
+  else _openAdminSections.add(id);
+}
+
+/* Called after any tab render to restore previously-open sections */
+function _restoreOpenSections(){
+  _openAdminSections.forEach(id=>{
+    const div=document.getElementById(id);
+    const chev=document.getElementById(id+"-chev");
+    if(div){div.style.display="block";if(chev)chev.style.transform="rotate(90deg)";}
+  });
 }
 
 function _renderNotifLog(active,completed){
@@ -1275,6 +1293,11 @@ function renderAdminChallengers(c){
     ${completed.map(u=>_renderCard(u,true)).join("")}`:""}
     </div>
   `;
+  /* Restore any previously-open detail sections */
+  _openChallengerIds.forEach(uid=>{
+    const det=el("ch-det-"+uid),chev=el("chev-"+uid);
+    if(det){det.style.display="block";if(chev)chev.textContent="˅";}
+  });
 }
 
 function _filterChallengers(q){
@@ -1284,16 +1307,22 @@ function _filterChallengers(q){
   });
 }
 
+/* Track which challenger details are currently expanded */
+let _openChallengerIds=new Set();
+
 function toggleCh(uid){
   const det=el("ch-det-"+uid),chev=el("chev-"+uid);
   const open=det.style.display!=="none";
   det.style.display=open?"none":"block";
   chev.textContent=open?"›":"˅";
+  if(open) _openChallengerIds.delete(uid);
+  else _openChallengerIds.add(uid);
 }
 
 function openChallenger(uid){
   const det=el("ch-det-"+uid),chev=el("chev-"+uid);
   if(det){det.style.display="block";if(chev)chev.textContent="˅";}
+  _openChallengerIds.add(uid);
   el("ch-card-"+uid)?.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
@@ -2026,4 +2055,5 @@ function playUploadSound(){
     });
   } catch(e){}
 }
+
 

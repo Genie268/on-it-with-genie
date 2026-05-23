@@ -25,12 +25,19 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const target = event.notification.data?.url || '/';
+  const url = event.notification.data?.url || '/';
+  const fullUrl = self.location.origin + (url.startsWith('/') ? url : '/' + url);
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      /* Find an existing tab on our domain */
       const existing = list.find(c => c.url.startsWith(self.location.origin) && 'focus' in c);
-      if (existing) return existing.focus();
-      return clients.openWindow(target);
+      if (existing) {
+        /* Navigate the existing tab to the target URL so the app
+           opens the right screen (e.g. dashboard for user notifications,
+           admin for admin notifications) */
+        return existing.focus().then(c => c.navigate(fullUrl));
+      }
+      return clients.openWindow(fullUrl);
     })
   );
 });
