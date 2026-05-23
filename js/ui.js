@@ -624,6 +624,9 @@ function startAdminPoll(){
             if(adminCurrentTab==="messages"&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId===m.challenger_id){
               if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(m.challenger_id);
               if(typeof _markMsgTabRead==="function") _markMsgTabRead(m.challenger_id);
+            } else if(adminCurrentTab==="messages"&&typeof _msgChatOpen!=="undefined"&&_msgChatOpen){
+              /* On Messages tab with a different chat open — just update sidebar */
+              if(typeof _updateMsgSidebar==="function") _updateMsgSidebar();
             } else if(!_adminIsTyping()){
               if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
             }
@@ -650,7 +653,7 @@ function startAdminPoll(){
               adminUnreadMessages=adminUnreadMessages.filter(x=>x.id!==m.id);
             }
             updateTabTitle();
-            if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+            if(typeof _updateMsgSidebar==="function") _updateMsgSidebar();
           }
         })
         .on("postgres_changes",{event:"INSERT",schema:"public",table:"uploads"},()=>{
@@ -705,14 +708,23 @@ async function _adminLightPoll(){
       _adminLastUnreadCount=newUnreadCount;
       await loadAdminData();
       if(typeof _trackNewSignups==="function") _trackNewSignups();
-      if(!_adminIsTyping()&&typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+      /* If Messages tab is open with a conversation, only update the thread */
+      if(adminCurrentTab==="messages"&&typeof _msgChatOpen!=="undefined"&&_msgChatOpen&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId){
+        if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(_msgActiveChallengerId);
+        if(typeof _updateMsgSidebar==="function") _updateMsgSidebar();
+      } else if(!_adminIsTyping()&&typeof adminTab==="function"){
+        adminTab(adminCurrentTab||"overview");
+      }
     }
     updateTabTitle();
     if(typeof _checkOnlineChanges==="function") _checkOnlineChanges();
   }catch(e){}finally{_adminPollRunning=false;}
 }
 
-/* Full background data sync (called after realtime events) */
+/* Full background data sync (called after realtime events).
+   When admin is on Messages tab with a chat open, only refresh
+   the thread and sidebar badges — NEVER destroy the chat pane
+   or the textarea the admin is typing in. */
 async function _adminSoftRefresh(){
   if(!getAdminToken())return;
   try{
@@ -720,9 +732,23 @@ async function _adminSoftRefresh(){
     await loadAdminData();
     if(typeof _trackNewSignups==="function") _trackNewSignups();
     _adminLastUnreadCount=adminUnreadMessages.length;
-    if(!_adminIsTyping()&&typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
+    /* If Messages tab is open with a conversation, only update the thread */
+    if(adminCurrentTab==="messages"&&typeof _msgChatOpen!=="undefined"&&_msgChatOpen&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId){
+      if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(_msgActiveChallengerId);
+      _updateMsgSidebar();
+    } else if(!_adminIsTyping()&&typeof adminTab==="function"){
+      adminTab(adminCurrentTab||"overview");
+    }
     updateTabTitle();
   }catch(e){}
+}
+
+/* Update only the sidebar conversation list and badges without touching the chat pane */
+function _updateMsgSidebar(){
+  const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
+  const bdg=(n)=>n>0?`<span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#d9503a;color:#fff;font-size:9px;font-weight:800;padding:0 4px;margin-left:5px;vertical-align:middle">${n}</span>`:"";
+  const msgBtn=el("tab-messages");
+  if(msgBtn) msgBtn.innerHTML=`Messages${bdg(unreadCount)}`;
 }
 
 /* Helper: refresh the profile panel chat if it's open for a specific challenger */
@@ -745,9 +771,13 @@ async function adminRefreshBadges(){
     await loadAdminMessages();
     await loadAdminData();
     _adminLastUnreadCount=adminUnreadMessages.length;
-    /* Re-render current tab badges without switching */
-    if(typeof adminTab==="function") adminTab(adminCurrentTab||"overview");
-    /* Update browser tab title with unread count */
+    /* If Messages tab is open with a conversation, only update thread + badges */
+    if(adminCurrentTab==="messages"&&typeof _msgChatOpen!=="undefined"&&_msgChatOpen&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId){
+      if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(_msgActiveChallengerId);
+      if(typeof _updateMsgSidebar==="function") _updateMsgSidebar();
+    } else if(typeof adminTab==="function"){
+      adminTab(adminCurrentTab||"overview");
+    }
     updateTabTitle();
   }catch(e){}
 }
