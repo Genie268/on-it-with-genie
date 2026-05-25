@@ -245,6 +245,8 @@ async function initD15(){
   if(journey) finalText+=`<br><br><span style="font-size:12px;color:#888;line-height:1.7">${journey}</span>`;
   if(planStats) finalText+=`<br><span style="font-size:12px;color:#888;line-height:1.7">${planStats}</span>`;
   el("pf-txt").innerHTML=finalText;
+  /* Show review section if user hasn't already submitted one */
+  _checkReviewStatus();
 }
 function _buildPlanStats(){
   if(!S.plans)return"";
@@ -263,6 +265,58 @@ function _buildPlanStats(){
     if(planRate>noPlanRate) s+=` On days you planned, you uploaded ${planRate}% of the time vs ${noPlanRate}% when you didn't.`;
   }
   return s;
+}
+
+/* ── REVIEW / FEEDBACK ── */
+async function _checkReviewStatus(){
+  const sec=el("review-section");
+  const done=el("review-done");
+  if(!sec)return;
+  if(!S.user?.supabaseId){sec.style.display="none";return;}
+  if(localStorage.getItem("oiwg_reviewed_"+S.user.supabaseId)){
+    sec.style.display="none";
+    done.style.display="block";
+    return;
+  }
+  try{
+    const{data}=await sb.from("reviews").select("id").eq("challenger_id",S.user.supabaseId).limit(1);
+    if(data&&data.length>0){
+      sec.style.display="none";
+      done.style.display="block";
+      localStorage.setItem("oiwg_reviewed_"+S.user.supabaseId,"1");
+      return;
+    }
+  }catch(e){}
+  sec.style.display="block";
+}
+
+async function _submitReview(){
+  const q1=(el("review-q1")?.value||"").trim();
+  const q2=(el("review-q2")?.value||"").trim();
+  if(!q1&&!q2){
+    el("review-q1").style.border="1px solid #d9503a";
+    el("review-q2").style.border="1px solid #d9503a";
+    return;
+  }
+  try{
+    await sb.from("reviews").insert({
+      challenger_id:S.user.supabaseId,
+      shift_answer:q1||null,
+      recommend_answer:q2||null
+    });
+    localStorage.setItem("oiwg_reviewed_"+S.user.supabaseId,"1");
+    el("review-section").style.display="none";
+    el("review-done").style.display="block";
+    showToast("Review submitted","success");
+  }catch(e){
+    console.error("Review submit error:",e);
+    showToast("Failed to submit. Try again.","error");
+  }
+}
+
+function _skipReview(){
+  el("review-section").style.display="none";
+  localStorage.setItem("oiwg_reviewed_"+S.user.supabaseId,"skipped");
 }
 
 

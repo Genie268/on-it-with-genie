@@ -1215,6 +1215,14 @@ function renderAdminOverview(c){
     </div>
 
     <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('ov-feedback');if(!document.getElementById('ov-feedback').innerHTML.trim())_loadUserFeedback()">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">USER FEEDBACK</span>
+        <span id="ov-feedback-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="ov-feedback" style="display:none" class="admin-section-bd"></div>
+    </div>
+
+    <div class="admin-section">
       <div class="admin-section-hd" onclick="toggleAdminSection('ov-broadcast')">
         <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">BROADCAST MESSAGE</span>
         <span id="ov-broadcast-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
@@ -2056,4 +2064,40 @@ function playUploadSound(){
   } catch(e){}
 }
 
-
+/* ── USER FEEDBACK (from reviews table) ── */
+async function _loadUserFeedback(){
+  const container=document.getElementById("ov-feedback");
+  if(!container)return;
+  container.innerHTML=`<div style="text-align:center;padding:12px"><div class="spinner" style="margin:0 auto"></div></div>`;
+  try{
+    const{data,error}=await sb.from("reviews").select("*").order("created_at",{ascending:false}).limit(20);
+    if(error)throw error;
+    if(!data||data.length===0){
+      container.innerHTML=`<p class="muted" style="font-size:12px;padding:8px 0">No feedback yet. Reviews show up here when challengers submit them after completing.</p>`;
+      return;
+    }
+    const all=getAM();
+    container.innerHTML=data.map(r=>{
+      const u=all.find(x=>x.id===r.challenger_id);
+      const name=u?u.name:"Unknown";
+      const date=new Date(r.created_at).toLocaleDateString([],{month:"short",day:"numeric"});
+      return `<div class="card mb10" style="border:1px solid rgba(196,154,28,.12)">
+        <div class="row mb8" style="justify-content:space-between;align-items:center">
+          <span style="font-size:12px;font-weight:700">${name}</span>
+          <span class="muted" style="font-size:10px">${date}</span>
+        </div>
+        ${r.shift_answer?`<div style="margin-bottom:10px">
+          <p style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#c49a1c;margin-bottom:3px">WHAT SHIFTED</p>
+          <p style="font-size:13px;color:#ccc;line-height:1.6;margin:0">${r.shift_answer}</p>
+        </div>`:""}
+        ${r.recommend_answer?`<div>
+          <p style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#c49a1c;margin-bottom:3px">WORTH IT?</p>
+          <p style="font-size:13px;color:#ccc;line-height:1.6;margin:0">${r.recommend_answer}</p>
+        </div>`:""}
+      </div>`;
+    }).join("");
+  }catch(e){
+    console.error("Load feedback error:",e);
+    container.innerHTML=`<p class="muted" style="font-size:12px;color:#d9503a">Failed to load feedback.</p>`;
+  }
+}
