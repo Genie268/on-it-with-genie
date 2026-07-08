@@ -124,9 +124,23 @@ async function createCode(p: P) {
   const code = typeof p.code === "string" ? p.code.trim().toUpperCase() : "";
   const pct = typeof p.discount_percent === "number" ? p.discount_percent : -1;
   const maxUses = typeof p.max_uses === "number" ? p.max_uses : 0;
+  /* grant_status: 'paid' means this code comps a seat that should show up
+     as a paying customer (analytics, admin filters, revenue reports).
+     'free' is the historical behaviour. Only meaningful when pct === 100. */
+  const grantStatus = p.grant_status === "paid" ? "paid" : "free";
+  const compAmount = typeof p.comp_amount === "number" && p.comp_amount > 0
+    ? Math.round(p.comp_amount) : null;
   if (!code) return { ok: false, error: "missing_code" };
   if (pct < 0 || pct > 100) return { ok: false, error: "invalid_discount" };
-  const { error } = await sb.from("access_codes").insert({ code, discount_percent: pct, max_uses: maxUses, times_used: 0, active: true });
+  const { error } = await sb.from("access_codes").insert({
+    code,
+    discount_percent: pct,
+    max_uses: maxUses,
+    times_used: 0,
+    active: true,
+    grant_status: grantStatus,
+    comp_amount: compAmount,
+  });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }

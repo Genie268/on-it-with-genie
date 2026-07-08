@@ -294,9 +294,31 @@ async function createAccessCode(){
   const pct=parseInt(discount);
   if(isNaN(pct)||pct<0||pct>100){showToast("Invalid discount percentage","error");return;}
   const maxUses=prompt("Max uses (0=unlimited):")||"0";
+  /* On a 100% code, ask whether this is a paid customer being comped
+     (counts as revenue in analytics / paid list) vs a genuinely free
+     seat. Paid comps can optionally record a specific amount in kobo. */
+  let grantStatus="free";
+  let compAmount=null;
+  if(pct===100){
+    const isPaid=confirm("Is this a PAID customer being comped?\n\nOK = Paid access (counts as a paying customer, will appear in paid analytics)\nCancel = Free access (giveaway / partner / press)");
+    if(isPaid){
+      grantStatus="paid";
+      const raw=prompt("Amount they effectively paid in ₦ (leave blank to use the tier price):");
+      if(raw!==null&&raw.trim()!==""){
+        const naira=parseFloat(raw);
+        if(!isNaN(naira)&&naira>0) compAmount=Math.round(naira*100); /* store as kobo */
+      }
+    }
+  }
   try{
-    await adminFetch("create_code",{code:code.trim().toUpperCase(),discount_percent:pct,max_uses:parseInt(maxUses)||0});
-    showToast(`Code ${code.trim().toUpperCase()} created`,"success");
+    await adminFetch("create_code",{
+      code:code.trim().toUpperCase(),
+      discount_percent:pct,
+      max_uses:parseInt(maxUses)||0,
+      grant_status:grantStatus,
+      comp_amount:compAmount,
+    });
+    showToast(`Code ${code.trim().toUpperCase()} created${grantStatus==="paid"?" (paid comp)":""}`,"success");
     renderAdminSettings();
   }catch(e){showToast("Failed to create code","error");}
 }
@@ -424,12 +446,18 @@ async function renderAdminSettings(c){
         <button class="bs" style="padding:8px 16px;font-size:12px;margin-bottom:12px" onclick="createAccessCode()">+ Create Code</button>
         ${codes.length===0?`<p class="muted" style="font-size:12px">No access codes yet.</p>`:`
         <div style="display:flex;flex-direction:column;gap:6px">
-          ${codes.map(cd=>`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0e0e0e;border:1px solid ${cd.active?"#1a1a1a":"rgba(217,80,58,.2)"};border-radius:8px">
-            <span style="font-weight:700;font-size:12px;color:${cd.active?"#c49a1c":"#555"};min-width:80px;font-family:monospace">${cd.code}</span>
-            <span style="font-size:10px;color:#888;flex:1">${cd.discount_percent===100?"FREE":cd.discount_percent+"% off"} · ${cd.max_uses===0?"∞":cd.times_used+"/"+cd.max_uses} uses</span>
-            <button onclick="toggleAccessCode('${cd.id}',${cd.active})" style="background:none;border:1px solid ${cd.active?"rgba(217,80,58,.3)":"rgba(77,201,138,.3)"};color:${cd.active?"#d9503a":"#4dc98a"};font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer">${cd.active?"Off":"On"}</button>
-            <button onclick="deleteAccessCode('${cd.id}')" style="background:none;border:none;color:#555;font-size:12px;cursor:pointer;padding:4px 6px">✕</button>
-          </div>`).join("")}
+          ${codes.map(cd=>{
+            const isPaidGrant=cd.grant_status==="paid";
+            const grantLbl=cd.discount_percent===100
+              ? (isPaidGrant?`<span style="color:#4dc98a;font-weight:700">PAID access</span>${cd.comp_amount?` · ₦${(cd.comp_amount/100).toLocaleString()}`:""}`:`<span style="color:#c49a1c">FREE</span>`)
+              : cd.discount_percent+"% off";
+            return `<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0e0e0e;border:1px solid ${cd.active?(isPaidGrant?"rgba(77,201,138,.25)":"#1a1a1a"):"rgba(217,80,58,.2)"};border-radius:8px">
+              <span style="font-weight:700;font-size:12px;color:${cd.active?"#c49a1c":"#555"};min-width:80px;font-family:monospace">${cd.code}</span>
+              <span style="font-size:10px;color:#888;flex:1">${grantLbl} · ${cd.max_uses===0?"∞":cd.times_used+"/"+cd.max_uses} uses</span>
+              <button onclick="toggleAccessCode('${cd.id}',${cd.active})" style="background:none;border:1px solid ${cd.active?"rgba(217,80,58,.3)":"rgba(77,201,138,.3)"};color:${cd.active?"#d9503a":"#4dc98a"};font-size:10px;padding:4px 8px;border-radius:4px;cursor:pointer">${cd.active?"Off":"On"}</button>
+              <button onclick="deleteAccessCode('${cd.id}')" style="background:none;border:none;color:#555;font-size:12px;cursor:pointer;padding:4px 6px">✕</button>
+            </div>`;
+          }).join("")}
         </div>`}
       </div>
     </div>

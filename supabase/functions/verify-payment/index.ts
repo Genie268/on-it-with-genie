@@ -54,6 +54,8 @@ interface AccessCodeRow {
   valid_until: string | null;
   active: boolean | null;
   tier: number | null;
+  grant_status: string | null;
+  comp_amount: number | null;
 }
 
 async function loadAccessCode(code: string): Promise<
@@ -148,7 +150,18 @@ Deno.serve(async (req) => {
   const tierPrice = PRICES[challenger.duration as number];
   if (!tierPrice) return json({ ok: false, error: "invalid_tier" }, 400);
 
-  /* ───────────────────────── ACCESS CODE (100%) ───────────────────────── */
+  /* ───────────────────────── ACCESS CODE (100%) ─────────────────────────
+     A 100%-discount code lands here. Whether the seat should count as
+     FREE (no revenue) or PAID (comped seat that shows up in analytics /
+     the admin dashboard alongside real Paystack customers) is decided
+     by access_codes.grant_status:
+       - 'free' (default): payment_status='free', amount_paid=0,
+         payment_ref='FREE_<ts>'.
+       - 'paid'          : payment_status='paid',
+         amount_paid = access_codes.comp_amount ?? tierPrice,
+         payment_ref='COMP_<ts>'.
+     Either way the client gets the resolved {status, amount, ref} back
+     so it can populate completePayment consistently. */
   if (method === "access_code") {
     const codeRes = await loadAccessCode(accessCodeInput);
     if (!codeRes.ok) return json({ ok: false, error: codeRes.error }, 400);
@@ -158,19 +171,28 @@ Deno.serve(async (req) => {
 
     await incrementCodeUsage(codeRes.row);
 
+    const grantStatus = (codeRes.row.grant_status === "paid") ? "paid" : "free";
+    const ts = Date.now();
+    const grantRef = grantStatus === "paid" ? `COMP_${ts}` : `FREE_${ts}`;
+    const grantAmount = grantStatus === "paid"
+      ? (typeof codeRes.row.comp_amount === "number" && codeRes.row.comp_amount > 0
+          ? codeRes.row.comp_amount
+          : tierPrice)
+      : 0;
+
     const { error: upErr } = await sb
       .from("challengers")
       .update({
-        payment_status: "free",
-        payment_ref: `FREE_${Date.now()}`,
-        amount_paid: 0,
+        payment_status: grantStatus,
+        payment_ref: grantRef,
+        amount_paid: grantAmount,
         access_code: codeRes.row.code,
       })
       .eq("id", challenger_id);
 
     if (upErr) return json({ ok: false, error: "update_failed" }, 500);
     await ensureWelcomeMessage(challenger_id, (challenger as { name?: string }).name ?? null);
-    return json({ ok: true, status: "free" });
+    return json({ ok: true, status: grantStatus, amount: grantAmount, ref: grantRef });
   }
 
   /* ───────────────────────────── PAYSTACK ─────────────────────────────── */
@@ -249,7 +271,7 @@ Deno.serve(async (req) => {
 
     if (upErr) return json({ ok: false, error: "update_failed" }, 500);
     await ensureWelcomeMessage(challenger_id, (challenger as { name?: string }).name ?? null);
-    return json({ ok: true, status: "paid", amount: txAmount });
+    return json({ ok: true, status: "paid", amount: txAmount, ref: reference });
   }
 
   return json({ ok: false, error: "unknown_method" }, 400);

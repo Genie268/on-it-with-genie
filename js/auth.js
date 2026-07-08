@@ -105,7 +105,7 @@ function initPayment(){
   el("pay-btn").textContent=`Pay ${t.price} & Start Challenge →`;
   el("pay-btn").disabled=false;
   el("pay-status").textContent="";
-  S._accessDiscount=0;S._accessCode=null;
+  S._accessDiscount=0;S._accessCode=null;S._accessGrantStatus=null;
   el("access-code-msg").style.display="none";
 }
 
@@ -119,22 +119,40 @@ async function applyAccessCode(){
     if(!data){msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Invalid code";return;}
     if(data.max_uses>0&&data.times_used>=data.max_uses){msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Code fully used";return;}
     if(data.valid_until&&new Date(data.valid_until)<new Date()){msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Code expired";return;}
-    S._accessDiscount=data.discount_percent;S._accessCode=code;S._accessCodeId=data.id;
+    S._accessDiscount=data.discount_percent;
+    S._accessCode=code;
+    S._accessCodeId=data.id;
+    /* Capture the grant_status so downstream UI + completePayment know
+       whether this 100% code is a free giveaway or a paid comp. */
+    S._accessGrantStatus=data.grant_status==="paid"?"paid":"free";
     /* times_used is incremented server-side by verify-payment, NOT here. Anon
        writes to access_codes are denied by RLS so a client-side increment
        would silently fail anyway. */
-    updatePayAfterDiscount(data.discount_percent);
-    msg.style.display="block";msg.style.color="#4dc98a";msg.textContent=data.discount_percent===100?"Free access applied!":data.discount_percent+"% off applied!";
+    updatePayAfterDiscount(data.discount_percent,S._accessGrantStatus);
+    msg.style.display="block";msg.style.color="#4dc98a";
+    if(data.discount_percent===100){
+      msg.textContent=S._accessGrantStatus==="paid"?"Paid access confirmed":"Free access applied!";
+    }else{
+      msg.textContent=data.discount_percent+"% off applied!";
+    }
   }catch(e){
     msg.style.display="block";msg.style.color="#d9503a";msg.textContent="Invalid code";
   }
 }
 
-function updatePayAfterDiscount(pct){
+function updatePayAfterDiscount(pct,grantStatus){
   const dur=S.user?.duration||15;const t=TIERS[dur];
   if(pct===100){
-    el("pay-price").innerHTML=`<s style="color:#5a5a5a">${t.price}</s> <span class="ok">FREE</span>`;
-    el("pay-btn").textContent="Start Challenge (Free) →";
+    /* PAID grant looks different from FREE — same "no card charged" flow
+       but the price tag reads PAID so the user sees they've been comped
+       as a real customer, not just given a freebie. */
+    if(grantStatus==="paid"){
+      el("pay-price").innerHTML=`<s style="color:#5a5a5a">${t.price}</s> <span class="ok" style="color:#c49a1c">PAID</span>`;
+      el("pay-btn").textContent="Start Challenge →";
+    }else{
+      el("pay-price").innerHTML=`<s style="color:#5a5a5a">${t.price}</s> <span class="ok">FREE</span>`;
+      el("pay-btn").textContent="Start Challenge (Free) →";
+    }
   }else{
     const dk=Math.round(PRICES[dur]*(1-pct/100));const dn="₦"+(dk/100).toLocaleString();
     el("pay-price").innerHTML=`<s style="color:#5a5a5a">${t.price}</s> ${dn}`;
@@ -198,7 +216,11 @@ async function initiatePayment(){
   const hasRow=await ensureChallengerRow();
   if(!hasRow){payError("Connection problem. Try again.");return;}
 
-  /* ── 100% ACCESS CODE PATH ─────────────────────────────────────── */
+  /* ── 100% ACCESS CODE PATH ───────────────────────────────────────
+     The server decides whether this becomes a 'paid' or 'free' seat
+     (based on the code's grant_status). We just pass through whatever
+     it returns — status, amount, and payment ref — so the challenger's
+     row is populated consistently regardless of the grant kind. */
   if(S._accessDiscount===100){
     const result=await verifyPaymentServerside({
       method:"access_code",
@@ -209,7 +231,10 @@ async function initiatePayment(){
       payError("Access code rejected ("+(result.data?.error||"error")+").");
       return;
     }
-    await completePayment({status:"free",reference:null,amount:0,email});
+    const grantedStatus=result.data?.status==="paid"?"paid":"free";
+    const grantedAmount=typeof result.data?.amount==="number"?result.data.amount:0;
+    const grantedRef=result.data?.ref||null;
+    await completePayment({status:grantedStatus,reference:grantedRef,amount:grantedAmount,email});
     return;
   }
 
@@ -248,7 +273,13 @@ async function initiatePayment(){
             tier:TIERS[dur].name.toLowerCase().replace("the ","")
           })
         }).catch(()=>{});
-        await completePayment({status:"paid",reference:r.reference,amount:fk,email});
+        /* Use the server's echoed status/amount/ref rather than the
+           client-side hopeful values, so completePayment always
+           records what actually landed in the DB. */
+        const paidStatus=result.data?.status==="paid"?"paid":"paid";
+        const paidAmount=typeof result.data?.amount==="number"?result.data.amount:fk;
+        const paidRef=result.data?.ref||r.reference;
+        await completePayment({status:paidStatus,reference:paidRef,amount:paidAmount,email});
       }
     });
     h.openIframe();
