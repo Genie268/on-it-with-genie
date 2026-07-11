@@ -332,6 +332,18 @@ async function updateChallenger(p: P) {
   if (Object.keys(updates).length === 0) return { ok: false, error: "no_fields" };
   const { error } = await sb.from("challengers").update(updates).eq("id", uid);
   if (error) return { ok: false, error: error.message };
+  /* goal_raw/goal_summary/proof_description/threat are mirrored onto the
+     challenger's slot-1 goal row by a DB trigger, but only at signup
+     (INSERT) — an edit here would otherwise drift from what switchGoal(1)
+     shows a multi-goal challenger who switches back to goal 1. */
+  const goalFields: Record<string, unknown> = {};
+  if (typeof p.goal_raw === "string") goalFields.goal_raw = p.goal_raw.trim();
+  if (typeof p.goal_summary === "string") goalFields.goal_summary = p.goal_summary.trim();
+  if (typeof p.proof_description === "string") goalFields.proof_description = p.proof_description.trim();
+  if (typeof p.threat === "string") goalFields.threat = p.threat.trim();
+  if (Object.keys(goalFields).length > 0) {
+    try { await sb.from("goals").update(goalFields).eq("challenger_id", uid).eq("slot", 1); } catch { /* best-effort mirror */ }
+  }
   return { ok: true };
 }
 

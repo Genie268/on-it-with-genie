@@ -69,7 +69,19 @@ async function syncUploadToSupabase(dayNum,upload){
   const goalRow=typeof activeGoalRow==="function"?activeGoalRow():null;
   const row={challenger_id:S.user.supabaseId,day_number:dayNum,note:upload.note||null,link_url:upload.link||null,file_name:upload.fileName||null,file_url:upload.fileUrl||null,voice_url:upload.voiceUrl||null,proof_type:upload.proofType||null,behavior_answer:upload.behavior||null};
   if(goalRow?.id) row.goal_id=goalRow.id;
-  try{await sb.from("uploads").upsert(row,{onConflict:"challenger_id,day_number,goal_id"});}catch(e){}
+  /* uploads only has a UNIQUE(challenger_id,day_number) constraint — there's
+     no (challenger_id,day_number,goal_id) constraint for .upsert()'s
+     onConflict to target, so upsert() errors on every call (42P10). Do the
+     find-then-insert/update by hand instead; no schema change needed. When
+     goalRow is unknown (single-goal accounts, or goals not loaded yet) fall
+     back to matching by day alone, same as the original single-goal design. */
+  try{
+    let q=sb.from("uploads").select("id").eq("challenger_id",S.user.supabaseId).eq("day_number",dayNum);
+    if(goalRow?.id) q=q.eq("goal_id",goalRow.id);
+    const {data:existing}=await q.limit(1);
+    if(existing?.[0]) await sb.from("uploads").update(row).eq("id",existing[0].id);
+    else await sb.from("uploads").insert(row);
+  }catch(e){}
 }
 
 
