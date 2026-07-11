@@ -26,12 +26,21 @@ function renderDash(){
      can iterate the full window even when localStorage holds a stale length. */
   while(S.uploads.length<dur0) S.uploads.push(null);
   if(!S.plans||typeof S.plans!=="object") S.plans={};
-  if(isChallengeComplete()){
+  /* 30-day Intensive users with a second goal must clear BOTH goals'
+     80%-hit-rate bar before the challenge is considered complete —
+     isChallengeComplete() only knows about elapsed days, so we gate
+     the actual completion screen on bothGoalsComplete() as well. */
+  const _dayWindowElapsed=isChallengeComplete();
+  const _goalsGateOk=(typeof hasSecondGoal==="function"&&hasSecondGoal())
+    ? (typeof bothGoalsComplete==="function"&&bothGoalsComplete())
+    : true;
+  if(_dayWindowElapsed&&_goalsGateOk){
     if(typeof _markCompleted==="function") _markCompleted();
     _activateScreen("d15");
     return;
   }
   calcDay();
+  try{ if(typeof renderGoalBar==="function") renderGoalBar(); }catch(e){ console.warn("renderDash: renderGoalBar failed:",e); }
   const u=S.user,d=S.day;
   const dur=u.duration||15;
   const ans=u.answers||{};

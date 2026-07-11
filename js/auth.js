@@ -62,7 +62,14 @@ async function syncUploadToSupabase(dayNum,upload){
   if(!sb||!S.user)return;
   if(!S.user.supabaseId){try{await syncToSupabase();}catch(e){}}
   if(!S.user.supabaseId)return;
-  try{await sb.from("uploads").upsert({challenger_id:S.user.supabaseId,day_number:dayNum,note:upload.note||null,link_url:upload.link||null,file_name:upload.fileName||null,file_url:upload.fileUrl||null,voice_url:upload.voiceUrl||null,proof_type:upload.proofType||null,behavior_answer:upload.behavior||null},{onConflict:"challenger_id,day_number"});}catch(e){}
+  /* Tag the upload with the active goal's id (multi-goal Intensive tier)
+     so the same day-number can hold one upload per goal. Omitted for
+     single-goal challengers — activeGoalRow() returns null and goal_id
+     stays undefined, matching the old single-goal behaviour exactly. */
+  const goalRow=typeof activeGoalRow==="function"?activeGoalRow():null;
+  const row={challenger_id:S.user.supabaseId,day_number:dayNum,note:upload.note||null,link_url:upload.link||null,file_name:upload.fileName||null,file_url:upload.fileUrl||null,voice_url:upload.voiceUrl||null,proof_type:upload.proofType||null,behavior_answer:upload.behavior||null};
+  if(goalRow?.id) row.goal_id=goalRow.id;
+  try{await sb.from("uploads").upsert(row,{onConflict:"challenger_id,day_number,goal_id"});}catch(e){}
 }
 
 

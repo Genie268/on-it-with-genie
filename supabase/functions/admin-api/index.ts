@@ -54,14 +54,18 @@ type P = Record<string, unknown>;
 
 async function loadData() {
   const { data: challengers } = await sb.from("challengers").select("*").order("created_at", { ascending: false });
-  if (!challengers?.length) return { ok: true, challengers: [], uploads: [], energy_logs: [] };
+  if (!challengers?.length) return { ok: true, challengers: [], uploads: [], energy_logs: [], goals: [] };
   const ids = challengers.map((c: P) => c.id);
   const { data: uploads } = await sb.from("uploads").select("*").in("challenger_id", ids);
   const { data: energy_logs } = await sb.from("energy_logs").select("*").in("challenger_id", ids);
   const { data: daily_plans } = await sb.from("daily_plans").select("*").in("challenger_id", ids);
   const { data: push_subs } = await sb.from("push_subscriptions").select("challenger_id,is_active").in("challenger_id", ids);
   const { data: reminder_logs } = await sb.from("reminder_logs").select("challenger_id,sent_date,slot").gte("sent_date", new Date(Date.now() - 3 * 86400000).toISOString().split("T")[0]).order("sent_date", { ascending: false });
-  return { ok: true, challengers, uploads: uploads ?? [], energy_logs: energy_logs ?? [], daily_plans: daily_plans ?? [], push_subs: push_subs ?? [], reminder_logs: reminder_logs ?? [] };
+  /* Multi-goal (30-day Intensive) support — the admin UI needs to know
+     about slot-2 goals to render a second goal card / attribute uploads
+     to the right goal per challenger. */
+  const { data: goals } = await sb.from("goals").select("*").in("challenger_id", ids).order("slot", { ascending: true });
+  return { ok: true, challengers, uploads: uploads ?? [], energy_logs: energy_logs ?? [], daily_plans: daily_plans ?? [], push_subs: push_subs ?? [], reminder_logs: reminder_logs ?? [], goals: goals ?? [] };
 }
 
 async function loadMessages() {
@@ -163,9 +167,16 @@ async function deleteCode(p: P) {
 async function saveReviewNote(p: P) {
   const uid = p.challenger_id as string;
   const dayNum = p.day_number as number;
+  const goalId = typeof p.goal_id === "string" ? p.goal_id : null;
   const note = typeof p.note === "string" ? p.note.trim() : "";
   if (!uid || !dayNum) return { ok: false, error: "missing_params" };
-  const { data: existing } = await sb.from("uploads").select("id,review_note").eq("challenger_id", uid).eq("day_number", dayNum).single();
+  /* .single() throws once a challenger has two goals sharing the same
+     day_number (one upload row per goal). Filter by goal_id when given,
+     otherwise fall back to the first matching row via .limit(1). */
+  let q = sb.from("uploads").select("id,review_note").eq("challenger_id", uid).eq("day_number", dayNum);
+  if (goalId) q = q.eq("goal_id", goalId);
+  const { data: rows } = await q.limit(1);
+  const existing = rows?.[0];
   if (!existing) return { ok: false, error: "upload_not_found" };
   const prevNote = (existing as { review_note?: string | null }).review_note ?? "";
   await sb.from("uploads").update({ review_note: note || null, reviewed: true, reviewed_at: new Date().toISOString() }).eq("id", existing.id);
@@ -189,8 +200,12 @@ async function saveReviewNote(p: P) {
 async function toggleReviewed(p: P) {
   const uid = p.challenger_id as string;
   const dayNum = p.day_number as number;
+  const goalId = typeof p.goal_id === "string" ? p.goal_id : null;
   if (!uid || !dayNum) return { ok: false, error: "missing_params" };
-  const { data: existing } = await sb.from("uploads").select("id,reviewed").eq("challenger_id", uid).eq("day_number", dayNum).single();
+  let q = sb.from("uploads").select("id,reviewed").eq("challenger_id", uid).eq("day_number", dayNum);
+  if (goalId) q = q.eq("goal_id", goalId);
+  const { data: rows } = await q.limit(1);
+  const existing = rows?.[0];
   if (!existing) return { ok: false, error: "upload_not_found" };
   const newState = !existing.reviewed;
   await sb.from("uploads").update({ reviewed: newState, reviewed_at: new Date().toISOString() }).eq("id", existing.id);
@@ -203,10 +218,14 @@ async function markAllReviewed(p: P) {
   let count = 0;
   for (const item of items) {
     try {
-      const { data } = await sb.from("uploads").select("id").eq("challenger_id", item.challenger_id).eq("day_number", item.day_number).single();
-      if (data) {
-        await sb.from("uploads").update({ reviewed: true, reviewed_at: new Date().toISOString() }).eq("id", data.id);
-        count++;
+      /* A single (challenger_id, day_number) can now hold one upload row
+         PER GOAL for multi-goal challengers, so mark every matching row —
+         not just the first one .single() used to grab. */
+      const { data: rows } = await sb.from("uploads").select("id").eq("challenger_id", item.challenger_id).eq("day_number", item.day_number);
+      if (rows?.length) {
+        const ids = rows.map((r: { id: string }) => r.id);
+        await sb.from("uploads").update({ reviewed: true, reviewed_at: new Date().toISOString() }).in("id", ids);
+        count += ids.length;
       }
     } catch { /* skip */ }
   }
