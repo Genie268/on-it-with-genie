@@ -58,7 +58,12 @@ function renderDash(){
   const skColor=sk>0?"#c49a1c":"#3a3a3a";
   const skText=sk===0?"No streak yet":sk===1?"1 day streak":`${sk} day streak`;
   const gc=el("goal-c");
-  if(gc) gc.innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${(typeof PT!=="undefined"&&PT[ans.proofType])||"Proof"}</span><span class="muted" style="font-size:11px">${u.name||""}</span></div><span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span></div>`;
+  /* The goal hero (30-day Intensive tier) already shows a per-goal streak
+     in its legend — repeating it here just adds noise, so drop it once
+     the hero is visible. 7/15-day users have no hero, so keep it for them. */
+  const heroVisible=typeof isIntensive==="function"&&isIntensive();
+  const streakHtml=heroVisible?"":`<span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span>`;
+  if(gc) gc.innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${(typeof PT!=="undefined"&&PT[ans.proofType])||"Proof"}</span><span class="muted" style="font-size:11px">${u.name||""}</span></div>${streakHtml}</div>`;
   /* Each render section is isolated — one failing helper must not stop
      the rest of the dashboard from drawing. */
   const tries=[

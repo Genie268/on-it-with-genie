@@ -139,10 +139,12 @@ function switchGoal(slot){
   renderDash();
 }
 
-/* ── GOAL HERO (dual progress rings, renders above the tabs/add-card) ── */
+/* ── GOAL HERO (dual progress rings; the legend rows double as the goal
+   switcher, so a separate tab strip isn't needed). ── */
 function _goalHero(){
   const dur=getDur();
   const day=S.day||1;
+  const active=activeSlot();
   const g1=goalBySlot(1), g2=goalBySlot(2);
   const hasG2=hasSecondGoal();
   const seqLocked=hasG2&&!goalOpenToday(2);
@@ -155,8 +157,13 @@ function _goalHero(){
   const legendRow=(slot,row,color)=>{
     if(slot===2&&!hasG2) return "";
     const label=trunc(row?.goal_summary||row?.goal_raw||`Goal ${slot}`);
-    if(slot===2&&seqLocked){
-      return `<div style="display:flex;align-items:center;gap:8px;opacity:.45">
+    const locked=slot===2&&seqLocked;
+    const clickable=hasG2&&!locked;
+    const isActive=clickable&&slot===active;
+    const wrap=`display:flex;align-items:center;gap:8px;padding:5px 7px;margin:-5px -7px;border-radius:9px;${locked?"opacity:.45;":""}${clickable?"cursor:pointer;transition:background .15s;":""}${isActive?`background:${color}14;`:""}`;
+    const onclick=clickable?` onclick="switchGoal(${slot})"`:"";
+    if(locked){
+      return `<div style="${wrap}">
         <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></span>
         <div style="min-width:0">
           <p style="font-size:12px;font-weight:700;color:${color};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</p>
@@ -166,8 +173,8 @@ function _goalHero(){
     }
     const sk=streakFor(slot);
     const todayDone=!!(_slotMap()[slot]||[])[day-1];
-    return `<div style="display:flex;align-items:center;gap:8px">
-      <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></span>
+    return `<div style="${wrap}"${onclick}>
+      <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0;${isActive?`box-shadow:0 0 0 2px ${color}55;`:""}"></span>
       <div style="min-width:0">
         <p style="font-size:12px;font-weight:700;color:${color};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</p>
         <p style="font-size:10px;color:#888;margin:1px 0 0">${sk}-day streak · today ${todayDone?"done":"open"}</p>
@@ -198,7 +205,10 @@ function _goalHero(){
   </div>`;
 }
 
-/* ── GOAL BAR (renders into #goal-bar) ── */
+/* ── GOAL BAR (renders into #goal-bar) ──
+   Just the hero — its legend rows are clickable and already show name,
+   streak and today's status per goal, so a separate tab strip would only
+   repeat the same three facts in a second layout. */
 function renderGoalBar(){
   const bar=el("goal-bar");
   if(!bar)return;
@@ -211,27 +221,7 @@ function renderGoalBar(){
     </div>`;
     return;
   }
-  const active=activeSlot();
-  const g1=goalBySlot(1), g2=goalBySlot(2);
-  const trunc=s=>{ s=(s||"").trim(); return s.length>22?s.slice(0,22).trim()+"…":s; };
-  const tabHtml=(slot,row,color)=>{
-    const isActive=slot===active;
-    const open=goalOpenToday(slot);
-    const label=trunc(row?.goal_summary||row?.goal_raw||`Goal ${slot}`);
-    const sk=streakFor(slot);
-    const d=S.day||1;
-    if(!open){
-      return `<div style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid ${color}33;background:${color}0a;opacity:.55;cursor:default">
-        <p style="font-size:12px;font-weight:700;color:${color};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</p>
-        <p style="font-size:10px;color:#888;margin:2px 0 0">Opens after goal 1</p>
-      </div>`;
-    }
-    return `<div onclick="switchGoal(${slot})" style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid ${isActive?color:color+"33"};background:${isActive?color+"14":"transparent"};cursor:pointer;transition:all .15s">
-      <p style="font-size:12px;font-weight:700;color:${color};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</p>
-      <p style="font-size:10px;color:#888;margin:2px 0 0">Day ${d} · ${sk===0?"no streak":sk+"-day streak"}</p>
-    </div>`;
-  };
-  bar.innerHTML=_goalHero()+`<div style="display:flex;gap:8px;margin-bottom:10px">${tabHtml(1,g1,"#c49a1c")}${tabHtml(2,g2,"#4dc98a")}</div>`;
+  bar.innerHTML=_goalHero();
 }
 
 /* ── TOGGLE CONCURRENT / SEQUENTIAL ── */
