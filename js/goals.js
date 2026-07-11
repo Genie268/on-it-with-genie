@@ -139,6 +139,65 @@ function switchGoal(slot){
   renderDash();
 }
 
+/* ── GOAL HERO (dual progress rings, renders above the tabs/add-card) ── */
+function _goalHero(){
+  const dur=getDur();
+  const day=S.day||1;
+  const g1=goalBySlot(1), g2=goalBySlot(2);
+  const hasG2=hasSecondGoal();
+  const seqLocked=hasG2&&!goalOpenToday(2);
+  const p1=Math.max(0,Math.min(1,uploadCountFor(1)/expectedDaysFor(1)));
+  const p2=hasG2?Math.max(0,Math.min(1,uploadCountFor(2)/expectedDaysFor(2))):0;
+  const rOuter=52,rInner=38,sw=8;
+  const cOuter=2*Math.PI*rOuter,cInner=2*Math.PI*rInner;
+  const offOuter=cOuter*(1-p1),offInner=cInner*(1-p2);
+  const trunc=s=>{ s=(s||"").trim(); return s.length>24?s.slice(0,24).trim()+"…":s; };
+  const legendRow=(slot,row,color)=>{
+    if(slot===2&&!hasG2) return "";
+    const label=trunc(row?.goal_summary||row?.goal_raw||`Goal ${slot}`);
+    if(slot===2&&seqLocked){
+      return `<div style="display:flex;align-items:center;gap:8px;opacity:.45">
+        <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></span>
+        <div style="min-width:0">
+          <p style="font-size:12px;font-weight:700;color:${color};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</p>
+          <p style="font-size:10px;color:#888;margin:1px 0 0">opens after goal 1</p>
+        </div>
+      </div>`;
+    }
+    const sk=streakFor(slot);
+    const todayDone=!!(_slotMap()[slot]||[])[day-1];
+    return `<div style="display:flex;align-items:center;gap:8px">
+      <span style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></span>
+      <div style="min-width:0">
+        <p style="font-size:12px;font-weight:700;color:${color};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</p>
+        <p style="font-size:10px;color:#888;margin:1px 0 0">${sk}-day streak · today ${todayDone?"done":"open"}</p>
+      </div>
+    </div>`;
+  };
+  const modePill=hasG2?`<div onclick="toggleGoalMode()" style="display:inline-flex;align-items:center;gap:5px;margin-top:2px;padding:4px 10px;border-radius:999px;border:1px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:10px;font-weight:700;color:#aaa;width:fit-content">
+    <span>⇄</span><span>${S.goalMode==="sequential"?"Sequential":"Concurrent"}</span>
+  </div>`:"";
+  return `<div class="card mb10" style="display:flex;align-items:center;gap:16px;padding:14px">
+    <div style="position:relative;width:112px;height:112px;flex-shrink:0">
+      <svg width="112" height="112" style="transform:rotate(-90deg)">
+        <circle cx="56" cy="56" r="${rOuter}" fill="none" stroke="#c49a1c33" stroke-width="${sw}"></circle>
+        <circle cx="56" cy="56" r="${rOuter}" fill="none" stroke="#c49a1c" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${cOuter}" stroke-dashoffset="${offOuter}"></circle>
+        ${hasG2?`<circle cx="56" cy="56" r="${rInner}" fill="none" stroke="#4dc98a33" stroke-width="${sw}" style="opacity:${seqLocked?.25:1}"></circle>
+        <circle cx="56" cy="56" r="${rInner}" fill="none" stroke="#4dc98a" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${cInner}" stroke-dashoffset="${offInner}" style="opacity:${seqLocked?.25:1}"></circle>`:""}
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <span style="font-size:26px;font-weight:800;color:#eee;line-height:1">${day}</span>
+        <span style="font-size:9px;color:#888;font-weight:700;letter-spacing:.5px;margin-top:2px">OF ${dur}</span>
+      </div>
+    </div>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+      ${legendRow(1,g1,"#c49a1c")}
+      ${legendRow(2,g2,"#4dc98a")}
+      ${modePill}
+    </div>
+  </div>`;
+}
+
 /* ── GOAL BAR (renders into #goal-bar) ── */
 function renderGoalBar(){
   const bar=el("goal-bar");
@@ -146,7 +205,7 @@ function renderGoalBar(){
   if(!hasSecondGoal()){
     /* Only offer a second goal to 30-day Intensive users. */
     if(!isIntensive()){ bar.innerHTML=""; return; }
-    bar.innerHTML=`<div onclick="openAddGoal()" style="margin-bottom:10px;padding:14px;border:1.5px dashed rgba(196,154,28,.35);border-radius:12px;text-align:center;cursor:pointer;background:rgba(196,154,28,.03);transition:background .15s" onmouseenter="this.style.background='rgba(196,154,28,.07)'" onmouseleave="this.style.background='rgba(196,154,28,.03)'">
+    bar.innerHTML=_goalHero()+`<div onclick="openAddGoal()" style="margin-bottom:10px;padding:14px;border:1.5px dashed rgba(196,154,28,.35);border-radius:12px;text-align:center;cursor:pointer;background:rgba(196,154,28,.03);transition:background .15s" onmouseenter="this.style.background='rgba(196,154,28,.07)'" onmouseleave="this.style.background='rgba(196,154,28,.03)'">
       <p style="font-size:13px;font-weight:700;color:#c49a1c;margin:0">+ Add your second goal</p>
       <p style="font-size:11px;color:#888;margin:3px 0 0">The Intensive gives you two goals. Set the second one whenever you're ready.</p>
     </div>`;
@@ -172,7 +231,23 @@ function renderGoalBar(){
       <p style="font-size:10px;color:#888;margin:2px 0 0">Day ${d} · ${sk===0?"no streak":sk+"-day streak"}</p>
     </div>`;
   };
-  bar.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px">${tabHtml(1,g1,"#c49a1c")}${tabHtml(2,g2,"#4dc98a")}</div>`;
+  bar.innerHTML=_goalHero()+`<div style="display:flex;gap:8px;margin-bottom:10px">${tabHtml(1,g1,"#c49a1c")}${tabHtml(2,g2,"#4dc98a")}</div>`;
+}
+
+/* ── TOGGLE CONCURRENT / SEQUENTIAL ── */
+async function toggleGoalMode(){
+  if(!hasSecondGoal()) return;
+  S.goalMode=S.goalMode==="sequential"?"concurrent":"sequential";
+  saveState();
+  try{ if(sb&&S.user?.supabaseId) await sb.from("challengers").update({goal_mode:S.goalMode}).eq("id",S.user.supabaseId); }catch(e){ /* column may not exist yet — client-side state still holds */ }
+  /* If goal 2 just locked (sequential + goal 1 not yet complete) and it was
+     the active slot, fall back to goal 1 rather than leaving the user
+     staring at a locked goal's dashboard. */
+  if(S.goalMode==="sequential"&&!goalComplete(1)&&activeSlot()===2){
+    switchGoal(1);
+  }else{
+    renderDash();
+  }
 }
 
 /* ── ADD SECOND GOAL MODAL ── */
