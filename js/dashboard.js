@@ -45,7 +45,13 @@ function renderDash(){
   const dur=u.duration||15;
   const ans=u.answers||{};
   const dbg=el("day-bdg"); if(dbg) dbg.textContent=`Day ${d} / ${dur}`;
-  const gl=el("grid-lbl"); if(gl) gl.textContent=`${dur}-DAY GRID`;
+  /* Switching goals swaps S.uploads/S.day to the other slot, so the grid
+     below silently changes with them — tag it with the active goal's
+     color so that swap has a visible reason instead of looking broken. */
+  const _dualGoal=typeof hasSecondGoal==="function"&&hasSecondGoal();
+  const _activeColor=_dualGoal&&typeof activeSlot==="function"&&activeSlot()===2?"#4dc98a":"#c49a1c";
+  const gl=el("grid-lbl");
+  if(gl) gl.innerHTML=_dualGoal?`${dur}-DAY GRID <span style="color:${_activeColor}">· GOAL ${activeSlot()}</span>`:`${dur}-DAY GRID`;
   const uc=el("dash-user-circle");
   if(uc){
     if(u.photo){uc.innerHTML=`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;uc.style.background="none";}
@@ -63,7 +69,14 @@ function renderDash(){
      the hero is visible. 7/15-day users have no hero, so keep it for them. */
   const heroVisible=typeof isIntensive==="function"&&isIntensive();
   const streakHtml=heroVisible?"":`<span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span>`;
-  if(gc) gc.innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${(typeof PT!=="undefined"&&PT[ans.proofType])||"Proof"}</span><span class="muted" style="font-size:11px">${u.name||""}</span></div>${streakHtml}</div>`;
+  /* Same color-tag as the grid: this card also swaps with the active goal,
+     so a "GOAL 1"/"GOAL 2" label ties it back to the hero's color-coding
+     instead of quietly showing different text under the same heading. */
+  const goalLbl=_dualGoal?`<span class="lbl" style="color:${_activeColor}">GOAL ${activeSlot()}</span>`:`<span class="lbl">CURRENT GOAL</span>`;
+  if(gc){
+    gc.style.borderLeft=_dualGoal?`3px solid ${_activeColor}`:"";
+    gc.innerHTML=`${goalLbl}<p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${(typeof PT!=="undefined"&&PT[ans.proofType])||"Proof"}</span><span class="muted" style="font-size:11px">${u.name||""}</span></div>${streakHtml}</div>`;
+  }
   /* Each render section is isolated — one failing helper must not stop
      the rest of the dashboard from drawing. */
   const tries=[
@@ -599,10 +612,16 @@ function renderStats(){
   const pct=d>1?Math.round((uploads/Math.max(d-1,1))*100):0;
   const remaining=Math.max(0,dur-d);
   let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i])sk++;else break;}
+  /* These stats are also per-active-goal — same color-tag as the grid and
+     goal card so the trio reads as one consistent "you're viewing goal N"
+     signal instead of three independently-flickering sections. */
+  const _dualGoal2=typeof hasSecondGoal==="function"&&hasSecondGoal();
+  const _activeColor2=_dualGoal2&&typeof activeSlot==="function"&&activeSlot()===2?"#4dc98a":"#c49a1c";
+  const progLbl=_dualGoal2?`YOUR PROGRESS <span style="color:${_activeColor2}">· GOAL ${activeSlot()}</span>`:"YOUR PROGRESS";
 
   sc.style.display="block";
   sc.innerHTML=`<div class="row mb8" style="justify-content:space-between">
-    <span class="lbl m0">YOUR PROGRESS</span>
+    <span class="lbl m0">${progLbl}</span>
     <button class="bs" style="padding:4px 10px;font-size:10px" onclick="openShareCard()">Share</button>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
