@@ -170,13 +170,29 @@ function _autoCover(text, hue){
          `linear-gradient(155deg,#1a1710,#0b0b0b)`;
 }
 
+/* cover_mode holds either "auto", "photo" (centered), or "photo:X:Y" where
+   X/Y are 0-100 background-position percentages set by dragging the cover
+   in openCoverPicker(). Packed into the existing text column so repositioning
+   doesn't need a new one. */
+function _isPhotoMode(cm){ return !!cm && String(cm).indexOf("photo") === 0; }
+function _coverPosFor(cm){
+  const parts = String(cm || "").split(":");
+  const px = parts.length >= 3 ? parseInt(parts[1], 10) : NaN;
+  const py = parts.length >= 3 ? parseInt(parts[2], 10) : NaN;
+  return {
+    x: isNaN(px) ? 50 : Math.max(0, Math.min(100, px)),
+    y: isNaN(py) ? 50 : Math.max(0, Math.min(100, py))
+  };
+}
+
 function _coverStyleFor(slot){
   const g = goalBySlot(slot);
   if(!g) return "";
   const hue = _goalColour(slot);
-  if(g.cover_mode === "photo" && g.cover_url){
+  if(_isPhotoMode(g.cover_mode) && g.cover_url){
+    const pos = _coverPosFor(g.cover_mode);
     return `background-image:linear-gradient(180deg,rgba(10,10,10,.5),rgba(8,8,8,.93)),url('${g.cover_url}');` +
-           `background-size:cover;background-position:center;`;
+           `background-size:cover;background-position:${pos.x}% ${pos.y}%;`;
   }
   return `background-image:linear-gradient(180deg,rgba(10,10,10,.5),rgba(8,8,8,.93)),${_autoCover(g.goal_raw, hue)};` +
          `background-size:cover;background-position:center;`;
@@ -261,12 +277,14 @@ function renderGoalBar(){
   if(host) host.innerHTML = "";
 }
 
-/* ---------- cover picker (menu + tile) ---------- */
+/* ---------- cover picker (menu + tile + reposition) ---------- */
 function openCoverPicker(){
   const slot = activeSlot();
   const g = goalBySlot(slot);
   if(!g){ showToast("No goal to set a cover for", "info"); return; }
   const col = _goalColour(slot);
+  const isPhoto = _isPhotoMode(g.cover_mode) && !!g.cover_url;
+  const pos = _coverPosFor(g.cover_mode);
   _agOpen(`
     <div style="font-size:9px;letter-spacing:.14em;color:#7a7a7a;font-weight:800;margin-bottom:6px">GOAL ${slot} COVER</div>
     <h3 style="margin:0 0 4px;font-size:18px">Cover for this goal</h3>
@@ -274,20 +292,79 @@ function openCoverPicker(){
       Generated from your goal by default. Use your own photo if you'd rather.</p>
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <div onclick="setCoverMode('auto')" style="flex:1;aspect-ratio:1.6;border-radius:10px;cursor:pointer;
-        border:2px solid ${g.cover_mode !== "photo" ? col : "#242424"};
+        border:2px solid ${!isPhoto ? col : "#242424"};
         background-image:${_autoCover(g.goal_raw, col)};background-size:cover;
         display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#cfcfcf">GENERATED</div>
       <div onclick="pickCoverPhoto()" style="flex:1;aspect-ratio:1.6;border-radius:10px;cursor:pointer;
-        border:2px solid ${g.cover_mode === "photo" ? col : "#242424"};overflow:hidden;background:#141414;
+        border:2px solid ${isPhoto ? col : "#242424"};overflow:hidden;background:#141414;
         display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#8a8a8a;
-        ${g.cover_url ? `background-image:url('${g.cover_url}');background-size:cover;background-position:center` : ""}">
+        ${g.cover_url ? `background-image:url('${g.cover_url}');background-size:cover;background-position:${pos.x}% ${pos.y}%` : ""}">
         ${g.cover_url ? "" : "YOUR PHOTO"}</div>
     </div>
-    <input type="file" id="cover-file" accept="image/*" style="display:none" onchange="uploadCover(this)">
+    ${isPhoto ? `
+    <div id="cover-reframe" style="position:relative;width:100%;aspect-ratio:1.6;border-radius:10px;overflow:hidden;
+      cursor:grab;touch-action:none;background-image:url('${g.cover_url}');background-size:cover;
+      background-position:${pos.x}% ${pos.y}%;margin-bottom:6px;border:1px solid #242424;user-select:none">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".65">
+          <path d="M8 9l-4 4 4 4M16 9l4 4-4 4M12 3v18"/></svg>
+      </div>
+    </div>
+    <p style="font-size:10px;color:#666;margin:0 0 14px;text-align:center">Drag the photo to choose what shows</p>
+    <button class="bs" style="width:100%;padding:10px;margin-bottom:8px;font-size:12px" onclick="pickCoverPhoto()">Change photo</button>` : ""}
+    <input type="file" id="cover-file" accept="image/*"
+      style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;opacity:0"
+      onchange="uploadCover(this)">
     <button class="bs" style="width:100%;padding:11px" onclick="closeGoalMod()">Done</button>`);
+  if(isPhoto){
+    const box = document.getElementById("cover-reframe");
+    if(box) _bindCoverDrag(box, g, pos);
+  }
 }
 
 function pickCoverPhoto(){ const f = document.getElementById("cover-file"); if(f) f.click(); }
+
+/* Drag (mouse or touch) to slide background-position within the frame.
+   Persists to goals.cover_mode as "photo:X:Y" once the drag ends. */
+function _bindCoverDrag(box, g, startPos){
+  let ox = startPos.x, oy = startPos.y;
+  const clamp = v => Math.max(0, Math.min(100, v));
+  const start = (x, y) => {
+    box.style.cursor = "grabbing";
+    let cur = {x: ox, y: oy};
+    const onMove = (mx, my) => {
+      const r = box.getBoundingClientRect();
+      const dx = (mx - x) / r.width * 100, dy = (my - y) / r.height * 100;
+      cur = {x: clamp(ox - dx), y: clamp(oy - dy)};
+      box.style.backgroundPosition = `${cur.x}% ${cur.y}%`;
+    };
+    const mouseMoveH = e => onMove(e.clientX, e.clientY);
+    const touchMoveH = e => { const t = e.touches[0]; if(t){ onMove(t.clientX, t.clientY); e.preventDefault(); } };
+    const onUp = () => {
+      box.style.cursor = "grab";
+      ox = cur.x; oy = cur.y;
+      window.removeEventListener("mousemove", mouseMoveH);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", touchMoveH);
+      window.removeEventListener("touchend", onUp);
+      _saveCoverPosition(g, cur.x, cur.y);
+    };
+    window.addEventListener("mousemove", mouseMoveH);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", touchMoveH, {passive: false});
+    window.addEventListener("touchend", onUp);
+  };
+  box.addEventListener("mousedown", e => { start(e.clientX, e.clientY); e.preventDefault(); });
+  box.addEventListener("touchstart", e => { const t = e.touches[0]; if(t) start(t.clientX, t.clientY); }, {passive: true});
+}
+
+async function _saveCoverPosition(g, x, y){
+  const mode = `photo:${Math.round(x)}:${Math.round(y)}`;
+  g.cover_mode = mode;
+  try{ await sb.from("goals").update({ cover_mode: mode }).eq("id", g.id); }catch(e){}
+  if(typeof saveState === "function") saveState();
+  renderGoalCard();
+}
 
 async function setCoverMode(mode){
   const slot = activeSlot(), g = goalBySlot(slot);
@@ -296,8 +373,10 @@ async function setCoverMode(mode){
   g.cover_mode = mode;
   try{ await sb.from("goals").update({ cover_mode: mode }).eq("id", g.id); }catch(e){}
   if(typeof saveState === "function") saveState();
-  closeGoalMod();
   renderGoalCard();
+  /* Switching TO photo reopens the picker so the reposition frame shows
+     immediately; switching to auto has nothing further to configure. */
+  if(mode === "photo") openCoverPicker(); else closeGoalMod();
 }
 
 async function uploadCover(input){
@@ -317,9 +396,11 @@ async function uploadCover(input){
     g.cover_url = url; g.cover_mode = "photo";
     await sb.from("goals").update({ cover_url: url, cover_mode: "photo" }).eq("id", g.id);
     if(typeof saveState === "function") saveState();
-    closeGoalMod();
     renderGoalCard();
-    showToast("Cover updated", "success");
+    showToast("Cover updated — drag to position it", "success");
+    /* Reopen (rather than close) so the new photo's reposition frame shows
+       right away — no separate step to discover. */
+    openCoverPicker();
   }catch(e){
     showToast("Could not upload that image", "error");
   }
