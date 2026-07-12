@@ -26,32 +26,24 @@ function renderDash(){
      can iterate the full window even when localStorage holds a stale length. */
   while(S.uploads.length<dur0) S.uploads.push(null);
   if(!S.plans||typeof S.plans!=="object") S.plans={};
-  /* 30-day Intensive users with a second goal must clear BOTH goals'
-     80%-hit-rate bar before the challenge is considered complete —
-     isChallengeComplete() only knows about elapsed days, so we gate
-     the actual completion screen on bothGoalsComplete() as well. */
-  const _dayWindowElapsed=isChallengeComplete();
-  const _goalsGateOk=(typeof hasSecondGoal==="function"&&hasSecondGoal())
-    ? (typeof bothGoalsComplete==="function"&&bothGoalsComplete())
-    : true;
-  if(_dayWindowElapsed&&_goalsGateOk){
+  /* Multi-goal: a second goal must ALSO clear the bar before the
+     challenge counts as finished. Single-goal users are unaffected. */
+  let _done=isChallengeComplete();
+  if(_done&&typeof hasSecondGoal==="function"&&hasSecondGoal()&&typeof bothGoalsComplete==="function"){
+    _done=bothGoalsComplete();
+  }
+  if(_done){
     if(typeof _markCompleted==="function") _markCompleted();
     _activateScreen("d15");
     return;
   }
   calcDay();
-  try{ if(typeof renderGoalBar==="function") renderGoalBar(); }catch(e){ console.warn("renderDash: renderGoalBar failed:",e); }
+  try{ if(typeof renderGoalBar==="function") renderGoalBar(); }catch(e){ console.warn("renderGoalBar failed:",e); }
   const u=S.user,d=S.day;
   const dur=u.duration||15;
   const ans=u.answers||{};
   const dbg=el("day-bdg"); if(dbg) dbg.textContent=`Day ${d} / ${dur}`;
-  /* Switching goals swaps S.uploads/S.day to the other slot, so the grid
-     below silently changes with them — tag it with the active goal's
-     color so that swap has a visible reason instead of looking broken. */
-  const _dualGoal=typeof hasSecondGoal==="function"&&hasSecondGoal();
-  const _activeColor=_dualGoal&&typeof activeSlot==="function"&&activeSlot()===2?"#4dc98a":"#c49a1c";
-  const gl=el("grid-lbl");
-  if(gl) gl.innerHTML=_dualGoal?`${dur}-DAY GRID <span style="color:${_activeColor}">· GOAL ${activeSlot()}</span>`:`${dur}-DAY GRID`;
+  const gl=el("grid-lbl"); if(gl) gl.textContent=`${dur}-DAY GRID`;
   const uc=el("dash-user-circle");
   if(uc){
     if(u.photo){uc.innerHTML=`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;uc.style.background="none";}
@@ -63,24 +55,17 @@ function renderDash(){
   let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i])sk++;else break;}
   const skColor=sk>0?"#c49a1c":"#3a3a3a";
   const skText=sk===0?"No streak yet":sk===1?"1 day streak":`${sk} day streak`;
+  /* The goals module owns the goal card (cover + switcher). If it isn't
+     ready yet, fall through to the classic card below. */
+  let _goalCardDone=false;
+  try{ if(typeof renderGoalCard==="function") _goalCardDone=renderGoalCard(); }catch(e){ console.warn("renderGoalCard failed:",e); }
   const gc=el("goal-c");
-  /* The goal hero (30-day Intensive tier) already shows a per-goal streak
-     in its legend — repeating it here just adds noise, so drop it once
-     the hero is visible. 7/15-day users have no hero, so keep it for them. */
-  const heroVisible=typeof isIntensive==="function"&&isIntensive();
-  const streakHtml=heroVisible?"":`<span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span>`;
-  /* Same color-tag as the grid: this card also swaps with the active goal,
-     so a "GOAL 1"/"GOAL 2" label ties it back to the hero's color-coding
-     instead of quietly showing different text under the same heading. */
-  const goalLbl=_dualGoal?`<span class="lbl" style="color:${_activeColor}">GOAL ${activeSlot()}</span>`:`<span class="lbl">CURRENT GOAL</span>`;
-  if(gc){
-    gc.style.borderLeft=_dualGoal?`3px solid ${_activeColor}`:"";
-    gc.innerHTML=`${goalLbl}<p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${(typeof PT!=="undefined"&&PT[ans.proofType])||"Proof"}</span><span class="muted" style="font-size:11px">${u.name||""}</span></div>${streakHtml}</div>`;
-  }
+  if(gc && !_goalCardDone){ gc.className="card mb10"; gc.removeAttribute("style"); }
+  if(gc && !_goalCardDone) gc.innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${(typeof PT!=="undefined"&&PT[ans.proofType])||"Proof"}</span><span class="muted" style="font-size:11px">${u.name||""}</span></div><span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span></div>`;
   /* Each render section is isolated — one failing helper must not stop
      the rest of the dashboard from drawing. */
   const tries=[
-    ["renderGrid",renderGrid],["renderRecCard",renderRecCard],["renderStats",renderStats],
+    ["renderGrid",renderGrid],["renderRecCard",renderRecCard],
     ["renderPlanArea",renderPlanArea],["showChatFab",showChatFab],
     ["updateUpBtn",updateUpBtn],["renderCoachNotes",renderCoachNotes],
   ];
@@ -181,6 +166,9 @@ function renderStreak(){
 }
 
 function renderGrid(){
+  /* Proof-mosaic grid (goals module). Falls back to the classic grid. */
+  try{ if(typeof renderGoalGrid==="function" && renderGoalGrid()) return; }
+  catch(e){ console.warn("renderGoalGrid failed, using classic grid:",e); }
   const g=el("d-grid"); g.innerHTML="";
   const dur=getDur();
   const callDays=CALL_DAYS[dur]||[];
@@ -612,16 +600,10 @@ function renderStats(){
   const pct=d>1?Math.round((uploads/Math.max(d-1,1))*100):0;
   const remaining=Math.max(0,dur-d);
   let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i])sk++;else break;}
-  /* These stats are also per-active-goal — same color-tag as the grid and
-     goal card so the trio reads as one consistent "you're viewing goal N"
-     signal instead of three independently-flickering sections. */
-  const _dualGoal2=typeof hasSecondGoal==="function"&&hasSecondGoal();
-  const _activeColor2=_dualGoal2&&typeof activeSlot==="function"&&activeSlot()===2?"#4dc98a":"#c49a1c";
-  const progLbl=_dualGoal2?`YOUR PROGRESS <span style="color:${_activeColor2}">· GOAL ${activeSlot()}</span>`:"YOUR PROGRESS";
 
   sc.style.display="block";
   sc.innerHTML=`<div class="row mb8" style="justify-content:space-between">
-    <span class="lbl m0">${progLbl}</span>
+    <span class="lbl m0">YOUR PROGRESS</span>
     <button class="bs" style="padding:4px 10px;font-size:10px" onclick="openShareCard()">Share</button>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">

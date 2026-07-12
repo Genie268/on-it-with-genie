@@ -127,12 +127,13 @@ function _mountDashSafely(){
   }catch(e){
     console.error("renderDash threw, leaving user on dashboard:",e);
   }
-  /* Load goal rows (multi-goal Intensive tier) after the first paint so
-     the dashboard never blocks on this — then re-render once loaded so
-     the goal bar and correct active-goal upload array are in place. */
+  /* Pull the user's goals, then redraw so a second goal shows up.
+     Never allowed to block or break the dashboard mount. */
   try{
     if(typeof loadGoals==="function"){
-      loadGoals().then(()=>{ try{ renderDash(); }catch(e){} }).catch(()=>{});
+      loadGoals()
+        .then(()=>{ try{ renderDash(); }catch(e){} })
+        .catch(()=>{});
     }
   }catch(e){}
 }

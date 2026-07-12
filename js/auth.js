@@ -62,25 +62,24 @@ async function syncUploadToSupabase(dayNum,upload){
   if(!sb||!S.user)return;
   if(!S.user.supabaseId){try{await syncToSupabase();}catch(e){}}
   if(!S.user.supabaseId)return;
-  /* Tag the upload with the active goal's id (multi-goal Intensive tier)
-     so the same day-number can hold one upload per goal. Omitted for
-     single-goal challengers — activeGoalRow() returns null and goal_id
-     stays undefined, matching the old single-goal behaviour exactly. */
-  const goalRow=typeof activeGoalRow==="function"?activeGoalRow():null;
-  const row={challenger_id:S.user.supabaseId,day_number:dayNum,note:upload.note||null,link_url:upload.link||null,file_name:upload.fileName||null,file_url:upload.fileUrl||null,voice_url:upload.voiceUrl||null,proof_type:upload.proofType||null,behavior_answer:upload.behavior||null};
-  if(goalRow?.id) row.goal_id=goalRow.id;
+  /* Tag every proof with the goal it belongs to, so two goals can each
+     have their own proof on the same day. Falls back to the slot-1 goal. */
+  const _gid=(typeof activeGoalRow==="function"&&activeGoalRow()?.id)||null;
+  const _row={challenger_id:S.user.supabaseId,day_number:dayNum,note:upload.note||null,link_url:upload.link||null,file_name:upload.fileName||null,file_url:upload.fileUrl||null,voice_url:upload.voiceUrl||null,proof_type:upload.proofType||null,behavior_answer:upload.behavior||null};
+  if(_gid)_row.goal_id=_gid;
   /* uploads only has a UNIQUE(challenger_id,day_number) constraint — there's
      no (challenger_id,day_number,goal_id) constraint for .upsert()'s
-     onConflict to target, so upsert() errors on every call (42P10). Do the
-     find-then-insert/update by hand instead; no schema change needed. When
-     goalRow is unknown (single-goal accounts, or goals not loaded yet) fall
-     back to matching by day alone, same as the original single-goal design. */
+     onConflict to target, so upsert() errors on every call (42P10, confirmed
+     live against the database). Do the find-then-insert/update by hand
+     instead; no schema change needed. When _gid is unknown (single-goal
+     accounts, or goals not loaded yet) fall back to matching by day alone,
+     same as the original single-goal design. */
   try{
     let q=sb.from("uploads").select("id").eq("challenger_id",S.user.supabaseId).eq("day_number",dayNum);
-    if(goalRow?.id) q=q.eq("goal_id",goalRow.id);
+    if(_gid) q=q.eq("goal_id",_gid);
     const {data:existing}=await q.limit(1);
-    if(existing?.[0]) await sb.from("uploads").update(row).eq("id",existing[0].id);
-    else await sb.from("uploads").insert(row);
+    if(existing?.[0]) await sb.from("uploads").update(_row).eq("id",existing[0].id);
+    else await sb.from("uploads").insert(_row);
   }catch(e){}
 }
 
