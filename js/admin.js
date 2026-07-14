@@ -33,6 +33,7 @@ async function loadAdminData(){
     const allPlans=res.daily_plans||[];
     const allPushSubs=res.push_subs||[];
     const allReminderLogs=res.reminder_logs||[];
+    const allGoals=res.goals||[];
     window._adminReminderLogs=allReminderLogs;
 
     liveChallengers=challengers.map(c=>{
@@ -40,46 +41,76 @@ async function loadAdminData(){
       const energy=(allEnergy||[]).filter(e=>e.challenger_id===c.id);
       const plans=(allPlans||[]).filter(p=>p.challenger_id===c.id);
       const dur=c.duration||15;
-      const upArr=Array(dur).fill(0);
-      const noteArr=Array(dur).fill("-");
-      const rvArr=Array(dur).fill(0);
-      const voiceArr=Array(dur).fill(0);
-      const voiceUrlArr=Array(dur).fill(null);
-      const fileUrlArr=Array(dur).fill(null);
-      const linkArr=Array(dur).fill(null);
-      const fileNameArr=Array(dur).fill(null);
-      const behaviorArr=Array(dur).fill(null);
-      const uploadTimeArr=Array(dur).fill(null);
-      const reviewNoteArr=Array(dur).fill(null);
-      uploads.forEach(u=>{
-        if(u.day_number>=1&&u.day_number<=dur){
-          const i=u.day_number-1;
-          upArr[i]=1;
-          noteArr[i]=u.note||"No note";
-          rvArr[i]=u.reviewed?1:0;
-          voiceArr[i]=u.voice_url?1:0;
-          voiceUrlArr[i]=u.voice_url||null;
-          fileUrlArr[i]=u.file_url||null;
-          linkArr[i]=u.link_url||null;
-          fileNameArr[i]=u.file_name||null;
-          behaviorArr[i]=u.behavior_answer||null;
-          uploadTimeArr[i]=u.created_at||null;
-          reviewNoteArr[i]=u.review_note||null;
-        }
+
+      /* ── Multi-goal (30-day Intensive) support ──
+         A challenger can have up to two goal rows; each day-number can then
+         hold one upload PER GOAL. We build a separate set of per-day arrays
+         for each goal, keyed by goal id, so the admin can view/review each
+         goal independently instead of one silently overwriting the other. */
+      const goalRows=(allGoals||[]).filter(g=>g.challenger_id===c.id)
+        .sort((a,b)=>(a.slot||1)-(b.slot||1));
+      /* Uniform goal list even for legacy/single-goal challengers with no
+         goals row — synthesize one from the challenger's own fields. */
+      const goals=goalRows.length?goalRows.map(g=>({
+        id:g.id,slot:g.slot||1,goalRaw:g.goal_raw,goalSummary:g.goal_summary||g.goal_raw,
+        proofType:g.proof_type||"output",coverUrl:g.cover_url||null,coverMode:g.cover_mode||null,
+        startDay:g.start_day||1
+      })):[{
+        id:"_primary",slot:1,goalRaw:c.goal_raw,goalSummary:c.goal_summary||c.goal_raw,
+        proofType:c.proof_type||"output",coverUrl:null,coverMode:null,startDay:1
+      }];
+      const primaryGoalId=goals[0].id;
+
+      const _blankArrays=()=>({
+        up:Array(dur).fill(0),notes:Array(dur).fill("-"),rv:Array(dur).fill(0),
+        hasVoice:Array(dur).fill(0),voiceUrls:Array(dur).fill(null),fileUrls:Array(dur).fill(null),
+        links:Array(dur).fill(null),fileNames:Array(dur).fill(null),behaviors:Array(dur).fill(null),
+        uploadTimes:Array(dur).fill(null),reviewNotes:Array(dur).fill(null),rvCount:0
       });
+      const byGoal={};
+      goals.forEach(g=>{ byGoal[g.id]=_blankArrays(); });
+      const knownGoalIds=new Set(goals.map(g=>g.id));
+
+      uploads.forEach(u=>{
+        if(u.day_number<1||u.day_number>dur)return;
+        /* Route to the upload's own goal when known; otherwise (null goal_id
+           on legacy rows, or a stray id) fall back to the primary goal —
+           this matches the DB trigger that defaults goal_id to slot 1. */
+        const gid=(u.goal_id&&knownGoalIds.has(u.goal_id))?u.goal_id:primaryGoalId;
+        const a=byGoal[gid];
+        const i=u.day_number-1;
+        a.up[i]=1;
+        a.notes[i]=u.note||"No note";
+        a.rv[i]=u.reviewed?1:0;
+        a.hasVoice[i]=u.voice_url?1:0;
+        a.voiceUrls[i]=u.voice_url||null;
+        a.fileUrls[i]=u.file_url||null;
+        a.links[i]=u.link_url||null;
+        a.fileNames[i]=u.file_name||null;
+        a.behaviors[i]=u.behavior_answer||null;
+        a.uploadTimes[i]=u.created_at||null;
+        a.reviewNotes[i]=u.review_note||null;
+      });
+      Object.keys(byGoal).forEach(gid=>{ byGoal[gid].rvCount=byGoal[gid].rv.filter(Boolean).length; });
+
       const elog={};
       energy.forEach(e=>{elog[e.day_number]={type:e.log_type,value:e.value};});
       const startDate=new Date(c.start_date);
       const now=new Date();
       const curDay=Math.min(Math.max(Math.floor((now-startDate)/(1000*60*60*24))+1,1),dur);
-      const missed=upArr.slice(0,curDay-1).filter(v=>!v).length;
+      const prim=byGoal[primaryGoalId];
+      const missed=prim.up.slice(0,curDay-1).filter(v=>!v).length;
+      /* Top-level arrays mirror the PRIMARY goal, so every existing
+         single-goal view keeps working unchanged. Multi-goal views read
+         byGoal[activeGoalId] and can re-point these via _adminSelectGoal(). */
       return {
         id:c.id,name:c.name,photo:c.photo_url||null,
         ini:(c.name||"?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2),
         goal:c.goal_summary||c.goal_raw,pt:c.proof_type||"output",
-        day:curDay,dur,up:upArr,notes:noteArr,rv:rvArr,rvCount:(rvArr||[]).filter(Boolean).length,
-        energyLog:elog,hasVoice:voiceArr,voiceUrls:voiceUrlArr,fileUrls:fileUrlArr,
-        links:linkArr,fileNames:fileNameArr,behaviors:behaviorArr,uploadTimes:uploadTimeArr,reviewNotes:reviewNoteArr,
+        day:curDay,dur,
+        up:prim.up,notes:prim.notes,rv:prim.rv,rvCount:prim.rvCount,
+        energyLog:elog,hasVoice:prim.hasVoice,voiceUrls:prim.voiceUrls,fileUrls:prim.fileUrls,
+        links:prim.links,fileNames:prim.fileNames,behaviors:prim.behaviors,uploadTimes:prim.uploadTimes,reviewNotes:prim.reviewNotes,
         flag:missed>=4?`${missed} missed days`:null,
         email:c.email,phone:c.phone,
         paymentStatus:c.payment_status,supabaseId:c.id,status:c.status,
@@ -88,11 +119,65 @@ async function loadAdminData(){
         threat:c.threat,startDate:c.start_date,lastSeen:c.last_seen,
         createdAt:c.created_at,
         hasPush:allPushSubs.some(s=>s.challenger_id===c.id&&s.is_active),
-        plans:plans.sort((a,b)=>a.day_number-b.day_number)
+        plans:plans.sort((a,b)=>a.day_number-b.day_number),
+        goals,byGoal,primaryGoalId,activeGoalId:primaryGoalId,isMultiGoal:goals.length>1
       };
     });
     adminDataLoaded=true;
   }catch(e){console.error("Admin load error:",e);liveChallengers=[];adminDataLoaded=true;}
+}
+
+/* ── Multi-goal helpers (admin side) ──────────────────────────────────
+   The top-level u.up/u.notes/etc arrays mirror ONE goal at a time. These
+   let callers read a specific goal's arrays, or re-point the top-level
+   arrays at a chosen goal before re-rendering the detail view. */
+function _adminGoalArrays(u,goalId){
+  if(u&&u.byGoal){
+    if(goalId&&u.byGoal[goalId]) return u.byGoal[goalId];
+    if(u.byGoal[u.primaryGoalId]) return u.byGoal[u.primaryGoalId];
+  }
+  return u; /* legacy shape: arrays live directly on u */
+}
+function _adminGoalMeta(u,goalId){
+  if(!u||!u.goals) return null;
+  return u.goals.find(g=>g.id===goalId)||u.goals[0]||null;
+}
+/* Re-point u.up/u.notes/... at the chosen goal so every existing renderer
+   (which reads the top-level arrays) shows that goal. */
+function _adminSelectGoal(u,goalId){
+  const a=_adminGoalArrays(u,goalId);
+  u.up=a.up;u.notes=a.notes;u.rv=a.rv;u.rvCount=a.rvCount;
+  u.hasVoice=a.hasVoice;u.voiceUrls=a.voiceUrls;u.fileUrls=a.fileUrls;
+  u.links=a.links;u.fileNames=a.fileNames;u.behaviors=a.behaviors;
+  u.uploadTimes=a.uploadTimes;u.reviewNotes=a.reviewNotes;
+  u.activeGoalId=(u.byGoal&&u.byGoal[goalId])?goalId:u.primaryGoalId;
+  const meta=_adminGoalMeta(u,u.activeGoalId);
+  if(meta) u.goal=meta.goalSummary||meta.goalRaw||u.goal;
+  return u;
+}
+/* Switch the visible goal in an expanded challenger detail and re-render
+   just that detail body (keeps the card expanded). */
+function adminSwitchChallengerGoal(uid,goalId){
+  const u=liveChallengers.find(x=>x.id===uid);
+  if(!u)return;
+  _adminSelectGoal(u,goalId);
+  const det=el("ch-det-"+uid);
+  if(det) det.innerHTML=renderChallengerDetail(u);
+}
+/* Total uploads / pending across ALL of a challenger's goals — so the
+   overview counts and review queue don't silently ignore goal 2. */
+function _adminTotalUploads(u){
+  if(!u||!u.byGoal) return (u.up||[]).filter(Boolean).length;
+  return Object.values(u.byGoal).reduce((s,a)=>s+a.up.filter(Boolean).length,0);
+}
+function _adminTotalReviewed(u){
+  if(!u||!u.byGoal) return u.rvCount||0;
+  return Object.values(u.byGoal).reduce((s,a)=>s+(a.rvCount||0),0);
+}
+/* Short DOM-safe token for a goal id, shared by the inbox renderer and its
+   reply handlers so they build the same textarea id. */
+function _inbTok(goalId){
+  return goalId?String(goalId).replace(/[^a-zA-Z0-9]/g,"").slice(-8):"p";
 }
 
 function _isComplete(u){return u.day>=u.dur||u.status==="completed";}
@@ -495,13 +580,26 @@ async function renderAdminSettings(c){
 function getPendingInbox(){
   return getActiveAM().flatMap(u=>{
     const items=[];
-    for(let i=0;i<u.day;i++){
-      if(u.up[i]&&!u.rv[i])items.push({u,day:i+1,note:u.notes[i],i,
-        hasVoice:u.hasVoice&&u.hasVoice[i],voiceUrl:u.voiceUrls&&u.voiceUrls[i],
-        fileUrl:u.fileUrls&&u.fileUrls[i],
-        link:u.links&&u.links[i],fileName:u.fileNames&&u.fileNames[i],
-        behavior:u.behaviors&&u.behaviors[i]});
-    }
+    /* Walk every goal so a 30-day Intensive challenger's second goal shows
+       up in the review queue too — not just the primary goal. goalId/goalSlot
+       ride along so the review action targets the correct upload row. */
+    const goals=(u.goals&&u.goals.length)?u.goals:[{id:u.primaryGoalId||null,slot:1}];
+    goals.forEach(g=>{
+      const a=_adminGoalArrays(u,g.id);
+      /* Only pass a goal_id to review actions for genuinely multi-goal
+         challengers. Single-goal (esp. legacy) upload rows may have a NULL
+         goal_id, so filtering by it would miss them — day-only match is
+         the safe, original behaviour there. */
+      const reviewGid=u.isMultiGoal?g.id:null;
+      for(let i=0;i<u.day;i++){
+        if(a.up[i]&&!a.rv[i])items.push({u,day:i+1,note:a.notes[i],i,
+          goalId:reviewGid,goalSlot:g.slot,multiGoal:u.isMultiGoal,
+          hasVoice:a.hasVoice&&a.hasVoice[i],voiceUrl:a.voiceUrls&&a.voiceUrls[i],
+          fileUrl:a.fileUrls&&a.fileUrls[i],
+          link:a.links&&a.links[i],fileName:a.fileNames&&a.fileNames[i],
+          behavior:a.behaviors&&a.behaviors[i]});
+      }
+    });
     return items;
   });
 }
@@ -1059,8 +1157,8 @@ function renderAdminOverview(c){
   const active=all.filter(u=>!_isComplete(u));
   const completed=all.filter(u=>_isComplete(u));
   const total=active.length;
-  const uploadsTotal=active.reduce((a,u)=>a+u.up.filter(Boolean).length,0);
-  const toReview=active.reduce((a,u)=>a+Math.max(0,u.up.filter(Boolean).length-(u.rvCount||0)),0);
+  const uploadsTotal=active.reduce((a,u)=>a+_adminTotalUploads(u),0);
+  const toReview=active.reduce((a,u)=>a+Math.max(0,_adminTotalUploads(u)-_adminTotalReviewed(u)),0);
   const atRiskUsers=active.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
   const totalUnread=getTotalUnreadCount();
 
@@ -1092,10 +1190,12 @@ function renderAdminOverview(c){
       actionLabel:"Reply →",onClick:`adminTab('messages');setTimeout(()=>_openMsgConvo('${u.id}'),100)`});
   });
   /* Pending reviews — top 5 */
-  getPendingInbox().slice(0,5).forEach(({u,day,note,i})=>{
+  getPendingInbox().slice(0,5).forEach(({u,day,note,i,goalId,goalSlot,multiGoal})=>{
     const previewText=(note&&note!=="-")?note:"Awaiting your review";
-    queue.push({pri:2,icon:"↑",color:"#c49a1c",label:`Day ${day} upload`,name:u.name,meta:previewText.slice(0,55),
-      actionLabel:"Review →",onClick:`openUploadDetail('${u.id}',${i})`});
+    const goalTag=multiGoal?` · Goal ${goalSlot}`:"";
+    const gidArg=goalId?`'${goalId}'`:"null";
+    queue.push({pri:2,icon:"↑",color:"#c49a1c",label:`Day ${day} upload${goalTag}`,name:u.name,meta:previewText.slice(0,55),
+      actionLabel:"Review →",onClick:`openUploadDetail('${u.id}',${i},${gidArg})`});
   });
   /* At-risk users */
   atRiskUsers.forEach(u=>{
@@ -1357,6 +1457,30 @@ function openChallenger(uid){
 function renderChallengerDetail(u){
   const dur=u.dur||15;
   const callDays=CALL_DAYS[dur]||[];
+  const activeGid=u.activeGoalId||u.primaryGoalId;
+  /* Only thread goal_id into review actions for multi-goal challengers —
+     single-goal (legacy) rows may have NULL goal_id (see getPendingInbox). */
+  const gidArg=(u.isMultiGoal&&activeGid&&activeGid!=="_primary")?`,'${activeGid}'`:"";
+  /* Goal switcher — only for multi-goal (30-day Intensive) challengers.
+     Mirrors the user-side GOAL 1 / GOAL 2 tabs; selecting one re-points the
+     grid/reviews at that goal's uploads. */
+  let goalSwitcher="";
+  if(u.isMultiGoal&&u.goals&&u.goals.length>1){
+    const tabs=u.goals.map(g=>{
+      const col=g.slot===2?"#4dc98a":"#c49a1c";
+      const on=g.id===activeGid;
+      const label=(g.goalSummary||g.goalRaw||("Goal "+g.slot));
+      const short=label.length>26?label.slice(0,26).trim()+"…":label;
+      return `<button onclick="adminSwitchChallengerGoal('${u.id}','${g.id}')"
+        style="flex:1;min-width:0;text-align:left;padding:8px 11px;border-radius:9px;cursor:pointer;font-family:inherit;
+        border:1.5px solid ${on?col:col+"33"};background:${on?col+"14":"transparent"};transition:all .15s">
+        <span style="display:block;font-size:9px;font-weight:800;letter-spacing:.06em;color:${col}">GOAL ${g.slot}</span>
+        <span style="display:block;font-size:11px;font-weight:600;color:${on?"#e8e8e8":"#888"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${short}</span>
+      </button>`;
+    }).join("");
+    goalSwitcher=`<div class="ch-block"><span class="ch-block-lbl">GOALS</span>
+      <div style="display:flex;gap:8px">${tabs}</div></div>`;
+  }
   /* Build compact grid (same visual language as user dashboard) */
   let gridCells="";
   for(let i=0;i<dur;i++){
@@ -1374,7 +1498,7 @@ function renderChallengerDetail(u){
     const upTime=u.uploadTimes&&u.uploadTimes[i];
     const timeStr=upTime?new Date(upTime).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",hour12:false}):"";
     const titleText=isUp?`Day ${d} · Uploaded at ${timeStr}`:fut?`Day ${d} · upcoming`:`Day ${d}`;
-    const onclick=isUp?`onclick="openUploadDetail('${u.id}',${i})" style="cursor:pointer"`:"";
+    const onclick=isUp?`onclick="openUploadDetail('${u.id}',${i}${gidArg})" style="cursor:pointer"`:"";
     gridCells+=`<div class="${cls}" ${onclick} title="${titleText}">
       <span class="dn">D${d}</span>
       ${ds?`<span class="ds">${ds}</span>`:""}
@@ -1412,9 +1536,11 @@ function renderChallengerDetail(u){
       </div>
     </div>
 
+    ${goalSwitcher}
+
     <div class="ch-block">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
-        <span class="ch-block-lbl" style="margin:0">ACTIVITY · ${up}/${dur} uploaded · ${rv} reviewed</span>
+        <span class="ch-block-lbl" style="margin:0">ACTIVITY${u.isMultiGoal?" · GOAL "+((_adminGoalMeta(u,activeGid)||{}).slot||1):""} · ${up}/${dur} uploaded · ${rv} reviewed</span>
         <span class="muted" style="font-size:10px">tap a cell</span>
       </div>
       <div class="g15">${gridCells}</div>
@@ -1550,19 +1676,25 @@ function renderAdminInbox(c){
         ${pending.length>=2?`<button class="bs" style="font-size:10px;padding:5px 10px" onclick="batchMarkAllReviewed()">✓ All Done (${pending.length})</button>`:""}
       </div>
     </div>
-    ${pending.map(({u,day,note,i,hasVoice,voiceUrl,fileUrl,link,fileName,behavior})=>{
-      const hasExistingNote=u.reviewNotes&&u.reviewNotes[i];
+    ${pending.map(({u,day,note,i,goalId,goalSlot,multiGoal,hasVoice,voiceUrl,fileUrl,link,fileName,behavior})=>{
+      const ga=_adminGoalArrays(u,goalId);
+      const existingNote=ga.reviewNotes&&ga.reviewNotes[i];
       const hasProofContent=(note&&note!=="-")||behavior||link||fileUrl||fileName||voiceUrl||hasVoice;
+      /* Unique id per (challenger, day, goal) so two goals sharing a day
+         don't collide on the same textarea. */
+      const inbId=`inb-${u.id}-${i}-${_inbTok(goalId)}`;
+      const gidArg=goalId?`'${goalId}'`:"null";
+      const goalTag=multiGoal?`<span style="font-size:9px;font-weight:800;color:${goalSlot===2?"#4dc98a":"#c49a1c"};margin-left:6px">GOAL ${goalSlot}</span>`:"";
       return `
-      <div class="card mb10">
+      <div class="card mb10"${multiGoal?` style="border-left:2px solid ${goalSlot===2?"#4dc98a":"#c49a1c"}"`:""}>
         <div class="row" style="justify-content:space-between;align-items:center">
           <div class="row" style="gap:8px;flex:1;min-width:0">
             ${_avatarWithStatus(u,30,"7px")}
             <div style="min-width:0">
-              <p style="font-size:12px;font-weight:700;margin:0">${u.name} <span class="muted" style="font-weight:400">· Day ${day}</span></p>
+              <p style="font-size:12px;font-weight:700;margin:0">${u.name} <span class="muted" style="font-weight:400">· Day ${day}</span>${goalTag}</p>
             </div>
           </div>
-          <button onclick="togRv('${u.id}',${i});renderAdminInbox(el('admin-content'))" style="padding:5px 12px;border-radius:100px;background:rgba(77,201,138,.06);border:1px solid rgba(77,201,138,.25);color:#4dc98a;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px;transition:background .15s" onmouseenter="this.style.background='rgba(77,201,138,.12)'" onmouseleave="this.style.background='rgba(77,201,138,.06)'">✓ Done</button>
+          <button onclick="togRv('${u.id}',${i},${gidArg});renderAdminInbox(el('admin-content'))" style="padding:5px 12px;border-radius:100px;background:rgba(77,201,138,.06);border:1px solid rgba(77,201,138,.25);color:#4dc98a;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;margin-left:8px;transition:background .15s" onmouseenter="this.style.background='rgba(77,201,138,.12)'" onmouseleave="this.style.background='rgba(77,201,138,.06)'">✓ Done</button>
         </div>
         ${hasProofContent?`<div class="inbox-proof">
           ${note&&note!=="-"?`<p style="font-size:12px;line-height:1.5;color:#ccc;margin:0">${note}</p>`:""}
@@ -1571,13 +1703,13 @@ function renderAdminInbox(c){
           ${fileUrl?thumbHtml(fileUrl,fileName):fileName?`<p style="font-size:11px;color:#888;margin:0">📎 ${fileName}</p>`:""}
           ${voiceUrl?buildVoicePlayer(voiceUrl):(hasVoice?`<p style="font-size:11px;color:#888;margin:0">🎙 Voice note</p>`:"")}
         </div>`:""}
-        ${hasExistingNote?`<div style="padding:8px 10px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);border-radius:8px;font-size:11px;color:#ccc;line-height:1.5;margin-bottom:8px"><span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#c49a1c">YOUR NOTE</span><p style="margin:3px 0 0">${u.reviewNotes[i]}</p></div>`:""}
+        ${existingNote?`<div style="padding:8px 10px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);border-radius:8px;font-size:11px;color:#ccc;line-height:1.5;margin-bottom:8px"><span style="font-size:9px;font-weight:700;letter-spacing:.08em;color:#c49a1c">YOUR NOTE</span><p style="margin:3px 0 0">${existingNote}</p></div>`:""}
         <div class="inbox-divider"></div>
-        ${_quickReplyChips("inb-"+u.id+"-"+i)}
-        <textarea id="inb-${u.id}-${i}" rows="2" placeholder="${hasExistingNote?"Update your note...":"Reply / leave a review note..."}" style="font-size:12px;margin-top:4px">${hasExistingNote?u.reviewNotes[i]:""}</textarea>
+        ${_quickReplyChips(inbId)}
+        <textarea id="${inbId}" rows="2" placeholder="${existingNote?"Update your note...":"Reply / leave a review note..."}" style="font-size:12px;margin-top:4px">${existingNote||""}</textarea>
         <div class="row mt8" style="gap:7px">
-          <button class="bp" style="font-size:11px;padding:6px 12px" onclick="sendInboxReply('${u.id}',${i})">Save & send</button>
-          <button class="bs" style="font-size:11px;padding:6px 12px" onclick="lilInboxDraft('${u.id}',${i},'${(note||"").replace(/'/g,"\\'")}')">✦ Draft</button>
+          <button class="bp" style="font-size:11px;padding:6px 12px" onclick="sendInboxReply('${u.id}',${i},${gidArg})">Save & send</button>
+          <button class="bs" style="font-size:11px;padding:6px 12px" onclick="lilInboxDraft('${u.id}',${i},'${(note||"").replace(/'/g,"\\'")}',${gidArg})">✦ Draft</button>
         </div>
       </div>`;
     }).join("")}`;
@@ -1891,13 +2023,18 @@ async function renderAdminAnalytics(c){
   }
 }
 
-async function togRv(uid,i){
+async function togRv(uid,i,goalId){
+  const _keepGoal=(goalId&&goalId!=="_primary")?goalId:null;
   try{
     const dayNum=i+1;
-    const res=await adminFetch("toggle_reviewed",{challenger_id:uid,day_number:dayNum});
+    const params={challenger_id:uid,day_number:dayNum};
+    if(_keepGoal) params.goal_id=_keepGoal;
+    const res=await adminFetch("toggle_reviewed",params);
     showToast(res.reviewed?"Marked as reviewed":"Unmarked review","success");
     await loadAdminData();
   }catch(e){console.error("Review toggle error:",e);showToast("Review toggle failed","error");}
+  /* Preserve the goal the admin was viewing after the data reload. */
+  if(_keepGoal){ const u=liveChallengers.find(x=>x.id===uid); if(u) _adminSelectGoal(u,_keepGoal); }
   if(adminCurrentTab==="challengers")renderAdminChallengers(el("admin-content"));
   if(adminCurrentTab==="inbox")renderAdminInbox(el("admin-content"));
   if(adminCurrentTab==="overview")renderAdminOverview(el("admin-content"));
@@ -1905,10 +2042,16 @@ async function togRv(uid,i){
 
 async function batchMarkAllReviewed(){
   if(!confirm("Mark all pending uploads as reviewed?"))return;
-  const pending=getAM().flatMap(u=>{
-    const items=[];
-    for(let i=0;i<u.day;i++){if(u.up[i]&&!u.rv[i])items.push({challenger_id:u.id,day_number:i+1});}
-    return items;
+  /* Source from the goal-aware queue so goal-2 pending days are included,
+     then dedupe by challenger+day (the edge function marks every upload row
+     for a given day, so one entry per day covers both goals). */
+  const seen=new Set();
+  const pending=[];
+  getPendingInbox().forEach(({u,day})=>{
+    const key=u.id+"|"+day;
+    if(seen.has(key))return;
+    seen.add(key);
+    pending.push({challenger_id:u.id,day_number:day});
   });
   try{
     const res=await adminFetch("mark_all_reviewed",{items:pending});

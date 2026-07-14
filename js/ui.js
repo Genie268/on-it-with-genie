@@ -283,13 +283,17 @@ Goal: "${u.goal}"`,120);
   ta.disabled=false;ta.placeholder=`Personal message to ${u.name}...`;
 }
 
-async function sendInboxReply(uid,i){
-  const ta=el("inb-"+uid+"-"+i);if(!ta||!ta.value.trim())return;
+async function sendInboxReply(uid,i,goalId){
+  const gtok=(typeof _inbTok==="function")?_inbTok(goalId):(goalId?String(goalId).replace(/[^a-zA-Z0-9]/g,"").slice(-8):"p");
+  const ta=el("inb-"+uid+"-"+i+"-"+gtok)||el("inb-"+uid+"-"+i);
+  if(!ta||!ta.value.trim())return;
   const msg=ta.value.trim();
   ta.disabled=true;
   try{
     const dayNum=i+1;
-    await adminFetch("save_review_note",{challenger_id:uid,day_number:dayNum,note:msg});
+    const params={challenger_id:uid,day_number:dayNum,note:msg};
+    if(goalId&&goalId!=="_primary") params.goal_id=goalId;
+    await adminFetch("save_review_note",params);
     adminFetch("send_push",{push_type:"personal",challenger_id:uid,title:"Genie reviewed your Day "+dayNum,body:msg.slice(0,120)}).catch(()=>{});
     showToast("Review note saved & notified","success");
   }catch(e){console.warn("Review note save error:",e);showToast("Failed to save","error");}
@@ -300,9 +304,10 @@ async function sendInboxReply(uid,i){
   if(adminCurrentTab==="inbox")renderAdminInbox(el("admin-content"));
 }
 
-async function lilInboxDraft(uid,i,note){
+async function lilInboxDraft(uid,i,note,goalId){
   const u=getAM().find(x=>x.id===uid);if(!u)return;
-  const ta=el("inb-"+uid+"-"+i);if(!ta)return;
+  const gtok=(typeof _inbTok==="function")?_inbTok(goalId):(goalId?String(goalId).replace(/[^a-zA-Z0-9]/g,"").slice(-8):"p");
+  const ta=el("inb-"+uid+"-"+i+"-"+gtok)||el("inb-"+uid+"-"+i);if(!ta)return;
   ta.placeholder="Lil is drafting...";ta.disabled=true;
   const p=await lil(`Write a 1-sentence review note for a daily upload. Specific to what they did. Not praise, just direct acknowledgment. This is a private note on their upload, not a message.
 
