@@ -13,6 +13,21 @@ function witnessesOn(){ return !!(S.user && S.user.witnessesEnabled); }
 
 async function loadWitnesses(){
   if(!S.user?.supabaseId || typeof sb === "undefined" || !sb) return;
+  /* Refresh the enabled flag from the source of truth. Admin toggles it on
+     the challenger row, and a returning user resumes from localStorage (which
+     never carried the flag) — so without this the dashboard row would never
+     appear until the user signed out and back in. */
+  try{
+    const { data: c } = await sb.from("challengers")
+      .select("witnesses_enabled").eq("id", S.user.supabaseId).single();
+    if(c){
+      const on = c.witnesses_enabled === true;
+      if(S.user.witnessesEnabled !== on){
+        S.user.witnessesEnabled = on;
+        if(typeof saveState === "function") saveState();
+      }
+    }
+  }catch(e){}
   try{
     const { data } = await sb.from("witnesses").select("*")
       .eq("challenger_id", S.user.supabaseId)
