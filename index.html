@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260712e">
+<link rel="stylesheet" href="css/styles.css?v=20260712f">
 </head>
 <body>
 <script>
@@ -220,7 +220,8 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)){document.documentElement.
 <!-- DASHBOARD -->
 <div id="s-dash" class="screen">
   <div class="nav" style="padding:10px 18px">
-    <div id="profile-area" style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openProfile()">
+    <div id="profile-area" style="display:flex;align-items:center;gap:10px;cursor:pointer;position:relative" onclick="openProfile()">
+      <span id="menu-new-dot" style="display:none;position:absolute;top:-2px;left:30px;z-index:5;width:9px;height:9px;border-radius:50%;background:#c49a1c;border:2px solid #060606;box-shadow:0 0 0 0 rgba(196,154,28,.5);animation:menuDotPulse 2s infinite"></span>
       <div class="circles-wrap" style="height:40px;width:72px;flex-shrink:0;position:relative">
         <div class="circle-img circle-user initials" id="dash-user-circle" style="width:36px;height:36px;left:2px;font-size:11px;z-index:2">?</div>
         <img class="circle-img circle-genie genie-photo-img" style="width:36px;height:36px;left:20px;z-index:1" src="" alt="Genie">
@@ -237,7 +238,6 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)){document.documentElement.
   <div class="sb">
     <div id="goal-bar"></div>
     <div class="card mb10" id="goal-c"></div>
-    <div id="witness-row"></div>
     <div id="coach-notes"></div>
     <div class="card mb10">
       <div class="row mb12" style="justify-content:space-between">
@@ -410,6 +410,8 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)){document.documentElement.
       <div><p style="font-size:14px;font-weight:600">Notifications</p><p style="font-size:11px;color:var(--muted)" id="notif-toggle-sub">Push alerts for messages</p></div>
       <div class="toggle-pill" id="notif-toggle" onclick="toggleNotifications()"></div>
     </div>
+    <!-- Witnesses menu entry (only shows when enabled for this challenger) -->
+    <div id="profile-witness-entry" style="margin-top:10px"></div>
 
     <div style="margin-top:16px">
       <span class="lbl">DISPLAY NAME</span>
@@ -532,15 +534,15 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)){document.documentElement.
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260712e"></script>
-<script src="js/lil.js?v=20260712e"></script>
-<script src="js/auth.js?v=20260712e"></script>
-<script src="js/onboarding.js?v=20260712e"></script>
-<script src="js/goals.js?v=20260712e"></script>
-<script src="js/witnesses.js?v=20260712e"></script>
-<script src="js/dashboard.js?v=20260712e"></script>
-<script src="js/uploads.js?v=20260712e"></script>
-<script src="js/admin.js?v=20260712e"></script>
-<script src="js/ui.js?v=20260712e"></script>
+<script src="js/config.js?v=20260712f"></script>
+<script src="js/lil.js?v=20260712f"></script>
+<script src="js/auth.js?v=20260712f"></script>
+<script src="js/onboarding.js?v=20260712f"></script>
+<script src="js/goals.js?v=20260712f"></script>
+<script src="js/witnesses.js?v=20260712f"></script>
+<script src="js/dashboard.js?v=20260712f"></script>
+<script src="js/uploads.js?v=20260712f"></script>
+<script src="js/admin.js?v=20260712f"></script>
+<script src="js/ui.js?v=20260712f"></script>
 </body>
 </html>

@@ -429,6 +429,8 @@ function openProfile(){
   }
   const tp=el("theme-toggle");
   if(tp)tp.className="toggle-pill"+(document.body.classList.contains("light")?" active":"");
+  /* Witnesses menu entry (only renders when enabled for this challenger). */
+  try{ if(typeof renderWitnessRow==="function") renderWitnessRow(); }catch(e){}
 }
 
 function closeProfile(evt){

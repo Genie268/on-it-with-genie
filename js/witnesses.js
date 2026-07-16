@@ -39,37 +39,47 @@ async function loadWitnesses(){
 function _witList(){ return Array.isArray(S.witnesses) ? S.witnesses : []; }
 function _witAccepted(){ return _witList().filter(w => w.status === "accepted"); }
 
-/* ---------- the dashboard row (only when enabled) ---------- */
+/* ---------- "seen" bookkeeping for the new-feature signal ---------- */
+function _witSeenKey(){ return "oiwg_wit_seen_" + (S.user?.supabaseId || "x"); }
+function _witSeen(){ try{ return localStorage.getItem(_witSeenKey()) === "1"; }catch(e){ return false; } }
+function _witMarkSeen(){ try{ localStorage.setItem(_witSeenKey(), "1"); }catch(e){} renderWitnessNavSignal(); }
+
+/* The pulsing dot on the dashboard menu (profile) trigger — draws the eye to
+   the new feature until it's been opened once. */
+function renderWitnessNavSignal(){
+  const dot = document.getElementById("menu-new-dot");
+  if(!dot) return;
+  dot.style.display = (witnessesOn() && !_witSeen()) ? "block" : "none";
+}
+
+/* ---------- the menu entry (lives in the profile sheet now) ---------- */
 function renderWitnessRow(){
-  const host = document.getElementById("witness-row");
+  renderWitnessNavSignal();
+  const host = document.getElementById("profile-witness-entry");
   if(!host) return;
   if(!witnessesOn()){ host.innerHTML = ""; return; }
 
   const accepted = _witAccepted();
   const pending = _witList().filter(w => w.status === "pending").length;
-
-  let faces = "";
-  if(accepted.length){
-    faces = `<div class="wit-faces">` + accepted.slice(0, 4).map(w => {
-      const initial = (w.witness_email || "?").charAt(0).toUpperCase();
-      return `<span class="wit-face">${initial}</span>`;
-    }).join("") + `</div>`;
-  }
-
-  const label = accepted.length
-    ? `<span class="wit-label"><b>${accepted.length}</b> witnessing${pending ? ` · ${pending} pending` : ""}</span>`
-    : `<span class="wit-label">Invite someone to witness you</span>`;
+  const sub = accepted.length
+    ? `${accepted.length} witnessing${pending ? ` · ${pending} pending` : ""}`
+    : "Invite someone to keep you honest";
+  const newTag = _witSeen() ? "" : `<span class="wit-new-tag">NEW</span>`;
 
   host.innerHTML =
-    `<div class="wit-row" onclick="openWitnesses()">
-       ${faces || `<span class="wit-eye">◠</span>`}
-       ${label}
+    `<div class="wit-menu-row" onclick="closeProfile();setTimeout(openWitnesses,180)">
+       <span class="wit-menu-ico">◠</span>
+       <div style="flex:1;min-width:0">
+         <p style="font-size:14px;font-weight:700;margin:0">Witnesses${newTag}</p>
+         <p style="font-size:11px;color:var(--muted);margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub}</p>
+       </div>
        <span class="wit-arrow">›</span>
      </div>`;
 }
 
 /* ---------- the witnesses screen ---------- */
 function openWitnesses(){
+  _witMarkSeen();
   const accepted = _witAccepted();
   const pending = _witList().filter(w => w.status === "pending");
 
@@ -79,6 +89,11 @@ function openWitnesses(){
     const tag = w.status === "accepted"
       ? `<span class="wit-tag ok">WATCHING</span>`
       : `<span class="wit-tag pend">PENDING</span>`;
+    /* Pending witnesses get a WhatsApp re-share, since the email may not
+       have landed — this is the reliable delivery path. */
+    const reshare = w.status === "pending" && w.invite_token
+      ? `<button class="wit-x" style="color:#4dc98a;font-size:15px" title="Share on WhatsApp" onclick="shareWitnessWhatsApp('${w.invite_token}')">↗</button>`
+      : "";
     return `<div class="wit-item">
       <span class="wit-face lg">${(w.witness_email || "?").charAt(0).toUpperCase()}</span>
       <div class="wit-item-i">
@@ -86,6 +101,7 @@ function openWitnesses(){
         <div class="wit-item-r">${depth}${onPlatform ? " · on the platform" : ""}</div>
       </div>
       ${tag}
+      ${reshare}
       <button class="wit-x" onclick="revokeWitness('${w.id}')" aria-label="Remove">×</button>
     </div>`;
   };
@@ -116,25 +132,63 @@ function openInviteWitness(){
     <div style="font-size:9px;letter-spacing:.14em;color:#7a7a7a;font-weight:800;margin-bottom:6px">INVITE A WITNESS</div>
     <h3 style="margin:0 0 4px;font-size:19px">Ask someone to witness you</h3>
     <p style="color:#7a7a7a;font-size:12px;line-height:1.55;margin:0 0 14px">
-      Their email. If they're already on the platform, they'll see your proof.
-      If not, they'll see whether you showed up.</p>
+      Add their email (that's how we know them), then send them the link over
+      WhatsApp. If they're already on the platform they'll see your proof;
+      if not, they'll see whether you showed up.</p>
 
     <label style="font-size:11px;color:#888;font-weight:700">THEIR EMAIL</label>
     <input id="wit-email" type="email" inputmode="email" autocomplete="off"
       placeholder="name@email.com" style="margin:6px 0 14px;width:100%">
 
-    <label style="font-size:11px;color:#888;font-weight:700">ONE LINE TO THEM</label>
-    <textarea id="wit-msg" rows="2" placeholder="Why you're asking them, in a sentence."
-      style="margin:6px 0 6px;width:100%"></textarea>
-    <div style="font-size:10px;color:#5f5f5f;margin-bottom:14px">This is the only thing you ever say to them through the app.</div>
-
-    <button id="wit-send" class="bp" style="width:100%;padding:13px" onclick="sendWitnessInvite()">Send the request →</button>
+    <button id="wit-send" class="bp" style="width:100%;padding:13px" onclick="sendWitnessInvite()">Create invite →</button>
     <button class="bs" style="width:100%;padding:11px;margin-top:8px" onclick="openWitnesses()">Back</button>`);
+}
+
+/* The public link a witness opens. Uses the app's real origin so it works
+   on whatever domain this is actually deployed to. */
+function _witnessLink(token){ return `${window.location.origin}/witness/${token}`; }
+function _witnessShareText(token){
+  return `I'm doing a challenge on On It With Genie and I'd like you to witness me — you'll just see whether I show up each day, nothing to do on your end. Say yes here: ${_witnessLink(token)}`;
+}
+function shareWitnessWhatsApp(token){
+  const url = `https://wa.me/?text=${encodeURIComponent(_witnessShareText(token))}`;
+  window.open(url, "_blank");
+}
+function copyWitnessLink(token){
+  const link = _witnessLink(token);
+  try{
+    navigator.clipboard.writeText(link);
+    showToast("Link copied", "success");
+  }catch(e){
+    /* Fallback for browsers without clipboard API */
+    const t = document.createElement("textarea");
+    t.value = link; document.body.appendChild(t); t.select();
+    try{ document.execCommand("copy"); showToast("Link copied", "success"); }
+    catch(_e){ showToast("Couldn't copy — long-press the link", "error"); }
+    t.remove();
+  }
+}
+
+/* After the invite row exists, show the share step (WhatsApp is the reliable
+   delivery path; email is best-effort behind the scenes). */
+function _witnessShareStep(w){
+  _witOpen(`
+    <div style="font-size:9px;letter-spacing:.14em;color:#7a7a7a;font-weight:800;margin-bottom:6px">SEND THE INVITE</div>
+    <h3 style="margin:0 0 4px;font-size:19px">Invite ready for ${_wEsc((w.witness_email||"").split("@")[0])}</h3>
+    <p style="color:#7a7a7a;font-size:12px;line-height:1.55;margin:0 0 16px">
+      Send them this link. They tap it, say yes, and they're witnessing you.
+      They only hear from us when you miss a day.</p>
+
+    <button class="bp" style="width:100%;padding:14px;font-size:15px;background:#25D366;color:#062b16" onclick="shareWitnessWhatsApp('${w.invite_token}')">
+      Share on WhatsApp
+    </button>
+    <button class="bs" style="width:100%;padding:12px;margin-top:9px" onclick="copyWitnessLink('${w.invite_token}')">Copy link instead</button>
+    <div style="margin-top:14px;word-break:break-all;font-size:11px;color:#5f5f5f;background:#111;border:1px solid #1e1e1e;border-radius:9px;padding:10px 12px">${_witnessLink(w.invite_token)}</div>
+    <button class="bs" style="width:100%;padding:11px;margin-top:12px" onclick="openWitnesses()">Done</button>`);
 }
 
 async function sendWitnessInvite(){
   const email = (document.getElementById("wit-email")?.value || "").trim().toLowerCase();
-  const msg = (document.getElementById("wit-msg")?.value || "").trim();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showToast("Enter a valid email", "error"); return; }
   if(email === (S.user.email || "").toLowerCase()){ showToast("You can't witness yourself", "error"); return; }
 
@@ -142,6 +196,14 @@ async function sendWitnessInvite(){
   if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
 
   try{
+    /* Already invited? Re-open the share step for the existing row rather
+       than erroring on the unique (challenger_id, witness_email) constraint. */
+    const existing = _witList().find(w => (w.witness_email||"").toLowerCase() === email && w.status !== "revoked");
+    if(existing && existing.invite_token){
+      _witnessShareStep(existing);
+      return;
+    }
+
     /* Do they already have an account? That decides their depth. */
     let witnessCid = null, depth = "signal";
     try{
@@ -159,27 +221,25 @@ async function sendWitnessInvite(){
     };
     const { data, error } = await sb.from("witnesses").insert(row).select().single();
     if(error){
-      if(String(error.message || "").includes("duplicate")){ showToast("You already invited them", "info"); }
-      else throw error;
-    }else{
-      S.witnesses = _witList().concat([data]);
-      if(msg){ try{ await sb.from("witnesses").update({}).eq("id", data.id); }catch(e){} }
-      /* fire the invite email via edge function (best effort) */
-      try{
-        await fetch(`${SUPABASE_URL}/functions/v1/witness-invite`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
-          body: JSON.stringify({ witness_id: data.id, message: msg }),
-        });
-      }catch(e){}
+      if(String(error.message || "").includes("duplicate")){ showToast("You already invited them", "info"); openWitnesses(); return; }
+      throw error;
     }
+    S.witnesses = _witList().concat([data]);
+    /* Fire the invite email too (best effort — only lands if email is
+       configured; WhatsApp is the primary path). */
+    try{
+      fetch(`${SUPABASE_URL}/functions/v1/witness-invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({ witness_id: data.id, message: "" }),
+      }).catch(()=>{});
+    }catch(e){}
     if(typeof saveState === "function") saveState();
-    showToast("Request sent", "success");
     renderWitnessRow();
-    openWitnesses();
+    _witnessShareStep(data);
   }catch(e){
-    if(btn){ btn.disabled = false; btn.textContent = "Send the request →"; }
-    showToast("Could not send the request", "error");
+    if(btn){ btn.disabled = false; btn.textContent = "Create invite →"; }
+    showToast("Could not create the invite", "error");
   }
 }
 
