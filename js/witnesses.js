@@ -196,3 +196,120 @@ function closeWitMod(){
 }
 function _wEsc(t){ return String(t == null ? "" : t).replace(/[&<>"']/g, c =>
   ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+/* ============================================================
+   WITNESS VIEW — the page someone lands on from an invite link
+   (/witness/<token>). No account or app session required; all data
+   comes from the witness-view edge function keyed by the token.
+   ============================================================ */
+let _witViewToken = null;
+
+async function _witViewCall(action){
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/witness-view`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({ token: _witViewToken, action }),
+  });
+  return res.json();
+}
+
+async function initWitnessView(token){
+  _witViewToken = token;
+  const host = document.getElementById("witness-view-body");
+  if(!host) return;
+  try{
+    const r = await _witViewCall("get");
+    _renderWitnessView(r);
+  }catch(e){
+    host.innerHTML = `<div style="text-align:center;padding:50px 0;color:#8a8a8a;font-size:13px">This link isn't working. Ask them to send it again.</div>`;
+  }
+}
+
+function _renderWitnessView(r){
+  const host = document.getElementById("witness-view-body");
+  if(!host) return;
+  if(!r || r.ok === false){
+    const msg = r && r.error === "revoked" ? "This witness link was turned off."
+      : r && r.error === "not_found" ? "We couldn't find this invitation."
+      : "This link isn't valid.";
+    host.innerHTML = `<div style="text-align:center;padding:50px 0;color:#8a8a8a;font-size:13px">${msg}</div>`;
+    return;
+  }
+  const c = r.challenger, s = r.stats, w = r.witness;
+  const who = _wEsc(c.name);
+  const pending = w.status === "pending";
+
+  // progress grid
+  const cells = (r.days || []).map(d => {
+    let bg = "#141414", bd = "#1e1e1e", txt = "#4a4a4a", mark = "";
+    if(d.state === "up"){ bg = "rgba(77,201,138,.13)"; bd = "rgba(77,201,138,.4)"; txt = "#4dc98a"; mark = "✓"; }
+    else if(d.state === "miss"){ bg = "rgba(217,80,58,.08)"; bd = "rgba(217,80,58,.28)"; txt = "#d9503a"; mark = "·"; }
+    else if(d.state === "today"){ bg = "rgba(196,154,28,.08)"; bd = "rgba(196,154,28,.4)"; txt = "#c49a1c"; mark = "•"; }
+    const thumb = (s.seesProof && d.fileUrl)
+      ? `background-image:linear-gradient(rgba(10,10,10,.35),rgba(10,10,10,.55)),url('${d.fileUrl}');background-size:cover;background-position:center;`
+      : "";
+    return `<div style="aspect-ratio:1;border-radius:8px;border:1px solid ${bd};background:${bg};${thumb}
+      display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative">
+      <span style="font-size:8px;color:${thumb?"#e8e8e8":"#5a5a5a"};font-weight:700">D${d.n}</span>
+      ${mark?`<span style="font-size:11px;color:${thumb?"#fff":txt};font-weight:800;line-height:1">${mark}</span>`:""}
+    </div>`;
+  }).join("");
+
+  host.innerHTML = `
+    <div style="text-align:center;margin-bottom:22px">
+      <div style="font-size:9px;letter-spacing:.16em;color:#7a7a7a;font-weight:800;margin-bottom:8px">YOU'RE WITNESSING</div>
+      <h2 style="font-size:23px;font-weight:800;margin:0 0 6px">${who}</h2>
+      <p style="color:#8a8a8a;font-size:13px;margin:0">Day ${c.day} of ${c.dur}${c.finished?" · challenge complete":""}</p>
+    </div>
+
+    <div class="wit-item" style="justify-content:space-around;text-align:center;padding:14px 11px">
+      <div><div style="font-size:22px;font-weight:900;color:#4dc98a">${s.uploaded}</div><div style="font-size:9px;color:#7a7a7a;font-weight:700;letter-spacing:.05em">SHOWED UP</div></div>
+      <div style="width:1px;background:#242424;align-self:stretch"></div>
+      <div><div style="font-size:22px;font-weight:900;color:${s.streak>0?"#c49a1c":"#5a5a5a"}">${s.streak}</div><div style="font-size:9px;color:#7a7a7a;font-weight:700;letter-spacing:.05em">DAY STREAK</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:16px 0 6px">${cells}</div>
+    <p style="text-align:center;font-size:10.5px;color:#5f5f5f;margin:0 0 20px">
+      ${s.seesProof ? "You can see their proof because you're on the platform too." : "You see whether they showed up. Not the proof itself."}
+    </p>
+
+    ${pending ? `
+      <div style="padding:14px;border-radius:12px;background:rgba(196,154,28,.05);border:1px solid rgba(196,154,28,.16);margin-bottom:12px">
+        <p style="font-size:12.5px;line-height:1.6;color:#c9c9c9;margin:0">
+          Say yes and you'll get a note <b style="color:#c49a1c">only when ${who} misses a day</b>.
+          No likes, no comments — you just quietly witness. Silence means they showed up.</p>
+      </div>
+      <button id="wit-accept-btn" class="bp" style="width:100%;padding:14px;font-size:15px" onclick="acceptWitness()">Yes, I'll witness them</button>
+      <button class="bs" style="width:100%;padding:11px;margin-top:8px" onclick="declineWitness()">Not right now</button>
+    ` : w.status === "accepted" ? `
+      <div style="text-align:center;padding:14px;border-radius:12px;background:rgba(77,201,138,.06);border:1px solid rgba(77,201,138,.22)">
+        <p style="font-size:13px;color:#4dc98a;font-weight:700;margin:0 0 3px">You're witnessing ${who} ✓</p>
+        <p style="font-size:11.5px;color:#8a8a8a;margin:0">We'll email you only when they miss a day.</p>
+      </div>
+    ` : `
+      <div style="text-align:center;padding:14px;color:#8a8a8a;font-size:12.5px">You declined this invitation.</div>
+    `}`;
+}
+
+async function acceptWitness(){
+  const btn = document.getElementById("wit-accept-btn");
+  if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  try{
+    const r = await _witViewCall("accept");
+    _renderWitnessView(r);
+  }catch(e){
+    if(btn){ btn.disabled = false; btn.textContent = "Yes, I'll witness them"; }
+    if(typeof showToast === "function") showToast("Couldn't accept — try again", "error");
+  }
+}
+
+async function declineWitness(){
+  try{
+    const r = await _witViewCall("decline");
+    _renderWitnessView(r);
+  }catch(e){}
+}

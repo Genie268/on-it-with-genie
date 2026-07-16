@@ -102,7 +102,7 @@ function _activateScreen(s){
     if(typeof _chatOpen!=="undefined")_chatOpen=false;
   }
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
-  const map={land:"s-land",ob:"s-ob",duration:"s-duration",commit:"s-commit",pay:"s-pay",photo:"s-photo",transition:"s-transition",dash:"s-dash",d15:"s-d15",rec:"s-rec",admin:"s-admin"};
+  const map={land:"s-land",ob:"s-ob",duration:"s-duration",commit:"s-commit",pay:"s-pay",photo:"s-photo",transition:"s-transition",dash:"s-dash",d15:"s-d15",rec:"s-rec",admin:"s-admin",witness:"s-witness"};
   const target=el(map[s]||"s-land");
   if(!target){console.error("goTo: no element for screen",s);el("s-land").classList.add("active");return;}
   target.classList.add("active");
@@ -597,6 +597,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   /* Close chat 3-dot menus on outside click */
   document.addEventListener("click",()=>{closeChatMenus();if(typeof _closeMsgMenus==="function")_closeMsgMenus();});
   const isAdmin=/^\/admin\/?$/.test(window.location.pathname);
+  const witnessMatch=window.location.pathname.match(/^\/witness\/([^/]+)/);
   if(isAdmin){
     goTo('admin');
     /* Register admin for push notifications (works even when browser is closed) */
@@ -604,6 +605,11 @@ document.addEventListener("DOMContentLoaded",()=>{
     /* Start realtime + polling for new challenger messages */
     startAdminPoll();
     setTimeout(()=>updateTabTitle(),500);
+  } else if(witnessMatch){
+    /* Someone clicked a witness invite link — show the witness view, no
+       account or app session needed. */
+    _activateScreen('witness');
+    if(typeof initWitnessView==="function") initWitnessView(decodeURIComponent(witnessMatch[1]));
   } else if(loadState()){
     _smartResume();
   }

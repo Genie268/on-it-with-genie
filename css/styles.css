@@ -9,6 +9,8 @@ body.light{--bg:#f4f2ee;--s1:#ffffff;--s2:#f9f8f5;--s3:#f0ede8;--s4:#e8e4dd;--te
 /* Admin route — ensure admin screen shows immediately via data attribute set by early script */
 html[data-route="admin"] #s-land.screen{display:none!important}
 html[data-route="admin"] #s-admin.screen{display:flex!important;flex-direction:column;height:100vh}
+html[data-route="witness"] #s-land.screen{display:none!important}
+html[data-route="witness"] #s-witness.screen{display:flex!important;flex-direction:column;height:100vh}
 .admin-tabs{display:flex;border-bottom:1px solid #171717;background:var(--nav-bg);flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .admin-tabs::-webkit-scrollbar{display:none}
 .admin-tab{padding:11px 16px;font-size:12px;font-weight:700;background:transparent;border:none;border-bottom:2px solid transparent;color:#5a5a5a;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .15s,border-color .15s}

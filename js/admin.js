@@ -120,6 +120,7 @@ async function loadAdminData(){
         createdAt:c.created_at,
         hasPush:allPushSubs.some(s=>s.challenger_id===c.id&&s.is_active),
         plans:plans.sort((a,b)=>a.day_number-b.day_number),
+        witnessesEnabled:c.witnesses_enabled===true,
         goals,byGoal,primaryGoalId,activeGoalId:primaryGoalId,isMultiGoal:goals.length>1
       };
     });
@@ -1578,6 +1579,17 @@ function renderChallengerDetail(u){
           <span class="muted" style="font-size:11px">Started ${startDateStr}</span>
           <button onclick="promptAdjustStart('${u.id}','${escName}')" style="padding:4px 12px;border-radius:100px;background:rgba(196,154,28,.07);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit">Adjust Start Date</button>
         </div>
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;justify-content:space-between">
+          <div style="min-width:0">
+            <p style="font-size:12px;font-weight:700;margin:0">Witnesses</p>
+            <p class="muted" style="font-size:10px;margin:2px 0 0">Lets ${u.name} invite people to watch their progress.</p>
+          </div>
+          <button id="wit-tog-${u.id}" onclick="toggleWitnessesForChallenger('${u.id}',${u.witnessesEnabled?"false":"true"})"
+            style="padding:5px 14px;border-radius:100px;cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;flex-shrink:0;
+            border:1px solid ${u.witnessesEnabled?"rgba(77,201,138,.35)":"#333"};
+            background:${u.witnessesEnabled?"rgba(77,201,138,.1)":"transparent"};
+            color:${u.witnessesEnabled?"#4dc98a":"#888"}">${u.witnessesEnabled?"✓ Enabled":"Enable"}</button>
+        </div>
       </div>
     </div>
 
@@ -2020,6 +2032,31 @@ async function renderAdminAnalytics(c){
     `;
   }catch(e){
     c.innerHTML=`<div style="text-align:center;padding:40px 0"><p style="color:#d9503a;font-size:12px">Failed to load analytics: ${e.message}</p></div>`;
+  }
+}
+
+async function toggleWitnessesForChallenger(uid,enable){
+  const on=enable===true||enable==="true";
+  const btn=el("wit-tog-"+uid);
+  if(btn){ btn.disabled=true; btn.textContent="…"; }
+  try{
+    const res=await adminFetch("toggle_witnesses",{challenger_id:uid,enabled:on});
+    if(!res||res.ok===false) throw new Error(res&&res.error||"failed");
+    const u=liveChallengers.find(x=>x.id===uid);
+    if(u) u.witnessesEnabled=on;
+    showToast(on?"Witnesses enabled":"Witnesses disabled","success");
+    /* Update the button in place so the open MANAGE section doesn't collapse. */
+    if(btn){
+      btn.disabled=false;
+      btn.textContent=on?"✓ Enabled":"Enable";
+      btn.style.border="1px solid "+(on?"rgba(77,201,138,.35)":"#333");
+      btn.style.background=on?"rgba(77,201,138,.1)":"transparent";
+      btn.style.color=on?"#4dc98a":"#888";
+      btn.setAttribute("onclick",`toggleWitnessesForChallenger('${uid}',${on?"false":"true"})`);
+    }
+  }catch(e){
+    showToast("Could not update witnesses","error");
+    if(btn){ btn.disabled=false; btn.textContent=on?"Enable":"✓ Enabled"; }
   }
 }
 
