@@ -116,7 +116,9 @@ function openWitnesses(){
     ${pending.length ? `<div style="font-size:9px;letter-spacing:.14em;color:#5f5f5f;font-weight:800;margin:14px 0 8px">PENDING</div>` + pending.map(row).join("") : ""}
     ${(!accepted.length && !pending.length) ? `<p style="color:#5f5f5f;font-size:12px;margin:0 0 14px">No witnesses yet. Ask someone whose opinion you'd hate to let down.</p>` : ""}
 
-    <button class="bp" style="width:100%;padding:13px;margin-top:12px" onclick="openInviteWitness()">+ Invite a witness</button>
+    ${_witActiveCount() >= WITNESS_MAX
+      ? `<div style="text-align:center;font-size:11px;color:#7a7a7a;margin-top:14px">Your circle is full (${WITNESS_MAX}). Remove someone to add another.</div>`
+      : `<button class="bp" style="width:100%;padding:13px;margin-top:12px" onclick="openInviteWitness()">+ Invite a witness <span style="opacity:.6;font-weight:400">· ${_witActiveCount()}/${WITNESS_MAX}</span></button>`}
     <div style="margin-top:14px;padding:12px 13px;border-radius:11px;background:rgba(196,154,28,.05);
       border:1px solid rgba(196,154,28,.16);font-size:11.5px;line-height:1.6;color:#bcbcbc">
       No likes. No comments. They hear from us only when you <b style="color:#c49a1c">miss</b>. Silence means you showed up.
@@ -188,6 +190,12 @@ function _witnessShareStep(w){
     <button class="bs" style="width:100%;padding:11px;margin-top:12px" onclick="openWitnesses()">Done</button>`);
 }
 
+/* A witness circle is meant to be small and meaningful — a handful of people
+   whose opinion you'd hate to let down, not a broadcast list. Cap keeps it
+   that way and stops accidental invite spam. Only pending/accepted count. */
+const WITNESS_MAX = 5;
+function _witActiveCount(){ return _witList().filter(w => w.status === "pending" || w.status === "accepted").length; }
+
 async function sendWitnessInvite(){
   const email = (document.getElementById("wit-email")?.value || "").trim().toLowerCase();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showToast("Enter a valid email", "error"); return; }
@@ -195,17 +203,25 @@ async function sendWitnessInvite(){
 
   const btn = document.getElementById("wit-send");
   if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+  const _reset = () => { if(btn){ btn.disabled = false; btn.textContent = "Create invite →"; } };
 
   try{
-    /* Already invited? Re-open the share step for the existing row rather
-       than erroring on the unique (challenger_id, witness_email) constraint. */
-    const existing = _witList().find(w => (w.witness_email||"").toLowerCase() === email && w.status !== "revoked");
-    if(existing && existing.invite_token){
-      _witnessShareStep(existing);
+    /* Already in the circle (pending or accepted)? Just re-open its share
+       step instead of erroring on the unique (challenger_id, email) key. */
+    const active = _witList().find(w => (w.witness_email||"").toLowerCase() === email && (w.status === "pending" || w.status === "accepted"));
+    if(active && active.invite_token){ _reset(); _witnessShareStep(active); return; }
+
+    /* Circle full — block new people (re-inviting an existing one above is
+       always allowed). */
+    if(_witActiveCount() >= WITNESS_MAX){
+      _reset();
+      showToast(`Your circle is full (${WITNESS_MAX} witnesses). Remove one to add another.`, "info");
+      openWitnesses();
       return;
     }
 
-    /* Do they already have an account? That decides their depth. */
+    /* Do they already have an account? That decides their depth (on-platform
+       witnesses see proof; off-platform see the signal only). */
     let witnessCid = null, depth = "signal";
     try{
       const { data: acct } = await sb.from("challengers").select("id")
@@ -213,19 +229,27 @@ async function sendWitnessInvite(){
       if(acct && acct.length){ witnessCid = acct[0].id; depth = "proof"; }
     }catch(e){}
 
-    const row = {
-      challenger_id: S.user.supabaseId,
-      witness_email: email,
-      witness_challenger_id: witnessCid,
-      depth,
-      status: "pending",
-    };
-    const { data, error } = await sb.from("witnesses").insert(row).select().single();
-    if(error){
-      if(String(error.message || "").includes("duplicate")){ showToast("You already invited them", "info"); openWitnesses(); return; }
-      throw error;
+    /* Reactivate a previously revoked/declined invite for this email rather
+       than inserting a duplicate (the unique key would reject it). */
+    let data = null;
+    const { data: prior } = await sb.from("witnesses").select("*")
+      .eq("challenger_id", S.user.supabaseId).ilike("witness_email", email).limit(1);
+    if(prior && prior.length){
+      const { data: upd } = await sb.from("witnesses")
+        .update({ status: "pending", depth, witness_challenger_id: witnessCid, responded_at: null })
+        .eq("id", prior[0].id).select().single();
+      data = upd || { ...prior[0], status: "pending", depth, witness_challenger_id: witnessCid };
+    }else{
+      const { data: ins, error } = await sb.from("witnesses").insert({
+        challenger_id: S.user.supabaseId, witness_email: email,
+        witness_challenger_id: witnessCid, depth, status: "pending",
+      }).select().single();
+      if(error) throw error;
+      data = ins;
     }
-    S.witnesses = _witList().concat([data]);
+
+    /* Refresh local state from the row we just wrote. */
+    S.witnesses = _witList().filter(w => w.id !== data.id).concat([data]);
     /* Fire the invite email too (best effort — only lands if email is
        configured; WhatsApp is the primary path). */
     try{
@@ -239,7 +263,7 @@ async function sendWitnessInvite(){
     renderWitnessRow();
     _witnessShareStep(data);
   }catch(e){
-    if(btn){ btn.disabled = false; btn.textContent = "Create invite →"; }
+    _reset();
     showToast("Could not create the invite", "error");
   }
 }
