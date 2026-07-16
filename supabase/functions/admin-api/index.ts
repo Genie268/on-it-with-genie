@@ -164,6 +164,18 @@ async function deleteCode(p: P) {
   return { ok: true };
 }
 
+/* Admin toggle for the witnesses (accountability partners) feature.
+   Flips challengers.witnesses_enabled; the dashboard row only appears for
+   challengers who have it on. */
+async function toggleWitnesses(p: P) {
+  const uid = typeof p.challenger_id === "string" ? p.challenger_id : "";
+  const on = p.enabled === true;
+  if (!uid) return { ok: false, error: "missing_challenger" };
+  const { error } = await sb.from("challengers").update({ witnesses_enabled: on }).eq("id", uid);
+  if (error) return { ok: false, error: "update_failed" };
+  return { ok: true, witnesses_enabled: on };
+}
+
 async function saveReviewNote(p: P) {
   const uid = p.challenger_id as string;
   const dayNum = p.day_number as number;
@@ -175,7 +187,7 @@ async function saveReviewNote(p: P) {
      otherwise fall back to the first matching row via .limit(1). */
   let q = sb.from("uploads").select("id,review_note").eq("challenger_id", uid).eq("day_number", dayNum);
   if (goalId) q = q.eq("goal_id", goalId);
-  const { data: rows } = await q.limit(1);
+  const { data: rows } = await q.order("created_at", { ascending: true }).limit(1);
   const existing = rows?.[0];
   if (!existing) return { ok: false, error: "upload_not_found" };
   const prevNote = (existing as { review_note?: string | null }).review_note ?? "";
@@ -204,7 +216,7 @@ async function toggleReviewed(p: P) {
   if (!uid || !dayNum) return { ok: false, error: "missing_params" };
   let q = sb.from("uploads").select("id,reviewed").eq("challenger_id", uid).eq("day_number", dayNum);
   if (goalId) q = q.eq("goal_id", goalId);
-  const { data: rows } = await q.limit(1);
+  const { data: rows } = await q.order("created_at", { ascending: true }).limit(1);
   const existing = rows?.[0];
   if (!existing) return { ok: false, error: "upload_not_found" };
   const newState = !existing.reviewed;
@@ -388,6 +400,7 @@ const ACTIONS: Record<string, (p: P) => Promise<P>> = {
   save_review_note: saveReviewNote,
   toggle_reviewed: toggleReviewed,
   mark_all_reviewed: markAllReviewed,
+  toggle_witnesses: toggleWitnesses,
   delete_challenger: deleteChallenger,
   delete_free: deleteFree,
   load_analytics: loadAnalytics,

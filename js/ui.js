@@ -136,6 +136,15 @@ function _mountDashSafely(){
         .catch(()=>{});
     }
   }catch(e){}
+  /* Load witnesses (accountability partners) after first paint, then draw
+     their dashboard row. Never blocks or breaks the mount. */
+  try{
+    if(typeof loadWitnesses==="function"){
+      loadWitnesses()
+        .then(()=>{ try{ if(typeof renderWitnessRow==="function") renderWitnessRow(); }catch(e){} })
+        .catch(()=>{});
+    }
+  }catch(e){}
 }
 
 function _gateAndMountDash(){

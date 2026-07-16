@@ -448,3 +448,28 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
   color:#9a9a9a;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;
   justify-content:center;cursor:pointer;backdrop-filter:blur(6px);flex-shrink:0;padding:0}
 .goal-cover-btn:hover{color:#e8b830;border-color:rgba(196,154,28,.4)}
+/* ===== WITNESSES ===== */
+.wit-row{display:flex;align-items:center;gap:9px;padding:11px 14px;margin-bottom:10px;
+  background:var(--card,#131313);border:1px solid var(--bd,#1c1c1c);border-radius:12px;cursor:pointer;
+  transition:border-color .2s}
+.wit-row:hover{border-color:rgba(196,154,28,.35)}
+.wit-faces{display:flex}
+.wit-face{width:24px;height:24px;border-radius:50%;background:#242424;border:2px solid #0a0a0a;
+  margin-left:-7px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;
+  color:#c9c9c9}
+.wit-faces .wit-face:first-child{margin-left:0}
+.wit-face.lg{width:34px;height:34px;font-size:13px;margin:0;border:none;flex-shrink:0}
+.wit-eye{color:#6f6f6f;font-size:15px;width:22px;text-align:center}
+.wit-label{font-size:12px;color:#9a9a9a;font-weight:600}
+.wit-label b{color:#e8e8e8;font-weight:800}
+.wit-arrow{margin-left:auto;color:#4a4a4a;font-size:15px}
+.wit-item{display:flex;align-items:center;gap:11px;padding:11px;border-radius:12px;background:#141414;
+  border:1px solid #1e1e1e;margin-bottom:8px}
+.wit-item-i{flex:1;min-width:0}
+.wit-item-n{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wit-item-r{font-size:10.5px;color:#6f6f6f;margin-top:2px}
+.wit-tag{font-size:8px;font-weight:900;letter-spacing:.05em;padding:3px 7px;border-radius:100px;flex-shrink:0}
+.wit-tag.ok{color:#4dc98a;background:rgba(77,201,138,.1);border:1px solid rgba(77,201,138,.28)}
+.wit-tag.pend{color:#7a7a7a;background:transparent;border:1px dashed #2a2a2a}
+.wit-x{background:none;border:none;color:#4a4a4a;font-size:18px;cursor:pointer;padding:0 2px;flex-shrink:0;line-height:1}
+.wit-x:hover{color:#d9503a}

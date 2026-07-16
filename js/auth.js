@@ -442,6 +442,7 @@ async function _restoreSession(data){
       paymentRef:data.payment_ref,paymentStatus:data.payment_status,
       amountPaid:data.amount_paid,accessCode:data.access_code,
       timezone:data.timezone||null,
+      witnessesEnabled:data.witnesses_enabled===true,
       supabaseId:data.id,energyLog,genieMessages:[]
     };
     S.uploads=uploadArr;
