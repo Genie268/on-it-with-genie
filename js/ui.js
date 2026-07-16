@@ -592,6 +592,22 @@ function animateTierPills(){
 let _adminPollTimer=null;
 let _adminLastMsgTs=null;
 
+/* A witness invite can arrive as a path (/witness/<t>), a query
+   (/?witness=<t>) or a hash (/#/witness/<t>). The query form is the most
+   portable — it needs no server-side rewrite — so that's what we hand out,
+   but we accept all three so old email/path links keep working. */
+function _witnessTokenFromLocation(){
+  try{
+    const q=new URLSearchParams(window.location.search||"").get("witness");
+    if(q) return decodeURIComponent(q);
+    const p=(window.location.pathname||"").match(/^\/witness\/([^/?#]+)/);
+    if(p) return decodeURIComponent(p[1]);
+    const h=(window.location.hash||"").match(/witness[\/=]([^/?#]+)/);
+    if(h) return decodeURIComponent(h[1]);
+  }catch(e){}
+  return null;
+}
+
 document.addEventListener("DOMContentLoaded",()=>{
   initParticles();
   animateTierPills();
@@ -599,7 +615,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   /* Close chat 3-dot menus on outside click */
   document.addEventListener("click",()=>{closeChatMenus();if(typeof _closeMsgMenus==="function")_closeMsgMenus();});
   const isAdmin=/^\/admin\/?$/.test(window.location.pathname);
-  const witnessMatch=window.location.pathname.match(/^\/witness\/([^/]+)/);
+  const witnessToken=_witnessTokenFromLocation();
   if(isAdmin){
     goTo('admin');
     /* Register admin for push notifications (works even when browser is closed) */
@@ -607,11 +623,11 @@ document.addEventListener("DOMContentLoaded",()=>{
     /* Start realtime + polling for new challenger messages */
     startAdminPoll();
     setTimeout(()=>updateTabTitle(),500);
-  } else if(witnessMatch){
-    /* Someone clicked a witness invite link — show the witness view, no
+  } else if(witnessToken){
+    /* Someone opened a witness invite link — show the witness view, no
        account or app session needed. */
     _activateScreen('witness');
-    if(typeof initWitnessView==="function") initWitnessView(decodeURIComponent(witnessMatch[1]));
+    if(typeof initWitnessView==="function") initWitnessView(witnessToken);
   } else if(loadState()){
     _smartResume();
   }

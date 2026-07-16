@@ -33,7 +33,7 @@ function missEmail(watcherName: string, whoName: string, day: number, token: str
   <p style="font-size:14px;color:#9a9a9a;line-height:1.7;margin:0 0 22px">
     You're their witness. You don't have to do anything. Sometimes just knowing that you know is enough.
   </p>
-  <a href="${SITE_URL}/witness/${token}" style="display:inline-block;background:#c49a1c;color:#000;
+  <a href="${SITE_URL}/?witness=${token}" style="display:inline-block;background:#c49a1c;color:#000;
     font-weight:800;font-size:14px;text-decoration:none;padding:12px 20px;border-radius:10px">See where they stand</a>
   <p style="font-size:11px;color:#5a5a5a;margin:24px 0 0;line-height:1.6">
     You only hear from us when they miss. Silence means they showed up.

@@ -27,7 +27,7 @@ function inviteHtml(who: string, message: string, token: string, onPlatform: boo
   <p style="font-size:13px;color:#9a9a9a;line-height:1.7;margin:0 0 22px">
     ${seeLine} You can't grade them or message them. You just witness. You'll hear from us only when they miss a day.
   </p>
-  <a href="${SITE_URL}/witness/${token}" style="display:inline-block;background:#c49a1c;color:#000;
+  <a href="${SITE_URL}/?witness=${token}" style="display:inline-block;background:#c49a1c;color:#000;
     font-weight:800;font-size:14px;text-decoration:none;padding:13px 22px;border-radius:10px">Accept &amp; witness them</a>
   <p style="font-size:11px;color:#5a5a5a;margin:24px 0 0">If you'd rather not, ignore this. Nothing happens.</p>
 </div>`;

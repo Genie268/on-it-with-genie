@@ -144,9 +144,10 @@ function openInviteWitness(){
     <button class="bs" style="width:100%;padding:11px;margin-top:8px" onclick="openWitnesses()">Back</button>`);
 }
 
-/* The public link a witness opens. Uses the app's real origin so it works
-   on whatever domain this is actually deployed to. */
-function _witnessLink(token){ return `${window.location.origin}/witness/${token}`; }
+/* The public link a witness opens. Uses a query param on the root path so
+   it works on ANY host with no server-side rewrite needed (a bare /witness/
+   path only resolves if the host rewrites unknown paths to index.html). */
+function _witnessLink(token){ return `${window.location.origin}/?witness=${token}`; }
 function _witnessShareText(token){
   return `I'm doing a challenge on On It With Genie and I'd like you to witness me — you'll just see whether I show up each day, nothing to do on your end. Say yes here: ${_witnessLink(token)}`;
 }
