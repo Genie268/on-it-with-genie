@@ -1,6 +1,12 @@
 // notify-witnesses — tells a person's witnesses when they MISS a day.
 // Runs daily (pg_cron), after the day has closed. Silent on success:
 // witnesses only ever hear from us on a miss.
+//
+// Delivery per witness:
+//   - On-platform (has an account): a push notification — free, instant.
+//   - Has an email: an email too (best effort; only sends if RESEND is set).
+// Phone-only, off-platform witnesses can't be auto-reached (that needs the
+// WhatsApp Business API); they simply re-open the live link.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -8,6 +14,8 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
 const RESEND_FROM = Deno.env.get("RESEND_FROM") ?? "Genie <genie@oiwg.app>";
 const SITE_URL = Deno.env.get("SITE_URL") ?? "https://eugeneobo.com";
+const ADMIN_SECRET = Deno.env.get("ADMIN_SECRET") ?? "";
+const PUSH_URL = `${SUPABASE_URL}/functions/v1/send-push`;
 
 const sb = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -20,6 +28,22 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
       body: JSON.stringify({ from: RESEND_FROM, to, subject, html }),
     });
     return res.ok;
+  } catch { return false; }
+}
+
+// Push a witness who is themselves a challenger (on-platform). Reuses the
+// existing send-push function, which targets a challenger's subscriptions.
+async function pushWitness(witnessChallengerId: string, title: string, body: string, token: string): Promise<boolean> {
+  if (!ADMIN_SECRET || !witnessChallengerId) return false;
+  try {
+    const res = await fetch(PUSH_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_SECRET}` },
+      body: JSON.stringify({ type: "personal", challenger_id: witnessChallengerId, title, body, url: `/?witness=${token}` }),
+    });
+    if (!res.ok) return false;
+    const j = await res.json().catch(() => ({ sent: 0 }));
+    return (j.sent ?? 0) > 0;
   } catch { return false; }
 }
 
@@ -68,7 +92,7 @@ Deno.serve(async () => {
   // Accepted witnesses for those people.
   const { data: witnesses } = await sb
     .from("witnesses")
-    .select("id, challenger_id, witness_email, invite_token, status")
+    .select("id, challenger_id, witness_email, witness_challenger_id, invite_token, status")
     .in("challenger_id", ids)
     .eq("status", "accepted");
 
@@ -107,14 +131,30 @@ Deno.serve(async () => {
       .limit(1);
     if (already && already.length > 0) continue;
 
+    const firstName = (c.name || "Someone").split(" ")[0];
     const theirWitnesses = witnesses.filter((w) => w.challenger_id === c.id);
     for (const w of theirWitnesses) {
-      const ok = await sendEmail(
-        w.witness_email,
-        `${(c.name || "Someone").split(" ")[0]} missed day ${missedDay}`,
-        missEmail(w.witness_email, c.name, missedDay, w.invite_token),
-      );
-      if (ok) notified++;
+      let reached = false;
+      // On-platform witness → push notification (free, instant).
+      if (w.witness_challenger_id) {
+        const ok = await pushWitness(
+          w.witness_challenger_id,
+          `${firstName} missed day ${missedDay}`,
+          "They didn't upload proof yesterday. You're witnessing them.",
+          w.invite_token,
+        );
+        if (ok) reached = true;
+      }
+      // Email too, when we have one (best effort).
+      if (w.witness_email) {
+        const ok = await sendEmail(
+          w.witness_email,
+          `${firstName} missed day ${missedDay}`,
+          missEmail(w.witness_email, c.name, missedDay, w.invite_token),
+        );
+        if (ok) reached = true;
+      }
+      if (reached) notified++;
     }
 
     await sb.from("reminder_logs").insert({ challenger_id: c.id, sent_date: todayStr, slot: 77 });

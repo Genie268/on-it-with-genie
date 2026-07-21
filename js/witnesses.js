@@ -77,6 +77,18 @@ function renderWitnessRow(){
      </div>`;
 }
 
+/* A witness is now known by a name, and reached by phone (WhatsApp) and/or
+   email — email is no longer required. */
+function _witDisplay(w){ return (w.witness_name || w.witness_email || w.witness_phone || "Someone"); }
+function _witContactLine(w){
+  const bits = [];
+  if(w.witness_phone) bits.push("WhatsApp");
+  if(w.witness_email) bits.push(w.witness_email);
+  return bits.join(" · ");
+}
+/* WhatsApp wants a country-coded number, digits only (no +, spaces, dashes). */
+function _normPhone(s){ return String(s||"").replace(/[^\d]/g, ""); }
+
 /* ---------- the witnesses screen ---------- */
 function openWitnesses(){
   _witMarkSeen();
@@ -89,16 +101,21 @@ function openWitnesses(){
     const tag = w.status === "accepted"
       ? `<span class="wit-tag ok">WATCHING</span>`
       : `<span class="wit-tag pend">PENDING</span>`;
-    /* Pending witnesses get a WhatsApp re-share, since the email may not
-       have landed — this is the reliable delivery path. */
-    const reshare = w.status === "pending" && w.invite_token
-      ? `<button class="wit-x" style="color:#4dc98a;font-size:15px" title="Share on WhatsApp" onclick="shareWitnessWhatsApp('${w.invite_token}')">↗</button>`
+    /* WhatsApp button on every witness — for pending ones it (re)sends the
+       invite (reliable path when email doesn't land); for accepted ones it
+       nudges them with a fresh look at your progress. Straight to their
+       number when we have it. */
+    const mode = w.status === "accepted" ? "progress" : "invite";
+    const reshare = w.invite_token
+      ? `<button class="wit-x" style="color:#4dc98a;font-size:15px" title="${w.status === "accepted" ? "Nudge on WhatsApp" : "Send invite on WhatsApp"}" onclick="shareWitnessWhatsApp('${w.invite_token}','${_normPhone(w.witness_phone)}','${mode}')">↗</button>`
       : "";
+    const name = _witDisplay(w);
+    const contact = _witContactLine(w);
     return `<div class="wit-item">
-      <span class="wit-face lg">${(w.witness_email || "?").charAt(0).toUpperCase()}</span>
+      <span class="wit-face lg">${_wEsc(name).charAt(0).toUpperCase()}</span>
       <div class="wit-item-i">
-        <div class="wit-item-n">${_wEsc(w.witness_email)}</div>
-        <div class="wit-item-r">${depth}${onPlatform ? " · on the platform" : ""}</div>
+        <div class="wit-item-n">${_wEsc(name)}</div>
+        <div class="wit-item-r">${depth}${onPlatform ? " · on the platform" : (contact ? " · " + _wEsc(contact) : "")}</div>
       </div>
       ${tag}
       ${reshare}
@@ -134,28 +151,45 @@ function openInviteWitness(){
     <div style="font-size:9px;letter-spacing:.14em;color:#7a7a7a;font-weight:800;margin-bottom:6px">INVITE A WITNESS</div>
     <h3 style="margin:0 0 4px;font-size:19px">Ask someone to witness you</h3>
     <p style="color:#7a7a7a;font-size:12px;line-height:1.55;margin:0 0 14px">
-      Add their email (that's how we know them), then send them the link over
-      WhatsApp. If they're already on the platform they'll see your proof;
-      if not, they'll see whether you showed up.</p>
+      Their name, and a WhatsApp number or email — whichever you have.
+      A number lets you send the invite straight to their WhatsApp.</p>
 
-    <label style="font-size:11px;color:#888;font-weight:700">THEIR EMAIL</label>
+    <label style="font-size:11px;color:#888;font-weight:700">THEIR NAME</label>
+    <input id="wit-name" type="text" autocomplete="off"
+      placeholder="e.g. Ada" style="margin:6px 0 12px;width:100%">
+
+    <label style="font-size:11px;color:#888;font-weight:700">WHATSAPP NUMBER</label>
+    <input id="wit-phone" type="tel" inputmode="tel" autocomplete="off"
+      placeholder="+234 801 234 5678" style="margin:6px 0 12px;width:100%">
+
+    <div style="text-align:center;font-size:10px;color:#5f5f5f;margin-bottom:12px">— and / or —</div>
+
+    <label style="font-size:11px;color:#888;font-weight:700">EMAIL <span style="font-weight:400;color:#5f5f5f">(optional)</span></label>
     <input id="wit-email" type="email" inputmode="email" autocomplete="off"
       placeholder="name@email.com" style="margin:6px 0 14px;width:100%">
 
     <button id="wit-send" class="bp" style="width:100%;padding:13px" onclick="sendWitnessInvite()">Create invite →</button>
     <button class="bs" style="width:100%;padding:11px;margin-top:8px" onclick="openWitnesses()">Back</button>`);
+  setTimeout(()=>{ const n=document.getElementById("wit-name"); if(n) n.focus(); }, 60);
 }
 
 /* The public link a witness opens. Uses a query param on the root path so
    it works on ANY host with no server-side rewrite needed (a bare /witness/
    path only resolves if the host rewrites unknown paths to index.html). */
 function _witnessLink(token){ return `${window.location.origin}/?witness=${token}`; }
-function _witnessShareText(token){
+function _witnessShareText(token, mode){
+  if(mode === "progress"){
+    return `Checking in with my witness 👀 — here's where I'm at on the challenge you're watching: ${_witnessLink(token)}`;
+  }
   return `I'm doing a challenge on On It With Genie and I'd like you to witness me — you'll just see whether I show up each day, nothing to do on your end. Say yes here: ${_witnessLink(token)}`;
 }
-function shareWitnessWhatsApp(token){
-  const url = `https://wa.me/?text=${encodeURIComponent(_witnessShareText(token))}`;
-  window.open(url, "_blank");
+/* Given a phone (digits, country-coded) send straight to that person's
+   WhatsApp; otherwise open the share picker. mode 'invite' (default) or
+   'progress' (nudge an accepted witness with a live progress link). */
+function shareWitnessWhatsApp(token, phone, mode){
+  const digits = _normPhone(phone);
+  const base = digits ? `https://wa.me/${digits}` : `https://wa.me/`;
+  window.open(`${base}?text=${encodeURIComponent(_witnessShareText(token, mode))}`, "_blank");
 }
 function copyWitnessLink(token){
   const link = _witnessLink(token);
@@ -175,15 +209,17 @@ function copyWitnessLink(token){
 /* After the invite row exists, show the share step (WhatsApp is the reliable
    delivery path; email is best-effort behind the scenes). */
 function _witnessShareStep(w){
+  const phone = _normPhone(w.witness_phone);
+  const waLabel = phone ? `Send to ${_wEsc(_witDisplay(w))} on WhatsApp` : "Share on WhatsApp";
   _witOpen(`
     <div style="font-size:9px;letter-spacing:.14em;color:#7a7a7a;font-weight:800;margin-bottom:6px">SEND THE INVITE</div>
-    <h3 style="margin:0 0 4px;font-size:19px">Invite ready for ${_wEsc((w.witness_email||"").split("@")[0])}</h3>
+    <h3 style="margin:0 0 4px;font-size:19px">Invite ready for ${_wEsc(_witDisplay(w))}</h3>
     <p style="color:#7a7a7a;font-size:12px;line-height:1.55;margin:0 0 16px">
       Send them this link. They tap it, say yes, and they're witnessing you.
       They only hear from us when you miss a day.</p>
 
-    <button class="bp" style="width:100%;padding:14px;font-size:15px;background:#25D366;color:#062b16" onclick="shareWitnessWhatsApp('${w.invite_token}')">
-      Share on WhatsApp
+    <button class="bp" style="width:100%;padding:14px;font-size:15px;background:#25D366;color:#062b16" onclick="shareWitnessWhatsApp('${w.invite_token}','${phone}')">
+      ${waLabel}
     </button>
     <button class="bs" style="width:100%;padding:12px;margin-top:9px" onclick="copyWitnessLink('${w.invite_token}')">Copy link instead</button>
     <div style="margin-top:14px;word-break:break-all;font-size:11px;color:#5f5f5f;background:#111;border:1px solid #1e1e1e;border-radius:9px;padding:10px 12px">${_witnessLink(w.invite_token)}</div>
@@ -197,9 +233,16 @@ const WITNESS_MAX = 5;
 function _witActiveCount(){ return _witList().filter(w => w.status === "pending" || w.status === "accepted").length; }
 
 async function sendWitnessInvite(){
+  const name = (document.getElementById("wit-name")?.value || "").trim();
   const email = (document.getElementById("wit-email")?.value || "").trim().toLowerCase();
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showToast("Enter a valid email", "error"); return; }
-  if(email === (S.user.email || "").toLowerCase()){ showToast("You can't witness yourself", "error"); return; }
+  const phoneRaw = (document.getElementById("wit-phone")?.value || "").trim();
+  const phone = _normPhone(phoneRaw);
+
+  if(name.length < 1){ showToast("Add their name", "error"); return; }
+  if(!email && !phone){ showToast("Add a WhatsApp number or an email", "error"); return; }
+  if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showToast("That email doesn't look right", "error"); return; }
+  if(phone && phone.length < 7){ showToast("That number looks too short — include the country code", "error"); return; }
+  if(email && email === (S.user.email || "").toLowerCase()){ showToast("You can't witness yourself", "error"); return; }
 
   const btn = document.getElementById("wit-send");
   if(btn){ btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
@@ -207,8 +250,9 @@ async function sendWitnessInvite(){
 
   try{
     /* Already in the circle (pending or accepted)? Just re-open its share
-       step instead of erroring on the unique (challenger_id, email) key. */
-    const active = _witList().find(w => (w.witness_email||"").toLowerCase() === email && (w.status === "pending" || w.status === "accepted"));
+       step instead of erroring on the unique key. Match on email OR phone. */
+    const active = _witList().find(w => (w.status === "pending" || w.status === "accepted") &&
+      ((email && (w.witness_email||"").toLowerCase() === email) || (phone && _normPhone(w.witness_phone) === phone)));
     if(active && active.invite_token){ _reset(); _witnessShareStep(active); return; }
 
     /* Circle full — block new people (re-inviting an existing one above is
@@ -220,30 +264,47 @@ async function sendWitnessInvite(){
       return;
     }
 
-    /* Do they already have an account? That decides their depth (on-platform
-       witnesses see proof; off-platform see the signal only). */
+    /* Do they already have an account? Email is the reliable identity match,
+       so on-platform "proof" depth is granted when the email matches a
+       challenger. Phone-only invites default to signal (safe). */
     let witnessCid = null, depth = "signal";
+    if(email){
+      try{
+        const { data: acct } = await sb.from("challengers").select("id").ilike("email", email).limit(1);
+        if(acct && acct.length){ witnessCid = acct[0].id; depth = "proof"; }
+      }catch(e){}
+    }
+
+    /* Reactivate a prior revoked/declined invite for this same contact rather
+       than inserting a duplicate (unique keys on email and on phone). Look up
+       by email first, then phone — separate queries keep it robust. */
+    let data = null, prior = null;
     try{
-      const { data: acct } = await sb.from("challengers").select("id")
-        .ilike("email", email).limit(1);
-      if(acct && acct.length){ witnessCid = acct[0].id; depth = "proof"; }
+      if(email){
+        const { data: pr } = await sb.from("witnesses").select("*")
+          .eq("challenger_id", S.user.supabaseId).ilike("witness_email", email).limit(1);
+        if(pr && pr.length) prior = pr[0];
+      }
+      if(!prior && phone){
+        const { data: pr2 } = await sb.from("witnesses").select("*")
+          .eq("challenger_id", S.user.supabaseId).eq("witness_phone", phone).limit(1);
+        if(pr2 && pr2.length) prior = pr2[0];
+      }
     }catch(e){}
 
-    /* Reactivate a previously revoked/declined invite for this email rather
-       than inserting a duplicate (the unique key would reject it). */
-    let data = null;
-    const { data: prior } = await sb.from("witnesses").select("*")
-      .eq("challenger_id", S.user.supabaseId).ilike("witness_email", email).limit(1);
-    if(prior && prior.length){
-      const { data: upd } = await sb.from("witnesses")
-        .update({ status: "pending", depth, witness_challenger_id: witnessCid, responded_at: null })
-        .eq("id", prior[0].id).select().single();
-      data = upd || { ...prior[0], status: "pending", depth, witness_challenger_id: witnessCid };
+    const fields = {
+      witness_name: name,
+      witness_email: email || null,
+      witness_phone: phone || null,
+      witness_challenger_id: witnessCid,
+      depth, status: "pending", responded_at: null,
+    };
+    if(prior){
+      const { data: upd } = await sb.from("witnesses").update(fields).eq("id", prior.id).select().single();
+      data = upd || { ...prior, ...fields };
     }else{
-      const { data: ins, error } = await sb.from("witnesses").insert({
-        challenger_id: S.user.supabaseId, witness_email: email,
-        witness_challenger_id: witnessCid, depth, status: "pending",
-      }).select().single();
+      const { data: ins, error } = await sb.from("witnesses")
+        .insert({ challenger_id: S.user.supabaseId, ...fields }).select().single();
       if(error) throw error;
       data = ins;
     }
