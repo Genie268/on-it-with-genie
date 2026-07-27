@@ -446,6 +446,10 @@ async function _restoreSession(data){
       supabaseId:data.id,energyLog,genieMessages:[]
     };
     S.uploads=uploadArr;
+    /* Tag these freshly-loaded uploads as owned by the signed-in account so a
+       later resume can't confuse them with a different account's cache. */
+    S._uploadsOwner=data.id;
+    S.uploadsBySlot=null;
     S.plans=plans;
     S.day=curDay;
     S.ans=S.user.answers;

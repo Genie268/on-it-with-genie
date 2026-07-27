@@ -92,29 +92,48 @@ async function loadGoals(){
 
     const m = _slotMap();
     const g1 = goalBySlot(1), g2 = goalBySlot(2);
-    const build = (goal) => {
-      if(!goal) return null;
-      const arr = [];
-      data.filter(u => u.goal_id === goal.id).forEach(u => {
-        arr[u.day_number - 1] = {
-          note: u.note, fileUrl: u.file_url, fileName: u.file_name,
-          voiceUrl: u.voice_url, proofType: u.proof_type,
-          behavior: u.behavior_answer, link: u.link_url,
-          hasFile: !!u.file_url, hasVoice: !!u.voice_url,
-          reviewed: !!u.reviewed, time: u.created_at
-        };
-      });
+    const dur = getDur();
+    const rowFor = (u) => ({
+      note: u.note, fileUrl: u.file_url, fileName: u.file_name,
+      voiceUrl: u.voice_url, proofType: u.proof_type,
+      behavior: u.behavior_answer, link: u.link_url,
+      hasFile: !!u.file_url, hasVoice: !!u.voice_url,
+      reviewed: !!u.reviewed, time: u.created_at
+    });
+    const serverArr = (rows) => {
+      const arr = Array(dur).fill(null);
+      rows.forEach(u => { if(u.day_number >= 1 && u.day_number <= dur) arr[u.day_number - 1] = rowFor(u); });
       return arr;
     };
 
-    /* Only overwrite a slot if the server actually has rows for it, so an
-       offline/local upload is never wiped out by an empty fetch. */
-    const a1 = build(g1);
-    if(a1 && a1.filter(Boolean).length) m[1] = a1;
-    const a2 = build(g2);
-    if(a2) m[2] = a2;
+    /* The SERVER is the source of truth for this challenger. A cached local
+       day is only ever kept when it's THIS account's own not-yet-synced
+       upload — never another account's array. This heals (and prevents) the
+       bug where a previous account's uploads, cached in localStorage on the
+       same device, showed under a different account. */
+    const ownerMatches = !!(S._uploadsOwner && S.user.supabaseId && S._uploadsOwner === S.user.supabaseId);
+    const reconcile = (slot, serverRows) => {
+      const server = serverArr(serverRows);
+      const prev = Array.isArray(m[slot]) ? m[slot] : [];
+      const merged = Array(dur).fill(null);
+      for(let i = 0; i < dur; i++){
+        if(server[i]) merged[i] = server[i];
+        else if(ownerMatches && prev[i]) merged[i] = prev[i];
+      }
+      m[slot] = merged;
+    };
+
+    /* Slot 1 = uploads tagged with goal 1, plus legacy null-goal rows; if
+       goals didn't load at all, fall back to every upload by day. */
+    const g1id = g1 && g1.id;
+    reconcile(1, data.filter(u => g1id ? (u.goal_id === g1id || u.goal_id == null) : true));
+    /* Slot 2 only exists for multi-goal challengers. */
+    if(g2) reconcile(2, data.filter(u => u.goal_id === g2.id));
 
     _loadSlot(activeSlot());
+    /* Tag the cache as owned by this account so a future cross-account
+       resume is caught immediately (before this server round-trip). */
+    S._uploadsOwner = S.user.supabaseId;
     if(typeof saveState === "function") saveState();
   }catch(e){ _slotMap(); }
 }

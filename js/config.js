@@ -122,7 +122,10 @@ function calcDay(){
   S.day=Math.max(1,Math.min(getDur(),diff));
 }
 function saveState(){
-  try{localStorage.setItem("oiwg_state",JSON.stringify({user:S.user,uploads:S.uploads,day:S.day,plans:S.plans||{}}));}catch(e){
+  /* uploadsOwner tags the cached uploads with the challenger they belong to,
+     so a resume on a device that last held a DIFFERENT account can't show
+     the wrong account's grid. */
+  try{localStorage.setItem("oiwg_state",JSON.stringify({user:S.user,uploads:S.uploads,day:S.day,plans:S.plans||{},uploadsOwner:(S.user&&S.user.supabaseId)||S._uploadsOwner||null}));}catch(e){
     console.error("saveState failed:",e);
     if(!document.getElementById("storage-warn")){
       const w=document.createElement("div");
@@ -139,7 +142,20 @@ function loadState(){
     const raw=localStorage.getItem("oiwg_state");
     if(!raw)return false;
     const d=JSON.parse(raw);
-    if(d.user){S.user=d.user;S.ans=d.user.answers||{};S.uploads=d.uploads||Array(d.user.duration||15).fill(null);S.day=d.day||1;S.plans=d.plans||{};if(!S.user.energyLog)S.user.energyLog={};calcDay();return true;}
+    if(d.user){
+      S.user=d.user;S.ans=d.user.answers||{};S.uploads=d.uploads||Array(d.user.duration||15).fill(null);S.day=d.day||1;S.plans=d.plans||{};if(!S.user.energyLog)S.user.energyLog={};
+      S._uploadsOwner=d.uploadsOwner||null;
+      /* Cross-account guard: if the cached uploads were saved under a
+         different challenger than the one we're resuming, don't show them —
+         loadGoals() will rebuild the correct grid from the server. */
+      if(S._uploadsOwner&&S.user.supabaseId&&S._uploadsOwner!==S.user.supabaseId){
+        S.uploads=Array(d.user.duration||15).fill(null);
+        S.uploadsBySlot=null;
+        S.plans={};
+        S._uploadsOwner=null;
+      }
+      calcDay();return true;
+    }
   }catch(e){}
   return false;
 }
