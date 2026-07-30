@@ -97,18 +97,6 @@ async function syncPlanToSupabase(dayNum,plan){
   },{onConflict:"challenger_id,day_number"});}catch(e){}
 }
 
-async function loadPlansFromSupabase(){
-  if(!sb||!S.user?.supabaseId)return;
-  try{
-    const{data}=await sb.from("daily_plans").select("*").eq("challenger_id",S.user.supabaseId);
-    if(data){
-      data.forEach(p=>{
-        S.plans[p.day_number]={mainStep:p.main_step,subSteps:p.sub_steps||[],aiAssisted:p.ai_assisted,skipped:p.skipped};
-      });
-      saveState();
-    }
-  }catch(e){}
-}
 
 
 /* ── PAYMENT GATE ── */
@@ -294,7 +282,7 @@ async function initiatePayment(){
         /* Use the server's echoed status/amount/ref rather than the
            client-side hopeful values, so completePayment always
            records what actually landed in the DB. */
-        const paidStatus=result.data?.status==="paid"?"paid":"paid";
+        const paidStatus=result.data?.status||"paid";
         const paidAmount=typeof result.data?.amount==="number"?result.data.amount:fk;
         const paidRef=result.data?.ref||r.reference;
         await completePayment({status:paidStatus,reference:paidRef,amount:paidAmount,email});
@@ -415,8 +403,11 @@ async function _restoreSession(data){
   const btn=el("signin-btn");
   try{
     const dur=data.duration||15;
-    const startDate=new Date(data.start_date);
-    const now=new Date();
+    /* Normalize both dates to midnight before diffing, identical to calcDay(),
+       so the current day doesn't shift by ±1 between sign-in and the next
+       reload (which recomputes it via calcDay). */
+    const startDate=new Date(data.start_date); startDate.setHours(0,0,0,0);
+    const now=new Date(); now.setHours(0,0,0,0);
     const curDay=Math.min(Math.max(Math.floor((now-startDate)/(1000*60*60*24))+1,1),dur);
 
     const {data:uploads}=await sb.from("uploads").select("*").eq("challenger_id",data.id).order("day_number",{ascending:true});

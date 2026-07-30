@@ -70,20 +70,6 @@ const OB_STEPS = [
 function getSteps(){ return OB_STEPS; }
 
 /* Clarity evaluation — Lil checks if the answer is specific enough */
-async function checkClarity(stepId, answer){
-  const prompts = {
-    goal: `You are checking if this goal is specific enough for a daily accountability challenge that HASN'T STARTED YET. The person will commit to this for 7-30 days starting tomorrow.\n\nGoal: "${answer}"\n\nIf the goal is specific enough to track daily progress → respond with EXACTLY "CLEAR"\nIf NOT specific enough → ask ONE short future-tense question (max 12 words) to make it measurable. Examples of good questions: "How many words per day?", "What exactly will you build each day?", "What does daily progress look like?"\n\nNEVER use past tense. NEVER ask what was completed. This is PLANNING, not reviewing.`,
-    proof: `You are checking if this daily evidence description is concrete enough for an accountability coach to verify. The challenge HASN'T STARTED YET.\n\nGoal: "${S.ans.goal}"\nWhat they'll upload daily: "${answer}"\n\nIf concrete and verifiable → respond with EXACTLY "CLEAR"\nIf vague → ask ONE short future-tense question (max 12 words) to make the proof format specific. Examples: "Will that be a screenshot or a photo?", "What file or image will you upload?"\n\nNEVER use past tense. This is about what they WILL upload, not what they did.`,
-    threat: null
-  };
-  if(!prompts[stepId]) return "CLEAR";
-  try {
-    const result = await lil(prompts[stepId], 60);
-    if(!result) return "CLEAR";
-    if(result.trim().toUpperCase()==="CLEAR") return "CLEAR";
-    return result.trim();
-  } catch(e){ return "CLEAR"; }
-}
 
 
 function setGeniePhotos(){
@@ -162,6 +148,10 @@ function loadState(){
 function clearState(){
   try{localStorage.removeItem("oiwg_state");}catch(e){}
   S.user=null;S.ans={};S.uploads=null;S.day=1;S.lilDone=false;S.devMode=false;
+  /* Also drop per-account derived state, or starting/opening another challenge
+     in the same tab (no reload) would inherit the previous account's plans,
+     goals and slot arrays. */
+  S.plans={};S.uploadsBySlot=null;S.goals=null;S.activeGoal=1;S._uploadsOwner=null;S.witnesses=null;
   goTo("land");
 }
 /* Auto-resume handled in new DOMContentLoaded above */

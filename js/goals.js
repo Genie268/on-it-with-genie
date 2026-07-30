@@ -112,13 +112,18 @@ async function loadGoals(){
        bug where a previous account's uploads, cached in localStorage on the
        same device, showed under a different account. */
     const ownerMatches = !!(S._uploadsOwner && S.user.supabaseId && S._uploadsOwner === S.user.supabaseId);
+    /* Keeping a local day is only safe on SINGLE-goal accounts. On a two-goal
+       account the cached S.uploads is seeded by day-number regardless of goal
+       (sign-in path), so carrying it into slot 1 would show goal-2 proof under
+       goal 1 — the server, split by goal_id, is authoritative there. */
+    const keepLocal = ownerMatches && !hasSecondGoal();
     const reconcile = (slot, serverRows) => {
       const server = serverArr(serverRows);
       const prev = Array.isArray(m[slot]) ? m[slot] : [];
       const merged = Array(dur).fill(null);
       for(let i = 0; i < dur; i++){
         if(server[i]) merged[i] = server[i];
-        else if(ownerMatches && prev[i]) merged[i] = prev[i];
+        else if(keepLocal && prev[i]) merged[i] = prev[i];
       }
       m[slot] = merged;
     };
@@ -552,12 +557,16 @@ function renderGoalGrid(){
   const col = _goalColour(slot);
   const callDays = (typeof CALL_DAYS !== "undefined" && CALL_DAYS[dur]) || [];
   const ups = S.uploads;
+  /* Days before this goal started aren't misses — a goal added on day 10
+     has no expectation for days 1-9. */
+  const startDay = Math.max(1, startDayFor(slot));
   g.innerHTML = "";
 
   for(let i = 0; i < dur; i++){
     const d = i + 1;
     const up = ups[i];
-    const isT = d === S.day, isM = d < S.day && !up, isF = d > S.day;
+    const beforeStart = d < startDay;
+    const isT = d === S.day, isM = d < S.day && !up && !beforeStart, isF = d > S.day || beforeStart;
     const isCall = callDays.includes(d);
 
     const c = document.createElement("div");

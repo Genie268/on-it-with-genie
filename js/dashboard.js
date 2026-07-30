@@ -26,13 +26,13 @@ function renderDash(){
      can iterate the full window even when localStorage holds a stale length. */
   while(S.uploads.length<dur0) S.uploads.push(null);
   if(!S.plans||typeof S.plans!=="object") S.plans={};
-  /* Multi-goal: a second goal must ALSO clear the bar before the
-     challenge counts as finished. Single-goal users are unaffected. */
-  let _done=isChallengeComplete();
-  if(_done&&typeof hasSecondGoal==="function"&&hasSecondGoal()&&typeof bothGoalsComplete==="function"){
-    _done=bothGoalsComplete();
-  }
-  if(_done){
+  /* The challenge is FINISHED when the day window elapses — whether or not
+     the 80% bar was cleared (that's a result shown on the finish screen, not
+     a gate). Gating completion on bothGoalsComplete() used to strand a
+     multi-goal user who ran out of days below the bar on the dashboard
+     forever, and disagreed with the resume path (which uses the time check
+     alone). Both paths now agree: time elapsed → finish screen. */
+  if(isChallengeComplete()){
     if(typeof _markCompleted==="function") _markCompleted();
     _activateScreen("d15");
     return;
@@ -89,7 +89,6 @@ function renderDash(){
     const isTodayCallDay=(typeof CALL_DAYS!=="undefined"?(CALL_DAYS[dur]||[]):[]).includes(d);
     callReminderEl.style.display=isTodayCallDay?"block":"none";
   }
-  if(!S.lilDone){ S.lilDone=true; }
   /* Call day banner link */
   const callLinkEl=el("call-day-link");
   if(callLinkEl) callLinkEl.href=(typeof CALENDLY_URL!=="undefined"?CALENDLY_URL:"")||"#";
@@ -102,14 +101,6 @@ function renderDash(){
       setTimeout(()=>{try{showWalkthrough(wtKey);}catch(e){}},2200);
     }
   }
-}
-
-function renderGenieNote(){
-  /* Now merged into renderCoachNotes */
-}
-
-async function loadLilDash(){
-  /* Now merged into renderCoachNotes */
 }
 
 async function renderCoachNotes(){
@@ -161,10 +152,6 @@ async function renderCoachNotes(){
   </div>`;
 }
 
-function renderStreak(){
-  /* Streak is now rendered inline in the goal card by renderDash — no-op here */
-}
-
 function renderGrid(){
   /* Proof-mosaic grid (goals module). Falls back to the classic grid. */
   try{ if(typeof renderGoalGrid==="function" && renderGoalGrid()) return; }
@@ -196,9 +183,11 @@ function renderGrid(){
 
 
 function renderRecCard(){
-  const missed=S.uploads.slice(0,S.day-1).filter(v=>!v).length;
+  /* Only count misses since the active goal actually started. */
+  const startDay=(typeof startDayFor==="function"&&typeof activeSlot==="function")?Math.max(1,startDayFor(activeSlot())):1;
+  const missed=S.uploads.slice(startDay-1,S.day-1).filter(v=>!v).length;
   const rc=el("rec-c");
-  if(missed>4&&S.day>6){ rc.innerHTML=`<div class="card ce mt10"><span class="lbl lbl-e">TOO MANY MISSED DAYS</span><p style="font-size:13px;line-height:1.6;margin-bottom:12px">You've missed ${missed} days. A Recovery Round will serve you better than pushing through.</p><button class="bd" style="padding:8px 16px;font-size:13px" onclick="goTo('rec')">Enter Recovery Round</button></div>`; }
+  if(missed>4&&S.day>startDay+5){ rc.innerHTML=`<div class="card ce mt10"><span class="lbl lbl-e">TOO MANY MISSED DAYS</span><p style="font-size:13px;line-height:1.6;margin-bottom:12px">You've missed ${missed} days. A Recovery Round will serve you better than pushing through.</p><button class="bd" style="padding:8px 16px;font-size:13px" onclick="goTo('rec')">Enter Recovery Round</button></div>`; }
   else rc.innerHTML="";
 }
 
@@ -376,7 +365,10 @@ function _planStep2(){
   el("plan-s1")?.focus();
 }
 
-function _esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+/* Escapes the single quote too — plan text is interpolated into single-quoted
+   onclick="…('${_esc(text)}')" handlers, so an apostrophe (e.g. "I'm writing")
+   would otherwise break the Back / Suggest / Set-plan buttons. */
+function _esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
 
 async function _planAISuggest(mainStep){
   const btn=el("plan-ai-btn");if(!btn)return;
@@ -596,8 +588,12 @@ function renderStats(){
   const sc=el("stats-card");if(!sc||!S.user)return;
   const u=S.user,d=S.day,dur=getDur();
   const uploads=S.uploads.filter(v=>!!v).length;
-  const missed=Math.max(0,d-1-uploads);
-  const pct=d>1?Math.round((uploads/Math.max(d-1,1))*100):0;
+  /* Count only from the ACTIVE goal's start day — a goal added on day 10
+     shouldn't count days 1-9 as missed or drag down its hit rate. */
+  const startDay=(typeof startDayFor==="function"&&typeof activeSlot==="function")?Math.max(1,startDayFor(activeSlot())):1;
+  const elapsed=Math.max(0,d-startDay); /* completed days for this goal, excluding today */
+  const missed=Math.max(0,elapsed-uploads);
+  const pct=elapsed>0?Math.round((uploads/elapsed)*100):0;
   const remaining=Math.max(0,dur-d);
   let sk=0;for(let i=S.day-1;i>=0;i--){if(S.uploads[i])sk++;else break;}
 
@@ -804,8 +800,6 @@ function _check2ndVisitPush(){
 function _show2ndVisitPrompt(){
   if(document.getElementById("push-check-prompt"))return;
   localStorage.setItem("oiwg_push_check_done","1");
-  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isStandalone=window.navigator.standalone||window.matchMedia("(display-mode: standalone)").matches;
   const banner=document.createElement("div");
   banner.id="push-check-prompt";
   banner.style.cssText="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid rgba(196,154,28,.3);color:#e0e0e0;font-size:13px;padding:18px 20px;border-radius:14px;z-index:9999;max-width:340px;width:calc(100% - 32px);text-align:center;box-shadow:0 8px 30px #0008;animation:popIn .25s ease";

@@ -255,9 +255,6 @@ function goToSlide(idx){
   }
 }
 
-function switchEvTab(){}
-function allTabIds(){return [];}
-
 function closeMod(){ el("mod").classList.remove("show"); }
 
 function setBehavior(val){
@@ -481,14 +478,25 @@ function editTodayUpload(){
   renderDash();
   openMod();
 }
-function deleteTodayUpload(){
+async function deleteTodayUpload(){
   if(!confirm("Delete today's upload? You can re-upload before midnight."))return;
+  const dayNum=S.day;
   S.uploads[S.day-1]=null;
   saveState();
   S.lilDone=false;
   closeViewMod();
   showToast("Upload deleted","info");
   renderDash();
+  /* Also remove the server row — otherwise the next loadGoals() (which is
+     server-authoritative) re-hydrates the deleted proof back into the grid. */
+  try{
+    if(sb&&S.user?.supabaseId){
+      const gid=(typeof activeGoalRow==="function"&&activeGoalRow()?.id)||null;
+      let q=sb.from("uploads").delete().eq("challenger_id",S.user.supabaseId).eq("day_number",dayNum);
+      if(gid) q=q.eq("goal_id",gid);
+      await q;
+    }
+  }catch(e){}
 }
 
 
@@ -502,14 +510,18 @@ function openUploadDetail(uid, dayIndex, goalId){
   const a=(typeof _adminGoalArrays==="function")?_adminGoalArrays(u,goalId):u;
   const gmeta=(typeof _adminGoalMeta==="function")?_adminGoalMeta(u,goalId):null;
   const _gidArg=(goalId&&goalId!=="_primary")?`,'${goalId}'`:"";
-  const note=a.notes[dayIndex];
+  /* Challenger-supplied text is rendered into the admin's DOM via innerHTML,
+     so it MUST be escaped — otherwise a note like "<img onerror=…>" runs
+     script in the admin's session (stored XSS). */
+  const _esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const note=_esc(a.notes[dayIndex]);
   const voiceUrl=a.voiceUrls&&a.voiceUrls[dayIndex];
   const fileUrl=a.fileUrls&&a.fileUrls[dayIndex];
   const link=a.links&&a.links[dayIndex];
-  const fileName=a.fileNames&&a.fileNames[dayIndex];
+  const fileName=_esc(a.fileNames&&a.fileNames[dayIndex]);
   const behavior=a.behaviors&&a.behaviors[dayIndex];
   const isRv=a.rv&&a.rv[dayIndex];
-  const reviewNote=a.reviewNotes&&a.reviewNotes[dayIndex];
+  const reviewNote=_esc(a.reviewNotes&&a.reviewNotes[dayIndex]);
   const energy=u.energyLog&&u.energyLog[d];
   const upTime=a.uploadTimes&&a.uploadTimes[dayIndex];
   const upTimeStr=upTime?new Date(upTime).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit",hour12:false}):"";

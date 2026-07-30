@@ -98,6 +98,10 @@ async function loadAdminData(){
       const startDate=new Date(c.start_date);
       const now=new Date();
       const curDay=Math.min(Math.max(Math.floor((now-startDate)/(1000*60*60*24))+1,1),dur);
+      /* Uncapped day count — curDay is clamped to dur, so it can't tell the
+         final active day apart from a finished challenge. rawDay > dur is the
+         real "the window has closed" signal. */
+      const rawDay=Math.max(1,Math.floor((now-startDate)/(1000*60*60*24))+1);
       const prim=byGoal[primaryGoalId];
       const missed=prim.up.slice(0,curDay-1).filter(v=>!v).length;
       /* Top-level arrays mirror the PRIMARY goal, so every existing
@@ -107,7 +111,7 @@ async function loadAdminData(){
         id:c.id,name:c.name,photo:c.photo_url||null,
         ini:(c.name||"?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2),
         goal:c.goal_summary||c.goal_raw,pt:c.proof_type||"output",
-        day:curDay,dur,
+        day:curDay,rawDay,dur,
         up:prim.up,notes:prim.notes,rv:prim.rv,rvCount:prim.rvCount,
         energyLog:elog,hasVoice:prim.hasVoice,voiceUrls:prim.voiceUrls,fileUrls:prim.fileUrls,
         links:prim.links,fileNames:prim.fileNames,behaviors:prim.behaviors,uploadTimes:prim.uploadTimes,reviewNotes:prim.reviewNotes,
@@ -181,7 +185,10 @@ function _inbTok(goalId){
   return goalId?String(goalId).replace(/[^a-zA-Z0-9]/g,"").slice(-8):"p";
 }
 
-function _isComplete(u){return u.day>=u.dur||u.status==="completed";}
+/* Complete only once the window has fully closed (rawDay > dur) or the row is
+   explicitly marked completed — NOT on the final active day, so a day-`dur`
+   upload still surfaces in the review queue. */
+function _isComplete(u){return u.status==="completed"||(u.rawDay||u.day)>u.dur;}
 function _isPaid(u){return u.paymentStatus==="paid"||u.paymentStatus==="free"||u.paymentStatus==="completed";}
 function getAM(){return liveChallengers.filter(_isPaid);}
 function getActiveAM(){return liveChallengers.filter(u=>_isPaid(u)&&!_isComplete(u));}
@@ -1154,14 +1161,11 @@ function _renderNotifLog(active,completed){
 
 function renderAdminOverview(c){
   const all=getAM();
-  const _isComplete=u=>u.day>=u.dur||u.status==="completed";
   const active=all.filter(u=>!_isComplete(u));
   const completed=all.filter(u=>_isComplete(u));
   const total=active.length;
   const uploadsTotal=active.reduce((a,u)=>a+_adminTotalUploads(u),0);
-  const toReview=active.reduce((a,u)=>a+Math.max(0,_adminTotalUploads(u)-_adminTotalReviewed(u)),0);
   const atRiskUsers=active.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
-  const totalUnread=getTotalUnreadCount();
 
   /* TODAY'S QUEUE — concrete, one-tap-action list of what needs Genie's
      attention right now. Replaces the abstract summary alerts that just

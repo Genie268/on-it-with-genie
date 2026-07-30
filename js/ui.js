@@ -198,9 +198,11 @@ function _showDashVerifying(){
     ov=document.createElement("div");
     ov.id="dash-gate-ov";
     ov.style.cssText="position:fixed;inset:0;background:#060606;display:flex;align-items:center;justify-content:center;z-index:99999;color:#c49a1c;font-family:system-ui,sans-serif;font-size:14px;font-weight:700;letter-spacing:.02em";
-    ov.innerHTML='<div style="display:flex;align-items:center;gap:12px"><div style="width:18px;height:18px;border:2px solid #c49a1c;border-top-color:transparent;border-radius:50%;animation:dgspin 0.8s linear infinite"></div><span>Verifying access…</span></div><style>@keyframes dgspin{to{transform:rotate(360deg)}}</style>';
     document.body.appendChild(ov);
   }
+  /* Always reset to the spinner — on a "Try Again" the overlay may still hold
+     the recovery-screen markup from _showRecoveryScreen. */
+  ov.innerHTML='<div style="display:flex;align-items:center;gap:12px"><div style="width:18px;height:18px;border:2px solid #c49a1c;border-top-color:transparent;border-radius:50%;animation:dgspin 0.8s linear infinite"></div><span>Verifying access…</span></div><style>@keyframes dgspin{to{transform:rotate(360deg)}}</style>';
   ov.style.display="flex";
 }
 function _hideDashVerifying(){
@@ -1245,7 +1247,6 @@ function _buildProfilePlanSection(u){
   const plans=(u.plans||[]).filter(p=>!p.skipped);
   const todayPlan=plans.find(p=>p.day_number===u.day);
   const totalPlanned=plans.length;
-  const totalDays=Math.max(u.day-1,1);
   if(!totalPlanned&&!todayPlan)return "";
   let html=`<div style="margin-top:16px;padding:14px;background:#111;border:1px solid #1e1e1e;border-radius:12px">`;
   if(todayPlan){
