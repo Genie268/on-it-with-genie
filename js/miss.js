@@ -108,6 +108,9 @@ function writeGapNote(g, note, source){
    ============================================================ */
 let _missServerLoaded = false;
 function renderMissState(){
+  /* QA preview mode owns the miss screens and never touches the DB. Delete
+     this line when removing js/miss-preview.js. */
+  if(typeof MISS_PREVIEW !== "undefined" && MISS_PREVIEW.active()){ MISS_PREVIEW.render(); return; }
   const cont = el("miss-gate");
   S.uploadBlocked = false;
   _clearLockOverlay();

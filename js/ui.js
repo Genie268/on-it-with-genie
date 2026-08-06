@@ -626,6 +626,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   initSupabase();
   /* Close chat 3-dot menus on outside click */
   document.addEventListener("click",()=>{closeChatMenus();if(typeof _closeMsgMenus==="function")_closeMsgMenus();});
+  /* TEMPORARY visual-QA preview mode (?preview=STATE). Owns boot and does no
+     DB work. Delete this block when removing js/miss-preview.js. */
+  if(typeof MISS_PREVIEW!=="undefined" && MISS_PREVIEW.active()){ MISS_PREVIEW.boot(); return; }
   const isAdmin=/^\/admin\/?$/.test(window.location.pathname);
   const witnessToken=_witnessTokenFromLocation();
   if(isAdmin){
