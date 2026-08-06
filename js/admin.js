@@ -122,6 +122,7 @@ async function loadAdminData(){
         proofDescription:c.proof_description,proofType:c.proof_type||"output",
         threat:c.threat,startDate:c.start_date,lastSeen:c.last_seen,
         createdAt:c.created_at,
+        lastAttentionClearedAt:c.last_attention_cleared_at||null,
         hasPush:allPushSubs.some(s=>s.challenger_id===c.id&&s.is_active),
         plans:plans.sort((a,b)=>a.day_number-b.day_number),
         witnessesEnabled:c.witnesses_enabled===true,
@@ -618,8 +619,10 @@ const _dot=(show)=>show?`<span style="display:inline-block;width:6px;height:6px;
 function adminTab(tab){
   adminCurrentTab = tab;
   try{
-    const reviewCount=getPendingInbox().length;
-    const flaggedCount=getActiveAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length;
+    /* Reviews badge = NEW (unseen this session) pending uploads — informational,
+       clears on view. Attention badge = visible action items only. */
+    const reviewCount=_unseenReviewCount();
+    const flaggedCount=getActionItems().length;
     const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
     const newSignups=_getNewSignupCount();
     ["overview","messages","challengers","flagged","inbox","notifications","analytics","settings"].forEach(t=>{
@@ -1202,8 +1205,10 @@ function renderAdminOverview(c){
     queue.push({pri:2,icon:"↑",color:"#c49a1c",label:`Day ${day} upload${goalTag}`,name:u.name,meta:previewText.slice(0,55),
       actionLabel:"Review →",onClick:`openUploadDetail('${u.id}',${i},${gidArg})`});
   });
-  /* At-risk users */
-  atRiskUsers.forEach(u=>{
+  /* At-risk users — only those NOT yet cleared, so the overview queue doesn't
+     keep surfacing an item the admin already handled in the Attention tab.
+     (The "At Risk" stat below still reflects the true count.) */
+  getActionItems().forEach(u=>{
     const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
     queue.push({pri:3,icon:"⚑",color:"#d9503a",label:"At risk",name:u.name,meta:`${missed} missed · Day ${u.day}/${u.dur||15}`,
       actionLabel:"Message →",onClick:`adminTab('flagged');setTimeout(()=>{const t=document.getElementById('int-ta-${u.id}');if(t)t.focus()},150)`});
@@ -1616,9 +1621,120 @@ function _getMissStreak(u){
   return streak;
 }
 
+/* ── ATTENTION QUEUE — ACTION ITEMS ─────────────────────────────────────
+   An action item = an active challenger with a real miss situation (the same
+   at-risk criterion the queue has always used). It CLEARS only on a deliberate
+   act — Dismiss, Clear All, or Send Now — persisted in
+   challengers.last_attention_cleared_at. It RE-SURFACES automatically when a
+   newer miss is registered after that timestamp, so clearing never permanently
+   silences an active challenger. */
+function _isAtRisk(u){ return u.up.slice(0,u.day-1).filter(v=>!v).length>=3||!!u.flag; }
+/* Timestamp (ms) at which the most-recent confirmed miss was registered — a
+   missed day D is confirmed at the start of day D+1. 0 if no miss yet. */
+function _lastMissMs(u){
+  let lastMissedDay=0;
+  for(let i=0;i<u.day-1;i++){ if(!u.up[i]) lastMissedDay=i+1; }
+  if(!lastMissedDay||!u.startDate) return 0;
+  return new Date(u.startDate).getTime()+lastMissedDay*86400000;
+}
+/* Most recent upload timestamp (ms) — an upload after the miss counts as the
+   challenger handling it themselves. */
+function _lastUploadMs(u){
+  let m=0; const t=u.uploadTimes||[];
+  for(let i=0;i<t.length;i++){ if(t[i]){ const ms=new Date(t[i]).getTime(); if(ms>m) m=ms; } }
+  return m;
+}
+/* Handled = the admin cleared it, OR the challenger uploaded, at/after the most
+   recent miss. A later miss makes _lastMissMs jump past both, so the card
+   returns — nothing here ever permanently silences an active challenger. */
+function _attentionCleared(u){
+  const missMs=_lastMissMs(u);
+  if(!missMs) return true;
+  const clearedMs=u.lastAttentionClearedAt?new Date(u.lastAttentionClearedAt).getTime():0;
+  return Math.max(clearedMs,_lastUploadMs(u)) >= missMs;
+}
+/* Visible action cards — drives both the queue and the Attention tab badge. */
+function getActionItems(){
+  return getActiveAM().filter(u=>_isAtRisk(u)&&!_attentionCleared(u));
+}
+
+/* Persist the clear (direct challenger write, like last_seen). Optimistic:
+   callers update the local row first so the UI reacts with no reload. */
+function _writeAttentionCleared(ids,iso){
+  try{ if(sb&&ids.length) sb.from("challengers").update({last_attention_cleared_at:iso}).in("id",ids).then(()=>{}).catch(()=>{}); }catch(e){}
+}
+function _setLocalCleared(uid,iso){ const u=liveChallengers.find(x=>x.id===uid); if(u) u.lastAttentionClearedAt=iso; }
+
+/* Informational (Reviews) auto-clear: viewing marks the current pending items
+   "seen" for this session, so the badge drops even though the work list stays. */
+const _seenReviewKeys=new Set();
+function _reviewKey(it){ return it.u.id+"|"+it.day+"|"+(it.goalId||""); }
+function _unseenReviewCount(){
+  try{ return getPendingInbox().filter(it=>!_seenReviewKeys.has(_reviewKey(it))).length; }catch(e){ return 0; }
+}
+function _markReviewsSeen(){
+  try{ getPendingInbox().forEach(it=>_seenReviewKeys.add(_reviewKey(it))); }catch(e){}
+}
+
+/* Update the two queue badges in place — no full re-render. */
+function _refreshQueueBadges(){
+  try{
+    const f=el("tab-flagged"); if(f) f.innerHTML=`Attention${_bdg(getActionItems().length)}`;
+    const r=el("tab-inbox"); if(r) r.innerHTML=`Reviews${_bdg(_unseenReviewCount())}`;
+  }catch(e){}
+}
+
+/* Dismiss one card: one tap, no confirm. */
+function dismissAttention(uid){
+  const iso=new Date().toISOString();
+  _setLocalCleared(uid,iso);
+  _writeAttentionCleared([uid],iso);
+  const card=document.getElementById("att-card-"+uid);
+  if(card) card.remove();
+  const hd=el("att-count"); if(hd) hd.textContent=getActionItems().length;
+  _refreshQueueBadges();
+  if(getActionItems().length===0 && adminCurrentTab==="flagged") renderAdminFlagged(el("admin-content"));
+}
+
+/* Clear every visible card at once — single tap, undo toast (no confirm). */
+let _undoToastTimer=null;
+function _showUndoToast(msg,onUndo){
+  document.getElementById("admin-undo-toast")?.remove();
+  if(_undoToastTimer) clearTimeout(_undoToastTimer);
+  const t=document.createElement("div");
+  t.id="admin-undo-toast";
+  t.style.cssText="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:9px 10px 9px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 8px 30px #0009;font-size:13px;color:#e0e0e0;max-width:calc(100% - 32px)";
+  const span=document.createElement("span"); span.textContent=msg; t.appendChild(span);
+  const btn=document.createElement("button");
+  btn.textContent="Undo";
+  btn.style.cssText="background:none;border:none;color:#c49a1c;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;padding:4px 8px";
+  btn.onclick=()=>{ if(_undoToastTimer) clearTimeout(_undoToastTimer); t.remove(); try{onUndo();}catch(e){} };
+  t.appendChild(btn);
+  document.body.appendChild(t);
+  _undoToastTimer=setTimeout(()=>{ t.remove(); },6000);
+}
+function clearAllAttention(){
+  const items=getActionItems();
+  if(!items.length) return;
+  const iso=new Date().toISOString();
+  const prev=items.map(u=>({id:u.id,prev:u.lastAttentionClearedAt||null}));
+  items.forEach(u=>_setLocalCleared(u.id,iso));
+  _writeAttentionCleared(items.map(u=>u.id),iso);
+  renderAdminFlagged(el("admin-content"));
+  _refreshQueueBadges();
+  _showUndoToast(`Cleared ${items.length} ${items.length===1?"card":"cards"}`,()=>{
+    prev.forEach(p=>{
+      _setLocalCleared(p.id,p.prev);
+      try{ if(sb) sb.from("challengers").update({last_attention_cleared_at:p.prev}).eq("id",p.id).then(()=>{}).catch(()=>{}); }catch(e){}
+    });
+    renderAdminFlagged(el("admin-content"));
+    _refreshQueueBadges();
+  });
+}
+
 function renderAdminFlagged(c){
   const all=getActiveAM();
-  const atRisk=all.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
+  const atRisk=getActionItems();
   if(!atRisk.length){
     c.innerHTML=`<div style="text-align:center;padding:60px 20px">
       <div style="font-size:32px;margin-bottom:12px;opacity:.5">✓</div>
@@ -1634,8 +1750,8 @@ function renderAdminFlagged(c){
   });
   c.innerHTML=`
     <div class="row mb14" style="justify-content:space-between;align-items:center">
-      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#d9503a">NEEDS ATTENTION · ${sorted.length} of ${all.length}</p>
-      <span class="muted" style="font-size:10px">sorted by severity</span>
+      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#d9503a">NEEDS ATTENTION · <span id="att-count">${sorted.length}</span> of ${all.length}</p>
+      ${sorted.length>1?`<button class="bs" style="font-size:10px;padding:5px 11px" onclick="clearAllAttention()">Clear All</button>`:`<span class="muted" style="font-size:10px">sorted by severity</span>`}
     </div>
     ${sorted.map(u=>{
       const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
@@ -1648,7 +1764,7 @@ function renderAdminFlagged(c){
       const unreadCt=getUnreadCountForChallenger(u.id);
       const lastUpload=u.up.lastIndexOf(1);
       const daysSinceUpload=lastUpload>=0?u.day-1-lastUpload:u.day-1;
-      return `<div class="card mb10" style="border-left:3px solid ${missed>=5?"#d9503a":"rgba(217,80,58,.4)"}">
+      return `<div class="card mb10" id="att-card-${u.id}" style="border-left:3px solid ${missed>=5?"#d9503a":"rgba(217,80,58,.4)"}">
         <div class="row" style="justify-content:space-between;align-items:flex-start">
           <div class="row" style="gap:10px">
             ${_avatarWithStatus(u,36,"9px")}
@@ -1667,9 +1783,10 @@ function renderAdminFlagged(c){
         <div id="intv-${u.id}">
           ${_quickReplyChips("int-ta-"+u.id)}
           <textarea id="int-ta-${u.id}" rows="2" placeholder="Send ${u.name} a message..." style="font-size:13px;margin-bottom:8px"></textarea>
-          <div class="row" style="gap:8px">
+          <div class="row" style="gap:8px;flex-wrap:wrap">
             <button class="bd" style="font-size:12px;padding:7px 14px" onclick="sendIntervention('${u.id}')">Send Now →</button>
             <button class="bs" style="font-size:12px;padding:7px 14px" onclick="draftIntervention('${u.id}')">✦ Lil Draft</button>
+            <button class="bs" style="font-size:12px;padding:7px 14px;margin-left:auto;color:#888" onclick="dismissAttention('${u.id}')">Dismiss</button>
           </div>
         </div>
       </div>`;
@@ -1678,6 +1795,10 @@ function renderAdminFlagged(c){
 
 function renderAdminInbox(c){
   const pending=getPendingInbox();
+  /* Informational: viewing the queue marks these items seen for the session,
+     so the Reviews badge clears immediately (the list itself stays). */
+  _markReviewsSeen();
+  setTimeout(_refreshQueueBadges,0);
   if(!pending.length){
     c.innerHTML=`<div style="text-align:center;padding:60px 20px">
       <div style="font-size:32px;margin-bottom:12px;opacity:.5">✓</div>

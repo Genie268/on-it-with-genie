@@ -265,6 +265,14 @@ function sendIntervention(uid){
   const waText=encodeURIComponent(`${u?.name||""}, ${msg}`);
   window.open(`https://wa.me/?text=${waText}`,"_blank");
   el("intv-"+uid).innerHTML=`<div style="padding:8px 11px;background:rgba(77,201,138,.07);border:1px solid rgba(77,201,138,.22);border-radius:7px"><p class="ok" style="font-size:12px">✓ Opened WhatsApp.</p></div>`;
+  /* Sending a message is a deliberate act — clear this action item so it
+     stops lingering (it re-surfaces automatically on a future miss). */
+  if(typeof _setLocalCleared==="function"){
+    const iso=new Date().toISOString();
+    _setLocalCleared(uid,iso);
+    if(typeof _writeAttentionCleared==="function") _writeAttentionCleared([uid],iso);
+    if(typeof _refreshQueueBadges==="function") _refreshQueueBadges();
+  }
 }
 
 async function draftIntervention(uid){
