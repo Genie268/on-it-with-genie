@@ -1676,11 +1676,13 @@ function _markReviewsSeen(){
   try{ getPendingInbox().forEach(it=>_seenReviewKeys.add(_reviewKey(it))); }catch(e){}
 }
 
-/* Update the two queue badges in place — no full re-render. */
+/* Update the two queue badges in place — no full re-render. Also refreshes the
+   browser-tab "(N)" counter so it can't linger after view/dismiss. */
 function _refreshQueueBadges(){
   try{
     const f=el("tab-flagged"); if(f) f.innerHTML=`Attention${_bdg(getActionItems().length)}`;
     const r=el("tab-inbox"); if(r) r.innerHTML=`Reviews${_bdg(_unseenReviewCount())}`;
+    if(typeof updateTabTitle==="function") updateTabTitle();
   }catch(e){}
 }
 

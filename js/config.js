@@ -277,11 +277,12 @@ function updateTabTitle(){
   let count=0;
   if(isAdmin){
     count=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
-    const inbox=typeof getPendingInbox==="function"?getPendingInbox():[];
-    count+=inbox.length;
+    /* Reviews: only unseen-this-session (informational, clears on view).
+       Attention: only visible action items (respects Dismiss/Clear All/Send/
+       upload). Keeps the browser-tab count in step with the in-app badges. */
+    count+=typeof _unseenReviewCount==="function"?_unseenReviewCount():(typeof getPendingInbox==="function"?getPendingInbox().length:0);
     if(typeof _getNewSignupCount==="function") count+=_getNewSignupCount();
-    const flagged=typeof getAM==="function"?getAM().filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag).length:0;
-    count+=flagged;
+    count+=typeof getActionItems==="function"?getActionItems().length:0;
   } else {
     const badge=el("msg-badge");
     if(badge&&badge.style.display!=="none") count=parseInt(badge.textContent)||0;
