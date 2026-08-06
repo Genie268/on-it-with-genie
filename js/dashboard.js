@@ -38,6 +38,10 @@ function renderDash(){
     return;
   }
   calcDay();
+  /* Miss handling sits in FRONT of the upload: it may gate or lock the
+     dashboard before anything else renders. It never rewrites the upload
+     flow, only decides whether forward motion is open. */
+  try{ if(typeof renderMissState==="function") renderMissState(); }catch(e){ console.warn("renderMissState failed:",e); }
   try{ if(typeof renderGoalBar==="function") renderGoalBar(); }catch(e){ console.warn("renderGoalBar failed:",e); }
   const u=S.user,d=S.day;
   const dur=u.duration||15;
@@ -175,6 +179,7 @@ function renderGrid(){
     if(isCall) inner+=`<span class="call-icon-anim" style="position:absolute;top:-2px;right:-2px;width:13px;height:13px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;opacity:0;animation:callIconPop .4s ease 2s forwards"><svg width="7" height="7" viewBox="0 0 24 24" fill="#111" stroke="none"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg></span>`;
     c.innerHTML=inner;
     if(isT&&!isUp)c.onclick=openMod;
+    if(isM){const dd=d;c.onclick=()=>_showGapNote(dd);c.style.cursor="pointer";}
     if(isUp){const idx=i;c.onclick=()=>openViewMod(idx);c.style.cursor="pointer";}
     if(isCall&&isF){c.onclick=()=>openCallModal(d);c.style.cursor="pointer";}
     g.appendChild(c);
@@ -183,16 +188,23 @@ function renderGrid(){
 
 
 function renderRecCard(){
-  /* Only count misses since the active goal actually started. */
-  const startDay=(typeof startDayFor==="function"&&typeof activeSlot==="function")?Math.max(1,startDayFor(activeSlot())):1;
-  const missed=S.uploads.slice(startDay-1,S.day-1).filter(v=>!v).length;
+  /* Recovery Round has been removed. Miss handling (miss.js) now owns the
+     miss experience via the gate and the lock. Keep the container empty. */
   const rc=el("rec-c");
-  if(missed>4&&S.day>startDay+5){ rc.innerHTML=`<div class="card ce mt10"><span class="lbl lbl-e">TOO MANY MISSED DAYS</span><p style="font-size:13px;line-height:1.6;margin-bottom:12px">You've missed ${missed} days. A Recovery Round will serve you better than pushing through.</p><button class="bd" style="padding:8px 16px;font-size:13px" onclick="goTo('rec')">Enter Recovery Round</button></div>`; }
-  else rc.innerHTML="";
+  if(rc) rc.innerHTML="";
 }
 
 function updateUpBtn(){
   const btn=el("up-btn"),done=!!S.uploads[S.day-1];
+  /* While a gate or lock is open, forward motion is blocked. The gate's own
+     Continue button (or contacting Genie on the lock) is the only way past it. */
+  if(S.uploadBlocked){
+    btn.disabled=true;
+    btn.classList.remove("up-btn-glow");
+    btn.textContent=`Upload Day ${S.day} Proof ↑`;
+    btn.onclick=null;
+    return;
+  }
   if(done){
     btn.textContent=`View / Edit Day ${S.day} ✓`;
     btn.disabled=false;
@@ -535,53 +547,6 @@ function buildJourneyNarrative(){
   return narrative;
 }
 
-
-/* ── RECOVERY ── */
-async function initRec(){
-  S.recDay=1;
-  if(S.user&&!S.user.recovery)S.user.recovery=[];
-  updRec();
-  const rl=el("rec-lil"); rl.style.display="flex";
-  el("rec-lil-t").innerHTML=`${spn()} <span class="muted" style="font-size:13px">Lil is thinking...</span>`;
-  const recPrompt=`Write 2 sentences about what the Recovery Round is for. Direct, not comforting. Reference their goal and the threat they identified.\n\nGoal: "${S.user?.answers?.goal}"\nThreat to quitting: "${S.user?.answers?.threat||""}"`;
-  const m=await lil(recPrompt,100);
-  el("rec-lil-t").textContent=m||FB.rec(S.user?.answers?.goal);
-}
-
-function updRec(){
-  const d=S.recDay;
-  el("rec-lbl").textContent=`RECOVERY · DAY ${d}/7`;
-  el("rec-bar").style.width=Math.round((d/7)*100)+"%";
-  el("rec-day-l").textContent=`Day ${d} reflection:`;
-  el("rec-btn").textContent=d<7?`Complete Day ${d} →`:"Finish Recovery →";
-  el("rec-ta").value="";
-  const g=el("rec-grid"); g.innerHTML="";
-  for(let i=0;i<7;i++){
-    const c=document.createElement("div");
-    c.style.cssText=`height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:${i<d-1?"rgba(77,201,138,.07)":i===d-1?"rgba(217,80,58,.07)":"#131313"};border:1px solid ${i<d-1?"rgba(77,201,138,.22)":i===d-1?"rgba(217,80,58,.22)":"#171717"};color:${i<d-1?"#4dc98a":i===d-1?"#d9503a":"#5a5a5a"}`;
-    c.textContent=i<d-1?"✓":`D${i+1}`; g.appendChild(c);
-  }
-}
-
-function advRec(){
-  const txt=el("rec-ta").value.trim();
-  if(!txt)return;
-  if(S.user&&S.user.recovery)S.user.recovery.push({day:S.recDay,text:txt});
-  if(S.recDay<7){S.recDay++;updRec();}
-  else{
-    saveState();
-    el("s-rec").innerHTML=`<div style="flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:44px 20px"><div style="max-width:320px"><span class="lbl lbl-o" style="display:block;margin-bottom:5px">RECOVERY COMPLETE</span><h2 style="font-size:36px;font-weight:900;margin-bottom:12px">You're back.</h2><p class="muted mb24" style="font-size:14px;line-height:1.8">7 days of honest reflection. Restart with what you just learned.</p><button class="bp" style="width:100%;font-size:15px;padding:13px" onclick="restartChallenge()">Restart Challenge →</button></div></div>`;
-  }
-}
-
-function restartChallenge(){
-  S.uploads=Array(getDur()).fill(null);
-  S.day=1;
-  S.lilDone=false;
-  if(S.user)S.user.startDate=new Date().toISOString();
-  saveState();
-  goTo("dash");
-}
 
 /* ── CHALLENGE STATS ── */
 function renderStats(){

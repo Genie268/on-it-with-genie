@@ -603,6 +603,9 @@ function renderGoalGrid(){
       const ds = isT ? "NOW" : isM ? "-" : "";
       c.innerHTML = `<span class="dn">D${d}</span>${ds ? `<span class="ds">${ds}</span>` : ""}`;
       if(isT) c.onclick = openMod;
+      /* A missed (red) day reads back its gap note when tapped. Naming never
+         repaints it green; it stays a miss. */
+      if(isM && typeof _showGapNote === "function"){ const dd = d; c.onclick = () => _showGapNote(dd); c.style.cursor = "pointer"; }
     }
 
     if(isCall){

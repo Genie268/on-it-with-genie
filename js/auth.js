@@ -441,6 +441,14 @@ async function _restoreSession(data){
        later resume can't confuse them with a different account's cache. */
     S._uploadsOwner=data.id;
     S.uploadsBySlot=null;
+    /* Miss state is per-account — drop any prior account's cached gap notes
+       and clearance so the fresh session recomputes from this user's data. */
+    S.gapNotes=null;
+    S._adminCleared=false;
+    S._reentryConsumed=false;
+    S._gateGaps=null;
+    S._lockGap=null;
+    S.uploadBlocked=false;
     S.plans=plans;
     S.day=curDay;
     S.ans=S.user.answers;

@@ -100,15 +100,17 @@ function _activateScreen(s){
     const fab=el("chat-fab");if(fab)fab.style.display="none";
     const cf=el("chat-float");if(cf)cf.style.display="none";
     if(typeof _chatOpen!=="undefined")_chatOpen=false;
+    /* The miss lock is a dashboard-only overlay — never let it linger on
+       another screen. */
+    if(typeof _clearLockOverlay==="function") _clearLockOverlay();
   }
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
-  const map={land:"s-land",ob:"s-ob",duration:"s-duration",commit:"s-commit",pay:"s-pay",photo:"s-photo",transition:"s-transition",dash:"s-dash",d15:"s-d15",rec:"s-rec",admin:"s-admin",witness:"s-witness"};
+  const map={land:"s-land",ob:"s-ob",duration:"s-duration",commit:"s-commit",pay:"s-pay",photo:"s-photo",transition:"s-transition",dash:"s-dash",d15:"s-d15",admin:"s-admin",witness:"s-witness"};
   const target=el(map[s]||"s-land");
   if(!target){console.error("goTo: no element for screen",s);el("s-land").classList.add("active");return;}
   target.classList.add("active");
   if(s==="dash")       renderDash();
   if(s==="admin")      { renderAdmin(); startAdminPoll(); }
-  if(s==="rec")        initRec();
   if(s==="d15")        initD15();
   if(s==="transition") renderTransition();
   if(s==="duration")   initDuration();

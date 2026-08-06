@@ -36,6 +36,17 @@ async function loadAdminData(){
     const allGoals=res.goals||[];
     window._adminReminderLogs=allReminderLogs;
 
+    /* Gap notes power the miss readback: Genie sees why a day was missed
+       before opening a call. gap_notes RLS is permissive, so we read it
+       straight from the client like the rest of the readback data. */
+    let allGapNotes=[];
+    try{
+      if(typeof sb!=="undefined"&&sb){
+        const {data:gn}=await sb.from("gap_notes").select("*");
+        if(Array.isArray(gn)) allGapNotes=gn;
+      }
+    }catch(e){ allGapNotes=[]; }
+
     liveChallengers=challengers.map(c=>{
       const uploads=(allUploads||[]).filter(u=>u.challenger_id===c.id);
       const energy=(allEnergy||[]).filter(e=>e.challenger_id===c.id);
@@ -123,6 +134,8 @@ async function loadAdminData(){
         threat:c.threat,startDate:c.start_date,lastSeen:c.last_seen,
         createdAt:c.created_at,
         lastAttentionClearedAt:c.last_attention_cleared_at||null,
+        adminClearedAt:c.admin_cleared_at||null,
+        gapNotes:allGapNotes.filter(n=>n.user_id===c.id).sort((a,b)=>a.start_day-b.start_day),
         hasPush:allPushSubs.some(s=>s.challenger_id===c.id&&s.is_active),
         plans:plans.sort((a,b)=>a.day_number-b.day_number),
         witnessesEnabled:c.witnesses_enabled===true,
@@ -1491,6 +1504,9 @@ function renderChallengerDetail(u){
     goalSwitcher=`<div class="ch-block"><span class="ch-block-lbl">GOALS</span>
       <div style="display:flex;gap:8px">${tabs}</div></div>`;
   }
+  /* A missed day may carry a gap note (why they missed). Genie reads it
+     before opening a call. */
+  const gapNoteFor=(day)=>(u.gapNotes||[]).find(n=>n.start_day<=day&&n.end_day>=day)||null;
   /* Build compact grid (same visual language as user dashboard) */
   let gridCells="";
   for(let i=0;i<dur;i++){
@@ -1507,18 +1523,43 @@ function renderChallengerDetail(u){
     const indicators=(hasVoice?"🎙":"")+(hasLink?"🔗":"");
     const upTime=u.uploadTimes&&u.uploadTimes[i];
     const timeStr=upTime?new Date(upTime).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",hour12:false}):"";
-    const titleText=isUp?`Day ${d} · Uploaded at ${timeStr}`:fut?`Day ${d} · upcoming`:`Day ${d}`;
-    const onclick=isUp?`onclick="openUploadDetail('${u.id}',${i}${gidArg})" style="cursor:pointer"`:"";
+    const gn=isMiss?gapNoteFor(d):null;
+    const titleText=isUp?`Day ${d} · Uploaded at ${timeStr}`:fut?`Day ${d} · upcoming`:gn?`Day ${d} · ${(gn.note||"").replace(/"/g,"&quot;")}`:`Day ${d}`;
+    const onclick=isUp?`onclick="openUploadDetail('${u.id}',${i}${gidArg})" style="cursor:pointer"`:isMiss?`onclick="adminShowGapNote('${u.id}',${d})" style="cursor:pointer"`:"";
     gridCells+=`<div class="${cls}" ${onclick} title="${titleText}">
       <span class="dn">D${d}</span>
       ${ds?`<span class="ds">${ds}</span>`:""}
       ${isUp&&timeStr?`<span style="font-size:7px;color:#888;line-height:1">${timeStr}</span>`:""}
       ${indicators?`<span style="font-size:7px;line-height:1;margin-top:1px">${indicators}</span>`:""}
+      ${gn?`<span style="position:absolute;bottom:-2px;left:-2px;width:9px;height:9px;border-radius:50%;background:#c49a1c;display:flex;align-items:center;justify-content:center;font-size:6px;color:#000;font-weight:900">i</span>`:""}
       ${isCall?`<span style="position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:#c49a1c;display:flex;align-items:center;justify-content:center;font-size:5px">C</span>`:""}
     </div>`;
   }
   const up=u.up.filter(Boolean).length,rv=u.rvCount||0;
   const escName=(u.name||"").replace(/'/g,"\\\\'");
+
+  /* Missed-days readback for Genie: why each gap happened, at a glance. */
+  let gapNotesBlock="";
+  if(u.gapNotes&&u.gapNotes.length){
+    const srcLbl={user_gate:"named it",called:"called",messaged:"messaged",admin_cleared:"cleared by you"};
+    const rows=u.gapNotes.map(n=>{
+      const label=n.start_day===n.end_day?`Day ${n.start_day}`:`Days ${n.start_day} to ${n.end_day}`;
+      const when=n.created_at?new Date(n.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):"";
+      const noteTxt=(n.note||"").replace(/</g,"&lt;");
+      return `<div style="padding:8px 0;border-bottom:1px solid #171717">
+        <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px">
+          <span style="font-size:11px;font-weight:700;color:#d9503a">${label}</span>
+          <span style="font-size:10px;color:#5a5a5a">${srcLbl[n.source]||n.source} · ${when}</span>
+        </div>
+        <p style="font-size:13px;line-height:1.5;color:#ddd;margin:0">${noteTxt}</p>
+      </div>`;
+    }).join("");
+    gapNotesBlock=`<div class="ch-block"><span class="ch-block-lbl">MISSED DAYS · WHY</span>${rows}</div>`;
+  }
+
+  /* Re-entry clearance: after a real conversation, Genie can open the platform
+     for this person. It skips the lock/gate once and shows welcome back. */
+  const clearPending=!!u.adminClearedAt;
   const startDateStr=u.startDate?new Date(u.startDate).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"—";
 
   /* Energy & mood entries (only built if there's anything to show) */
@@ -1555,6 +1596,8 @@ function renderChallengerDetail(u){
       </div>
       <div class="g15">${gridCells}</div>
     </div>
+
+    ${gapNotesBlock}
 
     <div class="ch-block ch-block-msg" id="fb-area-${u.id}">
       <span class="ch-block-lbl">MESSAGE ${(u.name||"").toUpperCase()}</span>
@@ -1598,6 +1641,17 @@ function renderChallengerDetail(u){
             border:1px solid ${u.witnessesEnabled?"rgba(77,201,138,.35)":"#333"};
             background:${u.witnessesEnabled?"rgba(77,201,138,.1)":"transparent"};
             color:${u.witnessesEnabled?"#4dc98a":"#888"}">${u.witnessesEnabled?"✓ Enabled":"Enable"}</button>
+        </div>
+        <div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;justify-content:space-between">
+          <div style="min-width:0">
+            <p style="font-size:12px;font-weight:700;margin:0">Clear re-entry</p>
+            <p class="muted" style="font-size:10px;margin:2px 0 0">After you speak, open the platform for ${u.name}. Skips the lock once and shows welcome back.</p>
+          </div>
+          <button id="clr-tog-${u.id}" onclick="adminToggleClearance('${u.id}',${clearPending?"false":"true"})"
+            style="padding:5px 14px;border-radius:100px;cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;flex-shrink:0;
+            border:1px solid ${clearPending?"rgba(77,201,138,.35)":"#333"};
+            background:${clearPending?"rgba(77,201,138,.1)":"transparent"};
+            color:${clearPending?"#4dc98a":"#888"}">${clearPending?"✓ Cleared (pending)":"Clear re-entry"}</button>
         </div>
       </div>
     </div>
@@ -2185,6 +2239,63 @@ async function toggleWitnessesForChallenger(uid,enable){
     showToast("Could not update witnesses","error");
     if(btn){ btn.disabled=false; btn.textContent=on?"Enable":"✓ Enabled"; }
   }
+}
+
+/* Flip re-entry clearance. Written straight to the challenger row (same
+   client-trusted model as last_attention_cleared_at / last_seen). Setting it
+   opens the platform for their next load; the user side consumes it once. */
+async function adminToggleClearance(uid,set){
+  const on=set===true||set==="true";
+  const btn=el("clr-tog-"+uid);
+  if(btn){ btn.disabled=true; btn.textContent="…"; }
+  const iso=on?new Date().toISOString():null;
+  try{
+    if(typeof sb==="undefined"||!sb) throw new Error("no client");
+    const {error}=await sb.from("challengers").update({admin_cleared_at:iso}).eq("id",uid);
+    if(error) throw error;
+    const u=liveChallengers.find(x=>x.id===uid);
+    if(u) u.adminClearedAt=iso;
+    if(on&&typeof trackEvent==="function") trackEvent("admin_cleared",{challenger_id:uid});
+    showToast(on?"Re-entry cleared":"Clearance cancelled","success");
+    if(btn){
+      btn.disabled=false;
+      btn.textContent=on?"✓ Cleared (pending)":"Clear re-entry";
+      btn.style.border="1px solid "+(on?"rgba(77,201,138,.35)":"#333");
+      btn.style.background=on?"rgba(77,201,138,.1)":"transparent";
+      btn.style.color=on?"#4dc98a":"#888";
+      btn.setAttribute("onclick",`adminToggleClearance('${uid}',${on?"false":"true"})`);
+    }
+  }catch(e){
+    showToast("Could not update clearance","error");
+    if(btn){ btn.disabled=false; btn.textContent=on?"Clear re-entry":"✓ Cleared (pending)"; }
+  }
+}
+
+/* Read back a single missed day's gap note (why they missed). */
+function adminShowGapNote(uid,day){
+  const u=liveChallengers.find(x=>x.id===uid);
+  const n=u&&(u.gapNotes||[]).find(g=>g.start_day<=day&&g.end_day>=day);
+  const label=`Day ${day}`;
+  const srcLbl={user_gate:"They named it",called:"They called",messaged:"They messaged",admin_cleared:"Cleared by you"};
+  const when=n&&n.created_at?new Date(n.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"";
+  const body=n
+    ? `<p style="font-size:11px;color:#c49a1c;font-weight:700;letter-spacing:.06em;margin-bottom:8px">${(srcLbl[n.source]||n.source)}${when?" · "+when:""}</p>
+       <p style="font-size:15px;line-height:1.6;color:#eee">${(n.note||"").replace(/</g,"&lt;")}</p>`
+    : `<p style="font-size:14px;color:#9a9a9a">This day is still unnamed.</p>`;
+  let ov=document.getElementById("adm-gap-modal");
+  if(ov) ov.remove();
+  ov=document.createElement("div");
+  ov.id="adm-gap-modal";
+  ov.style.cssText="position:fixed;inset:0;z-index:1300;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:24px";
+  ov.onclick=()=>ov.remove();
+  ov.innerHTML=`<div onclick="event.stopPropagation()" style="max-width:360px;width:100%;background:#111;border:1px solid #262626;border-radius:14px;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span style="font-size:11px;font-weight:800;letter-spacing:.06em;color:#d9503a">${label} · MISSED</span>
+      <button onclick="document.getElementById('adm-gap-modal').remove()" style="background:none;border:none;color:#666;font-size:18px;cursor:pointer;font-family:inherit">×</button>
+    </div>
+    ${body}
+  </div>`;
+  document.body.appendChild(ov);
 }
 
 async function togRv(uid,i,goalId){

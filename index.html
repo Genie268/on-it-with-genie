@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260713b">
+<link rel="stylesheet" href="css/styles.css?v=20260806a">
 </head>
 <body>
 <script>
@@ -115,6 +115,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
       <p class="muted mb16" style="font-size:13px" id="commit-sub">This is the document you are accountable to.</p>
       <div class="card mb16" style="padding:20px">
         <div id="cl-text" style="font-size:14px;line-height:1.9;font-style:italic;min-height:60px"></div>
+        <p style="font-size:13px;line-height:1.8;color:#c49a1c;margin-top:14px;padding-top:14px;border-top:1px solid rgba(196,154,28,.15)">If you fall off, come back and tell me. I'd rather hear from you than lose you to silence. That door doesn't close here.</p>
         <div style="height:1px;background:#171717;margin:16px 0"></div>
         <span class="lbl">YOUR SIGNATURE</span>
         <input id="sig" type="text" placeholder="Type your full name to sign" style="font-style:italic">
@@ -237,6 +238,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
     </div>
   </div>
   <div class="sb">
+    <div id="miss-gate"></div>
     <div id="goal-bar"></div>
     <div class="card mb10" id="goal-c"></div>
     <div id="coach-notes"></div>
@@ -322,21 +324,6 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
         <button class="bp" style="width:100%;font-size:15px;padding:14px" onclick="_startNewChallenge()">Start a New Challenge</button>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- RECOVERY -->
-<div id="s-rec" class="screen">
-  <div class="nav"><div class="lm"><div class="lmk">G</div><span class="lmt">ON IT <b>WITH GENIE</b></span></div><span class="bdg bdg-e" id="rec-lbl">RECOVERY · DAY 1/7</span></div>
-  <div style="height:3px;background:#1b1b1b"><div id="rec-bar" style="height:100%;background:#d9503a;transition:width .4s;width:14%"></div></div>
-  <div style="flex:1;padding:20px;max-width:500px;margin:0 auto;width:100%">
-    <div id="rec-lil" class="lil-box mb16" style="display:none"><div class="lil-icon">✦</div><div style="flex:1"><span class="lbl lbl-a">LIL</span><p id="rec-lil-t" style="font-size:14px;line-height:1.7"></p></div></div>
-    <div class="card mb16">
-      <p class="mb12" style="font-size:14px;line-height:1.6"><strong id="rec-day-l">Day 1 reflection:</strong> <span class="mid">What specific pattern needs to break for you to show up consistently?</span></p>
-      <textarea id="rec-ta" rows="4" placeholder="Be honest. No one is grading this."></textarea>
-    </div>
-    <div id="rec-grid" class="mb20" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px"></div>
-    <div class="row"><button id="rec-btn" class="bp" style="flex:1" onclick="advRec()">Complete Day 1 →</button><button class="bs" onclick="goTo('dash')">Back</button></div>
   </div>
 </div>
 
@@ -535,15 +522,16 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260713b"></script>
-<script src="js/lil.js?v=20260713b"></script>
-<script src="js/auth.js?v=20260713b"></script>
-<script src="js/onboarding.js?v=20260713b"></script>
-<script src="js/goals.js?v=20260713b"></script>
-<script src="js/witnesses.js?v=20260713b"></script>
-<script src="js/dashboard.js?v=20260713b"></script>
-<script src="js/uploads.js?v=20260713b"></script>
-<script src="js/admin.js?v=20260713b"></script>
-<script src="js/ui.js?v=20260713b"></script>
+<script src="js/config.js?v=20260806a"></script>
+<script src="js/lil.js?v=20260806a"></script>
+<script src="js/auth.js?v=20260806a"></script>
+<script src="js/onboarding.js?v=20260806a"></script>
+<script src="js/goals.js?v=20260806a"></script>
+<script src="js/witnesses.js?v=20260806a"></script>
+<script src="js/miss.js?v=20260806a"></script>
+<script src="js/dashboard.js?v=20260806a"></script>
+<script src="js/uploads.js?v=20260806a"></script>
+<script src="js/admin.js?v=20260806a"></script>
+<script src="js/ui.js?v=20260806a"></script>
 </body>
 </html>

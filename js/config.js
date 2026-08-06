@@ -175,14 +175,24 @@ const FB = {
   nudge:  (g,b,d) => `You said "${b}" stopped you before. Day ${d}: is that pattern showing up right now?`,
   ack:    (note,d) => `Day ${d} logged. Work done, not intention. That is what counts here.`,
   proof:  (n,g) => `${n} completed ${getDur()} days of documented daily work toward a goal they had previously avoided. The consistency is not the achievement. The consistency is the evidence. They now know execution is available by design, not accident.`,
-  genieD15: (n,g) => `What you did in ${getDur()} days, most people spend months avoiding. You have the evidence now. No one gave it to you. You built it, day by day.`,
-  rec:    (g) => `Missing days means the structure broke down, not that you cannot execute. This Recovery Round is 7 days to find exactly where it broke. You will rebuild the rhythm before going again.`
+  genieD15: (n,g) => `What you did in ${getDur()} days, most people spend months avoiding. You have the evidence now. No one gave it to you. You built it, day by day.`
 };
 
 
 /* ── DURATION SELECTOR ── */
 const CALL_DAYS = {7:[2],15:[2,9],30:[2,9,16,23]};
 const CALENDLY_URL = "https://calendly.com/eugeneobo/conversations-with-genie";
+
+/* ── MISS HANDLING (miss-gate, 3-day lock, re-entry) ──
+   Genie's contact for the lock screen. All copy lives here so
+   it is never hardcoded inside a view. Replace GENIE_PHONE with
+   Genie's real number in +E.164 form before this ships. */
+const GENIE_PHONE = "+2348000000000"; // TODO: replace with Genie's real number
+const MISS_STARTERS = [
+  "I fell off. I'm not fully sure why, but I want to keep going.",
+  "This week got away from me. Can we talk?",
+  "I'm struggling to show up and I don't want to quit."
+];
 const TIERS = {
   7:  {name:"The Sprint",     price:"₦8,500",  perks:["1 goal · daily uploads","Lil AI support","1 check-in call with Genie","Genie batch review"],color:"#c49a1c",goals:1},
   15: {name:"The Challenge",   price:"₦15,000", perks:["1 goal · daily uploads","Lil AI nudges + check-ins","2 calls with Genie","Personal feedback on uploads"],color:"#c49a1c",goals:1},
