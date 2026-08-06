@@ -32,6 +32,19 @@ function _fmtGapDate(iso){
 }
 function _firstName(){ return ((S.user?.name || "").trim().split(/\s+/)[0]) || ""; }
 
+/* Genie's phone for the lock screen. Set from the admin Settings tab and
+   stored in app_settings; the config constant is only the last-resort
+   fallback so the button is never dead. Mirrored to localStorage for an
+   instant paint before the server responds. */
+function _geniePhone(){
+  const fromSettings = (S.appSettings && S.appSettings.genie_phone) ? String(S.appSettings.genie_phone).trim() : "";
+  if(fromSettings) return fromSettings;
+  let cached = "";
+  try{ cached = (localStorage.getItem("oiwg_genie_phone") || "").trim(); }catch(e){}
+  if(cached) return cached;
+  return (typeof GENIE_PHONE !== "undefined") ? GENIE_PHONE : "";
+}
+
 /* ---------- gap math (works on the ACTIVE goal's upload array) ---------- */
 function _activeStartDay(){
   return (typeof startDayFor === "function" && typeof activeSlot === "function")
@@ -140,10 +153,16 @@ function _evaluateMissState(){
 async function _refreshMissStateFromServer(){
   if(typeof sb === "undefined" || !sb || !S.user?.supabaseId){ _missServerLoaded = true; _evaluateMissState(); return; }
   try{
-    const [{data: ch}, {data: notes}] = await Promise.all([
+    const [{data: ch}, {data: notes}, {data: setting}] = await Promise.all([
       sb.from("challengers").select("admin_cleared_at").eq("id", S.user.supabaseId).single(),
-      sb.from("gap_notes").select("*").eq("user_id", S.user.supabaseId)
+      sb.from("gap_notes").select("*").eq("user_id", S.user.supabaseId),
+      sb.from("app_settings").select("value").eq("key", "genie_phone").maybeSingle()
     ]);
+    if(setting && typeof setting.value === "string"){
+      if(!S.appSettings) S.appSettings = {};
+      S.appSettings.genie_phone = setting.value;
+      try{ localStorage.setItem("oiwg_genie_phone", setting.value); }catch(e){}
+    }
     if(Array.isArray(notes)){
       const server = notes.map(n => ({
         start_day:n.start_day, end_day:n.end_day, note:n.note,
@@ -239,7 +258,7 @@ function _renderLock(g){
     : `You've been away ${N} days. That's a conversation, not a form.`;
   const bodyBottom = `Reach me and the platform opens back up. Coming back never counts against you here.`;
 
-  const phone = (typeof GENIE_PHONE !== "undefined") ? GENIE_PHONE : "";
+  const phone = _geniePhone();
   const starters = (typeof MISS_STARTERS !== "undefined") ? MISS_STARTERS : [];
   const starterBtns = starters.map((s, i) =>
     `<button class="miss-starter" onclick="_lockMessageStart(${i})" style="display:block;width:100%;text-align:left;background:#141414;border:1px solid #262626;color:#dcdcdc;font-size:13px;line-height:1.5;padding:12px 14px;border-radius:10px;margin-bottom:8px;cursor:pointer;font-family:inherit">${_missEsc(s)}</button>`

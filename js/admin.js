@@ -505,10 +505,34 @@ async function renderAdminSettings(c){
   const codes=await loadAccessCodes();
   const all=getAllAM();
 
+  /* Genie's phone for the miss lock screen (Call now button + tel: link). */
+  let geniePhone="";
+  try{
+    if(typeof sb!=="undefined"&&sb){
+      const {data}=await sb.from("app_settings").select("value").eq("key","genie_phone").maybeSingle();
+      geniePhone=(data&&data.value)||"";
+    }
+  }catch(e){}
+
   const pushStatus=typeof Notification!=="undefined"?Notification.permission:"unsupported";
   const pushLabel=pushStatus==="granted"?'<span style="color:#4dc98a">Enabled</span>':pushStatus==="denied"?'<span style="color:#d9503a">Blocked</span>':pushStatus==="default"?'<span style="color:#c49a1c">Not yet allowed</span>':'<span style="color:#888">Not supported</span>';
 
   c.innerHTML=`
+    <div class="admin-section">
+      <div class="admin-section-hd" onclick="toggleAdminSection('set-contact')">
+        <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">GENIE CONTACT</span>
+        <span id="set-contact-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
+      </div>
+      <div id="set-contact" style="display:none" class="admin-section-bd">
+        <p style="font-size:12px;color:#888;margin-bottom:10px">The number a challenger reaches on the "let's talk first" lock screen. Use full international form, for example +2348012345678.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="set-genie-phone" type="tel" value="${(geniePhone||"").replace(/"/g,"&quot;")}" placeholder="+234..." style="flex:1;min-width:160px;font-size:14px;padding:10px 12px">
+          <button class="bp" style="font-size:12px;padding:9px 18px" onclick="saveGeniePhone()">Save</button>
+        </div>
+        ${geniePhone?"":`<p style="font-size:11px;color:#d9503a;margin-top:8px">No number set yet. The lock screen uses a placeholder until you add one.</p>`}
+      </div>
+    </div>
+
     <div class="admin-section">
       <div class="admin-section-hd" onclick="toggleAdminSection('set-notif')">
         <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">NOTIFICATIONS</span>
@@ -2269,6 +2293,34 @@ async function adminToggleClearance(uid,set){
     showToast("Could not update clearance","error");
     if(btn){ btn.disabled=false; btn.textContent=on?"Clear re-entry":"✓ Cleared (pending)"; }
   }
+}
+
+/* Save Genie's contact number for the miss lock screen. Stored in
+   app_settings (permissive RLS, same client-trusted model as the rest). */
+async function saveGeniePhone(){
+  const inp=el("set-genie-phone");
+  if(!inp) return;
+  let val=(inp.value||"").trim();
+  /* Keep a leading + and digits only, so the tel: link is always clean. */
+  if(val){
+    const plus=val.trim().startsWith("+");
+    const digits=val.replace(/\D/g,"");
+    if(digits.length<7){ showToast("That number looks too short","error"); return; }
+    val=(plus?"+":"")+digits;
+  }
+  inp.disabled=true;
+  try{
+    if(typeof sb==="undefined"||!sb) throw new Error("no client");
+    const {error}=await sb.from("app_settings")
+      .upsert({key:"genie_phone",value:val,updated_at:new Date().toISOString()},{onConflict:"key"});
+    if(error) throw error;
+    inp.value=val;
+    try{ localStorage.setItem("oiwg_genie_phone",val); }catch(e){}
+    showToast(val?"Genie contact saved":"Contact cleared","success");
+  }catch(e){
+    showToast("Could not save the number","error");
+  }
+  inp.disabled=false;
 }
 
 /* Read back a single missed day's gap note (why they missed). */

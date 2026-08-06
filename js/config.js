@@ -184,10 +184,11 @@ const CALL_DAYS = {7:[2],15:[2,9],30:[2,9,16,23]};
 const CALENDLY_URL = "https://calendly.com/eugeneobo/conversations-with-genie";
 
 /* ── MISS HANDLING (miss-gate, 3-day lock, re-entry) ──
-   Genie's contact for the lock screen. All copy lives here so
-   it is never hardcoded inside a view. Replace GENIE_PHONE with
-   Genie's real number in +E.164 form before this ships. */
-const GENIE_PHONE = "+2348000000000"; // TODO: replace with Genie's real number
+   Genie's contact for the lock screen. The live number is set from the
+   admin Settings tab (stored in app_settings.genie_phone) and read via
+   _geniePhone(); this constant is only the last-resort fallback so the
+   Call button is never dead before a number has been saved. */
+const GENIE_PHONE = "+2348000000000"; // fallback only; set the real number in Admin -> Settings -> Genie Contact
 const MISS_STARTERS = [
   "I fell off. I'm not fully sure why, but I want to keep going.",
   "This week got away from me. Can we talk?",
