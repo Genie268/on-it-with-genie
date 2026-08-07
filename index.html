@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260806g">
+<link rel="stylesheet" href="css/styles.css?v=20260806h">
 </head>
 <body>
 <script>
@@ -401,6 +401,8 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
     </div>
     <!-- Witnesses menu entry (only shows when enabled for this challenger) -->
     <div id="profile-witness-entry" style="margin-top:10px"></div>
+    <!-- Early completion request (only shows for an active round) -->
+    <div id="profile-completion" style="margin-top:10px"></div>
 
     <div style="margin-top:16px">
       <span class="lbl">DISPLAY NAME</span>
@@ -525,18 +527,18 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260806g"></script>
-<script src="js/lil.js?v=20260806g"></script>
-<script src="js/auth.js?v=20260806g"></script>
-<script src="js/onboarding.js?v=20260806g"></script>
-<script src="js/goals.js?v=20260806g"></script>
-<script src="js/witnesses.js?v=20260806g"></script>
-<script src="js/miss.js?v=20260806g"></script>
-<script src="js/completion.js?v=20260806g"></script>
-<script src="js/miss-preview.js?v=20260806g"></script>
-<script src="js/dashboard.js?v=20260806g"></script>
-<script src="js/uploads.js?v=20260806g"></script>
-<script src="js/admin.js?v=20260806g"></script>
-<script src="js/ui.js?v=20260806g"></script>
+<script src="js/config.js?v=20260806h"></script>
+<script src="js/lil.js?v=20260806h"></script>
+<script src="js/auth.js?v=20260806h"></script>
+<script src="js/onboarding.js?v=20260806h"></script>
+<script src="js/goals.js?v=20260806h"></script>
+<script src="js/witnesses.js?v=20260806h"></script>
+<script src="js/miss.js?v=20260806h"></script>
+<script src="js/completion.js?v=20260806h"></script>
+<script src="js/miss-preview.js?v=20260806h"></script>
+<script src="js/dashboard.js?v=20260806h"></script>
+<script src="js/uploads.js?v=20260806h"></script>
+<script src="js/admin.js?v=20260806h"></script>
+<script src="js/ui.js?v=20260806h"></script>
 </body>
 </html>

@@ -443,6 +443,8 @@ function openProfile(){
   if(tp)tp.className="toggle-pill"+(document.body.classList.contains("light")?" active":"");
   /* Witnesses menu entry (only renders when enabled for this challenger). */
   try{ if(typeof renderWitnessRow==="function") renderWitnessRow(); }catch(e){}
+  /* Early-completion request lives here in the menu, never on the dashboard. */
+  try{ if(typeof renderProfileCompletion==="function") renderProfileCompletion(); }catch(e){}
 }
 
 function closeProfile(evt){

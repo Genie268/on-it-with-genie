@@ -107,9 +107,9 @@ function renderCompletionState(){
     /* Clean closed state. Grid shows the medal and the quiet closed days. */
     _clearCongratsModal();
   }else{
-    /* Active round: offer to request completion. */
+    /* Active round: nothing on the dashboard. Requesting completion lives in
+       the profile menu so it can never be mis-tapped from the daily UI. */
     _clearCongratsModal();
-    _renderRequestCompletion(slot);
   }
   _refreshRoundFromServer();
 }
@@ -135,20 +135,29 @@ async function _refreshRoundFromServer(){
   }catch(e){}
 }
 
-/* ---------- request completion (member -> coach) ---------- */
-function _renderRequestCompletion(slot){
-  if(!slot) return;
+/* ---------- request completion (member -> coach), in the profile menu ----------
+   Lives in the profile sheet, not the dashboard, so it is a deliberate action
+   and never a mis-tap during daily use. Called from openProfile(). */
+function renderProfileCompletion(){
+  const box = el("profile-completion");
+  if(!box) return;
+  if(!S.user || isRoundClosed()){ box.innerHTML = ""; return; }
   if(S.user.completionRequestedAt){
-    slot.innerHTML = `
-      <div class="card mb10" style="border:1px solid rgba(196,154,28,.2);background:rgba(196,154,28,.04);padding:12px 14px;display:flex;align-items:center;gap:10px">
-        ${_trophySVG(16)}
-        <p style="font-size:13px;color:#d9c48a;margin:0">Completion requested. Your coach will confirm your win.</p>
+    box.innerHTML = `
+      <div class="toggle-row" style="align-items:flex-start">
+        <div style="display:flex;align-items:center;gap:8px">
+          ${_trophySVG(16)}
+          <div>
+            <p style="font-size:14px;font-weight:600;color:#d9c48a">Completion requested</p>
+            <p style="font-size:11px;color:var(--muted,#7a7a7a)">Your coach will confirm your win.</p>
+          </div>
+        </div>
       </div>`;
     return;
   }
-  slot.innerHTML = `
-    <div class="card mb10" style="border:1px solid #1c1c1c;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
-      <p style="font-size:13px;color:#9a9a9a;margin:0">Reached your goal already?</p>
+  box.innerHTML = `
+    <div class="toggle-row">
+      <div><p style="font-size:14px;font-weight:600">Reached your goal?</p><p style="font-size:11px;color:var(--muted,#7a7a7a)">Ask your coach to confirm your win</p></div>
       <button onclick="requestCompletion()" style="flex-shrink:0;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.25);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">${_trophySVG(13)} I've reached my goal</button>
     </div>`;
 }
@@ -166,7 +175,7 @@ async function requestCompletion(){
     try{ sb.from("chat_messages").insert({challenger_id:S.user.supabaseId, sender:"challenger", message:"I've reached my goal. Requesting completion."}).then(()=>{}).catch(()=>{}); }catch(e){}
   }
   if(typeof showToast === "function") showToast("Sent to your coach. They'll confirm your win.", "success", 4000);
-  _renderRequestCompletion(el("completion-slot"));
+  renderProfileCompletion();
 }
 
 /* ============================================================
