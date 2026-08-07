@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Bebas+Neue&family=Archivo+Black&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260807design1">
+<link rel="stylesheet" href="css/styles.css?v=20260807design2">
 </head>
 <body>
 <script>
@@ -29,11 +29,11 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- LANDING -->
 <div id="s-land" class="screen active">
-  <div style="flex:1;display:flex;flex-direction:column;align-items:var(--align-items,center);justify-content:center;padding:48px 24px;text-align:var(--align,center);position:relative;overflow:hidden">
+  <div id="landing-hero" class="dz-hero" style="flex:1;display:flex;flex-direction:column;align-items:var(--align-items,center);justify-content:center;padding:48px 24px;text-align:var(--align,center);position:relative;overflow:hidden">
     <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 28%,rgba(196,154,28,.08),transparent 55%);pointer-events:none"></div>
     <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(196,154,28,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(196,154,28,.03) 1px,transparent 1px);background-size:52px 52px;pointer-events:none"></div>
     <div class="land-particles" id="land-particles"></div>
-    <div id="landing-canvas-layer"></div>
+    <div id="landing-canvas-layer" class="dz-canvas-layer"></div>
     <div style="position:relative;z-index:3;max-width:var(--container,500px);width:100%">
       <div class="lm land-logo" style="justify-content:center;margin-bottom:44px">
         <div class="lmk" style="width:42px;height:42px;font-size:20px">G</div>
@@ -530,20 +530,20 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260807design1"></script>
-<script src="js/theme.js?v=20260807design1"></script>
-<script src="js/lil.js?v=20260807design1"></script>
-<script src="js/auth.js?v=20260807design1"></script>
-<script src="js/onboarding.js?v=20260807design1"></script>
-<script src="js/goals.js?v=20260807design1"></script>
-<script src="js/witnesses.js?v=20260807design1"></script>
-<script src="js/miss.js?v=20260807design1"></script>
-<script src="js/completion.js?v=20260807design1"></script>
-<script src="js/miss-preview.js?v=20260807design1"></script>
-<script src="js/dashboard.js?v=20260807design1"></script>
-<script src="js/uploads.js?v=20260807design1"></script>
-<script src="js/admin.js?v=20260807design1"></script>
-<script src="js/design.js?v=20260807design1"></script>
-<script src="js/ui.js?v=20260807design1"></script>
+<script src="js/config.js?v=20260807design2"></script>
+<script src="js/theme.js?v=20260807design2"></script>
+<script src="js/lil.js?v=20260807design2"></script>
+<script src="js/auth.js?v=20260807design2"></script>
+<script src="js/onboarding.js?v=20260807design2"></script>
+<script src="js/goals.js?v=20260807design2"></script>
+<script src="js/witnesses.js?v=20260807design2"></script>
+<script src="js/miss.js?v=20260807design2"></script>
+<script src="js/completion.js?v=20260807design2"></script>
+<script src="js/miss-preview.js?v=20260807design2"></script>
+<script src="js/dashboard.js?v=20260807design2"></script>
+<script src="js/uploads.js?v=20260807design2"></script>
+<script src="js/admin.js?v=20260807design2"></script>
+<script src="js/design.js?v=20260807design2"></script>
+<script src="js/ui.js?v=20260807design2"></script>
 </body>
 </html>

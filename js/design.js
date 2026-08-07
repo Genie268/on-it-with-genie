@@ -49,46 +49,100 @@ const DZ = (function(){
   function setBool(path, checked){ set(path, !!checked); }
   function setNum(path, value, unit){ set(path, (unit ? (value+unit) : Number(value))); }
 
-  /* ---------- apply the draft to the preview stage only ---------- */
+  /* ---------- mount the REAL landing hero into the preview (a clone) ---------- */
+  function mountPreview(){
+    const stage = document.getElementById("dz-stage");
+    if(!stage) return;
+    const realHero = document.querySelector("#s-land .dz-hero") || document.querySelector(".dz-hero");
+    stage.innerHTML = "";
+    const grain = document.createElement("div");
+    grain.id = "dz-grain";
+    grain.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:40;display:none;mix-blend-mode:overlay";
+    stage.appendChild(grain);
+    if(realHero){
+      /* Re-parse the real landing markup into FRESH elements (not cloneNode,
+         which carries a stale paint that ignores live custom-property edits). */
+      const tmp = document.createElement("div");
+      tmp.innerHTML = realHero.outerHTML;
+      const clone = tmp.firstElementChild;
+      clone.removeAttribute("id");
+      clone.querySelectorAll("[id]").forEach(n => n.removeAttribute("id"));
+      clone.querySelectorAll("[onclick]").forEach(n => n.removeAttribute("onclick"));
+      const layer = clone.querySelector(".dz-canvas-layer"); if(layer) layer.innerHTML = "";
+      clone.style.height = "100%";
+      clone.style.minHeight = "0";
+      stage.appendChild(clone);
+    }else{
+      stage.innerHTML = "<p style='padding:20px;color:#888'>Landing markup not found.</p>";
+    }
+  }
+
+  /* ---------- apply the draft to the cloned landing in the preview ---------- */
   function applyPreview(){
     const stage = document.getElementById("dz-stage");
     if(!stage || !T()) return;
-    T().applyTheme(draft, stage);
+    if(!stage.querySelector(".dz-hero")) mountPreview();
+    T().applyTheme(draft, stage);                              /* tokens scoped to the stage */
     T().applyGrain(draft, document.getElementById("dz-grain"));
-    const layer = document.getElementById("dz-canvas");
-    T().renderCanvas(draft, layer, { editable: editMode });
+    T().applyBackground(draft, stage);
+    T().applyCoachPhoto(draft, stage);
+    const layer = stage.querySelector(".dz-canvas-layer");
+    if(layer) T().renderTextBlocks(draft, layer);
+    stage.classList.toggle("dz-editing", editMode);
+    /* Force a synchronous reflow so pre-existing elements (notably native
+       <button> backgrounds) pick up live var() colour edits. Done in one JS
+       turn, so the browser never paints the hidden frame (no flicker). */
+    stage.style.display = "none"; void stage.offsetHeight; stage.style.display = "";
     if(editMode) wireDrag();
     const be = document.getElementById("dz-block-editor");
     if(be) renderBlockEditor();
   }
 
-  /* ---------- drag (photo + text blocks) ---------- */
+  /* ---------- drag (coach photo + text blocks), scoped to the clone ---------- */
+  function _startDrag(e, node, hero, onMove, onEnd){
+    e.preventDefault();
+    const rect = hero.getBoundingClientRect();
+    const move = (ev) => {
+      let x = ((ev.clientX - rect.left) / rect.width) * 100;
+      let y = ((ev.clientY - rect.top) / rect.height) * 100;
+      x = Math.max(0, Math.min(100, x)); y = Math.max(0, Math.min(100, y));
+      node.style.position = "absolute";
+      node.style.left = x + "%"; node.style.top = y + "%";
+      node.style.transform = "translate(-50%,-50%)";
+      onMove(Math.round(x), Math.round(y));
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      if(onEnd) onEnd();
+    };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+  }
   function wireDrag(){
     const stage = document.getElementById("dz-stage");
-    const layer = document.getElementById("dz-canvas");
-    if(!stage || !layer) return;
-    layer.querySelectorAll(".dz-text,.dz-photo").forEach(elm => {
-      elm.onpointerdown = (e) => {
-        e.preventDefault();
-        const isPhoto = elm.dataset.dz === "photo";
-        const id = elm.dataset.id;
-        if(!isPhoto) selectBlock(id);
-        const rect = stage.getBoundingClientRect();
-        const move = (ev) => {
-          let x = ((ev.clientX - rect.left) / rect.width) * 100;
-          let y = ((ev.clientY - rect.top) / rect.height) * 100;
-          x = Math.max(0, Math.min(100, x)); y = Math.max(0, Math.min(100, y));
-          elm.style.left = x + "%"; elm.style.top = y + "%";
-          if(isPhoto){ draft.photo.x = Math.round(x); draft.photo.y = Math.round(y); }
-          else { const b = (draft.textBlocks||[]).find(bl => bl.id === id); if(b){ b.x = Math.round(x); b.y = Math.round(y); } }
-        };
-        const up = () => {
-          document.removeEventListener("pointermove", move);
-          document.removeEventListener("pointerup", up);
-        };
-        document.addEventListener("pointermove", move);
-        document.addEventListener("pointerup", up);
+    const hero = stage && stage.querySelector(".dz-hero");
+    if(!hero) return;
+    const avatar = stage.querySelector(".genie-float");
+    if(avatar){
+      avatar.onpointerdown = (e) => {
+        /* Lift the coach photo out of the card so it can go anywhere. */
+        if(draft.photo.placement !== "floating"){ draft.photo.placement = "floating"; T().applyCoachPhoto(draft, stage); }
+        const a = stage.querySelector(".genie-float");
+        _startDrag(e, a, hero,
+          (x,y) => { draft.photo.x = x; draft.photo.y = y; },
+          () => { renderControls(); });
       };
+    }
+    stage.querySelectorAll(".dz-canvas-layer .dz-text").forEach(t => {
+      t.onpointerdown = (e) => {
+        selectBlock(t.dataset.id);
+        _startDrag(e, t, hero, (x,y) => {
+          const b = (draft.textBlocks||[]).find(bl => bl.id === t.dataset.id);
+          if(b){ b.x = x; b.y = y; }
+        });
+      };
+      t.onclick = () => selectBlock(t.dataset.id);
     });
   }
 
@@ -274,10 +328,11 @@ const DZ = (function(){
       section("TEXTURE",
         toggleRow("Film grain","tokens.grain") + rangeRow("Grain amount","tokens.grainAmount",0,0.3,0.01,"")
       ) +
-      section("PHOTO",
-        `<label class="dz-row"><span>Upload</span><input type="file" accept="image/*" onchange="DZ.uploadPhoto(this)" style="font-size:11px"></label>
-         <p id="dz-photo-status" style="font-size:10px;color:#5a5a5a;margin:2px 0 8px">${draft.photo && draft.photo.src ? "Photo set" : "No photo yet"}</p>` +
-        selectRow("Placement","photo.placement",[["above","Above text"],["beside","Beside text"],["background","Full background"],["hidden","Off"]]) +
+      section("PHOTO (COACH AVATAR)",
+        `<p style="font-size:11px;color:#8a8a8a;margin:0 0 8px">These control your coach photo in the landing coach card.</p>
+         <label class="dz-row"><span>Replace photo</span><input type="file" accept="image/*" onchange="DZ.uploadPhoto(this)" style="font-size:11px"></label>
+         <p id="dz-photo-status" style="font-size:10px;color:#5a5a5a;margin:2px 0 8px">${draft.photo && draft.photo.src ? "Custom photo uploaded" : "Using your current coach photo"}</p>` +
+        selectRow("Placement","photo.placement",[["card","Coach card"],["floating","Floating (drag it)"],["background","Full background"],["hidden","Off"]]) +
         selectRow("Shape","photo.shape",[["circle","Circle"],["rounded","Rounded"],["square","Square"]]) +
         rangeRow("Rounded radius","photo.radius",0,80,1,"") +
         rangeRow("Size","photo.size",48,320,2,"") +
@@ -312,9 +367,11 @@ const DZ = (function(){
         .dz-row input[type=range]{flex:1}
         .dz-row select{background:#111;border:1px solid #222;color:#e8e8e8;border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px}
         .dz-actions button{font-family:inherit}
-        #dz-stage{position:relative;width:100%;height:600px;max-height:72vh;overflow:hidden;border:1px solid #222;border-radius:12px;display:flex;flex-direction:column;align-items:var(--align-items,center);justify-content:center;text-align:var(--align,center);padding:36px 20px;background:var(--page-bg)}
-        #dz-grain{position:absolute;inset:0;pointer-events:none;z-index:6;display:none;mix-blend-mode:overlay}
-        #dz-canvas{position:absolute;inset:0;z-index:4;overflow:hidden}
+        #dz-stage{position:relative;width:100%;height:620px;max-height:76vh;overflow:hidden;border:1px solid #222;border-radius:12px;background:var(--page-bg,#060606)}
+        #dz-stage .dz-hero{height:100%!important}
+        /* Freeze animations in the preview: a running CSS animation stops
+           Chromium from repainting live custom-property (accent/colour) edits. */
+        #dz-stage *,#dz-stage *::before,#dz-stage *::after{animation:none!important}
       </style>
       <div id="dz-wrap">
         <div id="dz-left">
@@ -332,21 +389,9 @@ const DZ = (function(){
           <div id="dz-controls"></div>
         </div>
         <div id="dz-right">
-          <p class="ch-block-lbl">LIVE PREVIEW · LANDING</p>
-          <div id="dz-stage">
-            <div id="dz-grain"></div>
-            <div id="dz-canvas"></div>
-            <div style="position:relative;z-index:5;max-width:var(--container,500px);width:100%">
-              <div style="display:flex;gap:8px;align-items:center;justify-content:var(--align-items,center);margin-bottom:26px">
-                <div style="width:34px;height:34px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--accent-text)">G</div>
-                <span style="font-size:15px;font-weight:700;color:var(--text)">ON IT <b>WITH GENIE</b></span>
-              </div>
-              <h1 style="font-family:var(--font-heading);font-size:var(--fs-h1);font-weight:var(--fw-heading);letter-spacing:var(--letter-spacing);line-height:1.08;color:var(--text);margin-bottom:16px">You already know what to do. <span style="color:var(--accent)">Do it here.</span></h1>
-              <p style="font-family:var(--font-body);font-size:var(--fs-base);line-height:var(--line-height);color:var(--muted);margin-bottom:24px">Pick a duration. Commit to one goal. Upload proof daily.</p>
-              <button style="background:var(--accent);color:var(--accent-text);border:none;border-radius:var(--radius);padding:var(--btn-padding);font-size:15px;font-weight:800;font-family:var(--font-body);cursor:default">Begin Your Challenge →</button>
-            </div>
-          </div>
-          <p style="font-size:11px;color:#5a5a5a;margin-top:8px">Turn on Edit mode to drag the photo and text blocks. Publish to push this look to the live site. Revert restores the original.</p>
+          <p class="ch-block-lbl">LIVE PREVIEW · YOUR REAL LANDING</p>
+          <div id="dz-stage"></div>
+          <p style="font-size:11px;color:#5a5a5a;margin-top:8px">This is your actual landing page. Turn on Edit mode to drag the coach photo and text blocks. Publish pushes this look to the live site. Revert restores today's look.</p>
         </div>
       </div>`;
 

@@ -4,7 +4,7 @@
    Reads the published theme from site_config, applies it to :root as CSS
    variables, and renders the landing photo, free text blocks and film-grain
    overlay. Runs on the PUBLIC site and in the admin Design editor (which
-   reuses applyTheme / renderCanvas against a scoped preview element).
+   reuses these apply* functions against a scoped preview element).
 
    DEFAULT_BASELINE captures the site's current look and is the fixed fallback
    the Revert button restores to. It is never overwritten.
@@ -28,9 +28,11 @@
       useGradient: false, bg2: "#0c0c0c", gradientAngle: "160",
       grain: false, grainAmount: "0.05"
     },
+    /* The photo is the landing coach avatar. Baseline reproduces today's card
+       avatar: a 52px gold-ringed circle sitting in the coach card. */
     photo: {
-      src: "", shape: "circle", radius: "18", size: "120", grayscale: "0",
-      ring: true, placement: "hidden", overlay: "0.5", x: 50, y: 30
+      src: "", shape: "circle", radius: "18", size: "52", grayscale: "0",
+      ring: true, placement: "card", overlay: "0.5", x: 50, y: 30
     },
     textBlocks: []
   };
@@ -105,48 +107,90 @@
 
   function _esc(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
-  /* ---- render photo + text blocks into a hero canvas layer ----
-     Positions are percentages of the hero box so they hold across sizes.
-     editable=false (public): decorative, non-interactive. The editor passes
-     editable=true and wires its own drag handlers afterward. */
-  function renderCanvas(theme, layerEl, opts){
+  function _shapeRadius(p){
+    const shape = p.shape || "circle";
+    return shape === "circle" ? "50%" : shape === "square" ? "0" : ((p.radius != null ? p.radius : 18) + "px");
+  }
+
+  /* Free text blocks into the canvas layer (positions are % of the hero). Only
+     removes/re-adds the text blocks so a floated coach photo in the same layer
+     is left in place. */
+  function renderTextBlocks(theme, layerEl){
     if(!layerEl) return;
-    const th = merge(DEFAULT_BASELINE, theme);
-    const p = th.photo || {};
-    const blocks = th.textBlocks || [];
-    layerEl.innerHTML = "";
-
-    /* Full-bleed background photo is painted on the layer itself. */
-    layerEl.style.background = "";
-    if(p.src && p.placement === "background"){
-      const ov = Math.max(0, Math.min(1, parseFloat(p.overlay != null ? p.overlay : 0.5)));
-      layerEl.style.background = `linear-gradient(rgba(0,0,0,${ov}),rgba(0,0,0,${ov})), url("${_esc(p.src)}") center/cover no-repeat`;
-    }
-
-    /* Positioned photo (above / beside / dragged). */
-    if(p.src && p.placement !== "background" && p.placement !== "hidden"){
-      const shape = p.shape || "circle";
-      const rad = shape === "circle" ? "50%" : shape === "square" ? "0" : ((p.radius || 18) + "px");
-      const size = (p.size || 120);
-      const ring = p.ring ? "3px solid var(--accent,#c49a1c)" : "none";
-      const gray = Math.max(0, Math.min(1, parseFloat(p.grayscale || 0)));
-      const img = document.createElement("div");
-      img.className = "dz-photo";
-      img.dataset.dz = "photo";
-      img.style.cssText = `position:absolute;left:${p.x != null ? p.x : 50}%;top:${p.y != null ? p.y : 30}%;transform:translate(-50%,-50%);width:${size}px;height:${size}px;border-radius:${rad};border:${ring};background:url("${_esc(p.src)}") center/cover no-repeat;filter:grayscale(${gray});box-shadow:0 8px 30px rgba(0,0,0,.35)`;
-      layerEl.appendChild(img);
-    }
-
-    /* Free text blocks. */
+    const doc = layerEl.ownerDocument || document;
+    const blocks = (merge(DEFAULT_BASELINE, theme).textBlocks) || [];
+    layerEl.querySelectorAll(".dz-text").forEach(n => n.remove());
     blocks.forEach(b => {
-      const el = document.createElement("div");
+      const el = doc.createElement("div");
       el.className = "dz-text";
       el.dataset.dz = "text";
       el.dataset.id = b.id;
-      el.style.cssText = `position:absolute;left:${b.x != null ? b.x : 50}%;top:${b.y != null ? b.y : 50}%;transform:translate(-50%,-50%);max-width:${b.maxWidth || 60}%;font-family:${b.font || "var(--font-heading)"};font-size:${b.size || 24}px;font-weight:${b.weight || 700};color:${b.color || "var(--text)"};line-height:1.2;text-align:center;white-space:pre-wrap;word-break:break-word`;
+      el.style.cssText = `position:absolute;left:${b.x != null ? b.x : 50}%;top:${b.y != null ? b.y : 50}%;transform:translate(-50%,-50%);max-width:${b.maxWidth || 70}%;font-family:${b.font || "var(--font-heading)"};font-size:${b.size || 26}px;font-weight:${b.weight || 700};color:${b.color || "var(--text)"};line-height:1.2;text-align:center;white-space:pre-wrap;word-break:break-word`;
       el.textContent = b.content || "";
       layerEl.appendChild(el);
     });
+  }
+
+  /* Full-background photo painted on the landing hero (behind everything). */
+  function applyBackground(theme, scope){
+    scope = scope || document;
+    const p = (merge(DEFAULT_BASELINE, theme).photo) || {};
+    const hero = scope.querySelector(".dz-hero");
+    if(!hero) return;
+    if(p.src && p.placement === "background"){
+      const ov = Math.max(0, Math.min(1, parseFloat(p.overlay != null ? p.overlay : 0.5)));
+      hero.style.backgroundImage = `linear-gradient(rgba(0,0,0,${ov}),rgba(0,0,0,${ov})), url("${_esc(p.src)}")`;
+      hero.style.backgroundSize = "cover";
+      hero.style.backgroundPosition = "center";
+    }else{
+      hero.style.backgroundImage = "";
+    }
+  }
+
+  /* THE PHOTO IS THE COACH AVATAR. Style the real .genie-float in the landing
+     coach card per the photo settings, and (when placement is "floating") lift
+     it into the canvas layer so it can be dragged anywhere over the hero. */
+  function applyCoachPhoto(theme, scope){
+    scope = scope || document;
+    const land = scope.querySelector("#s-land") || scope.querySelector(".dz-hero") || scope;
+    const avatar = land.querySelector(".genie-float");
+    if(!avatar) return;
+    const p = (merge(DEFAULT_BASELINE, theme).photo) || {};
+    const img = avatar.querySelector("img");
+    const layer = land.querySelector(".dz-canvas-layer") || scope.querySelector(".dz-canvas-layer");
+    const card = land.querySelector(".land-genie");
+
+    if(p.placement === "hidden"){ avatar.style.display = "none"; return; }
+    avatar.style.display = "";
+
+    if(p.src && img){ img.src = p.src; img.style.display = "block"; }
+    const rad = _shapeRadius(p);
+    avatar.style.borderRadius = rad;
+    if(img){ img.style.borderRadius = rad; img.style.filter = `grayscale(${Math.max(0,Math.min(1,parseFloat(p.grayscale||0)))})`; }
+    const size = (p.size || 52);
+    avatar.style.width = size + "px";
+    avatar.style.height = size + "px";
+    avatar.style.border = p.ring ? "2px solid var(--accent,#c49a1c)" : "none";
+    avatar.style.overflow = "hidden";
+    avatar.dataset.dz = "photo";
+
+    if(p.placement === "floating" && layer){
+      if(avatar.parentElement !== layer) layer.appendChild(avatar);
+      avatar.style.position = "absolute";
+      avatar.style.left = (p.x != null ? p.x : 50) + "%";
+      avatar.style.top = (p.y != null ? p.y : 30) + "%";
+      avatar.style.transform = "translate(-50%,-50%)";
+      avatar.style.zIndex = "6";
+      avatar.style.margin = "0";
+      avatar.style.boxShadow = "0 8px 30px rgba(0,0,0,.35)";
+    }else{
+      /* Coach card (default): make sure it sits back in the card. */
+      if(card && avatar.parentElement !== card) card.insertBefore(avatar, card.firstChild);
+      avatar.style.position = "";
+      avatar.style.left = ""; avatar.style.top = "";
+      avatar.style.transform = ""; avatar.style.zIndex = ""; avatar.style.margin = "";
+      avatar.style.boxShadow = "";
+    }
   }
 
   /* ---- storage: read published theme (REST, no sb dependency at boot) ---- */
@@ -185,12 +229,15 @@
     }catch(e){ return { ok:false, error:String(e) }; }
   }
 
-  /* ---- apply everything (tokens + grain + canvas) ---- */
-  function applyAll(theme){
-    applyTheme(theme);
-    applyGrain(theme);
-    const layer = document.getElementById("landing-canvas-layer");
-    if(layer) renderCanvas(theme, layer, { editable:false });
+  /* ---- apply everything to a document scope (tokens + grain + landing) ---- */
+  function applyAll(theme, scope){
+    scope = scope || document;
+    applyTheme(theme, scope.documentElement || undefined);
+    applyGrain(theme, (scope.getElementById ? scope.getElementById("grain-overlay") : null));
+    applyBackground(theme, scope);
+    applyCoachPhoto(theme, scope);
+    const layer = scope.querySelector(".dz-canvas-layer");
+    if(layer) renderTextBlocks(theme, layer);
   }
 
   /* ---- boot: instant paint from cache, then refresh from server ---- */
@@ -217,7 +264,7 @@
   window.OIWG_THEME = {
     DEFAULT_BASELINE,
     clone, merge,
-    applyTheme, applyGrain, renderCanvas, applyAll,
+    applyTheme, applyGrain, applyBackground, applyCoachPhoto, renderTextBlocks, applyAll,
     fetchPublished, publish, writeCache, readCache,
     getPublished: () => _published,
     GRAIN_URI
