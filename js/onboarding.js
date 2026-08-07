@@ -263,6 +263,9 @@ function doCommit(){
   const sig=el("sig").value.trim(); if(!sig)return;
   if(S.user){S.user.sig=sig;S.user.answers.sig=sig;}
   S.ans.sig=sig;
+  /* Starting a fresh short round after an early completion signs the same
+     commitment screen but finalizes in place instead of routing to payment. */
+  if(S._newRoundDays && typeof finalizeNewRound==="function"){ finalizeNewRound(); return; }
   saveState();
   if(typeof syncToSupabase==="function") syncToSupabase();
   goTo("photo");

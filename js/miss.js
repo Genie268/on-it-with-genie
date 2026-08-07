@@ -141,6 +141,8 @@ function renderMissState(){
   S.uploadBlocked = false;
   _clearLockOverlay();
   if(!S.user || !Array.isArray(S.uploads)){ if(cont) cont.innerHTML = ""; return; }
+  /* A finished member (early completion or ended) is never gated or locked. */
+  if(typeof isRoundClosed === "function" && isRoundClosed()){ if(cont) cont.innerHTML = ""; return; }
   if(!Array.isArray(S.gapNotes)) S.gapNotes = loadGapNotesLocal();
   if(!S.coach){ const c = loadCoachLocal(); if(c) S.coach = c; }
 

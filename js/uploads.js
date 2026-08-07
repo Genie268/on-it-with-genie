@@ -144,8 +144,10 @@ function thumbHtml(url,fileName){
 function openMod(){
   /* Miss handling sits in front of the upload. While a gate or lock is open,
      the upload modal must not open. The gate's Continue button clears the
-     block and calls openMod() itself. */
+     block and calls openMod() itself. A closed (completed/ended) round has
+     nothing to upload either. */
   if(S.uploadBlocked) return;
+  if(typeof isRoundClosed==="function" && isRoundClosed()) return;
   S.fileOn=false; S.fileName=null; S.behaviorAnswer=null; S.voiceBlob=null;
   el("mod-form").style.display=""; el("mod-ack").style.display="none";
   el("mod-dl").textContent=`DAY ${S.day} UPLOAD`;

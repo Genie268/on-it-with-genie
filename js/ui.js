@@ -1371,6 +1371,21 @@ async function openProfilePanel(uid){
           ?`<button onclick="_reactivateChallenger('${uid}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(77,201,138,.08);border:1px solid rgba(77,201,138,.2);color:#4dc98a;font-size:12px;font-weight:700;cursor:pointer">Reactivate Challenge</button>`
           :`<button onclick="_markChallengerComplete('${uid}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">Mark as Completed</button>`}
       </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1e1e1e">
+        <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:8px">EARLY WIN</p>
+        ${(u.roundStatus==="completed_early"||u.roundStatus==="ended")
+          ?`<div style="padding:10px 12px;border-radius:9px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.2);display:flex;align-items:center;gap:8px">
+               ${typeof _trophySVG==="function"?_trophySVG(15):"★"}
+               <span style="font-size:12px;color:#d9c48a">Early win confirmed${u.completedOn?` on day ${u.completedOn}`:""}${u.roundStatus==="ended"?" · member ended here":""}</span>
+             </div>`
+          :`${u.completionRequestedAt?`<div style="margin-bottom:8px;padding:8px 12px;border-radius:9px;background:rgba(196,154,28,.1);border:1px solid rgba(196,154,28,.35);font-size:12px;color:#c49a1c;font-weight:700;display:flex;align-items:center;gap:6px">${typeof _trophySVG==="function"?_trophySVG(13):"★"} Member requested completion</div>`:""}
+             <div style="display:flex;gap:8px;align-items:center">
+               <span style="font-size:11px;color:#888">Day</span>
+               <input id="mgc-day-${uid}" type="number" min="1" max="${u.dur}" value="${Math.min(u.day||1,u.dur||1)}" style="width:60px;padding:8px;border-radius:8px;background:#111;border:1px solid #222;color:#ebebeb;font-size:12px;font-family:inherit">
+               <button onclick="adminMarkGoalComplete('${uid}')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border-radius:8px;background:rgba(196,154,28,.1);border:1px solid rgba(196,154,28,.35);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">${typeof _trophySVG==="function"?_trophySVG(13):"★"} Mark goal complete</button>
+             </div>
+             <p style="font-size:10px;color:#5a5a5a;margin-top:6px;line-height:1.5">Confirms an early win on the chosen day. The remaining days become neutral, never missed. This is a completed close, not a removal.</p>`}
+      </div>
       <div style="margin-top:12px">
         <button onclick="switchToEditMode('${uid}')" style="width:100%;padding:10px;border-radius:10px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.2);color:#c49a1c;font-size:13px;font-weight:700;cursor:pointer">Edit Profile →</button>
       </div>
@@ -1642,6 +1657,26 @@ async function _reactivateChallenger(uid){
     adminDataLoaded=false;renderAdmin();
     setTimeout(()=>openProfilePanel(uid),300);
   }catch(e){showToast("Failed to reactivate","error");}
+}
+
+/* Confirm an EARLY WIN: sets round_status to completed_early and the medal day.
+   Distinct from _markChallengerComplete (the full-window close) and from any
+   terminate/remove action. The member sees the congratulations flow next load. */
+async function adminMarkGoalComplete(uid){
+  if(!sb)return;
+  const u=getAM().find(x=>x.id===uid);
+  const dur=(u&&u.dur)||15;
+  const inp=document.getElementById("mgc-day-"+uid);
+  let day=parseInt(inp&&inp.value,10);
+  if(!day||day<1) day=(u&&u.day)||1;
+  if(day>dur) day=dur;
+  try{
+    await sb.from("challengers").update({round_status:"completed_early",completed_on:day,completion_requested_at:null}).eq("id",uid);
+    if(u){u.roundStatus="completed_early";u.completedOn=day;u.completionRequestedAt=null;}
+    showToast(`Goal marked complete on day ${day}`,"success");
+    adminDataLoaded=false;renderAdmin();
+    setTimeout(()=>openProfilePanel(uid),300);
+  }catch(e){showToast("Failed to mark complete","error");}
 }
 
 function closeProfilePanel(){

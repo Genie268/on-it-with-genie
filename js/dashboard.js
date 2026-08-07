@@ -32,16 +32,24 @@ function renderDash(){
      multi-goal user who ran out of days below the bar on the dashboard
      forever, and disagreed with the resume path (which uses the time check
      alone). Both paths now agree: time elapsed → finish screen. */
-  if(isChallengeComplete()){
+  /* An early-completed or ended round is NOT sent to the time-based finish
+     screen when its original window elapses. It stays on its clean closed
+     dashboard (medal + neutral days). */
+  const _closedRound=(typeof isRoundClosed==="function")&&isRoundClosed();
+  if(isChallengeComplete() && !_closedRound){
     if(typeof _markCompleted==="function") _markCompleted();
     _activateScreen("d15");
     return;
   }
   calcDay();
+  /* Early completion sits in front of everything: it may show the medal grid,
+     the congratulations modal, or the closed state. When the round is closed,
+     miss handling is skipped entirely (a finished member is never gated). */
+  try{ if(typeof renderCompletionState==="function") renderCompletionState(); }catch(e){ console.warn("renderCompletionState failed:",e); }
   /* Miss handling sits in FRONT of the upload: it may gate or lock the
      dashboard before anything else renders. It never rewrites the upload
      flow, only decides whether forward motion is open. */
-  try{ if(typeof renderMissState==="function") renderMissState(); }catch(e){ console.warn("renderMissState failed:",e); }
+  try{ if(typeof renderMissState==="function" && !(typeof isRoundClosed==="function"&&isRoundClosed())) renderMissState(); }catch(e){ console.warn("renderMissState failed:",e); }
   try{ if(typeof renderGoalBar==="function") renderGoalBar(); }catch(e){ console.warn("renderGoalBar failed:",e); }
   const u=S.user,d=S.day;
   const dur=u.duration||15;
@@ -165,6 +173,14 @@ function renderGrid(){
   const callDays=CALL_DAYS[dur]||[];
   for(let i=0;i<dur;i++){
     const d=i+1,isUp=!!S.uploads[i],isT=d===S.day,isF=d>S.day,isM=d<S.day&&!isUp;
+    /* Early completion overrides the normal rules: medal on the completion
+       day, neutral closed days after it, never a miss. */
+    if(typeof completionDayState==="function" && completionDayState(d)){
+      const cc=document.createElement("div");
+      paintCompletionCell(cc,d);
+      g.appendChild(cc);
+      continue;
+    }
     const isCall=callDays.includes(d);
     let cls="dc",ds="";
     if(isUp){cls+=" up";ds="✓";}
@@ -196,6 +212,13 @@ function renderRecCard(){
 
 function updateUpBtn(){
   const btn=el("up-btn"),done=!!S.uploads[S.day-1];
+  /* A closed round (early completion or ended) has nothing left to upload.
+     Hide the button entirely so the closed state reads clean. */
+  if(typeof isRoundClosed==="function" && isRoundClosed()){
+    btn.style.display="none";
+    return;
+  }
+  btn.style.display="";
   /* While a gate or lock is open, forward motion is blocked. The gate's own
      Continue button (or contacting Genie on the lock) is the only way past it. */
   if(S.uploadBlocked){

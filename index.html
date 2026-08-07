@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260806e">
+<link rel="stylesheet" href="css/styles.css?v=20260806f">
 </head>
 <body>
 <script>
@@ -257,6 +257,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
         <span class="muted" id="sim-l" style="margin-left:auto;font-size:10px">Sim day 1</span>
       </div>
     </div>
+    <div id="completion-slot"></div>
     <div class="card mb10" id="stats-card" style="display:none"></div>
     <div id="plan-area"></div>
     <div id="call-day-banner" style="display:none;margin-bottom:10px;padding:12px 14px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.18);border-radius:10px">
@@ -524,17 +525,18 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260806e"></script>
-<script src="js/lil.js?v=20260806e"></script>
-<script src="js/auth.js?v=20260806e"></script>
-<script src="js/onboarding.js?v=20260806e"></script>
-<script src="js/goals.js?v=20260806e"></script>
-<script src="js/witnesses.js?v=20260806e"></script>
-<script src="js/miss.js?v=20260806e"></script>
-<script src="js/miss-preview.js?v=20260806e"></script>
-<script src="js/dashboard.js?v=20260806e"></script>
-<script src="js/uploads.js?v=20260806e"></script>
-<script src="js/admin.js?v=20260806e"></script>
-<script src="js/ui.js?v=20260806e"></script>
+<script src="js/config.js?v=20260806f"></script>
+<script src="js/lil.js?v=20260806f"></script>
+<script src="js/auth.js?v=20260806f"></script>
+<script src="js/onboarding.js?v=20260806f"></script>
+<script src="js/goals.js?v=20260806f"></script>
+<script src="js/witnesses.js?v=20260806f"></script>
+<script src="js/miss.js?v=20260806f"></script>
+<script src="js/completion.js?v=20260806f"></script>
+<script src="js/miss-preview.js?v=20260806f"></script>
+<script src="js/dashboard.js?v=20260806f"></script>
+<script src="js/uploads.js?v=20260806f"></script>
+<script src="js/admin.js?v=20260806f"></script>
+<script src="js/ui.js?v=20260806f"></script>
 </body>
 </html>

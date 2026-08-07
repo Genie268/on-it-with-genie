@@ -565,6 +565,14 @@ function renderGoalGrid(){
   for(let i = 0; i < dur; i++){
     const d = i + 1;
     const up = ups[i];
+    /* Early completion overrides the normal rules: the completion day shows a
+       medal, and every day after it is closed and neutral, never a miss. */
+    if(typeof completionDayState === "function" && completionDayState(d)){
+      const cc = document.createElement("div");
+      paintCompletionCell(cc, d);
+      g.appendChild(cc);
+      continue;
+    }
     const beforeStart = d < startDay;
     const isT = d === S.day, isM = d < S.day && !up && !beforeStart, isF = d > S.day || beforeStart;
     const isCall = callDays.includes(d);

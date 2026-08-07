@@ -22,6 +22,17 @@ async function adminFetch(action,params){
 let liveChallengers=[];
 let adminDataLoaded=false;
 
+/* Missed days for a challenger, honouring early completion: days on or after
+   the completed_on day are WON (closed), never misses. So an early-completed
+   member never reads as "at risk" or failing anywhere in the admin. */
+function _missedDays(u){
+  if(!u||!Array.isArray(u.up)) return 0;
+  const comp=(typeof u.completedOn==="number"&&u.completedOn>0)?u.completedOn:0;
+  const cap=comp?Math.min(u.day-1,comp-1):(u.day-1);
+  if(cap<=0) return 0;
+  return u.up.slice(0,cap).filter(v=>!v).length;
+}
+
 async function loadAdminData(){
   if(!getAdminToken()){liveChallengers=[];adminDataLoaded=true;return;}
   try{
@@ -47,7 +58,23 @@ async function loadAdminData(){
       }
     }catch(e){ allGapNotes=[]; }
 
+    /* Round lifecycle (round_status / completed_on / completion_requested_at)
+       may not be in the admin-api payload, so read it straight from the
+       (world-readable) challengers table and merge by id. */
+    const roundById={};
+    try{
+      if(typeof sb!=="undefined"&&sb){
+        const {data:rd}=await sb.from("challengers").select("id,round_status,completed_on,completion_requested_at,cleared_at");
+        if(Array.isArray(rd)) rd.forEach(r=>{ roundById[r.id]=r; });
+      }
+    }catch(e){}
+
     liveChallengers=challengers.map(c=>{
+      const _rc=roundById[c.id]||{};
+      if(_rc.round_status!==undefined) c.round_status=_rc.round_status;
+      if(_rc.completed_on!==undefined) c.completed_on=_rc.completed_on;
+      if(_rc.completion_requested_at!==undefined) c.completion_requested_at=_rc.completion_requested_at;
+      if(_rc.cleared_at!==undefined) c.cleared_at=_rc.cleared_at;
       const uploads=(allUploads||[]).filter(u=>u.challenger_id===c.id);
       const energy=(allEnergy||[]).filter(e=>e.challenger_id===c.id);
       const plans=(allPlans||[]).filter(p=>p.challenger_id===c.id);
@@ -114,7 +141,10 @@ async function loadAdminData(){
          real "the window has closed" signal. */
       const rawDay=Math.max(1,Math.floor((now-startDate)/(1000*60*60*24))+1);
       const prim=byGoal[primaryGoalId];
-      const missed=prim.up.slice(0,curDay-1).filter(v=>!v).length;
+      /* Early completion: days on or after completed_on are won, not missed. */
+      const _comp=(c.round_status==="completed_early"||c.round_status==="ended")&&c.completed_on?c.completed_on:0;
+      const _missCap=_comp?Math.min(curDay-1,_comp-1):(curDay-1);
+      const missed=_missCap>0?prim.up.slice(0,_missCap).filter(v=>!v).length:0;
       /* Top-level arrays mirror the PRIMARY goal, so every existing
          single-goal view keeps working unchanged. Multi-goal views read
          byGoal[activeGoalId] and can re-point these via _adminSelectGoal(). */
@@ -135,6 +165,9 @@ async function loadAdminData(){
         createdAt:c.created_at,
         lastAttentionClearedAt:c.last_attention_cleared_at||null,
         clearedAt:c.cleared_at||null,
+        roundStatus:c.round_status||"active",
+        completedOn:c.completed_on||null,
+        completionRequestedAt:c.completion_requested_at||null,
         gapNotes:allGapNotes.filter(n=>n.user_id===c.id).sort((a,b)=>a.start_day-b.start_day),
         hasPush:allPushSubs.some(s=>s.challenger_id===c.id&&s.is_active),
         plans:plans.sort((a,b)=>a.day_number-b.day_number),
@@ -1207,7 +1240,7 @@ function renderAdminOverview(c){
   const completed=all.filter(u=>_isComplete(u));
   const total=active.length;
   const uploadsTotal=active.reduce((a,u)=>a+_adminTotalUploads(u),0);
-  const atRiskUsers=active.filter(u=>u.up.slice(0,u.day-1).filter(v=>!v).length>=3||u.flag);
+  const atRiskUsers=active.filter(u=>_missedDays(u)>=3||u.flag);
 
   /* TODAY'S QUEUE — concrete, one-tap-action list of what needs Genie's
      attention right now. Replaces the abstract summary alerts that just
@@ -1248,7 +1281,7 @@ function renderAdminOverview(c){
      keep surfacing an item the admin already handled in the Attention tab.
      (The "At Risk" stat below still reflects the true count.) */
   getActionItems().forEach(u=>{
-    const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
+    const missed=_missedDays(u);
     queue.push({pri:3,icon:"⚑",color:"#d9503a",label:"At risk",name:u.name,meta:`${missed} missed · Day ${u.day}/${u.dur||15}`,
       actionLabel:"Message →",onClick:`adminTab('flagged');setTimeout(()=>{const t=document.getElementById('int-ta-${u.id}');if(t)t.focus()},150)`});
   });
@@ -1314,7 +1347,7 @@ function renderAdminOverview(c){
     <p style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#5a5a5a;margin-bottom:10px">ACTIVE CHALLENGERS</p>
     ${total===0?`<div class="card" style="text-align:center;padding:32px 16px"><p class="muted" style="font-size:14px;margin-bottom:6px">No active challengers.</p><p class="muted" style="font-size:12px">When someone completes payment, they'll appear here.</p></div>`:
     active.map(u=>{
-      const up=u.up.filter(Boolean).length,missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
+      const up=u.up.filter(Boolean).length,missed=_missedDays(u);
       const pct=Math.round((up/(u.dur||15))*100);
       const isAtRisk=missed>=3;
       const pending=up-(u.rvCount||0);
@@ -1427,7 +1460,7 @@ function renderAdminChallengers(c){
   const _renderCard=(u,dim)=>{
     const unreadCt=getUnreadCountForChallenger(u.id);
     const up=u.up.filter(Boolean).length;
-    const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
+    const missed=_missedDays(u);
     const pct=Math.round((up/(u.dur||15))*100);
     const isDone=_isComplete(u);
     const isAtRisk=!isDone&&missed>=3;
@@ -1534,9 +1567,27 @@ function renderChallengerDetail(u){
      before opening a call. */
   const gapNoteFor=(day)=>(u.gapNotes||[]).find(n=>n.start_day<=day&&n.end_day>=day)||null;
   /* Build compact grid (same visual language as user dashboard) */
+  const compDay=(typeof u.completedOn==="number"&&u.completedOn>0)?u.completedOn:0;
   let gridCells="";
   for(let i=0;i<dur;i++){
     const d=i+1,isUp=u.up[i],isRv=u.rv&&u.rv[i],fut=d>u.day,isMiss=d<u.day&&!isUp;
+    /* Early completion: medal on the completed day, neutral closed days after
+       it, never a miss. Mirrors the member grid. */
+    if(compDay){
+      if(d===compDay){
+        gridCells+=`<div class="dc" style="position:relative;background:rgba(196,154,28,.1);border:1px solid rgba(196,154,28,.45)" title="Goal completed on day ${d}">
+          <span class="dn">D${d}</span>
+          <span style="display:flex;align-items:center;justify-content:center;margin-top:1px">${typeof _trophySVG==="function"?_trophySVG(12):"★"}</span>
+        </div>`;
+        continue;
+      }
+      if(d>compDay){
+        gridCells+=`<div class="dc" style="position:relative;background:#0e0e0e;border:1px solid #171717;opacity:.45" title="Day ${d} · closed">
+          <span class="dn" style="color:#5a5a5a">D${d}</span>
+        </div>`;
+        continue;
+      }
+    }
     const isCall=callDays.includes(d);
     const hasVoice=u.hasVoice&&u.hasVoice[i],hasLink=u.links&&u.links[i];
     let cls="dc";
@@ -1708,7 +1759,7 @@ function _getMissStreak(u){
    challengers.last_attention_cleared_at. It RE-SURFACES automatically when a
    newer miss is registered after that timestamp, so clearing never permanently
    silences an active challenger. */
-function _isAtRisk(u){ return u.up.slice(0,u.day-1).filter(v=>!v).length>=3||!!u.flag; }
+function _isAtRisk(u){ return _missedDays(u)>=3||!!u.flag; }
 /* Timestamp (ms) at which the most-recent confirmed miss was registered — a
    missed day D is confirmed at the start of day D+1. 0 if no miss yet. */
 function _lastMissMs(u){
@@ -1836,7 +1887,7 @@ function renderAdminFlagged(c){
       ${sorted.length>1?`<button class="bs" style="font-size:10px;padding:5px 11px" onclick="clearAllAttention()">Clear All</button>`:`<span class="muted" style="font-size:10px">sorted by severity</span>`}
     </div>
     ${sorted.map(u=>{
-      const missed=u.up.slice(0,u.day-1).filter(v=>!v).length;
+      const missed=_missedDays(u);
       const streak=_getMissStreak(u);
       const reasons=[];
       if(missed>=5)reasons.push(`<span style="color:#d9503a;font-weight:700">${missed} missed days</span>`);

@@ -451,6 +451,9 @@ async function _restoreSession(data){
       amountPaid:data.amount_paid,accessCode:data.access_code,
       timezone:data.timezone||null,
       witnessesEnabled:data.witnesses_enabled===true,
+      roundStatus:data.round_status||"active",
+      completedOn:data.completed_on||null,
+      completionRequestedAt:data.completion_requested_at||null,
       supabaseId:data.id,energyLog,genieMessages:[]
     };
     S.uploads=uploadArr;

@@ -94,6 +94,9 @@ function _rawDayCount(){
 }
 function isChallengeComplete(){
   if(!S.user||S.devMode)return false;
+  /* An early-completed or ended round has its own closed dashboard and must
+     never be routed to the time-based finish screen when its window elapses. */
+  if(S.user.roundStatus==="completed_early"||S.user.roundStatus==="ended")return false;
   return _rawDayCount()>getDur();
 }
 
