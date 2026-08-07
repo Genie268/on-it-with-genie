@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260806c">
+<link rel="stylesheet" href="css/styles.css?v=20260806d">
 </head>
 <body>
 <script>
@@ -424,6 +424,8 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
     <button class="bp" style="width:100%;padding:12px;font-size:14px" onclick="saveProfile()">Save Changes</button>
     <button class="bg" style="width:100%;padding:10px;margin-top:8px" onclick="closeProfile()">Close</button>
     <div style="border-top:1px solid var(--bd);margin-top:16px;padding-top:16px;display:flex;flex-direction:column;gap:8px">
+      <button onclick="logOut()" style="width:100%;padding:10px;background:transparent;border:1px solid var(--bd);border-radius:9px;color:var(--fg,#e8e8e8);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">Log Out</button>
+      <p style="font-size:11px;color:var(--muted,#5a5a5a);line-height:1.5;margin:-2px 0 6px">Signs you out of this device. Your challenge and progress stay safe, just sign back in anytime.</p>
       <button onclick="if(confirm('End this challenge? Your grid, uploads and progress will be cleared from this device. Your account stays.'))clearState()" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(217,80,58,.3);border-radius:9px;color:#d9503a;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">End My Challenge</button>
       <button onclick="deleteMyAccount()" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(217,80,58,.5);border-radius:9px;color:#d9503a;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">Delete My Account</button>
     </div>
@@ -522,17 +524,17 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260806c"></script>
-<script src="js/lil.js?v=20260806c"></script>
-<script src="js/auth.js?v=20260806c"></script>
-<script src="js/onboarding.js?v=20260806c"></script>
-<script src="js/goals.js?v=20260806c"></script>
-<script src="js/witnesses.js?v=20260806c"></script>
-<script src="js/miss.js?v=20260806c"></script>
-<script src="js/miss-preview.js?v=20260806c"></script>
-<script src="js/dashboard.js?v=20260806c"></script>
-<script src="js/uploads.js?v=20260806c"></script>
-<script src="js/admin.js?v=20260806c"></script>
-<script src="js/ui.js?v=20260806c"></script>
+<script src="js/config.js?v=20260806d"></script>
+<script src="js/lil.js?v=20260806d"></script>
+<script src="js/auth.js?v=20260806d"></script>
+<script src="js/onboarding.js?v=20260806d"></script>
+<script src="js/goals.js?v=20260806d"></script>
+<script src="js/witnesses.js?v=20260806d"></script>
+<script src="js/miss.js?v=20260806d"></script>
+<script src="js/miss-preview.js?v=20260806d"></script>
+<script src="js/dashboard.js?v=20260806d"></script>
+<script src="js/uploads.js?v=20260806d"></script>
+<script src="js/admin.js?v=20260806d"></script>
+<script src="js/ui.js?v=20260806d"></script>
 </body>
 </html>

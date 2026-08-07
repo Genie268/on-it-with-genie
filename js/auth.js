@@ -328,6 +328,21 @@ function showSignIn(){
   setTimeout(()=>el("signin-email")?.focus(),200);
 }
 
+/* Sign out of this device WITHOUT ending the challenge. Progress lives on the
+   server, so clearing the local session is non-destructive: signing back in
+   restores everything. This is deliberately separate from clearState()
+   ("End My Challenge") so the wording and intent stay unambiguous. */
+function logOut(){
+  try{ localStorage.removeItem("oiwg_state"); }catch(e){}
+  S.user=null; S.ans={}; S.uploads=null; S.day=1; S.lilDone=false; S.devMode=false;
+  S.plans={}; S.uploadsBySlot=null; S.goals=null; S.activeGoal=1; S._uploadsOwner=null; S.witnesses=null;
+  /* Drop miss-handling caches too, so the next account can't inherit them. */
+  S.gapNotes=null; S._adminCleared=false; S._reentryConsumed=false; S.uploadBlocked=false;
+  if(typeof closeProfile==="function"){ try{ closeProfile(); }catch(e){} }
+  if(typeof showToast==="function") showToast("Logged out. Your challenge is safe, sign back in anytime.","success",4000);
+  goTo("land");
+}
+
 async function attemptSignIn(){
   trackEvent("sign_in_attempt");
   const input=el("signin-email")?.value?.trim();
