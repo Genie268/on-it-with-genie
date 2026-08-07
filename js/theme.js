@@ -16,10 +16,12 @@
     tokens: {
       bg: "#060606", text: "#ebebeb", muted: "#7a7a7a",
       accent: "#c49a1c", accentText: "#000000", border: "#171717",
-      fontHeading: "'DM Sans', system-ui, -apple-system, sans-serif",
+      /* The live landing headline is Helvetica 700 with -0.03em tracking.
+         These defaults reproduce today's look exactly; Revert restores them. */
+      fontHeading: "Helvetica, Arial, sans-serif",
       fontBody: "'DM Sans', system-ui, -apple-system, sans-serif",
       fsH1: "clamp(38px,8vw,62px)", fsBase: "15px", fsEyebrow: "11px",
-      fwHeading: "800", letterSpacing: "-0.02em", lineHeight: "1.6",
+      fwHeading: "700", letterSpacing: "-0.03em", lineHeight: "1.6",
       container: "500px", rhythm: "20px", radius: "12px", btnPadding: "14px 28px",
       align: "center",
       photoSize: "120px", photoRadius: "50%", photoGrayscale: "0",
