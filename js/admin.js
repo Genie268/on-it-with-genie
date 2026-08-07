@@ -697,15 +697,15 @@ function adminTab(tab){
     const flaggedCount=getActionItems().length;
     const unreadCount=typeof getTotalUnreadCount==="function"?getTotalUnreadCount():0;
     const newSignups=_getNewSignupCount();
-    ["overview","messages","challengers","flagged","inbox","notifications","analytics","settings"].forEach(t=>{
+    ["overview","messages","challengers","flagged","inbox","notifications","analytics","settings","design"].forEach(t=>{
       const btn=el("tab-"+t);if(!btn)return;
       btn.className="admin-tab"+(t===tab?" active":"");
-      const labels={overview:`Overview${_dot(newSignups>0)}`,messages:`Messages${_bdg(unreadCount)}`,challengers:"Challengers",flagged:`Attention${_bdg(flaggedCount)}`,inbox:`Reviews${_bdg(reviewCount)}`,notifications:"Notifications",analytics:"Analytics",settings:"Settings"};
+      const labels={overview:`Overview${_dot(newSignups>0)}`,messages:`Messages${_bdg(unreadCount)}`,challengers:"Challengers",flagged:`Attention${_bdg(flaggedCount)}`,inbox:`Reviews${_bdg(reviewCount)}`,notifications:"Notifications",analytics:"Analytics",settings:"Settings",design:"Design"};
       btn.innerHTML=labels[t]||t;
     });
   }catch(e){console.warn("adminTab: tab-bar render failed:",e);}
   const c=el("admin-content");if(!c)return;
-  const renderers={overview:renderAdminOverview,messages:renderAdminMessages,challengers:renderAdminChallengers,flagged:renderAdminFlagged,inbox:renderAdminInbox,notifications:renderAdminNotifications,analytics:renderAdminAnalytics,settings:renderAdminSettings};
+  const renderers={overview:renderAdminOverview,messages:renderAdminMessages,challengers:renderAdminChallengers,flagged:renderAdminFlagged,inbox:renderAdminInbox,notifications:renderAdminNotifications,analytics:renderAdminAnalytics,settings:renderAdminSettings,design:(typeof renderDesignTab==="function"?renderDesignTab:function(c){c.innerHTML="<p style='padding:20px;color:#888'>Design editor unavailable.</p>";})};
   /* Never let a single tab's render bug strand the admin on a blank screen
      (which reads as "can't log in"). Catch and show a recoverable error. */
   try{

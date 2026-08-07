@@ -12,10 +12,10 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23060606'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-size='20' font-weight='900' fill='%23c49a1c' font-family='system-ui'%3EG%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Bebas+Neue&family=Archivo+Black&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260806h">
+<link rel="stylesheet" href="css/styles.css?v=20260807design1">
 </head>
 <body>
 <script>
@@ -24,20 +24,22 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
 // Witness invite: accepts /witness/<t>, /?witness=<t>, or /#/witness/<t>
 if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(window.location.search)||/witness[\/=]/.test(window.location.hash)){document.documentElement.setAttribute('data-route','witness');}
 </script>
+<div id="grain-overlay"></div>
 <div id="app">
 
 <!-- LANDING -->
 <div id="s-land" class="screen active">
-  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;text-align:center;position:relative;overflow:hidden">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:var(--align-items,center);justify-content:center;padding:48px 24px;text-align:var(--align,center);position:relative;overflow:hidden">
     <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 28%,rgba(196,154,28,.08),transparent 55%);pointer-events:none"></div>
     <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(196,154,28,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(196,154,28,.03) 1px,transparent 1px);background-size:52px 52px;pointer-events:none"></div>
     <div class="land-particles" id="land-particles"></div>
-    <div style="position:relative;z-index:1;max-width:500px;width:100%">
+    <div id="landing-canvas-layer"></div>
+    <div style="position:relative;z-index:3;max-width:var(--container,500px);width:100%">
       <div class="lm land-logo" style="justify-content:center;margin-bottom:44px">
         <div class="lmk" style="width:42px;height:42px;font-size:20px">G</div>
         <span class="lmt" style="font-size:20px">ON IT <b>WITH GENIE</b></span>
       </div>
-      <h1 class="hero-title land-h1" style="font-family:Helvetica,Arial,sans-serif;font-size:clamp(38px,8vw,62px);font-weight:700;line-height:1.05;letter-spacing:-0.03em;margin-bottom:18px">You already know what to do.<br><span class="ac">Do it here.</span></h1>
+      <h1 class="hero-title land-h1" style="font-family:var(--font-heading,Helvetica,Arial,sans-serif);font-size:var(--fs-h1,clamp(38px,8vw,62px));font-weight:var(--fw-heading,700);line-height:1.05;letter-spacing:var(--letter-spacing,-0.03em);margin-bottom:18px">You already know what to do.<br><span class="ac">Do it here.</span></h1>
       <p class="muted land-sub" style="font-size:15px;line-height:1.85;margin-bottom:20px">Pick a duration. Commit to one goal. Upload proof daily.<br>Reviewed by a real human. Not an algorithm.</p>
 
       <div class="land-tiers" style="display:flex;gap:8px;justify-content:center;margin-bottom:28px">
@@ -57,7 +59,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
       </div>
 
       <div class="col land-cta" style="align-items:center">
-        <button class="bp" style="width:100%;max-width:320px;font-size:15px;padding:14px 28px" onclick="startOB()">Begin Your Challenge →</button>
+        <button class="bp" style="width:100%;max-width:320px;font-size:15px;padding:var(--btn-padding,14px 28px)" onclick="startOB()">Begin Your Challenge →</button>
         <p style="font-size:12px;color:#5a5a5a;margin-top:12px">Already started? <span style="color:#c49a1c;cursor:pointer;font-weight:600" onclick="showSignIn()">Sign back in →</span></p>
       </div>
 
@@ -349,6 +351,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
     <button id="tab-notifications" class="admin-tab" onclick="adminTab('notifications')">Notifications</button>
     <button id="tab-analytics" class="admin-tab" onclick="adminTab('analytics')">Analytics</button>
     <button id="tab-settings" class="admin-tab" onclick="adminTab('settings')">Settings</button>
+    <button id="tab-design" class="admin-tab" onclick="adminTab('design')">Design</button>
   </div>
 
   <!-- Tab content -->
@@ -527,18 +530,20 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260806h"></script>
-<script src="js/lil.js?v=20260806h"></script>
-<script src="js/auth.js?v=20260806h"></script>
-<script src="js/onboarding.js?v=20260806h"></script>
-<script src="js/goals.js?v=20260806h"></script>
-<script src="js/witnesses.js?v=20260806h"></script>
-<script src="js/miss.js?v=20260806h"></script>
-<script src="js/completion.js?v=20260806h"></script>
-<script src="js/miss-preview.js?v=20260806h"></script>
-<script src="js/dashboard.js?v=20260806h"></script>
-<script src="js/uploads.js?v=20260806h"></script>
-<script src="js/admin.js?v=20260806h"></script>
-<script src="js/ui.js?v=20260806h"></script>
+<script src="js/config.js?v=20260807design1"></script>
+<script src="js/theme.js?v=20260807design1"></script>
+<script src="js/lil.js?v=20260807design1"></script>
+<script src="js/auth.js?v=20260807design1"></script>
+<script src="js/onboarding.js?v=20260807design1"></script>
+<script src="js/goals.js?v=20260807design1"></script>
+<script src="js/witnesses.js?v=20260807design1"></script>
+<script src="js/miss.js?v=20260807design1"></script>
+<script src="js/completion.js?v=20260807design1"></script>
+<script src="js/miss-preview.js?v=20260807design1"></script>
+<script src="js/dashboard.js?v=20260807design1"></script>
+<script src="js/uploads.js?v=20260807design1"></script>
+<script src="js/admin.js?v=20260807design1"></script>
+<script src="js/design.js?v=20260807design1"></script>
+<script src="js/ui.js?v=20260807design1"></script>
 </body>
 </html>
