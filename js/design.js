@@ -370,8 +370,12 @@ const DZ = (function(){
         #dz-stage{position:relative;width:100%;height:620px;max-height:76vh;overflow:hidden;border:1px solid #222;border-radius:12px;background:var(--page-bg,#060606)}
         #dz-stage .dz-hero{height:100%!important}
         /* Freeze animations in the preview: a running CSS animation stops
-           Chromium from repainting live custom-property (accent/colour) edits. */
+           Chromium from repainting live custom-property (accent/colour) edits.
+           The landing content fades in from opacity:0 via those animations, so
+           force it to its final visible state and hide the drifting particles. */
         #dz-stage *,#dz-stage *::before,#dz-stage *::after{animation:none!important}
+        #dz-stage .land-logo,#dz-stage .land-h1,#dz-stage .land-sub,#dz-stage .land-genie,#dz-stage .land-cta,#dz-stage .land-tiers,#dz-stage .dz-text{opacity:1!important}
+        #dz-stage .land-particles{display:none!important}
       </style>
       <div id="dz-wrap">
         <div id="dz-left">
