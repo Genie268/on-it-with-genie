@@ -337,7 +337,9 @@ function logOut(){
   S.user=null; S.ans={}; S.uploads=null; S.day=1; S.lilDone=false; S.devMode=false;
   S.plans={}; S.uploadsBySlot=null; S.goals=null; S.activeGoal=1; S._uploadsOwner=null; S.witnesses=null;
   /* Drop miss-handling caches too, so the next account can't inherit them. */
-  S.gapNotes=null; S._adminCleared=false; S._reentryConsumed=false; S.uploadBlocked=false;
+  S.gapNotes=null; S.coach=null; S._cleared=false; S._reentryConsumed=false;
+  S._runResolved=false; S.uploadBlocked=false;
+  try{ localStorage.removeItem("oiwg_coach"); }catch(e){}
   if(typeof closeProfile==="function"){ try{ closeProfile(); }catch(e){} }
   if(typeof showToast==="function") showToast("Logged out. Your challenge is safe, sign back in anytime.","success",4000);
   goTo("land");
@@ -456,12 +458,14 @@ async function _restoreSession(data){
        later resume can't confuse them with a different account's cache. */
     S._uploadsOwner=data.id;
     S.uploadsBySlot=null;
-    /* Miss state is per-account — drop any prior account's cached gap notes
-       and clearance so the fresh session recomputes from this user's data. */
+    /* Miss state is per-account — drop any prior account's cached gap notes,
+       coach and clearance so the fresh session recomputes from this user. */
     S.gapNotes=null;
-    S._adminCleared=false;
+    S.coach=null;
+    S._cleared=false;
     S._reentryConsumed=false;
-    S._gateGaps=null;
+    S._runResolved=false;
+    S._gateGap=null;
     S._lockGap=null;
     S.uploadBlocked=false;
     S.plans=plans;

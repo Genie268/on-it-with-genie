@@ -183,12 +183,16 @@ const FB = {
 const CALL_DAYS = {7:[2],15:[2,9],30:[2,9,16,23]};
 const CALENDLY_URL = "https://calendly.com/eugeneobo/conversations-with-genie";
 
-/* ── MISS HANDLING (miss-gate, 3-day lock, re-entry) ──
-   Genie's contact for the lock screen. The live number is set from the
-   admin Settings tab (stored in app_settings.genie_phone) and read via
-   _geniePhone(); this constant is only the last-resort fallback so the
-   Call button is never dead before a number has been saved. */
-const GENIE_PHONE = "+2348000000000"; // fallback only; set the real number in Admin -> Settings -> Genie Contact
+/* ── MISS HANDLING (miss-gate, frozen lock, coach-cleared re-entry) ──
+   GATE_THRESHOLD: the trailing-run length at which a gap must be named.
+   Default 2, so a single isolated miss is treated as noise and waved
+   through (the tile still stays red). Set to 1 only if every single miss
+   must be named.
+   MISS_STARTERS: the three tappable message starters on the frozen lock.
+   The coach phone is NOT here; it comes from the assigned coach record.
+   GENIE_PHONE is only a last-resort fallback if a coach has no number. */
+const GATE_THRESHOLD = 2;
+const GENIE_PHONE = "+2348000000000"; // fallback only; the live number lives on the coach record
 const MISS_STARTERS = [
   "I fell off. I'm not fully sure why, but I want to keep going.",
   "This week got away from me. Can we talk?",

@@ -31,12 +31,13 @@ const MISS_PREVIEW = (function(){
     try{
       window.trackEvent = function(){};
       window.writeGapNote = function(){ return {}; };
-      window._consumeAdminClearance = function(){};
+      window._consumeClearance = function(){};
       window._refreshMissStateFromServer = function(){};
       window.saveGapNotesLocal = function(){};
+      window.saveCoachLocal = function(){};
       window.saveState = function(){};
       /* Fixed fake number so the lock never reads localStorage / config. */
-      window._geniePhone = function(){ return "+234 801 234 5678"; };
+      window._coachPhone = function(){ return "+234 801 234 5678"; };
       /* The lock's "send" path inserts a chat row directly — make it inert. */
       window._lockMessageSend = function(){
         if(typeof showToast === "function") showToast("Preview only. Nothing was sent.", "info");
@@ -63,12 +64,13 @@ const MISS_PREVIEW = (function(){
     S.goals = [];
     S.gapNotes = [];
     S.plans = {};
-    S.appSettings = { genie_phone:"+234 801 234 5678" };
-    S._adminCleared = false;
+    S.coach = { name:"Genie", first_name:"Genie", phone:"+234 801 234 5678" };
+    S._cleared = false;
     S._reentryConsumed = false;
+    S._runResolved = false;
     S.uploadBlocked = false;
     S._lockGap = null;
-    S._gateGaps = null;
+    S._gateGap = null;
   }
 
   function badge(){
@@ -88,14 +90,14 @@ const MISS_PREVIEW = (function(){
     const cont = (typeof el === "function") ? el("miss-gate") : document.getElementById("miss-gate");
     if(typeof _clearLockOverlay === "function") _clearLockOverlay();
     if(cont) cont.innerHTML = "";
-    S._adminCleared = false;
+    S._cleared = false;
 
-    if(state === "gate1"){ _renderGate([{start:4,end:4,length:1}]); }
-    else if(state === "gate2"){ _renderGate([{start:5,end:6,length:2}]); }
+    if(state === "gate1"){ _renderGate({start:4,end:4,length:1}); }
+    else if(state === "gate2"){ _renderGate({start:5,end:6,length:2}); }
     else if(state === "lock3"){ _renderLock({start:5,end:7,length:3}); }
     else if(state === "lock7"){ _renderLock({start:3,end:9,length:7}); }
-    else if(state === "welcome"){ S.user.name = "Sharon"; _renderWelcomeBack(); }
-    else if(state === "welcome-noname"){ S.user.name = ""; _renderWelcomeBack(); }
+    else if(state === "welcome"){ S.user.name = "Sharon"; _renderWelcomeBanner(); }
+    else if(state === "welcome-noname"){ S.user.name = ""; _renderWelcomeBanner(); }
   }
 
   /* Owns boot when active: skips the real session/resume entirely. */

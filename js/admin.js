@@ -134,7 +134,7 @@ async function loadAdminData(){
         threat:c.threat,startDate:c.start_date,lastSeen:c.last_seen,
         createdAt:c.created_at,
         lastAttentionClearedAt:c.last_attention_cleared_at||null,
-        adminClearedAt:c.admin_cleared_at||null,
+        clearedAt:c.cleared_at||null,
         gapNotes:allGapNotes.filter(n=>n.user_id===c.id).sort((a,b)=>a.start_day-b.start_day),
         hasPush:allPushSubs.some(s=>s.challenger_id===c.id&&s.is_active),
         plans:plans.sort((a,b)=>a.day_number-b.day_number),
@@ -505,12 +505,14 @@ async function renderAdminSettings(c){
   const codes=await loadAccessCodes();
   const all=getAllAM();
 
-  /* Genie's phone for the miss lock screen (Call now button + tel: link). */
-  let geniePhone="";
+  /* Coach's phone for the frozen lock screen (Call button + tel: link). The
+     lock reads it from the coach record, so we edit the coach here. */
+  let geniePhone="", coachId="";
   try{
     if(typeof sb!=="undefined"&&sb){
-      const {data}=await sb.from("app_settings").select("value").eq("key","genie_phone").maybeSingle();
-      geniePhone=(data&&data.value)||"";
+      const {data}=await sb.from("coaches").select("id,phone").order("created_at").limit(1).maybeSingle();
+      geniePhone=(data&&data.phone)||"";
+      coachId=(data&&data.id)||"";
     }
   }catch(e){}
 
@@ -524,9 +526,9 @@ async function renderAdminSettings(c){
         <span id="set-contact-chev" style="font-size:14px;color:#5a5a5a;transition:transform .2s">›</span>
       </div>
       <div id="set-contact" style="display:none" class="admin-section-bd">
-        <p style="font-size:12px;color:#888;margin-bottom:10px">The number a challenger reaches on the "let's talk first" lock screen. Use full international form, for example +2348012345678.</p>
+        <p style="font-size:12px;color:#888;margin-bottom:10px">The number a challenger reaches on the frozen lock screen. Use full international form, for example +2348012345678.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <input id="set-genie-phone" type="tel" value="${(geniePhone||"").replace(/"/g,"&quot;")}" placeholder="+234..." style="flex:1;min-width:160px;font-size:14px;padding:10px 12px">
+          <input id="set-genie-phone" type="tel" data-coach-id="${(coachId||"").replace(/"/g,"&quot;")}" value="${(geniePhone||"").replace(/"/g,"&quot;")}" placeholder="+234..." style="flex:1;min-width:160px;font-size:14px;padding:10px 12px">
           <button class="bp" style="font-size:12px;padding:9px 18px" onclick="saveGeniePhone()">Save</button>
         </div>
         ${geniePhone?"":`<p style="font-size:11px;color:#d9503a;margin-top:8px">No number set yet. The lock screen uses a placeholder until you add one.</p>`}
@@ -1565,7 +1567,7 @@ function renderChallengerDetail(u){
   /* Missed-days readback for Genie: why each gap happened, at a glance. */
   let gapNotesBlock="";
   if(u.gapNotes&&u.gapNotes.length){
-    const srcLbl={user_gate:"named it",called:"called",messaged:"messaged",admin_cleared:"cleared by you"};
+    const srcLbl={user_gate:"named it",messaged:"messaged"};
     const rows=u.gapNotes.map(n=>{
       const label=n.start_day===n.end_day?`Day ${n.start_day}`:`Days ${n.start_day} to ${n.end_day}`;
       const when=n.created_at?new Date(n.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):"";
@@ -1583,7 +1585,7 @@ function renderChallengerDetail(u){
 
   /* Re-entry clearance: after a real conversation, Genie can open the platform
      for this person. It skips the lock/gate once and shows welcome back. */
-  const clearPending=!!u.adminClearedAt;
+  const clearPending=!!u.clearedAt;
   const startDateStr=u.startDate?new Date(u.startDate).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"—";
 
   /* Energy & mood entries (only built if there's anything to show) */
@@ -2275,11 +2277,11 @@ async function adminToggleClearance(uid,set){
   const iso=on?new Date().toISOString():null;
   try{
     if(typeof sb==="undefined"||!sb) throw new Error("no client");
-    const {error}=await sb.from("challengers").update({admin_cleared_at:iso}).eq("id",uid);
+    const {error}=await sb.from("challengers").update({cleared_at:iso}).eq("id",uid);
     if(error) throw error;
     const u=liveChallengers.find(x=>x.id===uid);
-    if(u) u.adminClearedAt=iso;
-    if(on&&typeof trackEvent==="function") trackEvent("admin_cleared",{challenger_id:uid});
+    if(u) u.clearedAt=iso;
+    if(on&&typeof trackEvent==="function") trackEvent("coach_cleared",{challenger_id:uid});
     showToast(on?"Re-entry cleared":"Clearance cancelled","success");
     if(btn){
       btn.disabled=false;
@@ -2295,11 +2297,12 @@ async function adminToggleClearance(uid,set){
   }
 }
 
-/* Save Genie's contact number for the miss lock screen. Stored in
-   app_settings (permissive RLS, same client-trusted model as the rest). */
+/* Save the coach's contact number for the frozen lock screen. Written to the
+   coach record, which is the single source the lock reads from. */
 async function saveGeniePhone(){
   const inp=el("set-genie-phone");
   if(!inp) return;
+  const coachId=inp.getAttribute("data-coach-id")||"";
   let val=(inp.value||"").trim();
   /* Keep a leading + and digits only, so the tel: link is always clean. */
   if(val){
@@ -2308,15 +2311,14 @@ async function saveGeniePhone(){
     if(digits.length<7){ showToast("That number looks too short","error"); return; }
     val=(plus?"+":"")+digits;
   }
+  if(!coachId){ showToast("No coach on file to update","error"); return; }
   inp.disabled=true;
   try{
     if(typeof sb==="undefined"||!sb) throw new Error("no client");
-    const {error}=await sb.from("app_settings")
-      .upsert({key:"genie_phone",value:val,updated_at:new Date().toISOString()},{onConflict:"key"});
+    const {error}=await sb.from("coaches").update({phone:val}).eq("id",coachId);
     if(error) throw error;
     inp.value=val;
-    try{ localStorage.setItem("oiwg_genie_phone",val); }catch(e){}
-    showToast(val?"Genie contact saved":"Contact cleared","success");
+    showToast(val?"Coach number saved":"Number cleared","success");
   }catch(e){
     showToast("Could not save the number","error");
   }
@@ -2328,7 +2330,7 @@ function adminShowGapNote(uid,day){
   const u=liveChallengers.find(x=>x.id===uid);
   const n=u&&(u.gapNotes||[]).find(g=>g.start_day<=day&&g.end_day>=day);
   const label=`Day ${day}`;
-  const srcLbl={user_gate:"They named it",called:"They called",messaged:"They messaged",admin_cleared:"Cleared by you"};
+  const srcLbl={user_gate:"They named it",messaged:"They messaged"};
   const when=n&&n.created_at?new Date(n.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"";
   const body=n
     ? `<p style="font-size:11px;color:#c49a1c;font-weight:700;letter-spacing:.06em;margin-bottom:8px">${(srcLbl[n.source]||n.source)}${when?" · "+when:""}</p>
