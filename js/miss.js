@@ -281,20 +281,29 @@ function _renderLock(g){
   const fn = _firstName();
   const heading = fn ? `${fn}, your coach wants to talk.` : `Your coach wants to talk.`;
 
-  const padlock = `
-    <div style="width:46px;height:46px;border-radius:12px;background:rgba(196,154,28,.08);border:1px solid rgba(196,154,28,.22);display:flex;align-items:center;justify-content:center">
-      <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#c49a1c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="4" y="10.5" width="16" height="10.5" rx="2"/>
-        <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>
-        <circle cx="12" cy="15" r="1.4"/>
-        <path d="M12 16.4V18"/>
-      </svg>
+  /* A premium six-point snowflake: the account is frozen, not locked away. */
+  const snowflake = `
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e2b53a" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="2.5" x2="12" y2="21.5"/>
+      <line x1="3.77" y1="7.25" x2="20.23" y2="16.75"/>
+      <line x1="3.77" y1="16.75" x2="20.23" y2="7.25"/>
+      <path d="M12 6.2l2.1-2.1M12 6.2l-2.1-2.1"/>
+      <path d="M12 17.8l2.1 2.1M12 17.8l-2.1 2.1"/>
+      <path d="M6.6 9.1l-2.85.25M6.6 9.1l.28-2.85"/>
+      <path d="M17.4 14.9l2.85-.25M17.4 14.9l-.28 2.85"/>
+      <path d="M6.6 14.9l-2.85-.25M6.6 14.9l.28 2.85"/>
+      <path d="M17.4 9.1l2.85.25M17.4 9.1l-.28-2.85"/>
+    </svg>`;
+  const badge = `
+    <div style="position:relative;width:64px;height:64px;margin:0 auto 22px;display:flex;align-items:center;justify-content:center">
+      <div style="position:absolute;inset:-14px;background:radial-gradient(circle,rgba(226,181,58,.16),transparent 68%)"></div>
+      <div style="position:relative;width:64px;height:64px;border-radius:18px;background:linear-gradient(160deg,rgba(226,181,58,.12),rgba(226,181,58,.03));border:1px solid rgba(226,181,58,.28);display:flex;align-items:center;justify-content:center">${snowflake}</div>
     </div>`;
 
   const phone = _coachPhone();
   const chipName = coach.name ? `${coach.name}, your coach` : "your coach";
   const chip = `
-    <div style="display:flex;align-items:center;gap:11px;margin:12px 0 0">
+    <div style="display:inline-flex;align-items:center;gap:11px;margin:16px auto 0;text-align:left">
       <div style="width:40px;height:40px;border-radius:50%;background:rgba(196,154,28,.12);border:1px solid rgba(196,154,28,.25);display:flex;align-items:center;justify-content:center;color:#c49a1c;font-weight:800;font-size:16px;flex-shrink:0">${_missEsc(coach.initial || "")}</div>
       <div style="min-width:0">
         <p style="font-size:14px;font-weight:700;color:#e8e8e8;margin:0">${_missEsc(phone)}</p>
@@ -309,32 +318,47 @@ function _renderLock(g){
 
   const ov = document.createElement("div");
   ov.id = "miss-lock-overlay";
-  ov.style.cssText = "position:fixed;inset:0;z-index:1200;background:#0a0a0a;overflow-y:auto;display:flex;flex-direction:column;padding:44px 22px";
+  ov.style.cssText = "position:fixed;inset:0;z-index:1200;background:radial-gradient(120% 80% at 50% 0%,#111 0%,#080808 60%);overflow-y:auto;display:flex;padding:48px 22px";
   ov.innerHTML = `
-    <div style="max-width:440px;width:100%;margin:auto 0;text-align:left">
-      ${padlock}
-      <p style="font-size:11px;font-weight:800;letter-spacing:.16em;color:#c49a1c;margin:20px 0 10px">ACCOUNT FROZEN</p>
-      <h2 style="font-size:22px;font-weight:800;line-height:1.3;color:#f2f2f2;margin:0 0 10px">${_missEsc(heading)}</h2>
-      <p style="font-size:15px;line-height:1.65;color:#b8b8b8;margin:0 0 26px">You haven't lost your place. Reach out and you're back in.</p>
+    <div style="max-width:380px;width:100%;margin:auto;text-align:center">
+      ${badge}
+      <p style="font-size:11px;font-weight:800;letter-spacing:.18em;color:#c49a1c;margin:0 0 12px">ACCOUNT FROZEN</p>
+      <h2 style="font-size:23px;font-weight:800;line-height:1.3;color:#f4f4f4;margin:0 0 12px">${_missEsc(heading)}</h2>
+      <p style="font-size:15px;line-height:1.65;color:#b0b0b0;margin:0 auto 28px;max-width:320px">You haven't lost your place. Reach out and you're back in.</p>
 
-      <a id="miss-call-link" href="tel:${_missEsc(phone)}" onclick="_lockCall()" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#c49a1c;color:#0a0a0a;padding:14px;border-radius:11px;font-size:15px;font-weight:800;text-decoration:none">
+      <a id="miss-call-link" href="tel:${_missEsc(phone)}" onclick="_lockCall()" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#c49a1c;color:#0a0a0a;padding:15px;border-radius:12px;font-size:15px;font-weight:800;text-decoration:none;box-shadow:0 6px 22px rgba(196,154,28,.18)">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="#0a0a0a" stroke="none"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
         Call your coach
       </a>
       ${chip}
 
-      <div style="display:flex;align-items:center;gap:12px;margin:24px 0">
-        <div style="flex:1;height:1px;background:#242424"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin:26px 0 18px">
+        <div style="flex:1;height:1px;background:#222"></div>
         <span style="font-size:12px;color:#6a6a6a">or</span>
-        <div style="flex:1;height:1px;background:#242424"></div>
+        <div style="flex:1;height:1px;background:#222"></div>
       </div>
 
-      <p style="font-size:14px;font-weight:700;color:#e0e0e0;margin:0 0 4px">Send a message instead</p>
-      <p style="font-size:12px;color:#7a7a7a;margin:0 0 12px">Tap to send. Edit if you like.</p>
-      <div id="miss-starters">${starterBtns}</div>
+      <button id="miss-msg-toggle" onclick="_lockToggleMessages()" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:transparent;border:1px solid #262626;color:#dcdcdc;font-size:14px;font-weight:700;padding:13px;border-radius:12px;cursor:pointer;font-family:inherit">
+        Send a message instead
+        <svg id="miss-msg-chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8a8a8a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div id="miss-msg-panel" style="display:none;margin-top:12px">
+        <p style="font-size:12px;color:#7a7a7a;margin:0 0 12px">Tap to send. Edit if you like.</p>
+        <div id="miss-starters" style="text-align:left">${starterBtns}</div>
+      </div>
     </div>`;
   document.body.appendChild(ov);
   S._lockGap = g;
+}
+
+/* Fold the message starters away until the member asks for them. */
+function _lockToggleMessages(){
+  const panel = document.getElementById("miss-msg-panel");
+  const chev = document.getElementById("miss-msg-chev");
+  if(!panel) return;
+  const open = panel.style.display !== "none";
+  panel.style.display = open ? "none" : "block";
+  if(chev) chev.style.transform = open ? "rotate(0deg)" : "rotate(180deg)";
 }
 
 function _clearLockOverlay(){
