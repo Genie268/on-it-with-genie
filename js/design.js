@@ -24,9 +24,32 @@ const DZ = (function(){
     ["'Playfair Display', serif","Playfair Display"],
     ["'DM Serif Display', serif","DM Serif Display"],
     ["'Lora', serif","Lora"],
+    ["'Syne', sans-serif","Syne"],
+    ["'Archivo', sans-serif","Archivo"],
+    ["'Spectral', serif","Spectral"],
     ["Helvetica, Arial, sans-serif","Helvetica"],
     ["Georgia, serif","Georgia"]
   ];
+
+  /* Full-look presets. Each applies its whole token set to the draft. */
+  const PRESETS = {
+    Koe:      { bg:"#0c0c0d", text:"#ededed", muted:"#7c7c82", accent:"#ededed", accentText:"#0c0c0d", border:"#242427", fontHeading:"'Syne', sans-serif", fontBody:"'Inter', sans-serif", fsH1:"64px", fwHeading:"700", align:"center", radius:"8px", grain:true },
+    Monolith: { bg:"#000000", text:"#ffffff", muted:"#8a8a8a", accent:"#ffffff", accentText:"#000000", border:"#1c1c1c", fontHeading:"'Archivo', sans-serif", fontBody:"'Inter', sans-serif", fsH1:"86px", fwHeading:"900", align:"left", radius:"0px", grain:true },
+    Stoic:    { bg:"#f4f1ea", text:"#17150f", muted:"#6f695c", accent:"#17150f", accentText:"#f4f1ea", border:"#ddd6c7", fontHeading:"'Spectral', serif", fontBody:"'Spectral', serif", fsH1:"70px", fwHeading:"500", align:"left", radius:"2px", grain:true },
+    Graphite: { bg:"#18191b", text:"#e9eaec", muted:"#83878d", accent:"#c3c7ce", accentText:"#16171a", border:"#2a2c30", fontHeading:"'Space Grotesk', sans-serif", fontBody:"'Inter', sans-serif", fsH1:"56px", fwHeading:"700", align:"left", radius:"10px", grain:false },
+    Bone:     { bg:"#fafafa", text:"#111111", muted:"#6a6a6a", accent:"#111111", accentText:"#ffffff", border:"#ececec", fontHeading:"'Space Grotesk', sans-serif", fontBody:"'Inter', sans-serif", fsH1:"58px", fwHeading:"700", align:"left", radius:"10px", grain:false },
+    Dojo:     { bg:"#0e0f12", text:"#f4f5f7", muted:"#9aa0ad", accent:"#c7ff4f", accentText:"#0d0f08", border:"#2a2e38", fontHeading:"'Space Grotesk', sans-serif", fontBody:"'Inter', sans-serif", fsH1:"58px", fwHeading:"700", align:"left", radius:"10px", grain:false }
+  };
+  function applyPreset(name){
+    const p = PRESETS[name];
+    if(!p || !draft) return;
+    if(!draft.tokens) draft.tokens = {};
+    Object.assign(draft.tokens, p, { useGradient:false });
+    saveDraftToStorage();
+    renderControls();
+    applyPreview();
+    if(typeof showToast === "function") showToast(name + " applied to your draft", "success");
+  }
 
   let draft = null, published = null, editMode = false, selectedBlock = null, blockCounter = 0;
 
@@ -395,6 +418,13 @@ const DZ = (function(){
         #dz-stage .land-logo,#dz-stage .land-h1,#dz-stage .land-sub,#dz-stage .land-genie,#dz-stage .land-cta,#dz-stage .land-tiers,#dz-stage .dz-text{opacity:1!important}
         #dz-stage .land-particles{display:none!important}
       </style>
+      <div id="dz-diag" style="font-size:11px;color:#8a8a8a;margin-bottom:12px;padding:8px 12px;border:1px solid #222;border-radius:8px;background:#0e0e0e">Diagnostics: running...</div>
+      <div style="margin-bottom:14px">
+        <p class="ch-block-lbl" style="margin-bottom:6px">PRESETS</p>
+        <div id="dz-presets" style="display:flex;flex-wrap:wrap;gap:6px">
+          ${Object.keys(PRESETS).map(n => `<button onclick="DZ.applyPreset('${n}')" style="padding:7px 12px;border:1px solid #2c2c2c;border-radius:8px;background:#141414;color:#e8e8e8;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">${n}</button>`).join("")}
+        </div>
+      </div>
       <div id="dz-wrap">
         <div id="dz-left">
           <div class="dz-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
@@ -420,6 +450,65 @@ const DZ = (function(){
     renderControls();
     renderBlockEditor();
     applyPreview();
+    runDiagnostics();
+  }
+
+  /* ---------- on-page diagnostics (tested against the REAL cloned preview) ----
+     Prints OK/FAIL for token write, add text and drag wiring so failures are
+     visible on the deployed page, not only in a harness. */
+  function runDiagnostics(){
+    const out = document.getElementById("dz-diag");
+    const stage = document.getElementById("dz-stage");
+    if(!out || !stage) return;
+    const results = [];
+
+    /* 1) token write: flip --accent and read the cloned button/headline colour */
+    let tokenOK = false, tokenDetail = "";
+    try{
+      const el = stage.querySelector(".bp") || stage.querySelector(".ac");
+      const before = el ? getComputedStyle(el).backgroundColor + "/" + getComputedStyle(el).color : "";
+      const prev = draft.tokens.accent;
+      draft.tokens.accent = (String(prev).toLowerCase() === "#ff0055") ? "#00ddff" : "#ff0055";
+      applyPreview();
+      const after = el ? getComputedStyle(el).backgroundColor + "/" + getComputedStyle(el).color : "";
+      draft.tokens.accent = prev; applyPreview();
+      tokenOK = !!el && (after !== before);
+      if(!el) tokenDetail = "(no .bp/.ac in clone)";
+    }catch(e){ tokenDetail = "(err)"; }
+    results.push(["token write", tokenOK, tokenDetail]);
+
+    /* 2) add text: create a block and confirm it exists in the preview */
+    let addOK = false;
+    try{
+      if(!Array.isArray(draft.textBlocks)) draft.textBlocks = [];
+      const n0 = stage.querySelectorAll(".dz-canvas-layer .dz-text").length;
+      const id = "diag_" + Date.now();
+      draft.textBlocks.push({ id, content:"diag", x:50, y:50, size:20, weight:700, color:"#fff", font:"var(--font-heading)", maxWidth:60 });
+      applyPreview();
+      const n1 = stage.querySelectorAll(".dz-canvas-layer .dz-text").length;
+      addOK = (n1 === n0 + 1);
+      draft.textBlocks = draft.textBlocks.filter(b => b.id !== id);
+      applyPreview();
+    }catch(e){}
+    results.push(["add text", addOK, ""]);
+
+    /* 3) drag wiring: confirm a text block has a pointer handler in edit mode */
+    let dragOK = false;
+    try{
+      const wasEdit = editMode; editMode = true;
+      const id = "diag2_" + Date.now();
+      draft.textBlocks.push({ id, content:"diag", x:50, y:50, size:20, weight:700, color:"#fff", font:"var(--font-heading)", maxWidth:60 });
+      applyPreview();
+      const t = stage.querySelector('.dz-canvas-layer .dz-text[data-id="' + id + '"]') || stage.querySelector(".dz-canvas-layer .dz-text");
+      dragOK = !!(t && typeof t.onpointerdown === "function");
+      draft.textBlocks = draft.textBlocks.filter(b => b.id !== id);
+      editMode = wasEdit; _syncEditBtn(); applyPreview();
+    }catch(e){}
+    results.push(["drag wiring", dragOK, ""]);
+
+    out.innerHTML = "Diagnostics: " + results.map(([k, v, d]) =>
+      `${k} <b style="color:${v ? "#4dc98a" : "#d9503a"}">${v ? "OK" : "FAIL"}</b>${d ? " <span style='color:#666'>" + d + "</span>" : ""}`
+    ).join(" &nbsp;·&nbsp; ");
   }
 
   /* letter-spacing in em, appended to the TYPE section */
@@ -444,7 +533,7 @@ const DZ = (function(){
   return {
     renderDesignTab, set, setBool, setNum,
     addTextBlock, deleteBlock, selectBlock, updateBlock, uploadPhoto,
-    toggleEdit, saveDraft, publish, revert, undo,
+    toggleEdit, saveDraft, publish, revert, undo, applyPreset,
     getDraft: () => draft, isEditing: () => editMode
   };
 })();

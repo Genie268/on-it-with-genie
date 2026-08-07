@@ -1,7 +1,37 @@
 // On It With Genie — Service Worker
+// CACHE_VERSION — bump on every deploy that must reach browsers immediately.
+const CACHE_VERSION = 'oiwg-design5';
 
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+
+self.addEventListener('activate', event => event.waitUntil((async () => {
+  // Drop every old cache so no stale admin JS/CSS can survive an update.
+  const keys = await caches.keys();
+  await Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k)));
+  await self.clients.claim();
+})()));
+
+// Network-first for all same-origin GETs so a new deploy always wins; the cache
+// is only an offline fallback. This guarantees the admin route and the design
+// editor assets are never served stale.
+self.addEventListener('fetch', event => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  let url;
+  try { url = new URL(req.url); } catch (e) { return; }
+  if (url.origin !== self.location.origin) return; // let cross-origin (Supabase/CDN) pass through untouched
+  event.respondWith((async () => {
+    try {
+      const res = await fetch(req);
+      try { const c = await caches.open(CACHE_VERSION); c.put(req, res.clone()); } catch (e) {}
+      return res;
+    } catch (e) {
+      const cached = await caches.match(req);
+      if (cached) return cached;
+      throw e;
+    }
+  })());
+});
 
 self.addEventListener('push', event => {
   let data = { title: 'On It With Genie', body: '', tag: 'oiwg-msg', url: '/' };

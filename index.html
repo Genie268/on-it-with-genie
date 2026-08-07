@@ -12,10 +12,10 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23060606'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-size='20' font-weight='900' fill='%23c49a1c' font-family='system-ui'%3EG%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Bebas+Neue&family=Archivo+Black&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Bebas+Neue&family=Archivo+Black&family=Syne:wght@400;500;600;700;800&family=Archivo:wght@400;600;700;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260807design4">
+<link rel="stylesheet" href="css/styles.css?v=20260807design5">
 </head>
 <body>
 <script>
@@ -48,19 +48,19 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
         <div class="tier-pill" id="tp-30"><span style="font-size:14px">30</span> days</div>
       </div>
 
-      <div class="land-genie" style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:rgba(196,154,28,.04);border:1px solid rgba(196,154,28,.12);border-radius:12px;text-align:left;margin-bottom:28px">
-        <div class="genie-float" style="width:52px;height:52px;border-radius:50%;border:2px solid #c49a1c;overflow:hidden;flex-shrink:0;background:#c49a1c">
+      <div class="land-genie" style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:color-mix(in srgb,var(--accent,#c49a1c) 5%,transparent);border:1px solid color-mix(in srgb,var(--accent,#c49a1c) 14%,transparent);border-radius:var(--radius,12px);text-align:left;margin-bottom:28px">
+        <div class="genie-float" style="width:52px;height:52px;border-radius:50%;border:2px solid var(--accent,#c49a1c);overflow:hidden;flex-shrink:0;background:var(--accent,#c49a1c)">
           <img class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
         </div>
         <div>
-          <p style="font-size:13px;font-weight:700;color:#ebebeb;margin-bottom:2px">Genie <span style="font-size:10px;font-weight:600;color:#c49a1c;margin-left:4px">YOUR ACCOUNTABILITY COACH</span></p>
-          <p style="font-size:12px;color:#888;line-height:1.55">I review every upload personally. This is not automated encouragement. It's real accountability.</p>
+          <p style="font-size:13px;font-weight:700;color:var(--text,#ebebeb);margin-bottom:2px">Genie <span style="font-size:10px;font-weight:600;color:var(--accent,#c49a1c);margin-left:4px">YOUR ACCOUNTABILITY COACH</span></p>
+          <p style="font-size:12px;color:var(--muted,#888);line-height:1.55">I review every upload personally. This is not automated encouragement. It's real accountability.</p>
         </div>
       </div>
 
       <div class="col land-cta" style="align-items:center">
         <button class="bp" style="width:100%;max-width:320px;font-size:15px;padding:var(--btn-padding,14px 28px)" onclick="startOB()">Begin Your Challenge →</button>
-        <p style="font-size:12px;color:#5a5a5a;margin-top:12px">Already started? <span style="color:#c49a1c;cursor:pointer;font-weight:600" onclick="showSignIn()">Sign back in →</span></p>
+        <p style="font-size:12px;color:var(--muted,#5a5a5a);margin-top:12px">Already started? <span style="color:var(--accent,#c49a1c);cursor:pointer;font-weight:600" onclick="showSignIn()">Sign back in →</span></p>
       </div>
 
     </div>
@@ -530,20 +530,20 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260807design4"></script>
-<script src="js/theme.js?v=20260807design4"></script>
-<script src="js/lil.js?v=20260807design4"></script>
-<script src="js/auth.js?v=20260807design4"></script>
-<script src="js/onboarding.js?v=20260807design4"></script>
-<script src="js/goals.js?v=20260807design4"></script>
-<script src="js/witnesses.js?v=20260807design4"></script>
-<script src="js/miss.js?v=20260807design4"></script>
-<script src="js/completion.js?v=20260807design4"></script>
-<script src="js/miss-preview.js?v=20260807design4"></script>
-<script src="js/dashboard.js?v=20260807design4"></script>
-<script src="js/uploads.js?v=20260807design4"></script>
-<script src="js/admin.js?v=20260807design4"></script>
-<script src="js/design.js?v=20260807design4"></script>
-<script src="js/ui.js?v=20260807design4"></script>
+<script src="js/config.js?v=20260807design5"></script>
+<script src="js/theme.js?v=20260807design5"></script>
+<script src="js/lil.js?v=20260807design5"></script>
+<script src="js/auth.js?v=20260807design5"></script>
+<script src="js/onboarding.js?v=20260807design5"></script>
+<script src="js/goals.js?v=20260807design5"></script>
+<script src="js/witnesses.js?v=20260807design5"></script>
+<script src="js/miss.js?v=20260807design5"></script>
+<script src="js/completion.js?v=20260807design5"></script>
+<script src="js/miss-preview.js?v=20260807design5"></script>
+<script src="js/dashboard.js?v=20260807design5"></script>
+<script src="js/uploads.js?v=20260807design5"></script>
+<script src="js/admin.js?v=20260807design5"></script>
+<script src="js/design.js?v=20260807design5"></script>
+<script src="js/ui.js?v=20260807design5"></script>
 </body>
 </html>
