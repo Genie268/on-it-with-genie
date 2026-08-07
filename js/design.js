@@ -69,8 +69,6 @@ const DZ = (function(){
       clone.querySelectorAll("[id]").forEach(n => n.removeAttribute("id"));
       clone.querySelectorAll("[onclick]").forEach(n => n.removeAttribute("onclick"));
       const layer = clone.querySelector(".dz-canvas-layer"); if(layer) layer.innerHTML = "";
-      clone.style.height = "100%";
-      clone.style.minHeight = "0";
       stage.appendChild(clone);
     }else{
       stage.innerHTML = "<p style='padding:20px;color:#888'>Landing markup not found.</p>";
@@ -91,11 +89,14 @@ const DZ = (function(){
     stage.classList.toggle("dz-editing", editMode);
     /* Force a synchronous reflow so pre-existing elements (notably native
        <button> backgrounds) pick up live var() colour edits. Done in one JS
-       turn, so the browser never paints the hidden frame (no flicker). */
+       turn, so the browser never paints the hidden frame (no flicker).
+       Preserve the scroll position so editing never jumps the pane to the top. */
+    const _sc = stage.scrollTop;
     stage.style.display = "none"; void stage.offsetHeight; stage.style.display = "";
+    stage.scrollTop = _sc;
     if(editMode) wireDrag();
-    const be = document.getElementById("dz-block-editor");
-    if(be) renderBlockEditor();
+    /* NOTE: the block-editor panel is re-rendered on select/add/delete only,
+       never here, so typing in its fields keeps focus. */
   }
 
   /* ---------- drag (coach photo + text blocks), scoped to the clone ---------- */
@@ -135,6 +136,7 @@ const DZ = (function(){
       };
     }
     stage.querySelectorAll(".dz-canvas-layer .dz-text").forEach(t => {
+      t.classList.toggle("dz-selected", t.dataset.id === selectedBlock);
       t.onpointerdown = (e) => {
         selectBlock(t.dataset.id);
         _startDrag(e, t, hero, (x,y) => {
@@ -142,25 +144,37 @@ const DZ = (function(){
           if(b){ b.x = x; b.y = y; }
         });
       };
-      t.onclick = () => selectBlock(t.dataset.id);
     });
+  }
+  function _highlightSelected(){
+    const stage = document.getElementById("dz-stage");
+    if(!stage) return;
+    stage.querySelectorAll(".dz-canvas-layer .dz-text").forEach(t =>
+      t.classList.toggle("dz-selected", t.dataset.id === selectedBlock));
   }
 
   /* ---------- text blocks ---------- */
   function addTextBlock(){
     if(!Array.isArray(draft.textBlocks)) draft.textBlocks = [];
     const id = "b" + (Date.now().toString(36)) + (blockCounter++);
-    draft.textBlocks.push({ id, content:"New text", x:50, y:50, size:26, weight:700, color:"#ffffff", font:"var(--font-heading)", maxWidth:70 });
-    if(!editMode) toggleEdit(true);
-    selectedBlock = id;
-    applyPreview();
+    draft.textBlocks.push({ id, content:"New text", x:50, y:40, size:26, weight:700, color:"#ffffff", font:"var(--font-heading)", maxWidth:70 });
+    if(!editMode){ editMode = true; _syncEditBtn(); }
+    applyPreview();          /* renders the block + wires drag */
+    selectBlock(id);         /* selects, shows the editor, focuses it */
   }
   function deleteBlock(id){
     draft.textBlocks = (draft.textBlocks||[]).filter(b => b.id !== id);
     if(selectedBlock === id) selectedBlock = null;
     applyPreview();
+    renderBlockEditor();
   }
-  function selectBlock(id){ selectedBlock = id; renderBlockEditor(); }
+  function selectBlock(id){
+    selectedBlock = id;
+    renderBlockEditor();
+    _highlightSelected();
+    const ta = document.querySelector("#dz-block-editor textarea");
+    if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  }
   function updateBlock(id, key, value){
     const b = (draft.textBlocks||[]).find(bl => bl.id === id);
     if(!b) return;
@@ -205,7 +219,7 @@ const DZ = (function(){
       }
       if(!url) throw new Error("upload failed");
       draft.photo.src = url;
-      if(draft.photo.placement === "hidden") draft.photo.placement = "above";
+      if(draft.photo.placement === "hidden") draft.photo.placement = "card";
       draft.photo.x = draft.photo.x || 50; draft.photo.y = draft.photo.y || 30;
       if(status) status.textContent = "Uploaded";
       renderControls();
@@ -217,16 +231,19 @@ const DZ = (function(){
   }
 
   /* ---------- edit mode + persistence actions ---------- */
-  function toggleEdit(force){
-    editMode = (force === undefined) ? !editMode : !!force;
-    const stage = document.getElementById("dz-stage");
-    if(stage) stage.classList.toggle("dz-editing", editMode);
+  function _syncEditBtn(){
     const btn = document.getElementById("dz-edit-btn");
     if(btn){
       btn.textContent = editMode ? "Editing: on" : "Edit mode";
       btn.style.background = editMode ? "rgba(196,154,28,.15)" : "transparent";
       btn.style.color = editMode ? "#c49a1c" : "#888";
     }
+  }
+  function toggleEdit(force){
+    editMode = (force === undefined) ? !editMode : !!force;
+    const stage = document.getElementById("dz-stage");
+    if(stage) stage.classList.toggle("dz-editing", editMode);
+    _syncEditBtn();
     applyPreview();
   }
 
@@ -367,8 +384,9 @@ const DZ = (function(){
         .dz-row input[type=range]{flex:1}
         .dz-row select{background:#111;border:1px solid #222;color:#e8e8e8;border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px}
         .dz-actions button{font-family:inherit}
-        #dz-stage{position:relative;width:100%;height:620px;max-height:76vh;overflow:hidden;border:1px solid #222;border-radius:12px;background:var(--page-bg,#060606)}
-        #dz-stage .dz-hero{height:100%!important}
+        #dz-stage{position:relative;width:100%;max-height:76vh;overflow-y:auto;overflow-x:hidden;border:1px solid #222;border-radius:12px;background:var(--page-bg,#060606);overscroll-behavior:contain}
+        /* Natural height so the whole landing shows and the pane scrolls. */
+        #dz-stage .dz-hero{height:auto!important;min-height:600px!important}
         /* Freeze animations in the preview: a running CSS animation stops
            Chromium from repainting live custom-property (accent/colour) edits.
            The landing content fades in from opacity:0 via those animations, so
@@ -426,7 +444,8 @@ const DZ = (function(){
   return {
     renderDesignTab, set, setBool, setNum,
     addTextBlock, deleteBlock, selectBlock, updateBlock, uploadPhoto,
-    toggleEdit, saveDraft, publish, revert, undo
+    toggleEdit, saveDraft, publish, revert, undo,
+    getDraft: () => draft, isEditing: () => editMode
   };
 })();
 function renderDesignTab(c){ return DZ.renderDesignTab(c); }

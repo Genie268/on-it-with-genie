@@ -7,10 +7,13 @@ body{color:var(--text);font-family:var(--font-body,'DM Sans',system-ui,-apple-sy
 /* Film-grain overlay + landing canvas layer (photo + free text blocks) */
 #grain-overlay{position:fixed;inset:0;pointer-events:none;z-index:60;display:none;mix-blend-mode:overlay}
 #landing-canvas-layer,.dz-canvas-layer{position:absolute;inset:0;pointer-events:none;z-index:5;overflow:visible}
-.dz-editing .dz-canvas-layer,.dz-editing .dz-canvas-layer *,.dz-editing .genie-float{pointer-events:auto}
+/* Only the layer's CHILDREN capture events (never the layer itself, so clicks
+   pass through empty areas to the coach photo beneath). */
+.dz-editing .dz-canvas-layer .dz-text,.dz-editing .dz-canvas-layer .genie-float,.dz-editing .land-genie .genie-float{pointer-events:auto}
 .dz-text,.dz-photo{user-select:none}
 .dz-editing .dz-text,.dz-editing .dz-canvas-layer .genie-float,.dz-editing .land-genie .genie-float{cursor:grab;outline:1px dashed rgba(196,154,28,.6);outline-offset:3px}
 .dz-editing .dz-text:active,.dz-editing .genie-float:active{cursor:grabbing}
+.dz-text.dz-selected{outline:2px solid var(--accent,#c49a1c)!important;outline-offset:3px}
 body.light{--bg:#f4f2ee;--s1:#ffffff;--s2:#f9f8f5;--s3:#f0ede8;--s4:#e8e4dd;--text:#1a1a1a;--muted:#888;--mid:#666;--bd:#e0ddd8;--bdm:#d0cdc8;--card-bg:#ffffff;--nav-bg:#ffffff}
 .screen{display:none;flex-direction:column;min-height:100vh;height:100vh;background:var(--page-bg,var(--bg))}
 .screen.active{display:flex;height:100vh;}
