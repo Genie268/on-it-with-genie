@@ -776,7 +776,9 @@ async function _adminLightPoll(){
       if(adminCurrentTab==="messages"&&typeof _msgChatOpen!=="undefined"&&_msgChatOpen&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId){
         if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(_msgActiveChallengerId);
         if(typeof _updateMsgSidebar==="function") _updateMsgSidebar();
-      } else if(!_adminIsTyping()&&typeof adminTab==="function"){
+      } else if(!_adminIsTyping()&&adminCurrentTab!=="design"&&typeof adminTab==="function"){
+        /* Never re-render the Design tab from a poll — it owns its own draft
+           state and re-rendering would wipe in-progress edits. */
         adminTab(adminCurrentTab||"overview");
       }
     }
@@ -800,7 +802,7 @@ async function _adminSoftRefresh(){
     if(adminCurrentTab==="messages"&&typeof _msgChatOpen!=="undefined"&&_msgChatOpen&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId){
       if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(_msgActiveChallengerId);
       _updateMsgSidebar();
-    } else if(!_adminIsTyping()&&typeof adminTab==="function"){
+    } else if(!_adminIsTyping()&&adminCurrentTab!=="design"&&typeof adminTab==="function"){
       adminTab(adminCurrentTab||"overview");
     }
     updateTabTitle();
@@ -839,7 +841,7 @@ async function adminRefreshBadges(){
     if(adminCurrentTab==="messages"&&typeof _msgChatOpen!=="undefined"&&_msgChatOpen&&typeof _msgActiveChallengerId!=="undefined"&&_msgActiveChallengerId){
       if(typeof _loadMsgTabChat==="function") _loadMsgTabChat(_msgActiveChallengerId);
       if(typeof _updateMsgSidebar==="function") _updateMsgSidebar();
-    } else if(typeof adminTab==="function"){
+    } else if(adminCurrentTab!=="design"&&typeof adminTab==="function"){
       adminTab(adminCurrentTab||"overview");
     }
     updateTabTitle();

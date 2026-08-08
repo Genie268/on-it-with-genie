@@ -52,9 +52,12 @@ const DZ = (function(){
     if(typeof showToast === "function") showToast(name + " applied to your draft", "success");
   }
 
-  let draft = null, published = null, editMode = false, blockCounter = 0;
-  let sel = { kind: null, id: null };            /* current selection: block | override */
+  let draft = null, published = null, editMode = true, blockCounter = 0;
+  let sel = { kind: null, id: null };            /* current selection: block | override | image */
   let undoStack = [], redoStack = [], _histTag = null;
+  let device = "laptop";                         /* preview device frame */
+  const findBlock = (id) => (draft.textBlocks || []).find(b => b.id === id);
+  const findImage = (id) => (draft.images || []).find(g => g.id === id);
 
   function _snapshot(){ return JSON.stringify(draft); }
   function history(tag, force){
@@ -111,6 +114,7 @@ const DZ = (function(){
     let o = draft;
     for(let i=0;i<parts.length-1;i++){ if(o[parts[i]] == null) o[parts[i]] = {}; o = o[parts[i]]; }
     o[parts[parts.length-1]] = value;
+    saveDraftToStorage();
     applyPreview();
   }
   /* Booleans from checkboxes */
@@ -154,8 +158,9 @@ const DZ = (function(){
     T().applyCoachPhoto(draft, stage);
     T().applyOverrides(draft, stage);                          /* real-element edits */
     const layer = stage.querySelector(".dz-canvas-layer");
-    if(layer) T().renderTextBlocks(draft, layer);
+    if(layer){ T().renderTextBlocks(draft, layer); T().renderImages(draft, layer); }
     stage.classList.toggle("dz-editing", editMode);
+    _applyDevice();
     /* Force a synchronous reflow so pre-existing elements (notably native
        <button> backgrounds) pick up live var() colour edits. Done in one JS
        turn, so the browser never paints the hidden frame (no flicker).
@@ -164,14 +169,39 @@ const DZ = (function(){
     stage.style.display = "none"; void stage.offsetHeight; stage.style.display = "";
     stage.scrollTop = _sc;
     if(editMode) wireDrag();
+    renderToolbar();       /* re-create + reposition the floating toolbar */
     /* NOTE: the block-editor panel is re-rendered on select/add/delete only,
        never here, so typing in its fields keeps focus. */
+  }
+
+  /* ---------- device frame (laptop / tablet / phone) ---------- */
+  function _applyDevice(){
+    const stage = document.getElementById("dz-stage");
+    const hero = stage && stage.querySelector(".dz-hero");
+    if(!hero) return;
+    const dw = { laptop: 0, tablet: 834, phone: 390 }[device] || 0;
+    if(!dw){ hero.style.width = "100%"; hero.style.transform = ""; hero.style.margin = ""; hero.style.transformOrigin = ""; return; }
+    const avail = stage.clientWidth - 6;
+    const scale = Math.min(1, avail / dw);
+    hero.style.width = dw + "px";
+    hero.style.margin = "0 auto";
+    hero.style.transformOrigin = "top center";
+    hero.style.transform = scale < 1 ? "scale(" + scale + ")" : "";
+  }
+  function setDevice(d){
+    device = d;
+    ["laptop","tablet","phone"].forEach(k => {
+      const b = document.getElementById("dz-dev-" + k);
+      if(b){ b.style.background = k === d ? "rgba(196,154,28,.15)" : "transparent"; b.style.color = k === d ? "#c49a1c" : "#888"; }
+    });
+    applyPreview();
   }
 
   /* ---------- drag-or-select: a click selects, a drag past a small threshold
      moves. Works for text blocks, the coach photo and real landing elements. */
   function _dragOrSelect(e, node, hero, opts){
     if(!editMode) return;                 /* handlers persist; only act while editing */
+    if(node.isContentEditable) return;    /* being inline-edited: let the caret work */
     const sx = e.clientX, sy = e.clientY;
     let dragging = false;
     const rect = hero.getBoundingClientRect();
@@ -214,18 +244,19 @@ const DZ = (function(){
       });
     }
 
-    /* added text blocks */
+    /* added text blocks — click selects, drag moves, double-click edits inline */
     stage.querySelectorAll(".dz-canvas-layer .dz-text").forEach(t => {
       t.classList.toggle("dz-selected", isSel("block", t.dataset.id));
       t.onpointerdown = (e) => _dragOrSelect(e, t, hero, {
         onDragStart: () => history("drag-block-" + t.dataset.id, true),
-        onMove: (x,y) => { const b = (draft.textBlocks||[]).find(bl => bl.id === t.dataset.id); if(b){ b.x = x; b.y = y; } },
+        onMove: (x,y) => { const b = findBlock(t.dataset.id); if(b){ b.x = x; b.y = y; } },
         onEnd: () => saveDraftToStorage(),
         onClick: () => selectItem("block", t.dataset.id)
       });
+      t.ondblclick = () => _beginInline(t, "block", t.dataset.id);
     });
 
-    /* real landing elements ([data-dz-id]) — click to edit, drag to move */
+    /* real landing elements ([data-dz-id]) */
     stage.querySelectorAll("[data-dz-id]").forEach(el => {
       const id = el.dataset.dzId;
       el.classList.toggle("dz-selected", isSel("override", id));
@@ -240,7 +271,99 @@ const DZ = (function(){
         onEnd: () => saveDraftToStorage(),
         onClick: () => selectItem("override", id)
       });
+      el.ondblclick = () => _beginInline(el, "override", id);
     });
+
+    /* added images */
+    stage.querySelectorAll(".dz-canvas-layer .dz-img").forEach(im => {
+      im.classList.toggle("dz-selected", isSel("image", im.dataset.id));
+      im.onpointerdown = (e) => _dragOrSelect(e, im, hero, {
+        onDragStart: () => history("drag-img-" + im.dataset.id, true),
+        onMove: (x,y) => { const g = findImage(im.dataset.id); if(g){ g.x = x; g.y = y; } },
+        onEnd: () => saveDraftToStorage(),
+        onClick: () => selectItem("image", im.dataset.id)
+      });
+    });
+  }
+
+  /* ---------- double-click to edit text in place (Canva-style) ---------- */
+  function _beginInline(node, kind, id){
+    if(!editMode || kind === "image") return;
+    node.setAttribute("contenteditable", "true");
+    node.classList.add("dz-inline");
+    node.focus();
+    try{
+      const r = document.createRange(); r.selectNodeContents(node); r.collapse(false);
+      const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    }catch(e){}
+    const commit = () => {
+      node.removeEventListener("blur", commit);
+      node.removeAttribute("contenteditable");
+      node.classList.remove("dz-inline");
+      const text = (node.innerText || "").replace(/ /g, " ").replace(/\n{2,}/g, "\n").replace(/\s+$/,"");
+      history("inline-" + kind + "-" + id, true);
+      if(kind === "block"){ const b = findBlock(id); if(b) b.content = text; }
+      else { ensureOverride(id).text = text; }
+      saveDraftToStorage();
+      applyPreview();
+      selectItem(kind, id);
+    };
+    node.addEventListener("blur", commit);
+  }
+
+  /* ---------- floating toolbar on the selected element ---------- */
+  function _ensureToolbar(){
+    const stage = document.getElementById("dz-stage");
+    if(!stage) return null;
+    let tb = document.getElementById("dz-toolbar");
+    if(!tb || tb.parentElement !== stage){        /* mountPreview wipes the stage; re-add it */
+      tb = document.createElement("div");
+      tb.id = "dz-toolbar";
+      stage.appendChild(tb);
+    }
+    return tb;
+  }
+  function _hideToolbar(){ const tb = document.getElementById("dz-toolbar"); if(tb) tb.style.display = "none"; }
+  function _positionToolbar(){
+    const tb = _ensureToolbar();
+    const stage = document.getElementById("dz-stage");
+    if(!tb || !stage || !sel.kind){ if(tb) tb.style.display = "none"; return; }
+    let node = null;
+    if(sel.kind === "block") node = stage.querySelector('.dz-canvas-layer .dz-text[data-id="' + sel.id + '"]');
+    else if(sel.kind === "image") node = stage.querySelector('.dz-canvas-layer .dz-img[data-id="' + sel.id + '"]');
+    else node = stage.querySelector('[data-dz-id="' + sel.id + '"]');
+    if(!node){ tb.style.display = "none"; return; }
+    const nr = node.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    let top = nr.top - sr.top + stage.scrollTop - 40;
+    if(top < 4) top = nr.bottom - sr.top + stage.scrollTop + 8;
+    let left = nr.left - sr.left + stage.scrollTop * 0 + nr.width / 2;
+    tb.style.display = "flex";
+    tb.style.top = Math.max(2, top) + "px";
+    tb.style.left = Math.max(40, Math.min(stage.clientWidth - 40, left)) + "px";
+  }
+  function _tbBtn(icon, title, fn){
+    return `<button title="${title}" onclick="${fn}" style="width:30px;height:30px;border:none;border-radius:6px;background:#1c1c1c;color:#e8e8e8;font-size:14px;cursor:pointer;font-family:inherit">${icon}</button>`;
+  }
+  function renderToolbar(){
+    const tb = _ensureToolbar();
+    if(!tb) return;
+    if(!sel.kind){ tb.style.display = "none"; tb.innerHTML = ""; return; }
+    const k = sel.kind, id = sel.id;
+    let btns = "";
+    if(k === "block" || k === "override"){
+      btns += _tbBtn("&#9998;", "Edit text", `DZ.inlineEdit('${k}','${id}')`);
+    }
+    if(k === "block" || k === "image"){
+      btns += _tbBtn("&#10697;", "Duplicate", `DZ.duplicateItem('${k}','${id}')`);
+    }
+    btns += _tbBtn(k === "override" ? "&#8634;" : "&#128465;", k === "override" ? "Reset" : "Delete", `DZ.deleteItem('${k}','${id}')`);
+    tb.innerHTML = btns;
+    _positionToolbar();
+  }
+  function inlineEdit(kind, id){
+    const stage = document.getElementById("dz-stage");
+    let node = kind === "block" ? stage.querySelector('.dz-canvas-layer .dz-text[data-id="' + id + '"]') : stage.querySelector('[data-dz-id="' + id + '"]');
+    if(node) _beginInline(node, kind, id);
   }
 
   function _highlightSelected(){
@@ -263,8 +386,11 @@ const DZ = (function(){
   function deleteItem(kind, id){
     history("delete", true);
     if(kind === "block"){ draft.textBlocks = (draft.textBlocks||[]).filter(b => b.id !== id); }
+    else if(kind === "image"){ draft.images = (draft.images||[]).filter(g => g.id !== id); }
     else if(draft.overrides){ delete draft.overrides[id]; }
     if(isSel(kind, id)) sel = { kind:null, id:null };
+    _hideToolbar();
+    saveDraftToStorage();
     applyPreview(true);       /* remount so a reset element returns to its place */
     renderItemEditor();
   }
@@ -273,6 +399,7 @@ const DZ = (function(){
   function selectItem(kind, id){
     sel = { kind, id };
     renderItemEditor();
+    renderToolbar();
     _highlightSelected();
     const ta = document.querySelector("#dz-block-editor textarea");
     if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
@@ -280,17 +407,75 @@ const DZ = (function(){
 
   function updateBlock(id, key, value){
     history("block-" + id + "-" + key);
-    const b = (draft.textBlocks||[]).find(bl => bl.id === id);
+    const b = findBlock(id);
     if(!b) return;
     b[key] = (key === "size" || key === "weight" || key === "maxWidth") ? Number(value) : value;
+    saveDraftToStorage();
     applyPreview();
   }
   function updateOverride(id, key, value){
     history("ov-" + id + "-" + key);
     const o = ensureOverride(id);
     o[key] = (key === "size" || key === "weight") ? Number(value) : value;
+    saveDraftToStorage();
     applyPreview();
   }
+  function updateImage(id, key, value){
+    history("img-" + id + "-" + key);
+    const g = findImage(id);
+    if(!g) return;
+    g[key] = (key === "src") ? value : Number(value);
+    saveDraftToStorage();
+    applyPreview();
+  }
+  function duplicateItem(kind, id){
+    history("dup", true);
+    if(kind === "block"){
+      const b = findBlock(id); if(!b) return;
+      const n = Object.assign({}, b, { id:"b" + Date.now().toString(36) + (blockCounter++), x:(b.x||50)+4, y:(b.y||50)+4 });
+      draft.textBlocks.push(n); saveDraftToStorage(); applyPreview(); selectItem("block", n.id);
+    }else if(kind === "image"){
+      const g = findImage(id); if(!g) return;
+      const n = Object.assign({}, g, { id:"img" + Date.now().toString(36), x:(g.x||50)+4, y:(g.y||50)+4 });
+      draft.images.push(n); saveDraftToStorage(); applyPreview(); selectItem("image", n.id);
+    }
+  }
+
+  /* ---------- add / set images ---------- */
+  async function addImage(input){
+    const file = input.files && input.files[0];
+    if(!file){ return; }
+    const st = document.getElementById("dz-addimg-status");
+    if(st) st.textContent = "Uploading...";
+    try{
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const url = await uploadToStorage("site-assets", "design/img-" + Date.now() + "." + ext, file, file.type || "image/png");
+      if(!url) throw new Error("upload");
+      history("addimg", true);
+      if(!Array.isArray(draft.images)) draft.images = [];
+      const id = "img" + Date.now().toString(36);
+      draft.images.push({ id, src:url, x:50, y:50, w:180, radius:0, grayscale:0 });
+      editMode = true; _syncEditBtn();
+      saveDraftToStorage(); applyPreview(); selectItem("image", id);
+      if(st) st.textContent = "";
+    }catch(e){ if(st) st.textContent = "Upload failed"; if(typeof showToast === "function") showToast("Image upload failed","error"); }
+    input.value = "";
+  }
+  async function setBgImage(input){
+    const file = input.files && input.files[0];
+    if(!file){ return; }
+    const st = document.getElementById("dz-bgimg-status");
+    if(st) st.textContent = "Uploading...";
+    try{
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const url = await uploadToStorage("site-assets", "design/bg-" + Date.now() + "." + ext, file, file.type || "image/jpeg");
+      if(!url) throw new Error("upload");
+      set("tokens.bgImage", url);
+      if(st) st.textContent = "Background set";
+    }catch(e){ if(st) st.textContent = "Upload failed"; }
+    input.value = "";
+  }
+  function clearBgImage(){ set("tokens.bgImage", ""); const st = document.getElementById("dz-bgimg-status"); if(st) st.textContent = "No background image"; }
 
   function _fontOptions(cur){
     return FONTS.map(f => `<option value="${f[0]}"${cur===f[0]?" selected":""}>${f[1]}</option>`).join("")
@@ -307,11 +492,29 @@ const DZ = (function(){
     </div>`;
   }
   function _editorHint(){
-    return `<p style="font-size:11px;color:#5a5a5a">Turn on Edit mode, then click any element in the preview (headline, subhead, a pill, the button) to edit its words, font, size, weight and colour — or drag it. "+ Add text" adds a new block.</p>`;
+    return `<p style="font-size:11px;color:#5a5a5a">Click any element in the preview to select it, drag to move it, double-click to type into it. A little toolbar appears on the element (edit, duplicate, delete). "+ Add text" and "+ Add image" add new items.</p>`;
   }
   function renderItemEditor(){
     const box = document.getElementById("dz-block-editor");
     if(!box) return;
+    if(sel.kind === "image"){
+      const g = findImage(sel.id);
+      if(!g){ box.innerHTML = _editorHint(); return; }
+      box.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span class="ch-block-lbl" style="margin:0">SELECTED · IMAGE</span>
+          <div style="display:flex;gap:6px">
+            <button onclick="DZ.duplicateItem('image','${g.id}')" style="background:none;border:1px solid #333;color:#aaa;font-size:11px;padding:4px 8px;border-radius:7px;cursor:pointer;font-family:inherit">Duplicate</button>
+            <button onclick="DZ.deleteItem('image','${g.id}')" style="background:none;border:1px solid rgba(217,80,58,.4);color:#d9503a;font-size:11px;padding:4px 10px;border-radius:7px;cursor:pointer;font-family:inherit">Delete</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label style="font-size:11px;color:#888">Width ${g.w||180}px<input type="range" min="40" max="600" value="${g.w||180}" oninput="DZ.updateImage('${g.id}','w',this.value);this.previousSibling.textContent='Width '+this.value+'px'" style="width:100%"></label>
+          <label style="font-size:11px;color:#888">Corner ${g.radius||0}px<input type="range" min="0" max="200" value="${g.radius||0}" oninput="DZ.updateImage('${g.id}','radius',this.value);this.previousSibling.textContent='Corner '+this.value+'px'" style="width:100%"></label>
+          <label style="font-size:11px;color:#888;grid-column:1/3">Black &amp; white ${Math.round((g.grayscale||0)*100)}%<input type="range" min="0" max="1" step="0.05" value="${g.grayscale||0}" oninput="DZ.updateImage('${g.id}','grayscale',this.value);this.previousSibling.textContent='Black & white '+Math.round(this.value*100)+'%'" style="width:100%"></label>
+        </div>`;
+      return;
+    }
     if(sel.kind === "block"){
       const b = (draft.textBlocks||[]).find(bl => bl.id === sel.id);
       if(!b){ box.innerHTML = _editorHint(); return; }
@@ -465,7 +668,13 @@ const DZ = (function(){
       ) +
       section("BACKGROUND",
         toggleRow("Use gradient","tokens.useGradient") + colorRow("Second colour","tokens.bg2") +
-        rangeRow("Angle","tokens.gradientAngle",0,360,1,"")
+        rangeRow("Angle","tokens.gradientAngle",0,360,1,"") +
+        `<div style="border-top:1px solid #1c1c1c;margin-top:8px;padding-top:8px">
+           <label class="dz-row"><span>Background image</span><input type="file" accept="image/*" onchange="DZ.setBgImage(this)" style="font-size:11px"></label>
+           <p id="dz-bgimg-status" style="font-size:10px;color:#5a5a5a;margin:2px 0 6px">${(_get("tokens.bgImage")) ? "Background image set" : "No background image"}</p>
+           ${rangeRow("Image darkness","tokens.bgOverlay",0,0.9,0.05,"")}
+           <button onclick="DZ.clearBgImage()" style="font-size:11px;padding:5px 10px;border:1px solid #333;border-radius:7px;background:transparent;color:#aaa;cursor:pointer;font-family:inherit">Remove background image</button>
+         </div>`
       ) +
       section("TYPE",
         fontRow("Heading font","tokens.fontHeading") + fontRow("Body font","tokens.fontBody") +
@@ -511,7 +720,7 @@ const DZ = (function(){
     if(!draft.photo) draft.photo = T().clone(T().DEFAULT_BASELINE.photo);
     if(!draft.tokens) draft.tokens = T().clone(T().DEFAULT_BASELINE.tokens);
     if(!Array.isArray(draft.textBlocks)) draft.textBlocks = [];
-    editMode = false; sel = { kind:null, id:null };
+    editMode = true; sel = { kind:null, id:null };   /* always-editable: click to select, drag to move, dbl-click to type */
     undoStack = []; redoStack = []; _histTag = null;
 
     container.innerHTML = `
@@ -536,6 +745,11 @@ const DZ = (function(){
         #dz-stage *,#dz-stage *::before,#dz-stage *::after{animation:none!important}
         #dz-stage .land-logo,#dz-stage .land-h1,#dz-stage .land-sub,#dz-stage .land-genie,#dz-stage .land-cta,#dz-stage .land-tiers,#dz-stage .dz-text{opacity:1!important}
         #dz-stage .land-particles{display:none!important}
+        #dz-toolbar{position:absolute;z-index:50;display:none;gap:4px;padding:4px;background:#0b0b0b;border:1px solid #333;border-radius:9px;transform:translateX(-50%);box-shadow:0 6px 20px rgba(0,0,0,.5)}
+        #dz-toolbar button:hover{background:#2a2a2a}
+        #dz-stage .dz-inline{outline:2px solid var(--accent,#c49a1c)!important;cursor:text!important;min-width:20px}
+        #dz-stage .dz-img{cursor:grab}
+        .dz-dev-btn{width:32px;height:30px;border:1px solid #333;border-radius:7px;background:transparent;color:#888;cursor:pointer;font-family:inherit;font-size:13px}
       </style>
       <div id="dz-diag" style="font-size:11px;color:#8a8a8a;margin-bottom:12px;padding:8px 12px;border:1px solid #222;border-radius:8px;background:#0e0e0e">Diagnostics: running...</div>
       <div style="margin-bottom:14px">
@@ -549,6 +763,8 @@ const DZ = (function(){
           <div class="dz-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center">
             <button id="dz-edit-btn" onclick="DZ.toggleEdit()" style="padding:8px 14px;border:1px solid #333;border-radius:8px;background:transparent;color:#888;font-size:12px;font-weight:700;cursor:pointer">Edit mode</button>
             <button onclick="DZ.addTextBlock()" style="padding:8px 14px;border:1px solid rgba(196,154,28,.3);border-radius:8px;background:rgba(196,154,28,.08);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">+ Add text</button>
+            <label style="padding:8px 14px;border:1px solid rgba(196,154,28,.3);border-radius:8px;background:rgba(196,154,28,.08);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">+ Add image<input type="file" accept="image/*" onchange="DZ.addImage(this)" style="display:none"></label>
+            <span id="dz-addimg-status" style="font-size:10px;color:#5a5a5a"></span>
             <div style="margin-left:auto;display:flex;gap:4px">
               <button id="dz-undo" title="Undo" onclick="DZ.stepUndo()" style="width:34px;height:34px;border:1px solid #333;border-radius:8px;background:#141414;color:#e8e8e8;font-size:16px;cursor:pointer;opacity:.35" disabled>&#8630;</button>
               <button id="dz-redo" title="Redo" onclick="DZ.stepRedo()" style="width:34px;height:34px;border:1px solid #333;border-radius:8px;background:#141414;color:#e8e8e8;font-size:16px;cursor:pointer;opacity:.35" disabled>&#8631;</button>
@@ -564,7 +780,14 @@ const DZ = (function(){
           <div id="dz-controls"></div>
         </div>
         <div id="dz-right">
-          <p class="ch-block-lbl">LIVE PREVIEW · YOUR REAL LANDING</p>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span class="ch-block-lbl" style="margin:0">LIVE PREVIEW · YOUR REAL LANDING</span>
+            <div style="display:flex;gap:4px">
+              <button id="dz-dev-laptop" class="dz-dev-btn" title="Laptop" onclick="DZ.setDevice('laptop')" style="background:rgba(196,154,28,.15);color:#c49a1c">&#128421;</button>
+              <button id="dz-dev-tablet" class="dz-dev-btn" title="Tablet" onclick="DZ.setDevice('tablet')">&#9633;</button>
+              <button id="dz-dev-phone" class="dz-dev-btn" title="Phone" onclick="DZ.setDevice('phone')">&#128241;</button>
+            </div>
+          </div>
           <div id="dz-stage"></div>
           <p style="font-size:11px;color:#5a5a5a;margin-top:8px">This is your actual landing page. Turn on Edit mode to drag the coach photo and text blocks. Publish pushes this look to the live site. Revert restores today's look.</p>
         </div>
@@ -572,6 +795,7 @@ const DZ = (function(){
 
     renderControls();
     renderItemEditor();
+    _syncEditBtn();
     applyPreview();
     updateHistBtns();
     runDiagnostics();
@@ -657,6 +881,7 @@ const DZ = (function(){
   return {
     renderDesignTab, set, setBool, setNum,
     addTextBlock, deleteBlock, deleteItem, selectItem, updateBlock, updateOverride, uploadPhoto,
+    updateImage, duplicateItem, addImage, setBgImage, clearBgImage, setDevice, inlineEdit,
     toggleEdit, saveDraft, publish, revert, undo, applyPreset, stepUndo, stepRedo,
     getDraft: () => draft, isEditing: () => editMode
   };

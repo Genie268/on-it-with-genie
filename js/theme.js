@@ -35,7 +35,8 @@
       ring: true, placement: "card", overlay: "0.5", x: 50, y: 30
     },
     textBlocks: [],
-    overrides: {}
+    overrides: {},
+    images: []
   };
 
   /* Deep clone so callers can mutate a draft without touching the baseline. */
@@ -47,6 +48,7 @@
     if(over.photo) Object.assign(out.photo, over.photo);
     if(Array.isArray(over.textBlocks)) out.textBlocks = clone(over.textBlocks);
     if(over.overrides) out.overrides = clone(over.overrides);
+    if(Array.isArray(over.images)) out.images = clone(over.images);
     return out;
   }
 
@@ -133,13 +135,40 @@
     });
   }
 
-  /* Full-background photo painted on the landing hero (behind everything). */
+  /* Free draggable images added by the editor. Rendered into the canvas layer,
+     positioned by percentage, sized in px. */
+  function renderImages(theme, layerEl){
+    if(!layerEl) return;
+    const doc = layerEl.ownerDocument || document;
+    const imgs = (merge(DEFAULT_BASELINE, theme).images) || [];
+    layerEl.querySelectorAll(".dz-img").forEach(n => n.remove());
+    imgs.forEach(im => {
+      if(!im.src) return;
+      const el = doc.createElement("img");
+      el.className = "dz-img";
+      el.dataset.dz = "image";
+      el.dataset.id = im.id;
+      el.src = im.src;
+      el.style.cssText = `position:absolute;left:${im.x != null ? im.x : 50}%;top:${im.y != null ? im.y : 50}%;transform:translate(-50%,-50%);width:${im.w || 160}px;height:auto;border-radius:${im.radius || 0}px;filter:grayscale(${im.grayscale || 0});object-fit:contain`;
+      layerEl.appendChild(el);
+    });
+  }
+
+  /* Full-hero background: an editor background image (tokens.bgImage) wins;
+     otherwise the coach photo when its placement is "background". */
   function applyBackground(theme, scope){
     scope = scope || document;
-    const p = (merge(DEFAULT_BASELINE, theme).photo) || {};
+    const th = merge(DEFAULT_BASELINE, theme);
+    const p = th.photo || {};
+    const t = th.tokens || {};
     const hero = scope.querySelector(".dz-hero");
     if(!hero) return;
-    if(p.src && p.placement === "background"){
+    if(t.bgImage){
+      const ov = Math.max(0, Math.min(1, parseFloat(t.bgOverlay != null ? t.bgOverlay : 0.4)));
+      hero.style.backgroundImage = `linear-gradient(rgba(0,0,0,${ov}),rgba(0,0,0,${ov})), url("${_esc(t.bgImage)}")`;
+      hero.style.backgroundSize = "cover";
+      hero.style.backgroundPosition = "center";
+    }else if(p.src && p.placement === "background"){
       const ov = Math.max(0, Math.min(1, parseFloat(p.overlay != null ? p.overlay : 0.5)));
       hero.style.backgroundImage = `linear-gradient(rgba(0,0,0,${ov}),rgba(0,0,0,${ov})), url("${_esc(p.src)}")`;
       hero.style.backgroundSize = "cover";
@@ -272,7 +301,7 @@
     applyCoachPhoto(theme, scope);
     applyOverrides(theme, scope);
     const layer = scope.querySelector(".dz-canvas-layer");
-    if(layer) renderTextBlocks(theme, layer);
+    if(layer){ renderTextBlocks(theme, layer); renderImages(theme, layer); }
   }
 
   /* ---- boot: instant paint from cache, then refresh from server ---- */
@@ -299,7 +328,7 @@
   window.OIWG_THEME = {
     DEFAULT_BASELINE,
     clone, merge,
-    applyTheme, applyGrain, applyBackground, applyCoachPhoto, applyOverrides, renderTextBlocks, applyAll,
+    applyTheme, applyGrain, applyBackground, applyCoachPhoto, applyOverrides, renderTextBlocks, renderImages, applyAll,
     fetchPublished, publish, writeCache, readCache,
     getPublished: () => _published,
     GRAIN_URI
