@@ -12,10 +12,10 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23060606'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-size='20' font-weight='900' fill='%23c49a1c' font-family='system-ui'%3EG%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Bebas+Neue&family=Archivo+Black&family=Syne:wght@400;500;600;700;800&family=Archivo:wght@400;600;700;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Bebas+Neue&family=Archivo+Black&family=Syne:wght@400;500;600;700;800&family=Archivo:wght@400;600;700;800;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260808land1">
+<link rel="stylesheet" href="css/styles.css?v=20260808land2">
 </head>
 <body>
 <script>
@@ -37,11 +37,8 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
       <!-- 1. NAV -->
       <nav class="kl-nav">
-        <div class="lm">
-          <div class="lmk" style="width:34px;height:34px;font-size:16px">G</div>
-          <span class="lmt" data-dz-id="logo" style="font-size:15px">ON IT <b>WITH GENIE</b></span>
-        </div>
-        <span class="kl-signin" data-dz-id="signin" onclick="showSignIn()">Sign in →</span>
+        <span class="kl-brand" data-dz-id="logo">ON&nbsp;IT <span class="kl-brand-sub">WITH GENIE</span></span>
+        <span class="kl-signin" data-dz-id="signin" onclick="showSignIn()">Sign in <span aria-hidden="true">&rarr;</span></span>
       </nav>
 
       <!-- HERO -->
@@ -56,7 +53,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
         <p class="kl-sub" data-dz-id="subhead">Pick one thing. Show up every day. I'll hold you to it.</p>
 
         <!-- 4. PRIMARY BUTTON — same onboarding flow, keep id + handler -->
-        <button class="bp kl-cta" data-dz-id="cta" onclick="startOB()">I'm ready →</button>
+        <button class="bp kl-cta" data-dz-id="cta" onclick="startOB()">I'm ready <span aria-hidden="true">&rarr;</span></button>
 
         <!-- 5. META LINE -->
         <p class="kl-meta" data-dz-id="meta">15 days <i>&bull;</i> One goal <i>&bull;</i> Daily proof</p>
@@ -65,35 +62,37 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
       <!-- 6. DIVIDER -->
       <hr class="kl-rule">
 
-      <!-- 7. EYEBROW -->
-      <p class="kl-eyebrow"><span data-dz-id="eyebrow">This is for you if&hellip;</span></p>
-
-      <!-- 8. THREE COLUMNS -->
+      <!-- 7. THREE STEPS -->
       <div class="kl-cols">
         <div class="kl-col">
-          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-          <p data-dz-id="feat1">You know what to do but struggle to follow through.</p>
+          <span class="kl-num">01</span>
+          <p class="kl-col-t" data-dz-id="feat1t">Choose one goal.</p>
+          <p class="kl-col-d" data-dz-id="feat1">Decide what you're actually committing to.</p>
         </div>
         <div class="kl-col">
-          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-          <p data-dz-id="feat2">You need structure, accountability and someone in your corner.</p>
+          <span class="kl-num">02</span>
+          <p class="kl-col-t" data-dz-id="feat2t">Show up every day.</p>
+          <p class="kl-col-d" data-dz-id="feat2">Upload proof that you did the work.</p>
         </div>
         <div class="kl-col">
-          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-          <p data-dz-id="feat3">You're done starting over. You're ready to finish what you start.</p>
+          <span class="kl-num">03</span>
+          <p class="kl-col-t" data-dz-id="feat3t">Keep going.</p>
+          <p class="kl-col-d" data-dz-id="feat3">I'll review your progress and hold you accountable.</p>
         </div>
       </div>
 
-      <!-- 9. QUOTE -->
+      <!-- 8. QUOTE -->
       <figure class="kl-quote">
         <span class="kl-qmark" aria-hidden="true">&ldquo;</span>
-        <blockquote data-dz-id="quote">The gap between knowing and doing is where I come in.</blockquote>
-        <figcaption class="kl-cite">
-          <div class="genie-float" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--accent,#c49a1c);overflow:hidden;flex-shrink:0;background:var(--accent,#c49a1c)">
-            <img class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
-          </div>
-          <span class="kl-cite-name" data-dz-id="coachline">&mdash; Genie</span>
-        </figcaption>
+        <div class="kl-quote-body">
+          <blockquote data-dz-id="quote">The gap between knowing and doing is where I come in.</blockquote>
+          <figcaption class="kl-cite">
+            <div class="genie-float" style="width:38px;height:38px;border-radius:50%;border:2px solid var(--accent,#c49a1c);overflow:hidden;flex-shrink:0;background:var(--accent,#c49a1c)">
+              <img class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
+            </div>
+            <span class="kl-cite-name" data-dz-id="coachline">&mdash; Genie</span>
+          </figcaption>
+        </div>
       </figure>
 
     </div>
@@ -563,20 +562,20 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260808land1"></script>
-<script src="js/theme.js?v=20260808land1"></script>
-<script src="js/lil.js?v=20260808land1"></script>
-<script src="js/auth.js?v=20260808land1"></script>
-<script src="js/onboarding.js?v=20260808land1"></script>
-<script src="js/goals.js?v=20260808land1"></script>
-<script src="js/witnesses.js?v=20260808land1"></script>
-<script src="js/miss.js?v=20260808land1"></script>
-<script src="js/completion.js?v=20260808land1"></script>
-<script src="js/miss-preview.js?v=20260808land1"></script>
-<script src="js/dashboard.js?v=20260808land1"></script>
-<script src="js/uploads.js?v=20260808land1"></script>
-<script src="js/admin.js?v=20260808land1"></script>
-<script src="js/design.js?v=20260808land1"></script>
-<script src="js/ui.js?v=20260808land1"></script>
+<script src="js/config.js?v=20260808land2"></script>
+<script src="js/theme.js?v=20260808land2"></script>
+<script src="js/lil.js?v=20260808land2"></script>
+<script src="js/auth.js?v=20260808land2"></script>
+<script src="js/onboarding.js?v=20260808land2"></script>
+<script src="js/goals.js?v=20260808land2"></script>
+<script src="js/witnesses.js?v=20260808land2"></script>
+<script src="js/miss.js?v=20260808land2"></script>
+<script src="js/completion.js?v=20260808land2"></script>
+<script src="js/miss-preview.js?v=20260808land2"></script>
+<script src="js/dashboard.js?v=20260808land2"></script>
+<script src="js/uploads.js?v=20260808land2"></script>
+<script src="js/admin.js?v=20260808land2"></script>
+<script src="js/design.js?v=20260808land2"></script>
+<script src="js/ui.js?v=20260808land2"></script>
 </body>
 </html>

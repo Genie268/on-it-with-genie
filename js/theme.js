@@ -18,9 +18,9 @@
       accent: "#c49a1c", accentText: "#000000", border: "#1c1c1c",
       /* Captured from the Dan-Koe-style landing: left-aligned, big bold
          Helvetica headline, single gold accent. Revert restores this design. */
-      fontHeading: "Helvetica, Arial, sans-serif",
+      fontHeading: "'Archivo', Helvetica, Arial, sans-serif",
       fontBody: "'DM Sans', system-ui, -apple-system, sans-serif",
-      fsH1: "clamp(44px,9vw,92px)", fsBase: "17px", fsEyebrow: "11px",
+      fsH1: "clamp(46px,10vw,104px)", fsBase: "17px", fsEyebrow: "11px",
       fwHeading: "800", letterSpacing: "-0.03em", lineHeight: "1.6",
       container: "1080px", rhythm: "20px", radius: "10px", btnPadding: "16px 34px",
       align: "left",
