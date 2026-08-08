@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Bebas+Neue&family=Archivo+Black&family=Syne:wght@400;500;600;700;800&family=Archivo:wght@400;600;700;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260807design5">
+<link rel="stylesheet" href="css/styles.css?v=20260807design6">
 </head>
 <body>
 <script>
@@ -37,15 +37,15 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
     <div style="position:relative;z-index:3;max-width:var(--container,500px);width:100%">
       <div class="lm land-logo" style="justify-content:center;margin-bottom:44px">
         <div class="lmk" style="width:42px;height:42px;font-size:20px">G</div>
-        <span class="lmt" style="font-size:20px">ON IT <b>WITH GENIE</b></span>
+        <span class="lmt" data-dz-id="logo" style="font-size:20px">ON IT <b>WITH GENIE</b></span>
       </div>
-      <h1 class="hero-title land-h1" style="font-family:var(--font-heading,Helvetica,Arial,sans-serif);font-size:var(--fs-h1,clamp(38px,8vw,62px));font-weight:var(--fw-heading,700);line-height:1.05;letter-spacing:var(--letter-spacing,-0.03em);margin-bottom:18px">You already know what to do.<br><span class="ac">Do it here.</span></h1>
-      <p class="muted land-sub" style="font-size:var(--fs-base,15px);line-height:1.85;margin-bottom:20px">Pick a duration. Commit to one goal. Upload proof daily.<br>Reviewed by a real human. Not an algorithm.</p>
+      <h1 class="hero-title land-h1" data-dz-id="headline" style="font-family:var(--font-heading,Helvetica,Arial,sans-serif);font-size:var(--fs-h1,clamp(38px,8vw,62px));font-weight:var(--fw-heading,700);line-height:1.05;letter-spacing:var(--letter-spacing,-0.03em);margin-bottom:18px">You already know what to do.<br><span class="ac">Do it here.</span></h1>
+      <p class="muted land-sub" data-dz-id="subhead" style="font-size:var(--fs-base,15px);line-height:1.85;margin-bottom:20px">Pick a duration. Commit to one goal. Upload proof daily.<br>Reviewed by a real human. Not an algorithm.</p>
 
       <div class="land-tiers" style="display:flex;gap:8px;justify-content:center;margin-bottom:28px">
-        <div class="tier-pill" id="tp-7"><span style="font-size:14px">7</span> days</div>
-        <div class="tier-pill" id="tp-15"><span style="font-size:14px">15</span> days</div>
-        <div class="tier-pill" id="tp-30"><span style="font-size:14px">30</span> days</div>
+        <div class="tier-pill" data-dz-id="pill7" id="tp-7"><span style="font-size:14px">7</span> days</div>
+        <div class="tier-pill" data-dz-id="pill15" id="tp-15"><span style="font-size:14px">15</span> days</div>
+        <div class="tier-pill" data-dz-id="pill30" id="tp-30"><span style="font-size:14px">30</span> days</div>
       </div>
 
       <div class="land-genie" style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:color-mix(in srgb,var(--accent,#c49a1c) 5%,transparent);border:1px solid color-mix(in srgb,var(--accent,#c49a1c) 14%,transparent);border-radius:var(--radius,12px);text-align:left;margin-bottom:28px">
@@ -53,14 +53,14 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
           <img class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
         </div>
         <div>
-          <p style="font-size:13px;font-weight:700;color:var(--text,#ebebeb);margin-bottom:2px">Genie <span style="font-size:10px;font-weight:600;color:var(--accent,#c49a1c);margin-left:4px">YOUR ACCOUNTABILITY COACH</span></p>
+          <p data-dz-id="coachline" style="font-size:13px;font-weight:700;color:var(--text,#ebebeb);margin-bottom:2px">Genie <span style="font-size:10px;font-weight:600;color:var(--accent,#c49a1c);margin-left:4px">YOUR ACCOUNTABILITY COACH</span></p>
           <p style="font-size:12px;color:var(--muted,#888);line-height:1.55">I review every upload personally. This is not automated encouragement. It's real accountability.</p>
         </div>
       </div>
 
       <div class="col land-cta" style="align-items:center">
-        <button class="bp" style="width:100%;max-width:320px;font-size:15px;padding:var(--btn-padding,14px 28px)" onclick="startOB()">Begin Your Challenge →</button>
-        <p style="font-size:12px;color:var(--muted,#5a5a5a);margin-top:12px">Already started? <span style="color:var(--accent,#c49a1c);cursor:pointer;font-weight:600" onclick="showSignIn()">Sign back in →</span></p>
+        <button class="bp" data-dz-id="cta" style="width:100%;max-width:320px;font-size:15px;padding:var(--btn-padding,14px 28px)" onclick="startOB()">Begin Your Challenge →</button>
+        <p data-dz-id="signin" style="font-size:12px;color:var(--muted,#5a5a5a);margin-top:12px">Already started? <span style="color:var(--accent,#c49a1c);cursor:pointer;font-weight:600" onclick="showSignIn()">Sign back in →</span></p>
       </div>
 
     </div>
@@ -530,20 +530,20 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260807design5"></script>
-<script src="js/theme.js?v=20260807design5"></script>
-<script src="js/lil.js?v=20260807design5"></script>
-<script src="js/auth.js?v=20260807design5"></script>
-<script src="js/onboarding.js?v=20260807design5"></script>
-<script src="js/goals.js?v=20260807design5"></script>
-<script src="js/witnesses.js?v=20260807design5"></script>
-<script src="js/miss.js?v=20260807design5"></script>
-<script src="js/completion.js?v=20260807design5"></script>
-<script src="js/miss-preview.js?v=20260807design5"></script>
-<script src="js/dashboard.js?v=20260807design5"></script>
-<script src="js/uploads.js?v=20260807design5"></script>
-<script src="js/admin.js?v=20260807design5"></script>
-<script src="js/design.js?v=20260807design5"></script>
-<script src="js/ui.js?v=20260807design5"></script>
+<script src="js/config.js?v=20260807design6"></script>
+<script src="js/theme.js?v=20260807design6"></script>
+<script src="js/lil.js?v=20260807design6"></script>
+<script src="js/auth.js?v=20260807design6"></script>
+<script src="js/onboarding.js?v=20260807design6"></script>
+<script src="js/goals.js?v=20260807design6"></script>
+<script src="js/witnesses.js?v=20260807design6"></script>
+<script src="js/miss.js?v=20260807design6"></script>
+<script src="js/completion.js?v=20260807design6"></script>
+<script src="js/miss-preview.js?v=20260807design6"></script>
+<script src="js/dashboard.js?v=20260807design6"></script>
+<script src="js/uploads.js?v=20260807design6"></script>
+<script src="js/admin.js?v=20260807design6"></script>
+<script src="js/design.js?v=20260807design6"></script>
+<script src="js/ui.js?v=20260807design6"></script>
 </body>
 </html>

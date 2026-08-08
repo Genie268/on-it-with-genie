@@ -43,6 +43,7 @@ const DZ = (function(){
   function applyPreset(name){
     const p = PRESETS[name];
     if(!p || !draft) return;
+    history("preset", true);
     if(!draft.tokens) draft.tokens = {};
     Object.assign(draft.tokens, p, { useGradient:false });
     saveDraftToStorage();
@@ -51,7 +52,50 @@ const DZ = (function(){
     if(typeof showToast === "function") showToast(name + " applied to your draft", "success");
   }
 
-  let draft = null, published = null, editMode = false, selectedBlock = null, blockCounter = 0;
+  let draft = null, published = null, editMode = false, blockCounter = 0;
+  let sel = { kind: null, id: null };            /* current selection: block | override */
+  let undoStack = [], redoStack = [], _histTag = null;
+
+  function _snapshot(){ return JSON.stringify(draft); }
+  function history(tag, force){
+    /* Coalesce consecutive edits to the same control into one undo step. */
+    if(!force && tag && tag === _histTag) return;
+    undoStack.push(_snapshot());
+    if(undoStack.length > 60) undoStack.shift();
+    redoStack.length = 0;
+    _histTag = tag;
+    updateHistBtns();
+  }
+  function stepUndo(){
+    if(!undoStack.length) return;
+    redoStack.push(_snapshot());
+    draft = JSON.parse(undoStack.pop());
+    _histTag = null; sel = { kind:null, id:null };
+    saveDraftToStorage(); renderControls(); applyPreview(true); renderItemEditor(); updateHistBtns();
+  }
+  function stepRedo(){
+    if(!redoStack.length) return;
+    undoStack.push(_snapshot());
+    draft = JSON.parse(redoStack.pop());
+    _histTag = null; sel = { kind:null, id:null };
+    saveDraftToStorage(); renderControls(); applyPreview(true); renderItemEditor(); updateHistBtns();
+  }
+  function updateHistBtns(){
+    const u = document.getElementById("dz-undo"), r = document.getElementById("dz-redo");
+    if(u){ u.disabled = !undoStack.length; u.style.opacity = undoStack.length ? "1" : ".35"; }
+    if(r){ r.disabled = !redoStack.length; r.style.opacity = redoStack.length ? "1" : ".35"; }
+  }
+  function ensureOverride(id){
+    if(!draft.overrides) draft.overrides = {};
+    if(!draft.overrides[id]) draft.overrides[id] = {};
+    return draft.overrides[id];
+  }
+  function isSel(kind, id){ return sel.kind === kind && sel.id === id; }
+  function _rgbToHex(c){
+    const m = String(c).match(/(\d+),\s*(\d+),\s*(\d+)/);
+    if(!m) return "#ffffff";
+    return "#" + [m[1],m[2],m[3]].map(n => (+n).toString(16).padStart(2,"0")).join("");
+  }
 
   /* ---------- state helpers ---------- */
   function loadDraftFromStorage(){
@@ -62,6 +106,7 @@ const DZ = (function(){
 
   function _get(path){ return path.split(".").reduce((o,k)=> (o == null ? o : o[k]), draft); }
   function set(path, value){
+    history(path);
     const parts = path.split(".");
     let o = draft;
     for(let i=0;i<parts.length-1;i++){ if(o[parts[i]] == null) o[parts[i]] = {}; o = o[parts[i]]; }
@@ -99,14 +144,15 @@ const DZ = (function(){
   }
 
   /* ---------- apply the draft to the cloned landing in the preview ---------- */
-  function applyPreview(){
+  function applyPreview(remount){
     const stage = document.getElementById("dz-stage");
     if(!stage || !T()) return;
-    if(!stage.querySelector(".dz-hero")) mountPreview();
+    if(remount || !stage.querySelector(".dz-hero")) mountPreview();
     T().applyTheme(draft, stage);                              /* tokens scoped to the stage */
     T().applyGrain(draft, document.getElementById("dz-grain"));
     T().applyBackground(draft, stage);
     T().applyCoachPhoto(draft, stage);
+    T().applyOverrides(draft, stage);                          /* real-element edits */
     const layer = stage.querySelector(".dz-canvas-layer");
     if(layer) T().renderTextBlocks(draft, layer);
     stage.classList.toggle("dz-editing", editMode);
@@ -122,109 +168,181 @@ const DZ = (function(){
        never here, so typing in its fields keeps focus. */
   }
 
-  /* ---------- drag (coach photo + text blocks), scoped to the clone ---------- */
-  function _startDrag(e, node, hero, onMove, onEnd){
-    e.preventDefault();
+  /* ---------- drag-or-select: a click selects, a drag past a small threshold
+     moves. Works for text blocks, the coach photo and real landing elements. */
+  function _dragOrSelect(e, node, hero, opts){
+    if(!editMode) return;                 /* handlers persist; only act while editing */
+    const sx = e.clientX, sy = e.clientY;
+    let dragging = false;
     const rect = hero.getBoundingClientRect();
     const move = (ev) => {
+      if(!dragging){
+        if(Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 5) return;
+        dragging = true;
+        if(opts.onDragStart) opts.onDragStart();
+      }
       let x = ((ev.clientX - rect.left) / rect.width) * 100;
       let y = ((ev.clientY - rect.top) / rect.height) * 100;
       x = Math.max(0, Math.min(100, x)); y = Math.max(0, Math.min(100, y));
       node.style.position = "absolute";
       node.style.left = x + "%"; node.style.top = y + "%";
-      node.style.transform = "translate(-50%,-50%)";
-      onMove(Math.round(x), Math.round(y));
+      node.style.transform = "translate(-50%,-50%)"; node.style.zIndex = "6";
+      opts.onMove(Math.round(x), Math.round(y));
     };
     const up = () => {
       document.removeEventListener("pointermove", move);
       document.removeEventListener("pointerup", up);
-      if(onEnd) onEnd();
+      if(dragging){ if(opts.onEnd) opts.onEnd(); }
+      else if(opts.onClick){ opts.onClick(); }
     };
     document.addEventListener("pointermove", move);
     document.addEventListener("pointerup", up);
   }
+
   function wireDrag(){
     const stage = document.getElementById("dz-stage");
     const hero = stage && stage.querySelector(".dz-hero");
     if(!hero) return;
+
+    /* coach photo */
     const avatar = stage.querySelector(".genie-float");
     if(avatar){
-      avatar.onpointerdown = (e) => {
-        /* Lift the coach photo out of the card so it can go anywhere. */
-        if(draft.photo.placement !== "floating"){ draft.photo.placement = "floating"; T().applyCoachPhoto(draft, stage); }
-        const a = stage.querySelector(".genie-float");
-        _startDrag(e, a, hero,
-          (x,y) => { draft.photo.x = x; draft.photo.y = y; },
-          () => { renderControls(); });
-      };
+      avatar.onpointerdown = (e) => _dragOrSelect(e, avatar, hero, {
+        onDragStart: () => { history("drag-photo", true); if(draft.photo.placement !== "floating"){ draft.photo.placement = "floating"; T().applyCoachPhoto(draft, stage); } },
+        onMove: (x,y) => { draft.photo.x = x; draft.photo.y = y; },
+        onEnd: () => { saveDraftToStorage(); renderControls(); }
+      });
     }
+
+    /* added text blocks */
     stage.querySelectorAll(".dz-canvas-layer .dz-text").forEach(t => {
-      t.classList.toggle("dz-selected", t.dataset.id === selectedBlock);
-      t.onpointerdown = (e) => {
-        selectBlock(t.dataset.id);
-        _startDrag(e, t, hero, (x,y) => {
-          const b = (draft.textBlocks||[]).find(bl => bl.id === t.dataset.id);
-          if(b){ b.x = x; b.y = y; }
-        });
-      };
+      t.classList.toggle("dz-selected", isSel("block", t.dataset.id));
+      t.onpointerdown = (e) => _dragOrSelect(e, t, hero, {
+        onDragStart: () => history("drag-block-" + t.dataset.id, true),
+        onMove: (x,y) => { const b = (draft.textBlocks||[]).find(bl => bl.id === t.dataset.id); if(b){ b.x = x; b.y = y; } },
+        onEnd: () => saveDraftToStorage(),
+        onClick: () => selectItem("block", t.dataset.id)
+      });
+    });
+
+    /* real landing elements ([data-dz-id]) — click to edit, drag to move */
+    stage.querySelectorAll("[data-dz-id]").forEach(el => {
+      const id = el.dataset.dzId;
+      el.classList.toggle("dz-selected", isSel("override", id));
+      el.onpointerdown = (e) => _dragOrSelect(e, el, hero, {
+        onDragStart: () => {
+          history("drag-ov-" + id, true);
+          const layer = stage.querySelector(".dz-canvas-layer");
+          if(layer && el.parentElement !== layer) layer.appendChild(el);
+          ensureOverride(id);
+        },
+        onMove: (x,y) => { const o = ensureOverride(id); o.x = x; o.y = y; },
+        onEnd: () => saveDraftToStorage(),
+        onClick: () => selectItem("override", id)
+      });
     });
   }
+
   function _highlightSelected(){
     const stage = document.getElementById("dz-stage");
     if(!stage) return;
-    stage.querySelectorAll(".dz-canvas-layer .dz-text").forEach(t =>
-      t.classList.toggle("dz-selected", t.dataset.id === selectedBlock));
+    stage.querySelectorAll(".dz-canvas-layer .dz-text").forEach(t => t.classList.toggle("dz-selected", isSel("block", t.dataset.id)));
+    stage.querySelectorAll("[data-dz-id]").forEach(el => el.classList.toggle("dz-selected", isSel("override", el.dataset.dzId)));
   }
 
-  /* ---------- text blocks ---------- */
+  /* ---------- items: added text blocks + real-element overrides ---------- */
   function addTextBlock(){
+    history("addtext", true);
     if(!Array.isArray(draft.textBlocks)) draft.textBlocks = [];
     const id = "b" + (Date.now().toString(36)) + (blockCounter++);
     draft.textBlocks.push({ id, content:"New text", x:50, y:40, size:26, weight:700, color:"#ffffff", font:"var(--font-heading)", maxWidth:70 });
     if(!editMode){ editMode = true; _syncEditBtn(); }
-    applyPreview();          /* renders the block + wires drag */
-    selectBlock(id);         /* selects, shows the editor, focuses it */
-  }
-  function deleteBlock(id){
-    draft.textBlocks = (draft.textBlocks||[]).filter(b => b.id !== id);
-    if(selectedBlock === id) selectedBlock = null;
     applyPreview();
-    renderBlockEditor();
+    selectItem("block", id);
   }
-  function selectBlock(id){
-    selectedBlock = id;
-    renderBlockEditor();
+  function deleteItem(kind, id){
+    history("delete", true);
+    if(kind === "block"){ draft.textBlocks = (draft.textBlocks||[]).filter(b => b.id !== id); }
+    else if(draft.overrides){ delete draft.overrides[id]; }
+    if(isSel(kind, id)) sel = { kind:null, id:null };
+    applyPreview(true);       /* remount so a reset element returns to its place */
+    renderItemEditor();
+  }
+  function deleteBlock(id){ deleteItem("block", id); }   /* backward-compat */
+
+  function selectItem(kind, id){
+    sel = { kind, id };
+    renderItemEditor();
     _highlightSelected();
     const ta = document.querySelector("#dz-block-editor textarea");
     if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
   }
+
   function updateBlock(id, key, value){
+    history("block-" + id + "-" + key);
     const b = (draft.textBlocks||[]).find(bl => bl.id === id);
     if(!b) return;
     b[key] = (key === "size" || key === "weight" || key === "maxWidth") ? Number(value) : value;
     applyPreview();
   }
+  function updateOverride(id, key, value){
+    history("ov-" + id + "-" + key);
+    const o = ensureOverride(id);
+    o[key] = (key === "size" || key === "weight") ? Number(value) : value;
+    applyPreview();
+  }
 
-  function renderBlockEditor(){
+  function _fontOptions(cur){
+    return FONTS.map(f => `<option value="${f[0]}"${cur===f[0]?" selected":""}>${f[1]}</option>`).join("")
+      + `<option value="var(--font-heading)"${cur==="var(--font-heading)"?" selected":""}>Heading font</option>`
+      + `<option value="var(--font-body)"${cur==="var(--font-body)"?" selected":""}>Body font</option>`;
+  }
+  function _styleGrid(kind, id, font, color, size, weight){
+    const upd = kind === "block" ? "DZ.updateBlock" : "DZ.updateOverride";
+    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <label style="font-size:11px;color:#888">Font<select onchange="${upd}('${id}','font',this.value)" style="width:100%;font-size:12px;padding:6px"><option value="">(unchanged)</option>${_fontOptions(font)}</select></label>
+      <label style="font-size:11px;color:#888">Colour<input type="color" value="${color||'#ffffff'}" oninput="${upd}('${id}','color',this.value)" style="width:100%;height:32px;padding:2px;background:#111;border:1px solid #222;border-radius:6px"></label>
+      <label style="font-size:11px;color:#888">Size ${size}px<input type="range" min="10" max="120" value="${size}" oninput="${upd}('${id}','size',this.value);this.previousSibling.textContent='Size '+this.value+'px'" style="width:100%"></label>
+      <label style="font-size:11px;color:#888">Weight<select onchange="${upd}('${id}','weight',this.value)" style="width:100%;font-size:12px;padding:6px">${[400,500,600,700,800,900].map(w=>`<option value="${w}"${+weight===w?" selected":""}>${w}</option>`).join("")}</select></label>
+    </div>`;
+  }
+  function _editorHint(){
+    return `<p style="font-size:11px;color:#5a5a5a">Turn on Edit mode, then click any element in the preview (headline, subhead, a pill, the button) to edit its words, font, size, weight and colour — or drag it. "+ Add text" adds a new block.</p>`;
+  }
+  function renderItemEditor(){
     const box = document.getElementById("dz-block-editor");
     if(!box) return;
-    const b = (draft.textBlocks||[]).find(bl => bl.id === selectedBlock);
-    if(!b){ box.innerHTML = `<p style="font-size:11px;color:#5a5a5a">Add a text block, then tap it in the preview to edit it.</p>`; return; }
-    const fontOpts = FONTS.map(f => `<option value="${f[0]}"${b.font===f[0]?" selected":""}>${f[1]}</option>`).join("")
-      + `<option value="var(--font-heading)"${b.font==="var(--font-heading)"?" selected":""}>Heading font</option>`
-      + `<option value="var(--font-body)"${b.font==="var(--font-body)"?" selected":""}>Body font</option>`;
-    box.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span class="ch-block-lbl" style="margin:0">SELECTED TEXT</span>
-        <button onclick="DZ.deleteBlock('${b.id}')" style="background:none;border:1px solid rgba(217,80,58,.4);color:#d9503a;font-size:11px;padding:4px 10px;border-radius:7px;cursor:pointer;font-family:inherit">Delete</button>
-      </div>
-      <textarea oninput="DZ.updateBlock('${b.id}','content',this.value)" rows="2" style="width:100%;font-size:13px;margin-bottom:8px">${(b.content||"").replace(/</g,"&lt;")}</textarea>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <label style="font-size:11px;color:#888">Font<select onchange="DZ.updateBlock('${b.id}','font',this.value)" style="width:100%;font-size:12px;padding:6px">${fontOpts}</select></label>
-        <label style="font-size:11px;color:#888">Colour<input type="color" value="${b.color||'#ffffff'}" oninput="DZ.updateBlock('${b.id}','color',this.value)" style="width:100%;height:32px;padding:2px;background:#111;border:1px solid #222;border-radius:6px"></label>
-        <label style="font-size:11px;color:#888">Size ${b.size}px<input type="range" min="10" max="80" value="${b.size}" oninput="DZ.updateBlock('${b.id}','size',this.value);this.previousSibling.textContent='Size '+this.value+'px'" style="width:100%"></label>
-        <label style="font-size:11px;color:#888">Weight<select onchange="DZ.updateBlock('${b.id}','weight',this.value)" style="width:100%;font-size:12px;padding:6px">${[400,500,600,700,800,900].map(w=>`<option value="${w}"${+b.weight===w?" selected":""}>${w}</option>`).join("")}</select></label>
-      </div>`;
+    if(sel.kind === "block"){
+      const b = (draft.textBlocks||[]).find(bl => bl.id === sel.id);
+      if(!b){ box.innerHTML = _editorHint(); return; }
+      box.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span class="ch-block-lbl" style="margin:0">SELECTED · TEXT BLOCK</span>
+          <button onclick="DZ.deleteItem('block','${b.id}')" style="background:none;border:1px solid rgba(217,80,58,.4);color:#d9503a;font-size:11px;padding:4px 10px;border-radius:7px;cursor:pointer;font-family:inherit">Delete</button>
+        </div>
+        <textarea oninput="DZ.updateBlock('${b.id}','content',this.value)" rows="2" style="width:100%;font-size:13px;margin-bottom:8px">${(b.content||"").replace(/</g,"&lt;")}</textarea>
+        ${_styleGrid("block", b.id, b.font, b.color, b.size, b.weight)}`;
+      return;
+    }
+    if(sel.kind === "override"){
+      const id = sel.id;
+      const el = document.querySelector('#dz-stage [data-dz-id="' + id + '"]');
+      const o = (draft.overrides && draft.overrides[id]) || {};
+      const cs = el ? getComputedStyle(el) : null;
+      const curText = o.text != null ? o.text : (el ? el.innerText : "");
+      const curColor = o.color || (cs ? _rgbToHex(cs.color) : "#ffffff");
+      const curSize = o.size || (cs ? Math.round(parseFloat(cs.fontSize)) : 16);
+      const curWeight = o.weight || (cs ? (parseInt(cs.fontWeight) || 400) : 400);
+      box.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span class="ch-block-lbl" style="margin:0">SELECTED · ${String(id).toUpperCase()}</span>
+          <button onclick="DZ.deleteItem('override','${id}')" style="background:none;border:1px solid #333;color:#aaa;font-size:11px;padding:4px 10px;border-radius:7px;cursor:pointer;font-family:inherit">Reset</button>
+        </div>
+        <textarea oninput="DZ.updateOverride('${id}','text',this.value)" rows="2" style="width:100%;font-size:13px;margin-bottom:8px">${String(curText).replace(/</g,"&lt;")}</textarea>
+        ${_styleGrid("override", id, o.font || "", curColor, curSize, curWeight)}`;
+      return;
+    }
+    box.innerHTML = _editorHint();
   }
 
   /* ---------- photo upload ---------- */
@@ -393,7 +511,8 @@ const DZ = (function(){
     if(!draft.photo) draft.photo = T().clone(T().DEFAULT_BASELINE.photo);
     if(!draft.tokens) draft.tokens = T().clone(T().DEFAULT_BASELINE.tokens);
     if(!Array.isArray(draft.textBlocks)) draft.textBlocks = [];
-    editMode = false; selectedBlock = null;
+    editMode = false; sel = { kind:null, id:null };
+    undoStack = []; redoStack = []; _histTag = null;
 
     container.innerHTML = `
       <style>
@@ -427,14 +546,18 @@ const DZ = (function(){
       </div>
       <div id="dz-wrap">
         <div id="dz-left">
-          <div class="dz-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+          <div class="dz-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center">
             <button id="dz-edit-btn" onclick="DZ.toggleEdit()" style="padding:8px 14px;border:1px solid #333;border-radius:8px;background:transparent;color:#888;font-size:12px;font-weight:700;cursor:pointer">Edit mode</button>
             <button onclick="DZ.addTextBlock()" style="padding:8px 14px;border:1px solid rgba(196,154,28,.3);border-radius:8px;background:rgba(196,154,28,.08);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">+ Add text</button>
+            <div style="margin-left:auto;display:flex;gap:4px">
+              <button id="dz-undo" title="Undo" onclick="DZ.stepUndo()" style="width:34px;height:34px;border:1px solid #333;border-radius:8px;background:#141414;color:#e8e8e8;font-size:16px;cursor:pointer;opacity:.35" disabled>&#8630;</button>
+              <button id="dz-redo" title="Redo" onclick="DZ.stepRedo()" style="width:34px;height:34px;border:1px solid #333;border-radius:8px;background:#141414;color:#e8e8e8;font-size:16px;cursor:pointer;opacity:.35" disabled>&#8631;</button>
+            </div>
           </div>
           <div class="dz-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
             <button onclick="DZ.saveDraft()" style="padding:8px 14px;border:1px solid #333;border-radius:8px;background:#161616;color:#e8e8e8;font-size:12px;font-weight:700;cursor:pointer">Save draft</button>
             <button id="dz-publish-btn" onclick="DZ.publish()" style="padding:8px 16px;border:none;border-radius:8px;background:#c49a1c;color:#000;font-size:12px;font-weight:800;cursor:pointer">Publish</button>
-            <button onclick="DZ.undo()" style="padding:8px 14px;border:1px solid #333;border-radius:8px;background:transparent;color:#aaa;font-size:12px;font-weight:700;cursor:pointer">Undo my changes</button>
+            <button onclick="DZ.undo()" style="padding:8px 14px;border:1px solid #333;border-radius:8px;background:transparent;color:#aaa;font-size:12px;font-weight:700;cursor:pointer">Reset to published</button>
             <button onclick="DZ.revert()" style="padding:8px 14px;border:1px solid rgba(217,80,58,.35);border-radius:8px;background:transparent;color:#d9503a;font-size:12px;font-weight:700;cursor:pointer">Revert to current look</button>
           </div>
           <div id="dz-block-editor" class="ch-block" style="margin-bottom:12px"></div>
@@ -448,8 +571,9 @@ const DZ = (function(){
       </div>`;
 
     renderControls();
-    renderBlockEditor();
+    renderItemEditor();
     applyPreview();
+    updateHistBtns();
     runDiagnostics();
   }
 
@@ -532,8 +656,8 @@ const DZ = (function(){
 
   return {
     renderDesignTab, set, setBool, setNum,
-    addTextBlock, deleteBlock, selectBlock, updateBlock, uploadPhoto,
-    toggleEdit, saveDraft, publish, revert, undo, applyPreset,
+    addTextBlock, deleteBlock, deleteItem, selectItem, updateBlock, updateOverride, uploadPhoto,
+    toggleEdit, saveDraft, publish, revert, undo, applyPreset, stepUndo, stepRedo,
     getDraft: () => draft, isEditing: () => editMode
   };
 })();

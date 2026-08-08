@@ -34,7 +34,8 @@
       src: "", shape: "circle", radius: "18", size: "52", grayscale: "0",
       ring: true, placement: "card", overlay: "0.5", x: 50, y: 30
     },
-    textBlocks: []
+    textBlocks: [],
+    overrides: {}
   };
 
   /* Deep clone so callers can mutate a draft without touching the baseline. */
@@ -45,6 +46,7 @@
     if(over.tokens) Object.assign(out.tokens, over.tokens);
     if(over.photo) Object.assign(out.photo, over.photo);
     if(Array.isArray(over.textBlocks)) out.textBlocks = clone(over.textBlocks);
+    if(over.overrides) out.overrides = clone(over.overrides);
     return out;
   }
 
@@ -229,6 +231,38 @@
     }catch(e){ return { ok:false, error:String(e) }; }
   }
 
+  /* Per-element overrides for the REAL landing content ([data-dz-id]): edited
+     words, position and text style. Text is applied as textContent only (never
+     HTML) so a site_config write can never inject markup into the public page.
+     A positioned element is lifted into the canvas layer so it can sit anywhere
+     over the hero. */
+  function applyOverrides(theme, scope){
+    scope = scope || document;
+    const ov = (merge(DEFAULT_BASELINE, theme).overrides) || {};
+    const land = scope.querySelector("#s-land") || scope.querySelector(".dz-hero") || scope;
+    const layer = land.querySelector(".dz-canvas-layer");
+    Object.keys(ov).forEach(id => {
+      const el = land.querySelector('[data-dz-id="' + id + '"]');
+      if(!el) return;
+      const o = ov[id] || {};
+      if(o.text != null){
+        el.textContent = o.text;
+        if(/\n/.test(o.text)) el.style.whiteSpace = "pre-line";
+      }
+      if(o.color) el.style.color = o.color;
+      if(o.size) el.style.fontSize = o.size + "px";
+      if(o.weight) el.style.fontWeight = o.weight;
+      if(o.font) el.style.fontFamily = o.font;
+      if(o.x != null && o.y != null){
+        if(layer && el.parentElement !== layer) layer.appendChild(el);
+        el.style.position = "absolute";
+        el.style.left = o.x + "%"; el.style.top = o.y + "%";
+        el.style.transform = "translate(-50%,-50%)";
+        el.style.zIndex = "6"; el.style.margin = "0"; el.style.maxWidth = "82%";
+      }
+    });
+  }
+
   /* ---- apply everything to a document scope (tokens + grain + landing) ---- */
   function applyAll(theme, scope){
     scope = scope || document;
@@ -236,6 +270,7 @@
     applyGrain(theme, (scope.getElementById ? scope.getElementById("grain-overlay") : null));
     applyBackground(theme, scope);
     applyCoachPhoto(theme, scope);
+    applyOverrides(theme, scope);
     const layer = scope.querySelector(".dz-canvas-layer");
     if(layer) renderTextBlocks(theme, layer);
   }
@@ -264,7 +299,7 @@
   window.OIWG_THEME = {
     DEFAULT_BASELINE,
     clone, merge,
-    applyTheme, applyGrain, applyBackground, applyCoachPhoto, renderTextBlocks, applyAll,
+    applyTheme, applyGrain, applyBackground, applyCoachPhoto, applyOverrides, renderTextBlocks, applyAll,
     fetchPublished, publish, writeCache, readCache,
     getPublished: () => _published,
     GRAIN_URI
