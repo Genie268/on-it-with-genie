@@ -14,16 +14,16 @@
   /* ---- STEP 1: the current look, frozen. Revert restores exactly this. ---- */
   const DEFAULT_BASELINE = {
     tokens: {
-      bg: "#060606", text: "#ebebeb", muted: "#7a7a7a",
-      accent: "#c49a1c", accentText: "#000000", border: "#171717",
-      /* The live landing headline is Helvetica 700 with -0.03em tracking.
-         These defaults reproduce today's look exactly; Revert restores them. */
+      bg: "#060606", text: "#ededed", muted: "#8a8a8a",
+      accent: "#c49a1c", accentText: "#000000", border: "#1c1c1c",
+      /* Captured from the Dan-Koe-style landing: left-aligned, big bold
+         Helvetica headline, single gold accent. Revert restores this design. */
       fontHeading: "Helvetica, Arial, sans-serif",
       fontBody: "'DM Sans', system-ui, -apple-system, sans-serif",
-      fsH1: "clamp(38px,8vw,62px)", fsBase: "15px", fsEyebrow: "11px",
-      fwHeading: "700", letterSpacing: "-0.03em", lineHeight: "1.6",
-      container: "500px", rhythm: "20px", radius: "12px", btnPadding: "14px 28px",
-      align: "center",
+      fsH1: "clamp(44px,9vw,92px)", fsBase: "17px", fsEyebrow: "11px",
+      fwHeading: "800", letterSpacing: "-0.03em", lineHeight: "1.6",
+      container: "1080px", rhythm: "20px", radius: "10px", btnPadding: "16px 34px",
+      align: "left",
       photoSize: "120px", photoRadius: "50%", photoGrayscale: "0",
       useGradient: false, bg2: "#0c0c0c", gradientAngle: "160",
       grain: false, grainAmount: "0.05"

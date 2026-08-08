@@ -624,7 +624,6 @@ function _witnessTokenFromLocation(){
 
 document.addEventListener("DOMContentLoaded",()=>{
   initParticles();
-  animateTierPills();
   initSupabase();
   /* Close chat 3-dot menus on outside click */
   document.addEventListener("click",()=>{closeChatMenus();if(typeof _closeMsgMenus==="function")_closeMsgMenus();});

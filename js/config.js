@@ -208,7 +208,9 @@ const TIERS = {
 };
 
 function initDuration(){
-  S.ans.duration=S.ans.duration||7;
+  /* Duration is chosen here in onboarding (the landing no longer shows pills).
+     Default to 15 days — the middle commitment — so nothing downstream breaks. */
+  S.ans.duration=S.ans.duration||15;
   selectDuration(S.ans.duration);
 }
 

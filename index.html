@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Bebas+Neue&family=Archivo+Black&family=Syne:wght@400;500;600;700;800&family=Archivo:wght@400;600;700;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260807design7">
+<link rel="stylesheet" href="css/styles.css?v=20260808land1">
 </head>
 <body>
 <script>
@@ -29,39 +29,72 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- LANDING -->
 <div id="s-land" class="screen active">
-  <div id="landing-hero" class="dz-hero" style="flex:1;display:flex;flex-direction:column;align-items:var(--align-items,center);justify-content:center;padding:48px 24px;text-align:var(--align,center);position:relative;overflow:hidden">
-    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 28%,rgba(196,154,28,.08),transparent 55%);pointer-events:none"></div>
-    <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(196,154,28,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(196,154,28,.03) 1px,transparent 1px);background-size:52px 52px;pointer-events:none"></div>
-    <div class="land-particles" id="land-particles"></div>
+  <div id="landing-hero" class="dz-hero" style="align-items:var(--align-items,flex-start);text-align:var(--align,left);position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 0% 0%,rgba(196,154,28,.07),transparent 60%);pointer-events:none"></div>
     <div id="landing-canvas-layer" class="dz-canvas-layer"></div>
-    <div style="position:relative;z-index:3;max-width:var(--container,500px);width:100%">
-      <div class="lm land-logo" style="justify-content:center;margin-bottom:44px">
-        <div class="lmk" style="width:42px;height:42px;font-size:20px">G</div>
-        <span class="lmt" data-dz-id="logo" style="font-size:20px">ON IT <b>WITH GENIE</b></span>
-      </div>
-      <h1 class="hero-title land-h1" data-dz-id="headline" style="font-family:var(--font-heading,Helvetica,Arial,sans-serif);font-size:var(--fs-h1,clamp(38px,8vw,62px));font-weight:var(--fw-heading,700);line-height:1.05;letter-spacing:var(--letter-spacing,-0.03em);margin-bottom:18px">You already know what to do.<br><span class="ac">Do it here.</span></h1>
-      <p class="muted land-sub" data-dz-id="subhead" style="font-size:var(--fs-base,15px);line-height:1.85;margin-bottom:20px">Pick a duration. Commit to one goal. Upload proof daily.<br>Reviewed by a real human. Not an algorithm.</p>
 
-      <div class="land-tiers" style="display:flex;gap:8px;justify-content:center;margin-bottom:28px">
-        <div class="tier-pill" data-dz-id="pill7" id="tp-7"><span style="font-size:14px">7</span> days</div>
-        <div class="tier-pill" data-dz-id="pill15" id="tp-15"><span style="font-size:14px">15</span> days</div>
-        <div class="tier-pill" data-dz-id="pill30" id="tp-30"><span style="font-size:14px">30</span> days</div>
-      </div>
+    <div class="kl-wrap" style="position:relative;z-index:3;width:100%;max-width:var(--container,1080px);margin:0 auto;padding:0 clamp(20px,5vw,40px)">
 
-      <div class="land-genie" style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:color-mix(in srgb,var(--accent,#c49a1c) 5%,transparent);border:1px solid color-mix(in srgb,var(--accent,#c49a1c) 14%,transparent);border-radius:var(--radius,12px);text-align:left;margin-bottom:28px">
-        <div class="genie-float" style="width:52px;height:52px;border-radius:50%;border:2px solid var(--accent,#c49a1c);overflow:hidden;flex-shrink:0;background:var(--accent,#c49a1c)">
-          <img class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
+      <!-- 1. NAV -->
+      <nav class="kl-nav">
+        <div class="lm">
+          <div class="lmk" style="width:34px;height:34px;font-size:16px">G</div>
+          <span class="lmt" data-dz-id="logo" style="font-size:15px">ON IT <b>WITH GENIE</b></span>
         </div>
-        <div>
-          <p data-dz-id="coachline" style="font-size:13px;font-weight:700;color:var(--text,#ebebeb);margin-bottom:2px">Genie <span style="font-size:10px;font-weight:600;color:var(--accent,#c49a1c);margin-left:4px">YOUR ACCOUNTABILITY COACH</span></p>
-          <p style="font-size:12px;color:var(--muted,#888);line-height:1.55">I review every upload personally. This is not automated encouragement. It's real accountability.</p>
+        <span class="kl-signin" data-dz-id="signin" onclick="showSignIn()">Sign in →</span>
+      </nav>
+
+      <!-- HERO -->
+      <header class="kl-hero">
+        <!-- 2. HEADLINE (two blocks) -->
+        <h1 class="kl-h1">
+          <span class="kl-h1-line" data-dz-id="headline">You already know what to do.</span>
+          <span class="kl-h1-line ac" data-dz-id="headline2">Now do it.</span>
+        </h1>
+
+        <!-- 3. SUBHEAD with a gold dash to its left -->
+        <p class="kl-sub" data-dz-id="subhead">Pick one thing. Show up every day. I'll hold you to it.</p>
+
+        <!-- 4. PRIMARY BUTTON — same onboarding flow, keep id + handler -->
+        <button class="bp kl-cta" data-dz-id="cta" onclick="startOB()">I'm ready →</button>
+
+        <!-- 5. META LINE -->
+        <p class="kl-meta" data-dz-id="meta">15 days <i>&bull;</i> One goal <i>&bull;</i> Daily proof</p>
+      </header>
+
+      <!-- 6. DIVIDER -->
+      <hr class="kl-rule">
+
+      <!-- 7. EYEBROW -->
+      <p class="kl-eyebrow"><span data-dz-id="eyebrow">This is for you if&hellip;</span></p>
+
+      <!-- 8. THREE COLUMNS -->
+      <div class="kl-cols">
+        <div class="kl-col">
+          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+          <p data-dz-id="feat1">You know what to do but struggle to follow through.</p>
+        </div>
+        <div class="kl-col">
+          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+          <p data-dz-id="feat2">You need structure, accountability and someone in your corner.</p>
+        </div>
+        <div class="kl-col">
+          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+          <p data-dz-id="feat3">You're done starting over. You're ready to finish what you start.</p>
         </div>
       </div>
 
-      <div class="col land-cta" style="align-items:center">
-        <button class="bp" data-dz-id="cta" style="width:100%;max-width:320px;font-size:15px;padding:var(--btn-padding,14px 28px)" onclick="startOB()">Begin Your Challenge →</button>
-        <p data-dz-id="signin" style="font-size:12px;color:var(--muted,#5a5a5a);margin-top:12px">Already started? <span style="color:var(--accent,#c49a1c);cursor:pointer;font-weight:600" onclick="showSignIn()">Sign back in →</span></p>
-      </div>
+      <!-- 9. QUOTE -->
+      <figure class="kl-quote">
+        <span class="kl-qmark" aria-hidden="true">&ldquo;</span>
+        <blockquote data-dz-id="quote">The gap between knowing and doing is where I come in.</blockquote>
+        <figcaption class="kl-cite">
+          <div class="genie-float" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--accent,#c49a1c);overflow:hidden;flex-shrink:0;background:var(--accent,#c49a1c)">
+            <img class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
+          </div>
+          <span class="kl-cite-name" data-dz-id="coachline">&mdash; Genie</span>
+        </figcaption>
+      </figure>
 
     </div>
   </div>
@@ -89,8 +122,8 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
       <p class="muted mb20" style="font-size:13px">Pick your duration. The grid is your battleground.</p>
 
       <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px">
-        <button class="dur-btn active" id="dur-7" onclick="selectDuration(7)">7 Days</button>
-        <button class="dur-btn" id="dur-15" onclick="selectDuration(15)">15 Days</button>
+        <button class="dur-btn" id="dur-7" onclick="selectDuration(7)">7 Days</button>
+        <button class="dur-btn active" id="dur-15" onclick="selectDuration(15)">15 Days</button>
         <button class="dur-btn" id="dur-30" onclick="selectDuration(30)">30 Days</button>
       </div>
 
@@ -530,20 +563,20 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260807design7"></script>
-<script src="js/theme.js?v=20260807design7"></script>
-<script src="js/lil.js?v=20260807design7"></script>
-<script src="js/auth.js?v=20260807design7"></script>
-<script src="js/onboarding.js?v=20260807design7"></script>
-<script src="js/goals.js?v=20260807design7"></script>
-<script src="js/witnesses.js?v=20260807design7"></script>
-<script src="js/miss.js?v=20260807design7"></script>
-<script src="js/completion.js?v=20260807design7"></script>
-<script src="js/miss-preview.js?v=20260807design7"></script>
-<script src="js/dashboard.js?v=20260807design7"></script>
-<script src="js/uploads.js?v=20260807design7"></script>
-<script src="js/admin.js?v=20260807design7"></script>
-<script src="js/design.js?v=20260807design7"></script>
-<script src="js/ui.js?v=20260807design7"></script>
+<script src="js/config.js?v=20260808land1"></script>
+<script src="js/theme.js?v=20260808land1"></script>
+<script src="js/lil.js?v=20260808land1"></script>
+<script src="js/auth.js?v=20260808land1"></script>
+<script src="js/onboarding.js?v=20260808land1"></script>
+<script src="js/goals.js?v=20260808land1"></script>
+<script src="js/witnesses.js?v=20260808land1"></script>
+<script src="js/miss.js?v=20260808land1"></script>
+<script src="js/completion.js?v=20260808land1"></script>
+<script src="js/miss-preview.js?v=20260808land1"></script>
+<script src="js/dashboard.js?v=20260808land1"></script>
+<script src="js/uploads.js?v=20260808land1"></script>
+<script src="js/admin.js?v=20260808land1"></script>
+<script src="js/design.js?v=20260808land1"></script>
+<script src="js/ui.js?v=20260808land1"></script>
 </body>
 </html>
