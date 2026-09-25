@@ -137,6 +137,9 @@ textarea{resize:none}
 .dc.up .dn{color:#4dc98a}.dc.up .ds{color:#4dc98a}
 .dc.ms{background:rgba(217,80,58,.07);border-color:rgba(217,80,58,.22)}
 .dc.ms .dn{color:#d9503a}.dc.ms .ds{color:#d9503a}
+/* A missed day the coach reopened for a late upload. Gold, dashed, tappable. */
+.dc.ro{background:rgba(196,154,28,.06);border:1px dashed rgba(196,154,28,.55);cursor:pointer}
+.dc.ro .dn{color:#c49a1c}.dc.ro .ds{color:#c49a1c;font-size:8px;letter-spacing:.06em}
 .dc.ft{background:var(--nav-bg);opacity:.35;cursor:default}
 .pb{height:4px;background:#1b1b1b;border-radius:2px;overflow:hidden;margin:8px 0}
 .pf{height:100%;border-radius:2px;transition:width .5s}

@@ -141,16 +141,30 @@ function thumbHtml(url,fileName){
   </div>`;
 }
 
+/* Upload proof for a past day the coach reopened. Only reachable from a
+   reopened tile; the member cannot reopen a day themselves. */
+function openReopenedMod(day){
+  if(typeof isDayReopened!=="function" || !isDayReopened(day)) return;
+  S._pendingUploadDay=day;
+  openMod();
+}
+
 function openMod(){
+  /* The day this modal uploads for. Normally today; a coach-reopened past
+     day when opened through openReopenedMod(). */
+  const _late=(typeof S._pendingUploadDay==="number")?S._pendingUploadDay:null;
+  S._pendingUploadDay=null;
+  S._uploadDay=_late||S.day;
   /* Miss handling sits in front of the upload. While a gate or lock is open,
      the upload modal must not open. The gate's Continue button clears the
      block and calls openMod() itself. A closed (completed/ended) round has
-     nothing to upload either. */
-  if(S.uploadBlocked) return;
+     nothing to upload either. A coach-reopened day was opened by the coach,
+     so the gate does not stand in front of it. */
+  if(S.uploadBlocked && !_late) return;
   if(typeof isRoundClosed==="function" && isRoundClosed()) return;
   S.fileOn=false; S.fileName=null; S.behaviorAnswer=null; S.voiceBlob=null;
   el("mod-form").style.display=""; el("mod-ack").style.display="none";
-  el("mod-dl").textContent=`DAY ${S.day} UPLOAD`;
+  el("mod-dl").textContent=_late?`DAY ${_late} UPLOAD · REOPENED`:`DAY ${S.day} UPLOAD`;
   const pt=S.user?.answers?.proofType||"output";
   const methods=S.user?.answers?.proofMethods||["photo","note"];
   el("mod-pt").textContent=`${PT[pt]||"Daily proof"}`;
@@ -159,7 +173,7 @@ function openMod(){
   
   /* Behavior check */
   if(pt==="behavior"){
-    html+=`<p style="font-size:14px;font-weight:700;margin-bottom:8px">Did you do it today?</p>
+    html+=`<p style="font-size:14px;font-weight:700;margin-bottom:8px">${_late?`Did you do it on Day ${_late}?`:"Did you do it today?"}</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
       <button id="mod-yes" class="yn-btn" style="padding:14px;font-size:14px" onclick="setBehavior('yes')">Yes</button>
       <button id="mod-no" class="yn-btn" style="padding:14px;font-size:14px" onclick="setBehavior('no')">Not today</button>
@@ -168,7 +182,7 @@ function openMod(){
   }
 
   /* Show today's plan context if it exists */
-  const _plan=typeof _todayPlan==="function"?_todayPlan():null;
+  const _plan=(!_late&&typeof _todayPlan==="function")?_todayPlan():null;
   if(_plan&&_plan.mainStep&&!_plan.skipped){
     const _pd=(_plan.subSteps||[]).filter(s=>s.done).length;
     const _pt=(_plan.subSteps||[]).length;
@@ -348,13 +362,18 @@ async function subUp(){
   if(pt==="behavior"&&!S.behaviorAnswer)return;
   if(!note&&!S.fileOn&&!S.voiceBlob&&!link)return;
 
+  /* The day being uploaded: today, or a coach-reopened past day. */
+  const day=(typeof S._uploadDay==="number"&&S._uploadDay>=1)?S._uploadDay:S.day;
+  const late=day!==S.day;
+  if(late&&(typeof isDayReopened!=="function"||!isDayReopened(day)))return;
+
   const btn=el("mod-sub"); btn.textContent="Uploading..."; btn.disabled=true;
 
   /* Upload file to Supabase Storage */
   let fileUrl=null;
   if(S.pendingFile&&S.user?.supabaseId){
     const ext=(S.pendingFile.name.split(".").pop()||"bin").toLowerCase();
-    const path=`${S.user.supabaseId}/day${S.day}-${Date.now()}.${ext}`;
+    const path=`${S.user.supabaseId}/day${day}-${Date.now()}.${ext}`;
     const ctype=S.pendingFile.type||"image/jpeg";
     fileUrl=await uploadToStorage("uploads",path,S.pendingFile,ctype);
   }
@@ -368,7 +387,7 @@ async function subUp(){
     } else {
       const vMime=S.voiceMime||S.voiceBlob.type||"audio/webm";
       const vExt=vMime.includes("mp4")?"mp4":vMime.includes("ogg")?"ogg":"webm";
-      const path=`${S.user.supabaseId}/day${S.day}-voice-${Date.now()}.${vExt}`;
+      const path=`${S.user.supabaseId}/day${day}-voice-${Date.now()}.${vExt}`;
       voiceUrl=await uploadToStorage("uploads",path,S.voiceBlob,vMime);
       if(!voiceUrl) showToast("Voice upload failed. Proof saved without audio","error");
     }
@@ -381,7 +400,7 @@ async function subUp(){
 
   const ackPrompt=`ONE sentence, max 12 words. Reference what they actually wrote. Not praise.\n\nThey wrote: "${summary||"[file/voice only]"}"\nGoal: "${S.user.answers.goal}"`;
   const ack=await lil(ackPrompt,50);
-  S.uploads[S.day-1]={note:summary,hasFile:S.fileOn,fileName:S.fileName||null,fileUrl,proofType:pt,link:link||null,behavior:S.behaviorAnswer,hasVoice:!!S.voiceBlob,voiceUrl,time:new Date().toISOString()};
+  S.uploads[day-1]={note:summary,hasFile:S.fileOn,fileName:S.fileName||null,fileUrl,proofType:pt,link:link||null,behavior:S.behaviorAnswer,hasVoice:!!S.voiceBlob,voiceUrl,time:new Date().toISOString()};
   saveState();
 
   /* Compute new streak */
@@ -397,15 +416,18 @@ async function subUp(){
     ackIcon.insertAdjacentElement("afterend",pill);
   }
   const pillEl=el("ack-streak-pill");
-  if(pillEl){
+  if(pillEl) pillEl.style.display=late?"none":"inline-flex";
+  if(pillEl&&!late){
     pillEl.innerHTML=`<span style="font-size:15px">🔥</span><span style="font-weight:800;color:#c49a1c;font-size:13px">${newStreak} day streak</span>`;
   }
 
-  el("ack-day").textContent=S.day;
-  el("ack-t").textContent=ack||FB.ack(summary,S.day);
+  el("ack-day").textContent=day;
+  el("ack-t").textContent=ack||FB.ack(summary,day);
   el("mod-form").style.display="none"; el("mod-ack").style.display="";
   const dur=getDur();
-  if(S.day<dur){
+  if(late){
+    el("ack-next").textContent=`Day ${day} is back on the record.`;
+  } else if(S.day<dur){
     el("ack-next").textContent=`Day ${S.day+1} opens at midnight. Come back and prove it again.`;
   } else {
     el("ack-next").textContent="";
@@ -415,14 +437,15 @@ async function subUp(){
 
   /* Milestone confetti */
   const mid=Math.ceil(dur/2);
-  const isMilestone=S.day===1||S.day===mid||S.day===dur-2||S.day===dur;
+  const isMilestone=!late&&(S.day===1||S.day===mid||S.day===dur-2||S.day===dur);
   if(isMilestone&&typeof fireConfetti==="function") setTimeout(fireConfetti,200);
 
-  syncUploadToSupabase(S.day,S.uploads[S.day-1]);
-  showToast("Day "+S.day+" proof submitted","success");
-  trackEvent("upload_submitted",{day:S.day,has_file:!!S.uploads[S.day-1]?.fileUrl,has_note:!!S.uploads[S.day-1]?.note,has_voice:!!S.uploads[S.day-1]?.voiceUrl});
+  syncUploadToSupabase(day,S.uploads[day-1]);
+  showToast("Day "+day+" proof submitted","success");
+  trackEvent("upload_submitted",{day,late,has_file:!!S.uploads[day-1]?.fileUrl,has_note:!!S.uploads[day-1]?.note,has_voice:!!S.uploads[day-1]?.voiceUrl});
+  S._uploadDay=null;
   S.lilDone=false; renderDash();
-  if(S.day===dur)setTimeout(()=>{closeMod();goTo("d15");},1200);
+  if(!late&&S.day===dur)setTimeout(()=>{closeMod();goTo("d15");},1200);
 }
 
 

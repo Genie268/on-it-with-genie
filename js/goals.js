@@ -575,10 +575,12 @@ function renderGoalGrid(){
     }
     const beforeStart = d < startDay;
     const isT = d === S.day, isM = d < S.day && !up && !beforeStart, isF = d > S.day || beforeStart;
+    /* A missed day the coach reopened: open for a late upload. */
+    const isRO = isM && typeof isDayReopened === "function" && isDayReopened(d);
     const isCall = callDays.includes(d);
 
     const c = document.createElement("div");
-    c.className = "dc" + (up ? " up" : isT ? " tod" : isM ? " ms" : isF ? " ft" : "") + (isCall ? " call-day" : "");
+    c.className = "dc" + (up ? " up" : isT ? " tod" : isRO ? " ro" : isM ? " ms" : isF ? " ft" : "") + (isCall ? " call-day" : "");
     c.style.position = "relative";
     c.style.overflow = "hidden";
 
@@ -608,12 +610,13 @@ function renderGoalGrid(){
       c.onclick = () => openViewMod(i);
       c.style.cursor = "pointer";
     }else{
-      const ds = isT ? "NOW" : isM ? "-" : "";
+      const ds = isT ? "NOW" : isRO ? "OPEN" : isM ? "-" : "";
       c.innerHTML = `<span class="dn">D${d}</span>${ds ? `<span class="ds">${ds}</span>` : ""}`;
       if(isT) c.onclick = openMod;
       /* A missed (red) day reads back its gap note when tapped. Naming never
-         repaints it green; it stays a miss. */
-      if(isM && typeof _showGapNote === "function"){ const dd = d; c.onclick = () => _showGapNote(dd); c.style.cursor = "pointer"; }
+         repaints it green; it stays a miss. A reopened day opens its upload. */
+      if(isRO && typeof openReopenedMod === "function"){ const dd = d; c.onclick = () => openReopenedMod(dd); }
+      else if(isM && typeof _showGapNote === "function"){ const dd = d; c.onclick = () => _showGapNote(dd); c.style.cursor = "pointer"; }
     }
 
     if(isCall){

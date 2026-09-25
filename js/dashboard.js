@@ -182,9 +182,11 @@ function renderGrid(){
       continue;
     }
     const isCall=callDays.includes(d);
+    const isRO=isM&&typeof isDayReopened==="function"&&isDayReopened(d);
     let cls="dc",ds="";
     if(isUp){cls+=" up";ds="✓";}
     else if(isT){cls+=" tod";ds="NOW";}
+    else if(isRO){cls+=" ro";ds="OPEN";}
     else if(isM){cls+=" ms";ds="-";}
     else if(isF)cls+=" ft";
     if(isCall)cls+=" call-day";
@@ -195,7 +197,8 @@ function renderGrid(){
     if(isCall) inner+=`<span class="call-icon-anim" style="position:absolute;top:-2px;right:-2px;width:13px;height:13px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;opacity:0;animation:callIconPop .4s ease 2s forwards"><svg width="7" height="7" viewBox="0 0 24 24" fill="#111" stroke="none"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg></span>`;
     c.innerHTML=inner;
     if(isT&&!isUp)c.onclick=openMod;
-    if(isM){const dd=d;c.onclick=()=>_showGapNote(dd);c.style.cursor="pointer";}
+    if(isRO){const dd=d;c.onclick=()=>openReopenedMod(dd);}
+    else if(isM){const dd=d;c.onclick=()=>_showGapNote(dd);c.style.cursor="pointer";}
     if(isUp){const idx=i;c.onclick=()=>openViewMod(idx);c.style.cursor="pointer";}
     if(isCall&&isF){c.onclick=()=>openCallModal(d);c.style.cursor="pointer";}
     g.appendChild(c);

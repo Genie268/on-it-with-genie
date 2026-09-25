@@ -15,7 +15,8 @@
 
    Two invariants:
      - The miss costs something small and permanent: missed days stay red
-       forever. Nothing here repaints a missed day.
+       forever. Nothing here repaints a missed day. The one exception is the
+       coach: only an admin can reopen a missed day for a late upload.
      - The return never costs shame: no recap, no day count, no chasing.
 
    Coach identity (name, first name, phone, initial) is read from the
@@ -66,16 +67,48 @@ function _activeStartDay(){
   return (typeof startDayFor === "function" && typeof activeSlot === "function")
     ? Math.max(1, startDayFor(activeSlot())) : 1;
 }
+/* ---------- coach-reopened days ----------
+   The coach (admin only) can reopen a missed day so the member can upload
+   proof for it late. Stored on challengers.reopened_days (int[]). Members can
+   never reopen a day themselves; this side only reads the list. */
+function _reopenedDays(){
+  const r = S.user && S.user.reopenedDays;
+  return Array.isArray(r) ? r : [];
+}
+/* A day is open for a late upload when the coach reopened it, it is in the
+   past, it belongs to the active goal's window, and it has no proof yet. */
+function isDayReopened(d){
+  if(!S.user || !(d < S.day) || d < _activeStartDay()) return false;
+  if(typeof isRoundClosed === "function" && isRoundClosed()) return false;
+  if((S.uploads || [])[d - 1]) return false;
+  return _reopenedDays().includes(d);
+}
+/* Separate read so a missing column (before the migration) can never break
+   the clearance / coach read above. Re-paints the grid only on change. */
+async function _refreshReopenedDays(uid){
+  try{
+    const {data, error} = await sb.from("challengers").select("reopened_days").eq("id", uid).single();
+    if(error || !data) return;
+    const next = Array.isArray(data.reopened_days) ? data.reopened_days.filter(n => Number.isInteger(n)) : [];
+    const prev = _reopenedDays();
+    if(next.length === prev.length && next.every(n => prev.includes(n))) return;
+    S.user.reopenedDays = next;
+    if(typeof saveState === "function") saveState();
+    if(typeof renderGrid === "function") renderGrid();
+  }catch(e){}
+}
+
 /* Every unbroken run of missed days in [startDay, today-1]. A missed day is a
    past challenge day (deadline elapsed) with no upload. Today and future never
-   count as missed. */
+   count as missed. A day the coach reopened is pending, not missed: the coach
+   has already opened the door, so it never gates or locks. */
 function computeGaps(){
   const start = _activeStartDay();
   const ups = S.uploads || [];
   const gaps = [];
   let cur = null;
   for(let d = start; d <= S.day - 1; d++){
-    const missed = !ups[d - 1];
+    const missed = !ups[d - 1] && !_reopenedDays().includes(d);
     if(missed){ if(!cur) cur = {start:d,end:d}; else cur.end = d; }
     else if(cur){ gaps.push(cur); cur = null; }
   }
@@ -188,6 +221,7 @@ function _evaluateMissState(){
 async function _refreshMissStateFromServer(){
   const uid = S.user?.supabaseId;
   if(typeof sb === "undefined" || !sb || !uid){ _missServerLoaded = true; _evaluateMissState(); return; }
+  await _refreshReopenedDays(uid);
   try{
     const midnight = new Date(); midnight.setHours(0,0,0,0);
     const [chRes, notesRes, contactRes] = await Promise.all([

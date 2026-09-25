@@ -69,6 +69,16 @@ async function loadAdminData(){
       }
     }catch(e){}
 
+    /* Coach-reopened days (challengers.reopened_days). Separate read so the
+       app keeps working if the column hasn't been added yet. */
+    const reopenedById={};
+    try{
+      if(typeof sb!=="undefined"&&sb){
+        const {data:ro,error:roErr}=await sb.from("challengers").select("id,reopened_days");
+        if(!roErr&&Array.isArray(ro)) ro.forEach(r=>{ reopenedById[r.id]=Array.isArray(r.reopened_days)?r.reopened_days:[]; });
+      }
+    }catch(e){}
+
     liveChallengers=challengers.map(c=>{
       const _rc=roundById[c.id]||{};
       if(_rc.round_status!==undefined) c.round_status=_rc.round_status;
@@ -165,6 +175,7 @@ async function loadAdminData(){
         createdAt:c.created_at,
         lastAttentionClearedAt:c.last_attention_cleared_at||null,
         clearedAt:c.cleared_at||null,
+        reopenedDays:reopenedById[c.id]||[],
         roundStatus:c.round_status||"active",
         completedOn:c.completed_on||null,
         completionRequestedAt:c.completion_requested_at||null,
@@ -1590,10 +1601,13 @@ function renderChallengerDetail(u){
     }
     const isCall=callDays.includes(d);
     const hasVoice=u.hasVoice&&u.hasVoice[i],hasLink=u.links&&u.links[i];
+    /* A missed day the coach reopened for a late upload. */
+    const isRO=isMiss&&(u.reopenedDays||[]).includes(d);
     let cls="dc";
     let ds="";
     if(isUp){cls+=isRv?" up":" up";ds=isRv?"✓✓":"✓";}
     else if(d===u.day){cls+=" tod";ds="NOW";}
+    else if(isRO){cls+=" ro";ds="OPEN";}
     else if(isMiss){cls+=" ms";ds="-";}
     else{cls+=" ft";}
     if(isCall)cls+=" call-day";
@@ -1601,7 +1615,7 @@ function renderChallengerDetail(u){
     const upTime=u.uploadTimes&&u.uploadTimes[i];
     const timeStr=upTime?new Date(upTime).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",hour12:false}):"";
     const gn=isMiss?gapNoteFor(d):null;
-    const titleText=isUp?`Day ${d} · Uploaded at ${timeStr}`:fut?`Day ${d} · upcoming`:gn?`Day ${d} · ${(gn.note||"").replace(/"/g,"&quot;")}`:`Day ${d}`;
+    const titleText=isUp?`Day ${d} · Uploaded at ${timeStr}`:fut?`Day ${d} · upcoming`:isRO?`Day ${d} · reopened, waiting on upload`:gn?`Day ${d} · ${(gn.note||"").replace(/"/g,"&quot;")}`:`Day ${d}`;
     const onclick=isUp?`onclick="openUploadDetail('${u.id}',${i}${gidArg})" style="cursor:pointer"`:isMiss?`onclick="adminShowGapNote('${u.id}',${d})" style="cursor:pointer"`:"";
     gridCells+=`<div class="${cls}" ${onclick} title="${titleText}">
       <span class="dn">D${d}</span>
@@ -1669,7 +1683,7 @@ function renderChallengerDetail(u){
     <div class="ch-block">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
         <span class="ch-block-lbl" style="margin:0">ACTIVITY${u.isMultiGoal?" · GOAL "+((_adminGoalMeta(u,activeGid)||{}).slot||1):""} · ${up}/${dur} uploaded · ${rv} reviewed</span>
-        <span class="muted" style="font-size:10px">tap a cell</span>
+        <span class="muted" style="font-size:10px">tap a cell · tap a missed day to reopen it</span>
       </div>
       <div class="g15">${gridCells}</div>
     </div>
@@ -2399,8 +2413,55 @@ function adminShowGapNote(uid,day){
       <button onclick="document.getElementById('adm-gap-modal').remove()" style="background:none;border:none;color:#666;font-size:18px;cursor:pointer;font-family:inherit">×</button>
     </div>
     ${body}
+    ${_reopenControlHtml(u,day)}
   </div>`;
   document.body.appendChild(ov);
+}
+
+/* Reopen control inside the missed-day modal. Admin only: the member can
+   never reopen a day. A reopened day lets them upload proof for it late. */
+function _reopenControlHtml(u,day){
+  if(!u) return "";
+  const comp=(typeof u.completedOn==="number"&&u.completedOn>0)?u.completedOn:0;
+  if(comp&&day>=comp) return "";
+  const open=(u.reopenedDays||[]).includes(day);
+  const hint=open
+    ? `Day ${day} is open. ${(u.name||"They").split(" ")[0]} can upload proof for it from their grid.`
+    : `Let ${(u.name||"them").split(" ")[0]} upload proof for Day ${day} late. The tile turns green once they do.`;
+  return `<div style="margin-top:16px;padding-top:14px;border-top:1px solid #1e1e1e">
+    <p style="font-size:11px;line-height:1.5;color:#8a8a8a;margin:0 0 10px">${hint}</p>
+    <button id="reopen-btn-${u.id}-${day}" onclick="adminToggleReopen('${u.id}',${day},${open?"false":"true"})"
+      style="width:100%;padding:10px;border-radius:9px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;
+      border:1px ${open?"solid #333":"dashed rgba(196,154,28,.55)"};background:${open?"transparent":"rgba(196,154,28,.08)"};color:${open?"#aaa":"#c49a1c"}">
+      ${open?"Close this day again":"Reopen Day "+day+" for upload"}</button>
+  </div>`;
+}
+
+/* Add or remove a day from challengers.reopened_days. Written straight to the
+   challenger row (same client-trusted model as cleared_at). */
+async function adminToggleReopen(uid,day,open){
+  const on=open===true||open==="true";
+  const u=liveChallengers.find(x=>x.id===uid);
+  if(!u) return;
+  const btn=el(`reopen-btn-${uid}-${day}`);
+  if(btn){ btn.disabled=true; btn.textContent="…"; }
+  const cur=Array.isArray(u.reopenedDays)?u.reopenedDays:[];
+  const next=on?Array.from(new Set(cur.concat(day))).sort((a,b)=>a-b):cur.filter(d=>d!==day);
+  try{
+    if(typeof sb==="undefined"||!sb) throw new Error("no client");
+    const {error}=await sb.from("challengers").update({reopened_days:next}).eq("id",uid);
+    if(error) throw error;
+    u.reopenedDays=next;
+    if(on&&typeof trackEvent==="function") trackEvent("day_reopened",{challenger_id:uid,day});
+    showToast(on?`Day ${day} reopened`:`Day ${day} closed`,"success");
+    const det=el("ch-det-"+uid);
+    if(det) det.innerHTML=renderChallengerDetail(u);
+    adminShowGapNote(uid,day);
+  }catch(e){
+    console.error("Reopen day error:",e);
+    showToast("Could not update that day","error");
+    if(btn){ btn.disabled=false; btn.textContent=on?"Reopen Day "+day+" for upload":"Close this day again"; }
+  }
 }
 
 async function togRv(uid,i,goalId){
