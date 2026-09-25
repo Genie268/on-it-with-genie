@@ -36,12 +36,18 @@ function renderDash(){
      screen when its original window elapses. It stays on its clean closed
      dashboard (medal + neutral days). */
   const _closedRound=(typeof isRoundClosed==="function")&&isRoundClosed();
-  if(isChallengeComplete() && !_closedRound){
+  /* A finished member can choose to look back at their dashboard from the
+     proof card. That view is read-only and lasts for this session only. */
+  const _finishedView=!!S._viewFinishedDash && isChallengeComplete() && !_closedRound;
+  if(isChallengeComplete() && !_closedRound && !_finishedView){
     if(typeof _markCompleted==="function") _markCompleted();
     _activateScreen("d15");
     return;
   }
   calcDay();
+  /* Every day is in the past once the window closes: no NOW tile, and any
+     empty day reads as missed. */
+  if(_finishedView) S.day=getDur()+1;
   /* Early completion sits in front of everything: it may show the medal grid,
      the congratulations modal, or the closed state. When the round is closed,
      miss handling is skipped entirely (a finished member is never gated). */
@@ -49,12 +55,13 @@ function renderDash(){
   /* Miss handling sits in FRONT of the upload: it may gate or lock the
      dashboard before anything else renders. It never rewrites the upload
      flow, only decides whether forward motion is open. */
-  try{ if(typeof renderMissState==="function" && !(typeof isRoundClosed==="function"&&isRoundClosed())) renderMissState(); }catch(e){ console.warn("renderMissState failed:",e); }
+  if(_finishedView){ _renderFinishedBanner(); }
+  else try{ if(typeof renderMissState==="function" && !(typeof isRoundClosed==="function"&&isRoundClosed())) renderMissState(); }catch(e){ console.warn("renderMissState failed:",e); }
   try{ if(typeof renderGoalBar==="function") renderGoalBar(); }catch(e){ console.warn("renderGoalBar failed:",e); }
   const u=S.user,d=S.day;
   const dur=u.duration||15;
   const ans=u.answers||{};
-  const dbg=el("day-bdg"); if(dbg) dbg.textContent=`Day ${d} / ${dur}`;
+  const dbg=el("day-bdg"); if(dbg) dbg.textContent=_finishedView?`Finished · ${dur} days`:`Day ${d} / ${dur}`;
   const gl=el("grid-lbl"); if(gl) gl.textContent=`${dur}-DAY GRID`;
   const uc=el("dash-user-circle");
   if(uc){
@@ -76,11 +83,19 @@ function renderDash(){
   if(gc && !_goalCardDone) gc.innerHTML=`<span class="lbl">CURRENT GOAL</span><p style="font-size:15px;font-weight:600;line-height:1.5">${goalDisplay}</p><div class="row mt8" style="justify-content:space-between;flex-wrap:wrap;gap:6px"><div class="row" style="gap:6px"><span class="tag">${(typeof PT!=="undefined"&&PT[ans.proofType])||"Proof"}</span><span class="muted" style="font-size:11px">${u.name||""}</span></div><span style="font-size:11px;font-weight:700;color:${skColor}">🔥 ${skText}</span></div>`;
   /* Each render section is isolated — one failing helper must not stop
      the rest of the dashboard from drawing. */
-  const tries=[
+  const tries=_finishedView?[
+    ["renderGrid",renderGrid],["showChatFab",showChatFab],
+  ]:[
     ["renderGrid",renderGrid],["renderRecCard",renderRecCard],
     ["renderPlanArea",renderPlanArea],["showChatFab",showChatFab],
     ["updateUpBtn",updateUpBtn],["renderCoachNotes",renderCoachNotes],
   ];
+  if(_finishedView){
+    /* Nothing to plan or upload today. Clear anything a previous render left. */
+    const ub=el("up-btn"); if(ub) ub.style.display="none";
+    ["plan-area","coach-notes","rec-c"].forEach(id=>{ const x=el(id); if(x) x.innerHTML=""; });
+    const cb=el("call-day-banner"); if(cb) cb.style.display="none";
+  }
   for(const [name,fn] of tries){
     try{ fn(); }catch(e){ console.warn("renderDash:",name,"failed:",e); }
   }
@@ -97,7 +112,7 @@ function renderDash(){
   }
   /* Call day reminder — shown inline, never blocks upload */
   const callReminderEl=el("call-day-banner");
-  if(callReminderEl){
+  if(callReminderEl && !_finishedView){
     const isTodayCallDay=(typeof CALL_DAYS!=="undefined"?(CALL_DAYS[dur]||[]):[]).includes(d);
     callReminderEl.style.display=isTodayCallDay?"block":"none";
   }
@@ -113,6 +128,25 @@ function renderDash(){
       setTimeout(()=>{try{showWalkthrough(wtKey);}catch(e){}},2200);
     }
   }
+}
+
+/* ── FINISHED DASHBOARD (opened from the proof card) ── */
+function openFinishedDash(){
+  S._viewFinishedDash=true;
+  goTo("dash");
+}
+function backToProofCard(){
+  S._viewFinishedDash=false;
+  _activateScreen("d15");
+}
+function _renderFinishedBanner(){
+  const cont=el("miss-gate");
+  S.uploadBlocked=false;
+  if(!cont) return;
+  cont.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border-radius:10px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.22);margin-bottom:10px">
+    <p style="font-size:13px;font-weight:700;color:#e8e8e8;margin:0">Challenge finished. This is your record.</p>
+    <button onclick="backToProofCard()" style="background:none;border:none;color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;padding:0">Proof card →</button>
+  </div>`;
 }
 
 async function renderCoachNotes(){
