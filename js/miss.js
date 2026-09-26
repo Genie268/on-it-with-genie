@@ -75,27 +75,47 @@ function _reopenedDays(){
   const r = S.user && S.user.reopenedDays;
   return Array.isArray(r) ? r : [];
 }
+/* A finished profile (window elapsed, or round completed early / ended) only
+   accepts late uploads when the coach has reactivated it from admin. The
+   member never sees a switch; they only see the days the coach reopened. */
+function _isFinishedProfile(){
+  const done = (typeof isChallengeComplete === "function" && isChallengeComplete());
+  const closed = (typeof isRoundClosed === "function" && isRoundClosed());
+  return done || closed;
+}
 /* A day is open for a late upload when the coach reopened it, it is in the
    past, it belongs to the active goal's window, and it has no proof yet. */
 function isDayReopened(d){
   if(!S.user || !(d < S.day) || d < _activeStartDay()) return false;
-  if(typeof isRoundClosed === "function" && isRoundClosed()) return false;
+  if(_isFinishedProfile() && !S.user.reactivated) return false;
   if((S.uploads || [])[d - 1]) return false;
   return _reopenedDays().includes(d);
 }
 /* Separate read so a missing column (before the migration) can never break
    the clearance / coach read above. Re-paints the grid only on change. */
 async function _refreshReopenedDays(uid){
+  if(typeof sb === "undefined" || !sb || !uid || !S.user) return;
+  let changed = false;
   try{
     const {data, error} = await sb.from("challengers").select("reopened_days").eq("id", uid).single();
-    if(error || !data) return;
-    const next = Array.isArray(data.reopened_days) ? data.reopened_days.filter(n => Number.isInteger(n)) : [];
-    const prev = _reopenedDays();
-    if(next.length === prev.length && next.every(n => prev.includes(n))) return;
-    S.user.reopenedDays = next;
+    if(!error && data){
+      const next = Array.isArray(data.reopened_days) ? data.reopened_days.filter(n => Number.isInteger(n)) : [];
+      const prev = _reopenedDays();
+      if(!(next.length === prev.length && next.every(n => prev.includes(n)))){ S.user.reopenedDays = next; changed = true; }
+    }
+  }catch(e){}
+  /* Separate read, same reason: a missing column must not break the other. */
+  try{
+    const {data, error} = await sb.from("challengers").select("reactivated").eq("id", uid).single();
+    if(!error && data){
+      const on = data.reactivated === true;
+      if(on !== !!S.user.reactivated){ S.user.reactivated = on; changed = true; }
+    }
+  }catch(e){}
+  if(changed){
     if(typeof saveState === "function") saveState();
     if(typeof renderGrid === "function") renderGrid();
-  }catch(e){}
+  }
 }
 
 /* Every unbroken run of missed days in [startDay, today-1]. A missed day is a

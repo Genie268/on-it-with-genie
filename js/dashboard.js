@@ -56,6 +56,9 @@ function renderDash(){
      dashboard before anything else renders. It never rewrites the upload
      flow, only decides whether forward motion is open. */
   if(_finishedView){ _renderFinishedBanner(); }
+  /* Finished and closed profiles skip miss handling, which is where reopened
+     days normally load. Load them here so a reactivated profile can upload. */
+  if((_finishedView||_closedRound) && typeof _refreshReopenedDays==="function") _refreshReopenedDays(S.user.supabaseId);
   else try{ if(typeof renderMissState==="function" && !(typeof isRoundClosed==="function"&&isRoundClosed())) renderMissState(); }catch(e){ console.warn("renderMissState failed:",e); }
   try{ if(typeof renderGoalBar==="function") renderGoalBar(); }catch(e){ console.warn("renderGoalBar failed:",e); }
   const u=S.user,d=S.day;
@@ -297,7 +300,18 @@ function chDay(dir){ S.day=Math.min(getDur(),Math.max(1,S.day+dir)); S.lilDone=f
 
 
 /* ── COMPLETION SCREEN ── */
+/* A profile the coach reactivated lands on its dashboard (once per visit),
+   where the reopened days can be uploaded. No wording mentions it. */
+async function _routeIfReactivated(){
+  if(S._reactivationRouted || !S.user) return;
+  S._reactivationRouted=true;
+  if(typeof _refreshReopenedDays==="function") await _refreshReopenedDays(S.user.supabaseId);
+  const onD15=document.getElementById("s-d15")?.classList.contains("active");
+  if(S.user.reactivated && onD15) openFinishedDash();
+}
+
 async function initD15(){
+  _routeIfReactivated();
   const u=S.user;
   const dur=getDur();
   const uploads=S.uploads.filter(v=>!!v).length;

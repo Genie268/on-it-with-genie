@@ -161,7 +161,9 @@ function openMod(){
      nothing to upload either. A coach-reopened day was opened by the coach,
      so the gate does not stand in front of it. */
   if(S.uploadBlocked && !_late) return;
-  if(typeof isRoundClosed==="function" && isRoundClosed()) return;
+  /* A closed round has nothing to upload, except a day the coach reopened on
+     a reactivated profile (isDayReopened already checked that). */
+  if(!_late && typeof isRoundClosed==="function" && isRoundClosed()) return;
   S.fileOn=false; S.fileName=null; S.behaviorAnswer=null; S.voiceBlob=null;
   el("mod-form").style.display=""; el("mod-ack").style.display="none";
   el("mod-dl").textContent=_late?`DAY ${_late} UPLOAD · REOPENED`:`DAY ${S.day} UPLOAD`;

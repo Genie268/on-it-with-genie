@@ -78,6 +78,13 @@ async function loadAdminData(){
         if(!roErr&&Array.isArray(ro)) ro.forEach(r=>{ reopenedById[r.id]=Array.isArray(r.reopened_days)?r.reopened_days:[]; });
       }
     }catch(e){}
+    const reactivatedById={};
+    try{
+      if(typeof sb!=="undefined"&&sb){
+        const {data:ra,error:raErr}=await sb.from("challengers").select("id,reactivated");
+        if(!raErr&&Array.isArray(ra)) ra.forEach(r=>{ reactivatedById[r.id]=r.reactivated===true; });
+      }
+    }catch(e){}
 
     liveChallengers=challengers.map(c=>{
       const _rc=roundById[c.id]||{};
@@ -176,6 +183,7 @@ async function loadAdminData(){
         lastAttentionClearedAt:c.last_attention_cleared_at||null,
         clearedAt:c.cleared_at||null,
         reopenedDays:reopenedById[c.id]||[],
+        reactivated:!!reactivatedById[c.id],
         roundStatus:c.round_status||"active",
         completedOn:c.completed_on||null,
         completionRequestedAt:c.completion_requested_at||null,
@@ -1579,9 +1587,12 @@ function renderChallengerDetail(u){
   const gapNoteFor=(day)=>(u.gapNotes||[]).find(n=>n.start_day<=day&&n.end_day>=day)||null;
   /* Build compact grid (same visual language as user dashboard) */
   const compDay=(typeof u.completedOn==="number"&&u.completedOn>0)?u.completedOn:0;
+  const _gDay=((u.rawDay||u.day)>dur)?dur+1:u.day;
   let gridCells="";
   for(let i=0;i<dur;i++){
-    const d=i+1,isUp=u.up[i],isRv=u.rv&&u.rv[i],fut=d>u.day,isMiss=d<u.day&&!isUp;
+    /* Once the window has closed every day is past, including the last one,
+       so the final day can be read and reopened like any other miss. */
+    const d=i+1,isUp=u.up[i],isRv=u.rv&&u.rv[i],fut=d>_gDay,isMiss=d<_gDay&&!isUp;
     /* Early completion: medal on the completed day, neutral closed days after
        it, never a miss. Mirrors the member grid. */
     if(compDay){
@@ -1606,7 +1617,7 @@ function renderChallengerDetail(u){
     let cls="dc";
     let ds="";
     if(isUp){cls+=isRv?" up":" up";ds=isRv?"✓✓":"✓";}
-    else if(d===u.day){cls+=" tod";ds="NOW";}
+    else if(d===_gDay){cls+=" tod";ds="NOW";}
     else if(isRO){cls+=" ro";ds="OPEN";}
     else if(isMiss){cls+=" ms";ds="-";}
     else{cls+=" ft";}
@@ -1744,6 +1755,17 @@ function renderChallengerDetail(u){
             background:${clearPending?"rgba(77,201,138,.1)":"transparent"};
             color:${clearPending?"#4dc98a":"#888"}">${clearPending?"✓ Cleared (pending)":"Clear re-entry"}</button>
         </div>
+        ${_isFinishedAdmin(u)?`<div class="row" style="gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;justify-content:space-between">
+          <div style="min-width:0">
+            <p style="font-size:12px;font-weight:700;margin:0">Reactivate profile</p>
+            <p class="muted" style="font-size:10px;margin:2px 0 0">Challenge is finished. Turn on so ${u.name} can upload to days you reopen. Only you see this.</p>
+          </div>
+          <button id="react-tog-${u.id}" onclick="adminToggleReactivate('${u.id}',${u.reactivated?"false":"true"})"
+            style="padding:5px 14px;border-radius:100px;cursor:pointer;font-family:inherit;font-size:10px;font-weight:700;flex-shrink:0;
+            border:1px solid ${u.reactivated?"rgba(77,201,138,.35)":"#333"};
+            background:${u.reactivated?"rgba(77,201,138,.1)":"transparent"};
+            color:${u.reactivated?"#4dc98a":"#888"}">${u.reactivated?"✓ Reactivated":"Reactivate"}</button>
+        </div>`:""}
       </div>
     </div>
 
@@ -2425,9 +2447,10 @@ function _reopenControlHtml(u,day){
   const comp=(typeof u.completedOn==="number"&&u.completedOn>0)?u.completedOn:0;
   if(comp&&day>=comp) return "";
   const open=(u.reopenedDays||[]).includes(day);
-  const hint=open
+  let hint=open
     ? `Day ${day} is open. ${(u.name||"They").split(" ")[0]} can upload proof for it from their grid.`
     : `Let ${(u.name||"them").split(" ")[0]} upload proof for Day ${day} late. The tile turns green once they do.`;
+  if(_isFinishedAdmin(u)&&!u.reactivated) hint+=` Their challenge is finished, so also turn on Reactivate profile under Manage.`;
   return `<div style="margin-top:16px;padding-top:14px;border-top:1px solid #1e1e1e">
     <p style="font-size:11px;line-height:1.5;color:#8a8a8a;margin:0 0 10px">${hint}</p>
     <button id="reopen-btn-${u.id}-${day}" onclick="adminToggleReopen('${u.id}',${day},${open?"false":"true"})"
@@ -2435,6 +2458,41 @@ function _reopenControlHtml(u,day){
       border:1px ${open?"solid #333":"dashed rgba(196,154,28,.55)"};background:${open?"transparent":"rgba(196,154,28,.08)"};color:${open?"#aaa":"#c49a1c"}">
       ${open?"Close this day again":"Reopen Day "+day+" for upload"}</button>
   </div>`;
+}
+
+/* Finished = window elapsed, marked completed, or round completed early / ended. */
+function _isFinishedAdmin(u){
+  return _isComplete(u)||u.roundStatus==="completed_early"||u.roundStatus==="ended";
+}
+
+/* Turn a finished profile back on for late uploads (challengers.reactivated).
+   Admin only; the member sees no switch, only the days you reopen. */
+async function adminToggleReactivate(uid,set){
+  const on=set===true||set==="true";
+  const u=liveChallengers.find(x=>x.id===uid);
+  if(!u) return;
+  const btn=el("react-tog-"+uid);
+  if(btn){ btn.disabled=true; btn.textContent="…"; }
+  try{
+    if(typeof sb==="undefined"||!sb) throw new Error("no client");
+    const {error}=await sb.from("challengers").update({reactivated:on}).eq("id",uid);
+    if(error) throw error;
+    u.reactivated=on;
+    if(on&&typeof trackEvent==="function") trackEvent("profile_reactivated",{challenger_id:uid});
+    showToast(on?"Profile reactivated":"Profile deactivated","success");
+    if(btn){
+      btn.disabled=false;
+      btn.textContent=on?"✓ Reactivated":"Reactivate";
+      btn.style.border="1px solid "+(on?"rgba(77,201,138,.35)":"#333");
+      btn.style.background=on?"rgba(77,201,138,.1)":"transparent";
+      btn.style.color=on?"#4dc98a":"#888";
+      btn.setAttribute("onclick",`adminToggleReactivate('${uid}',${on?"false":"true"})`);
+    }
+  }catch(e){
+    console.error("Reactivate error:",e);
+    showToast("Could not update the profile","error");
+    if(btn){ btn.disabled=false; btn.textContent=on?"Reactivate":"✓ Reactivated"; }
+  }
 }
 
 /* Add or remove a day from challengers.reopened_days. Written straight to the
