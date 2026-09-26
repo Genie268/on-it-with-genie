@@ -1370,8 +1370,12 @@ async function openProfilePanel(uid){
           </select>
           <button onclick="_extendChallenge('${uid}')" style="padding:8px 14px;border-radius:8px;background:rgba(77,201,138,.08);border:1px solid rgba(77,201,138,.2);color:#4dc98a;font-size:12px;font-weight:700;cursor:pointer">Extend</button>
         </div>
-        ${u.status==="completed"
-          ?`<button onclick="_reactivateChallenger('${uid}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(77,201,138,.08);border:1px solid rgba(77,201,138,.2);color:#4dc98a;font-size:12px;font-weight:700;cursor:pointer">Reactivate Challenge</button>`
+        ${(typeof _isFinishedAdmin==="function"?_isFinishedAdmin(u):u.status==="completed")
+          ?(u.reactivated
+            ?`<button onclick="_reactivateChallenger('${uid}',false)" style="width:100%;padding:8px;border-radius:8px;background:transparent;border:1px solid #333;color:#aaa;font-size:12px;font-weight:700;cursor:pointer">✓ Reactivated · Turn off</button>
+              <p style="font-size:10px;color:#6a6a6a;line-height:1.5;margin:6px 0 0">${(u.name||"They").split(" ")[0]} can upload to days you reopen on their grid. Only you see this.</p>`
+            :`<button onclick="_reactivateChallenger('${uid}',true)" style="width:100%;padding:8px;border-radius:8px;background:rgba(77,201,138,.08);border:1px solid rgba(77,201,138,.2);color:#4dc98a;font-size:12px;font-weight:700;cursor:pointer">Reactivate Challenge</button>
+              <p style="font-size:10px;color:#6a6a6a;line-height:1.5;margin:6px 0 0">Lets ${(u.name||"them").split(" ")[0]} upload to missed days you reopen. Only you see this.</p>`)
           :`<button onclick="_markChallengerComplete('${uid}')" style="width:100%;padding:8px;border-radius:8px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.15);color:#c49a1c;font-size:12px;font-weight:700;cursor:pointer">Mark as Completed</button>`}
       </div>
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1e1e1e">
@@ -1651,14 +1655,21 @@ async function _markChallengerComplete(uid){
     setTimeout(()=>openProfilePanel(uid),300);
   }catch(e){showToast("Failed to update","error");}
 }
-async function _reactivateChallenger(uid){
+/* Reactivate a finished profile for late uploads (challengers.reactivated).
+   The member sees no switch; they can upload to days the coach reopens.
+   (This used to flip status to "active", which the member's own app flipped
+   straight back to "completed", so it never did anything.) */
+async function _reactivateChallenger(uid,on){
   if(!sb)return;
+  const set=on!==false;
   try{
-    await sb.from("challengers").update({status:"active"}).eq("id",uid);
-    const u=getAM().find(x=>x.id===uid);if(u)u.status="active";
-    showToast("Reactivated","success");
-    adminDataLoaded=false;renderAdmin();
-    setTimeout(()=>openProfilePanel(uid),300);
+    const {error}=await sb.from("challengers").update({reactivated:set}).eq("id",uid);
+    if(error) throw error;
+    const u=getAM().find(x=>x.id===uid);if(u)u.reactivated=set;
+    if(set&&typeof trackEvent==="function") trackEvent("profile_reactivated",{challenger_id:uid});
+    showToast(set?"Reactivated":"Reactivation turned off","success");
+    openProfilePanel(uid);
+    if(typeof _rerenderDetail==="function") _rerenderDetail(uid);
   }catch(e){showToast("Failed to reactivate","error");}
 }
 
