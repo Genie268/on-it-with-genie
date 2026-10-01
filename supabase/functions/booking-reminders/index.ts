@@ -39,11 +39,11 @@ async function send(to: string, subject: string, text: string) {
 function copy(kind: "30" | "10" | "live", b: any, meet: string) {
   const first = (b.name || "there").split(" ")[0];
   const at = label(Date.parse(b.starts_at));
-  const what = b.service === "free_call" ? "video call" : "mentorship session";
+  const what = b.service === "free_call" ? "clarity call" : "mentorship session";
   const link = meet || "the link in your confirmation email";
   if (kind === "30") return {
     subject: `In 30 minutes: your ${what} with Genie`,
-    text: `Hi ${first},\n\nYour ${what} with me starts at ${at} (Lagos time).\n\nJoin here: ${link}\n\nFind a quiet spot and have your camera ready.\n\nGenie`,
+    text: `Hi ${first},\n\nYour ${what} with me starts at ${at} (Lagos time).\n\nJoin here: ${link}\n\nIt's a video call, so find a quiet spot and have your camera ready.\n\nGenie`,
   };
   if (kind === "10") return {
     subject: `10 minutes: your ${what} with Genie`,

@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Work with Genie</title>
-<meta name="description" content="Book a free 10-minute call with Genie, join accountability, or start one-on-one mentorship.">
+<meta name="description" content="Book a free clarity call with Genie, join accountability, or start one-on-one mentorship.">
 <meta name="theme-color" content="#F1F1EE">
 <meta property="og:title" content="Work with Genie">
-<meta property="og:description" content="Book a free 10-minute call, join accountability, or start mentorship.">
+<meta property="og:description" content="Book a free clarity call, join accountability, or start mentorship.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%230F0F10'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='17' font-weight='800' fill='%23C8EF62' font-family='system-ui'%3EG%3C/text%3E%3C/svg%3E">
 <script>
 /* Witness links and returning challengers skip this page and go straight to the app.
@@ -101,6 +101,8 @@ p{margin:0}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{font-size:13px;font-weight:600;padding:7px 12px;border-radius:999px;background:var(--surface)}
 .chip.dark{background:var(--ink);color:#fff}
+.free-tag{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.14em;color:#fff;background:#178A4A;padding:6px 11px;border-radius:999px}
+.free-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--lime)}
 .chip.soon{background:transparent;border:1.5px dashed #9B95B5;color:#4A4466}
 .t-mint{background:var(--mint)}.t-peach{background:var(--peach)}.t-lilac{background:var(--lilac)}.t-sky{background:var(--sky)}.t-sand{background:var(--sand)}
 
@@ -264,7 +266,7 @@ p{margin:0}
     </a>
     <nav class="topnav" aria-label="Main">
       <a href="#home" data-nav="home">Home</a>
-      <a href="#call" data-nav="call">Free call</a>
+      <a href="#call" data-nav="call">Clarity call</a>
       <a href="#about" data-nav="about">About</a>
       <a href="/app?signin">Sign in</a>
     </nav>
@@ -292,7 +294,7 @@ const CONFIG = {
   photo: "",                       // e.g. "/genie.jpg"
   meet: "https://meet.google.com/mmt-ahkf-zaz",
   accountabilityUrl: "/app?start",  // goes straight into the sign-up flow
-  event: { name:"Forward with Genie", mon:"OCT", day:"31", when:"Saturday, 31 October", place:"Busy Mart Plaza, Abuja", length:"90 minutes", seats:"About 10 seats" }
+  event: { name:"Forward with Genie", mon:"OCT", day:"31", when:"Saturday, 31 October", place:"Jabi, Abuja", length:"90 minutes", seats:"About 10 seats" }
 };
 /* ====================== */
 
@@ -315,7 +317,7 @@ const ERR = {
   not_a_slot:"That time isn't available. Pick another one.",
   bad_email:"That email doesn't look right. Check it and try again.",
   missing_name:"Add your name so I know who I'm talking to.",
-  free_call_used:"You've already had your free call. The next step is mentorship, or ask me directly for another chance.",
+  free_call_used:"You've already had your clarity call. Mentorship is the next step, or ask me for another chance.",
   missing_phone:"Add your phone number. I use it to reach you if the call drops.",
   too_far:"Bookings only open a few days ahead. Pick a closer date.",
   payment_not_successful:"The payment didn't go through. You haven't been charged. Try again.",
@@ -353,11 +355,11 @@ const views = {
 home(){ const h = lagosNow().getHours(); return `
 <section class="hero">
   <div>
-    <span class="live"><span class="dot"></span>${h < 10 ? "Free calls today, 9 to 10am" : "Free calls every morning, 9 to 10am"}</span>
+    <span class="live"><span class="dot"></span>${h < 10 ? "Free clarity calls today, 9 to 10am" : "Free clarity calls every morning, 9 to 10am"}</span>
     <h1>Stop planning.<br>Do the work with me.</h1>
-    <p class="lede">I help people follow through on the goals they keep pushing to next week. Start with a free 10-minute call.</p>
+    <p class="lede">I help people follow through on what they keep pushing to next week.</p>
     <div class="ctas">
-      <a class="btn btn-lime" href="#call">Book a free call</a>
+      <a class="btn btn-lime" href="#call">Book a free clarity call</a>
       <a class="btn btn-ghost" href="#services">See how we can work</a>
     </div>
   </div>
@@ -365,14 +367,14 @@ home(){ const h = lagosNow().getHours(); return `
 </section>
 <div class="proof">
   <div><b>30K</b><span>people learning with me on TikTok</span></div>
-  <div><b>6</b><span>free calls every morning</span></div>
+  <div><b>6</b><span>clarity calls every morning</span></div>
   <div><b>2021</b><span>running accountability since</span></div>
 </div>
 <div class="sec-head" id="services"><h2>Ways to work with me</h2></div>
 <div class="grid">
   ${card("accountability","t-peach",I.target,"Accountability","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["7, 15 or 30 days"],["From ₦8,500","dark"]])}
   ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Choose your hours and how to spread them.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
-  ${card("call","t-mint",I.video,"Free call","A 10-minute video call with me. Bring the one thing you're stuck on.",[["10 min video"],["Free","dark"]])}
+  ${card("call","t-mint",I.video,"Clarity call","10 minutes on video with me. Bring the one thing you're stuck on.",[["10 min"],["Video call"]],"Free")}
   ${card("courses","t-lilac",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
 </div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
@@ -387,22 +389,14 @@ ${backLink()}
 <div class="detail">
   <div>
     <section class="detail-hero t-mint">
-      <span class="eyebrow">Free · 10-minute video call</span>
+      <span class="free-tag">FREE</span>
+      <span class="eyebrow" style="display:block;margin-top:14px">Clarity call · 10 minutes · Video</span>
       <h1>See me face to face for 10 minutes.</h1>
-      <p>Bring one thing you're stuck on. You'll leave knowing your next move, and whether working together makes sense.</p>
+      <p>Bring one thing you're stuck on. You'll leave knowing your next move.</p>
     </section>
   </div>
   <div class="panel" id="booker"></div>
 </div>
-<div class="panel">
-      <h3>How it works</h3>
-      <ul class="list">
-        <li><span class="n">1</span><span>Pick an open time. Taken times are crossed out, so what you see is what's free.</span></li>
-        <li><span class="n">2</span><span>Tell me your name, email and what you want to talk about.</span></li>
-        <li><span class="n">3</span><span>You get a confirmation email with the Google Meet link. It's a video call, so come with your camera on.</span></li>
-        <li><span class="n">4</span><span>Set a reminder. The free call is one per person; if you miss it, you can't book another.</span></li>
-      </ul>
-    </div>
 `;},
 
 mentorship(){ return `
@@ -412,14 +406,14 @@ ${backLink()}
     <section class="detail-hero t-sky">
       <span class="eyebrow">Mentorship · ${naira(CONFIG.hourRate)}/hr</span>
       <h1>One-on-one time with me.</h1>
-      <p>For when you want someone in your corner for more than one conversation. Buy the hours, then decide how to spread them.</p>
+      <p>Buy the hours, then choose how to spread them.</p>
     </section>
     <div class="panel">
       <h3>What we can work on</h3>
       <ul class="list">
-        <li>${I.tick}<span>How you speak: confidence, delivery, being understood the first time.</span></li>
-        <li>${I.tick}<span>Following through on a goal you keep dropping.</span></li>
-        <li>${I.tick}<span>A decision you've been sitting on for too long.</span></li>
+        <li>${I.tick}<span>Speaking with confidence.</span></li>
+        <li>${I.tick}<span>Finishing what you keep dropping.</span></li>
+        <li>${I.tick}<span>A decision you've been sitting on.</span></li>
       </ul>
     </div>
   </div>
@@ -433,15 +427,14 @@ ${backLink()}
     <section class="detail-hero t-peach">
       <span class="eyebrow">Accountability</span>
       <h1>One goal. Proof every day. Checked by me.</h1>
-      <p>Most goals die quietly because nobody is watching. Here, I am. You upload what you did each day and I review it myself.</p>
+      <p>You upload what you did each day. I review it myself.</p>
     </section>
     <div class="panel">
       <h3>What you get</h3>
       <ul class="list">
-        <li>${I.tick}<span>A clear commitment you write before you start, so you know exactly what you're holding yourself to.</span></li>
-        <li>${I.tick}<span>A daily slot to upload proof: a photo, a note, a link or a voice note.</span></li>
-        <li>${I.tick}<span>I review your uploads and give you feedback myself.</span></li>
-        <li>${I.tick}<span>If you fall off, a way back in. Missing a day doesn't kick you out.</span></li>
+        <li>${I.tick}<span>One clear goal, written down before you start.</span></li>
+        <li>${I.tick}<span>A daily upload: photo, note, link or voice note.</span></li>
+        <li>${I.tick}<span>My review and reply on your uploads.</span></li>
       </ul>
     </div>
   </div>
@@ -452,10 +445,10 @@ ${backLink()}
       <div class="opt"><span><b>15 days · ₦15,000</b><span>One goal, two calls with me, personal feedback on your uploads</span></span></div>
       <div class="opt"><span><b>30 days · ₦50,000</b><span>Two goals, a call with me every week, priority voice feedback</span></span></div>
     </div>
-    <p class="note" style="text-align:left">You choose your length after you write your goal. Card or transfer, secured by Paystack.</p>
+    <p class="note" style="text-align:left">You pick your length after you set your goal.</p>
     <div style="height:14px"></div>
     <a class="btn btn-ink btn-block" href="${CONFIG.accountabilityUrl}">I'm ready to start</a>
-    <p class="note">Not sure yet? <a href="#call" style="text-decoration:underline">Book a free call first.</a></p>
+    <p class="note">Not sure yet? <a href="#call" style="text-decoration:underline">Book a free clarity call first.</a></p>
   </div>
 </div>`;},
 
@@ -465,7 +458,7 @@ ${backLink()}
   <section class="detail-hero t-sand">
     <span class="eyebrow">In person · Monthly</span>
     <h1>${e.name}</h1>
-    <p>A small room, a real conversation, and a push past whatever has you stuck. Held on the last Saturday of every month.</p>
+    <p>A small room and an honest conversation. Last Saturday of every month.</p>
   </section>
   <div class="panel">
     <h3>${e.when}</h3>
@@ -486,11 +479,11 @@ ${backLink()}
   <section class="detail-hero t-lilac">
     <span class="eyebrow">Coming soon</span>
     <h1>Communication courses</h1>
-    <p>You keep asking how to speak with more confidence, stop mumbling, and get your point across. I'm putting it into courses you can take at your own pace.</p>
+    <p>Speak with confidence and get your point across. Self-paced, built from your questions.</p>
   </section>
   <div class="panel">
     <h3>Be first to know</h3>
-    <p style="color:var(--muted);margin-bottom:16px">Leave your email and I'll tell you when the first course opens.</p>
+    
     ${waitForm("courses","Join the waitlist")}
   </div>
 </div>`;},
@@ -504,19 +497,20 @@ about(){ return `
     <div class="prose">
       <p>I'm a communication coach and the person behind On It With Genie. I've been helping people stick with their goals since 2021, when it started as a few WhatsApp groups.</p>
       <p>What I've learned is simple. People rarely lack ideas or motivation. What they lack is someone checking in, and a plan small enough to actually follow. That's what I give you.</p>
-      <p>I make videos on TikTok about mindset, communication and getting things done, and I host a podcast called The Genie Effect. Every morning I take free calls with people from that community, because I'd rather talk to you than just post at you.</p>
+      <p>I make videos on TikTok about mindset, communication and getting things done, and I host a podcast called The Genie Effect. Every morning I take free clarity calls with people from that community, because I'd rather talk to you than just post at you.</p>
     </div>
     <div class="ctas">
-      <a class="btn btn-ink" href="#call">Book a free call</a>
+      <a class="btn btn-ink" href="#call">Book a free clarity call</a>
       <a class="btn btn-line" href="#services">See services</a>
     </div>
   </div>
 </div>`;},
 };
 
-function card(route,tint,icon,title,text,chips){
+function card(route,tint,icon,title,text,chips,tag){
   return `<a class="card ${tint}" href="#${route}">
     <div class="row"><span class="ico">${icon}</span><span class="arrow">${I.arrow}</span></div>
+    ${tag?`<span class="free-tag">${tag.toUpperCase()}</span>`:""}
     <h3>${title}</h3><p>${text}</p>
     <div class="chips">${chips.map(([t,c])=>`<span class="chip ${c||""}">${t}</span>`).join("")}</div>
   </a>`;
@@ -592,7 +586,7 @@ function calendarHTML(){
       <button type="button" id="mNext" aria-label="Next month" ${canNext?"":"disabled"} style="transform:scaleX(-1)">${I.back}</button></div></div>
     <div class="cal-grid">${cells}</div>
   </div>
-  <p class="cal-note">You can book up to ${win} days ahead. Days with a dot have open times.</p>`;
+  <p class="cal-note">Book up to ${win} days ahead.</p>`;
 }
 function stepsBar(){
   const order = B.service==="mentorship" ? ["plan","time","details"] : ["time","details"];
@@ -651,8 +645,8 @@ function renderPlan(el){
 function renderDetails(el){
   const isFree = B.service==="free_call", p = dayParts(B.slot.date), saved = B.form || {};
   el.innerHTML = `${stepsBar()}
-    <div class="picked"><div><b>${p.long}, ${B.slot.label}</b><span>${isFree?"Free video call · 10 minutes":`Mentorship · ${B.hours}h · ${naira(B.hours*CONFIG.hourRate)}`}</span></div><button type="button" id="chg">Change</button></div>
-    ${isFree?`<div class="callout">${I.video}<span><b>This is a video call on Google Meet.</b>Join with your camera on. Set a reminder as soon as you book: you get one free call, and if you miss it you can't book another.</span></div>`:""}
+    <div class="picked"><div><b>${p.long}, ${B.slot.label}</b><span>${isFree?"Free clarity call · 10 minutes · Video":`Mentorship · ${B.hours}h · ${naira(B.hours*CONFIG.hourRate)}`}</span></div><button type="button" id="chg">Change</button></div>
+    ${isFree?`<div class="callout">${I.video}<span><b>Video call on Google Meet.</b>This is your only free call, so set a reminder.</span></div>`:""}
     <form id="bform" novalidate>
       <div class="field"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" value="${esc(saved.name)}" required></div>
       <div class="field"><label for="f-email">Email <em>(your confirmation goes here)</em></label><input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" value="${esc(saved.email)}" required></div>
@@ -695,7 +689,7 @@ async function submitBooking(){
     setBusy(true, "Booking");
     const r = await api("POST", { action:"book", ...base });
     B.busy = false;
-    if(r.ok) return showDone({ title:"You're booked.", line:`${r.booking.date} at ${r.booking.label}`, text:`You only get one free call, so don't leave it to email. Add it to your calendar now and your phone will remind you.`, cal:{ start:r.booking.start || B.slot.start, mins:10, title:"Free video call with Genie" } });
+    if(r.ok) return showDone({ title:"You're booked.", line:`${r.booking.date} at ${r.booking.label}`, text:`This is your only free call. Add it to your calendar so your phone reminds you.`, cal:{ start:r.booking.start || B.slot.start, mins:10, title:"Clarity call with Genie" } });
     setBusy(false, "Confirm my call"); showErr(errMsg(r.error));
     if(["slot_taken","too_soon","not_a_slot","too_far"].includes(r.error)){ B.slot=null; setTimeout(()=>{ B.step="time"; renderBooker(); loadSlots(); }, 1600); }
     return;

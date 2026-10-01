@@ -267,17 +267,17 @@ async function sendConfirmations(b: any) {
   const first = (b.name || "there").split(" ")[0];
   const cancel = `${SITE}/book?cancel=${b.manage_token}`;
   const isFree = b.service === "free_call";
-  const title = isFree ? "Free video call with Genie" : "Mentorship session with Genie";
+  const title = isFree ? "Clarity call with Genie" : "Mentorship session with Genie";
   const where = meet || "Google Meet (link coming by email)";
 
   const clientText = isFree
-    ? `Hi ${first},\n\nYou're booked for a 10-minute video call with me on ${when}.\n\nJoin here: ${meet || "I'll send the link before the call."}\n\nThis is a video call, so join from a phone or laptop with your camera on, somewhere you can talk.\n\nSet a reminder now. The free call is a one-time thing: if you miss it, you won't be able to book another one.\n\nCome with the one thing you're stuck on. Ten minutes goes fast, so be on time.\n\nCan't make it? Cancel before the call so someone else can take the slot (and you can pick a new time): ${cancel}\n\nGenie`
+    ? `Hi ${first},\n\nYou're booked for a free 10-minute clarity call with me on ${when}.\n\nJoin here: ${meet || "I'll send the link before the call."}\n\nThis is a video call, so join from a phone or laptop with your camera on, somewhere you can talk.\n\nSet a reminder now. The free call is a one-time thing: if you miss it, you won't be able to book another one.\n\nCome with the one thing you're stuck on. Ten minutes goes fast, so be on time.\n\nCan't make it? Cancel before the call so someone else can take the slot (and you can pick a new time): ${cancel}\n\nGenie`
     : `Hi ${first},\n\nPayment received. Your first mentorship session is on ${when}.\n\nPlan: ${b.hours} hour${b.hours > 1 ? "s" : ""}, ${b.plan}.\nJoin here: ${meet || "I'll send the link before the session."}\n${s.genie_whatsapp ? `\nYou can now reach me directly on WhatsApp: ${s.genie_whatsapp}\n` : ""}\nWe'll set the rest of your sessions together on our first call.\n\nGenie`;
 
   await sendEmail(b.email, isFree ? `You're booked: ${when}` : `Mentorship confirmed: ${when}`, clientText,
     icsFile(b, { method: "PUBLISH", title, desc: `Join: ${where}`, location: where }));
 
-  const genieText = `${isFree ? "New free call" : "New PAID mentorship"} booked.\n\nWho: ${b.name}\nEmail: ${b.email}\nPhone: ${b.phone || "-"}\nWhen: ${when}\n${isFree ? "" : `Plan: ${b.hours}h, ${b.plan}\nPaid: ₦${((b.amount_kobo ?? 0) / 100).toLocaleString("en-NG")}\n`}Email list: ${b.email_opt_in ? "yes" : "no"}\n\nWhat they want to talk about:\n${b.note || "-"}`;
+  const genieText = `${isFree ? "New clarity call" : "New PAID mentorship"} booked.\n\nWho: ${b.name}\nEmail: ${b.email}\nPhone: ${b.phone || "-"}\nWhen: ${when}\n${isFree ? "" : `Plan: ${b.hours}h, ${b.plan}\nPaid: ₦${((b.amount_kobo ?? 0) / 100).toLocaleString("en-NG")}\n`}Email list: ${b.email_opt_in ? "yes" : "no"}\n\nWhat they want to talk about:\n${b.note || "-"}`;
   if (s.notify_email) {
     await sendEmail(s.notify_email, `${isFree ? "Call" : "Mentorship"}: ${b.name}, ${label(Date.parse(b.starts_at))} ${longDate(Date.parse(b.starts_at))}`, genieText,
       icsFile(b, { method: "REQUEST", title: `${isFree ? "Call" : "Mentorship"}: ${b.name}`, desc: genieText, attendee: s.notify_email, location: where }),
@@ -409,7 +409,7 @@ async function handleCancel(p: Record<string, unknown>) {
   await sb.from("slot_bookings").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", b.id);
   const s = await settings();
   if (s.notify_email) await sendEmail(s.notify_email, `Cancelled: ${b.name}, ${label(Date.parse(b.starts_at))} ${longDate(Date.parse(b.starts_at))}`,
-    `${b.name} cancelled their free call. The slot is open again.`);
+    `${b.name} cancelled their clarity call. The slot is open again.`);
   return json({ ok: true, when: `${longDate(Date.parse(b.starts_at))} at ${label(Date.parse(b.starts_at))}` });
 }
 
