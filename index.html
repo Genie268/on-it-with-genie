@@ -27,12 +27,15 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
 <script src="https://js.paystack.co/v2/inline.js" defer></script>
 <style>
+@font-face{font-family:"Kalam";src:url("/fonts/kalam-latin-300-normal.woff2") format("woff2");font-weight:300;font-display:swap}
+@font-face{font-family:"Kalam";src:url("/fonts/kalam-latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
 :root{
   --bg:#F1F1EE;--surface:#FFFFFF;--ink:#0F0F10;--ink-2:#26262A;--muted:#6C6C70;--line:#E2E2DD;
   --lime:#C8EF62;--lime-ink:#2E3A06;--mint:#DDF2E3;--peach:#FCE3D6;--lilac:#E7E2F7;--sky:#DCEBF7;--sand:#F3EBD9;
   --danger:#B3261E;
   --display:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --body:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --hand:"Kalam","Comic Neue","Segoe Print",cursive;
   --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   --r-lg:28px;--r-md:20px;--r-sm:14px;
   color-scheme:light;
@@ -240,6 +243,12 @@ p{margin:0}
 .about-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .prose{font-size:17px;line-height:1.65;display:grid;gap:14px;max-width:62ch}
 .prose p{color:#2A2A2E}
+.about h1.about-name{font-size:clamp(40px,9vw,64px);letter-spacing:-0.02em;line-height:1.08;font-weight:800;margin:10px 0 2px}
+.about .about-tag{font-family:var(--hand);font-size:clamp(22px,5vw,28px);font-weight:400;color:#3B3B3E;margin-bottom:22px}
+.about .prose.hand{font-family:var(--hand);font-weight:300;font-size:21px;line-height:1.55;gap:12px}
+.about .prose.hand p{color:#1F1F22}
+.about .hand-list{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-family:var(--hand);font-size:20px;font-weight:300}
+.about .hand-list li::before{content:"– ";}
 
 .dock{position:fixed;left:0;right:0;bottom:0;padding:0 14px calc(14px + env(safe-area-inset-bottom,0px));z-index:20;pointer-events:none}
 .dock nav{pointer-events:auto;max-width:460px;margin:0 auto;background:var(--ink);border-radius:999px;padding:7px;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;box-shadow:0 14px 34px rgba(15,15,16,.28)}
@@ -385,7 +394,7 @@ home(){ const h = lagosNow().getHours(); return `
 </section>
 <div class="sec-head" id="services"><h2>Ways to work with me</h2></div>
 <div class="grid">
-  ${card("accountability","t-peach",I.target,"Accountability","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["7, 15 or 30 days"],["From ₦8,500","dark"]])}
+  ${card("accountability","t-peach",I.target,"Accountability coaching","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["7, 15 or 30 days"],["From ₦8,500","dark"]])}
   ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Choose your hours and how to spread them.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
   ${card("call","t-mint",I.video,"Clarity call","10 minutes on video with me. Bring the one thing you're stuck on.",[["10 min"],["Video call"]],"Free")}
   ${card("courses","t-lilac",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
@@ -438,7 +447,7 @@ ${backLink()}
 <div class="detail">
   <div>
     <section class="detail-hero t-peach">
-      <span class="eyebrow">Accountability</span>
+      <span class="eyebrow">Accountability coaching</span>
       <h1>One goal. Proof every day. Checked by me.</h1>
       <p>Upload proof of what you did each day. I review every one.</p>
     </section>
@@ -508,19 +517,20 @@ about(){ return `
   <div class="about-photo">${(CONFIG.aboutPhoto||CONFIG.photo)?`<img src="${CONFIG.aboutPhoto||CONFIG.photo}" alt="Genie laughing at his desk">`:`<span class="mono" style="font-family:var(--display);font-weight:800;font-size:160px;color:var(--lime);letter-spacing:-0.06em">G</span>`}</div>
   <div>
     <span class="eyebrow">About</span>
-    <h1 style="font-size:clamp(32px,8vw,52px);margin:10px 0 18px">I'm Eugene. Most people call me Genie.</h1>
-    <div class="prose">
+    <h1 class="about-name">I'm Eugene.</h1>
+    <p class="about-tag">Most people call me Genie.</p>
+    <div class="prose hand">
       <p>I'm a personal development coach. I work on three things: how you think, how you speak, and whether you actually follow through.</p>
       <p>I don't think most people lack motivation. They're up against resistance, and resistance doesn't leave because you watched one more video.</p>
       <p>I trust proof more than promises. That's why my accountability runs on daily uploads.</p>
       <p>I believe good communication is judged by the person listening.</p>
       <p>This started in 2021 as a few WhatsApp groups. It's still the same idea: someone checking in, and a plan small enough to follow.</p>
     </div>
-    <h3 style="font-size:18px;margin:26px 0 10px">Things to know</h3>
-    <ul class="list" style="font-size:16px">
-      <li>${I.tick}<span>I explain everything on a whiteboard. I can't help it.</span></li>
-      <li>${I.tick}<span>I started my podcast, The Genie Effect, on my birthday.</span></li>
-      <li>${I.tick}<span>I take clarity calls every morning, 9 to 10.</span></li>
+    <p class="about-tag" style="margin:26px 0 8px">things to know:</p>
+    <ul class="hand-list">
+      <li><span>I explain everything on a whiteboard. I can't help it.</span></li>
+      <li><span>I started my podcast, The Genie Effect, on my birthday.</span></li>
+      <li><span>I take clarity calls every morning, 9 to 10.</span></li>
     </ul>
     <div class="ctas">
       <a class="btn btn-ink" href="#call">Book a free clarity call</a>
