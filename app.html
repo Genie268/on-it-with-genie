@@ -618,5 +618,20 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
   setTimeout(maybeShow, 2500);
 })();
 </script>
+
+<script>
+/* Links from the services page: /app?start opens the sign-up flow, /app?signin opens sign-in. */
+window.addEventListener("load", function(){
+  var q=new URLSearchParams(location.search), want=q.has("start")?"start":q.has("signin")?"signin":"";
+  if(!want) return;
+  history.replaceState(null,"",location.pathname+location.hash);
+  setTimeout(function(){
+    var land=document.getElementById("s-land");
+    if(!land || !land.classList.contains("active")) return;   // already signed in: leave them on their dashboard
+    if(want==="start" && typeof startOB==="function") startOB();
+    if(want==="signin" && typeof showSignIn==="function") showSignIn();
+  }, 400);
+});
+</script>
 </body>
 </html>

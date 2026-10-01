@@ -419,14 +419,36 @@ async function handleCheck(p: Record<string, unknown>) {
   return json({ ok: true, eligible: await freeCallEligible(email, phoneKey(clean(p.phone, 30))) });
 }
 
+const WAITLISTS: Record<string, { subject: string; body: (first: string) => string }> = {
+  event: {
+    subject: "You're on the list for Forward with Genie",
+    body: (first) => `Hi ${first},\n\nYou're on the list for Forward with Genie, my monthly in-person session in Abuja.\n\nI'll email you as soon as tickets open. The room only holds about 10 people, so when that email lands, move quickly.\n\nGenie`,
+  },
+  courses: {
+    subject: "You're on the communication course waitlist",
+    body: (first) => `Hi ${first},\n\nYou're on the waitlist for my communication courses.\n\nI'll email you once, when the first course opens. You'll hear about it before anyone else.\n\nGenie`,
+  },
+};
+
 async function handleSubscribe(p: Record<string, unknown>) {
   const email = clean(p.email, 120).toLowerCase();
   const name = clean(p.name, 80);
   const source = clean(p.source, 30);
   if (!validEmail(email)) return json({ ok: false, error: "bad_email" }, 400);
-  if (!["event", "courses", "newsletter"].includes(source)) return json({ ok: false, error: "bad_source" }, 400);
-  await upsertContact(email, name, "", "waitlist_" + source, true);
-  return json({ ok: true });
+  if (source === "newsletter") {
+    await upsertContact(email, name, "", "newsletter", true);
+    return json({ ok: true });
+  }
+  const list = WAITLISTS[source];
+  if (!list) return json({ ok: false, error: "bad_source" }, 400);
+  const { data: inserted, error } = await sb.from("waitlist")
+    .upsert({ list: source, email, name: name || null }, { onConflict: "list,email", ignoreDuplicates: true })
+    .select("id");
+  if (error) { console.error(error); return json({ ok: false, error: "save_failed" }, 500); }
+  const isNew = (inserted ?? []).length > 0;
+  await upsertContact(email, name, "", "waitlist_" + source, false);
+  if (isNew) await sendEmail(email, list.subject, list.body((name || "there").split(" ")[0]));
+  return json({ ok: true, already: !isNew });
 }
 
 Deno.serve(async (req) => {

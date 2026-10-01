@@ -76,6 +76,8 @@ p{margin:0}
 .photo{border-radius:22px;background:var(--ink-2);min-height:220px;display:grid;place-items:center;position:relative;overflow:hidden}
 .photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .photo .mono{font-family:var(--display);font-weight:800;font-size:120px;letter-spacing:-0.06em;color:var(--lime);line-height:1}
+.photo.empty{display:none}
+@media (min-width:760px){.photo.empty{display:grid}}
 .photo .tag{position:absolute;left:12px;bottom:12px;background:rgba(15,15,16,.78);color:#fff;font-size:12px;font-weight:600;padding:7px 11px;border-radius:999px}
 
 .proof{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
@@ -264,9 +266,9 @@ p{margin:0}
       <a href="#home" data-nav="home">Home</a>
       <a href="#call" data-nav="call">Free call</a>
       <a href="#about" data-nav="about">About</a>
-      <a href="/app">Sign in</a>
+      <a href="/app?signin">Sign in</a>
     </nav>
-    <a class="signin-sm" href="/app">Sign in</a>
+    <a class="signin-sm" href="/app?signin">Sign in</a>
   </header>
   <main id="app" aria-live="polite"></main>
 </div>
@@ -288,7 +290,7 @@ const CONFIG = {
   paystackKey: "pk_live_e68832aeb38271278b021a3bcfbf5aa2e4c579a9",
   hourRate: 25000,
   photo: "",                       // e.g. "/genie.jpg"
-  accountabilityUrl: "/app",       // the existing sign-up flow
+  accountabilityUrl: "/app?start",  // goes straight into the sign-up flow
   event: { name:"Forward with Genie", mon:"OCT", day:"31", when:"Saturday, 31 October", place:"Busy Mart Plaza, Abuja", length:"90 minutes", seats:"About 10 seats" }
 };
 /* ====================== */
@@ -358,7 +360,7 @@ home(){ const h = lagosNow().getHours(); return `
       <a class="btn btn-ghost" href="#services">See how we can work</a>
     </div>
   </div>
-  <div class="photo">${photoBox("Genie · Abuja")}</div>
+  <div class="photo${CONFIG.photo?"":" empty"}">${photoBox("Genie · Abuja")}</div>
 </section>
 <div class="proof">
   <div><b>30K</b><span>people learning with me on TikTok</span></div>
@@ -369,7 +371,7 @@ home(){ const h = lagosNow().getHours(); return `
 <div class="grid">
   ${card("accountability","t-peach",I.target,"Accountability","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["7, 15 or 30 days"],["From ₦8,500","dark"]])}
   ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Choose your hours and how to spread them.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
-  ${card("call","t-mint",I.video,"Free call","10 minutes with me. Bring the one thing you're stuck on.",[["10 min video"],["Free","dark"]])}
+  ${card("call","t-mint",I.video,"Free call","A 10-minute video call with me. Bring the one thing you're stuck on.",[["10 min video"],["Free","dark"]])}
   ${card("courses","t-lilac",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
 </div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
@@ -524,6 +526,7 @@ function waitForm(source, label){
     <div class="field"><label for="w-email-${source}">Email</label><input id="w-email-${source}" name="email" type="email" autocomplete="email" inputmode="email" required></div>
     <div class="err" hidden></div>
     <button class="btn btn-ink btn-block" type="submit">${label}</button>
+    <p class="note">One email when it opens. Nothing else unless you ask for it.</p>
   </form>`;
 }
 function wireWaitForms(){
@@ -534,7 +537,7 @@ function wireWaitForms(){
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ err.textContent = ERR.bad_email; err.hidden = false; return; }
     err.hidden = true; btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
     const r = await api("POST",{ action:"subscribe", source:f.dataset.source, name, email });
-    if(r.ok){ f.outerHTML = `<div class="empty" style="margin-top:0;color:var(--ink)"><b>You're on the list.</b><br>I'll email you at ${esc(email)}.</div>`; }
+    if(r.ok){ f.outerHTML = `<div class="empty" style="margin-top:0;color:var(--ink)"><b>${r.already?"You're already on the list.":"You're on the list."}</b><br>${r.already?"I'll email you at "+esc(email)+" when it opens.":"Check "+esc(email)+" for a confirmation. I'll email you again when it opens."}</div>`; }
     else { err.textContent = errMsg(r.error); err.hidden = false; btn.disabled = false; btn.textContent = "Try again"; }
   }));
 }
@@ -637,7 +640,6 @@ function renderPlan(el){
     <div style="height:14px"></div>
     <div class="opts" role="group" aria-label="How to spread the hours">${list.map(([id,t,d])=>`<button type="button" class="opt" data-r="${id}" aria-pressed="${id===B.rhythm}"><span class="r"></span><span><b>${t}</b><span>${d}</span></span></button>`).join("")}</div>
     <div class="total"><span style="color:var(--muted);font-weight:600">Total</span><b>${naira(total)}</b></div>
-    ${B.hours>=4?`<div class="bonus">4+ hours includes accountability between sessions, free.</div>`:""}
     <div style="height:16px"></div>
     <button class="btn btn-ink btn-block" id="toTime">Pick a time</button>`;
   el.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{ B.hours=+b.dataset.h; renderBooker(); });
