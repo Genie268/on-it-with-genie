@@ -313,6 +313,29 @@ p{margin:0}
 .sess{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:var(--bg)}
 .sess b{display:block;font-size:15px}.sess span{font-size:13.5px;color:var(--muted)}
 .sess.past{opacity:.55}
+.mini-label{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
+.slot:has(small){align-content:center;gap:1px}
+.slot small{display:block;font-family:var(--body);font-size:10.5px;line-height:1;color:var(--lime-ink)}
+.slot.mine-near:disabled{background:color-mix(in srgb,var(--lime) 28%,var(--surface));color:#7A8058;text-decoration:none;border-style:solid;border-color:transparent}
+.legend i.y{background:var(--lime);border-color:var(--ink)}
+.cd.has::after{background:var(--ink);width:6px;height:6px}
+.cd.has[aria-pressed="true"]::after{background:var(--lime)}
+.basket{margin-top:18px;padding:16px;border-radius:18px;border:1.5px solid var(--line);background:var(--surface)}
+.basket.empty-b{border-style:dashed;background:transparent}
+.basket.empty-b p{font-size:14px;color:var(--muted);margin:0}
+.basket-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.basket-head b{font-size:15.5px}.basket-head span{font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.basket .meter{margin-top:10px}
+.basket .sess.fresh{animation:rise .35s var(--ease) both}
+.basket .sess{align-items:flex-start}
+.rep{display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:12.5px;font-weight:700;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 10px}
+.rep:hover{border-color:var(--ink)}
+.x-btn{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:20px;line-height:1;color:var(--muted)}
+.x-btn:hover{background:rgba(15,15,16,.07);color:var(--ink)}
+.picked-multi{align-items:flex-start}
+.picked-multi ul{list-style:none;margin:8px 0 6px;padding:0;display:grid;gap:4px;font-size:14px}
+.picked-multi li em{font-style:normal;color:var(--muted);font-size:13px}
+.done-list{max-width:360px;margin:16px auto 0;text-align:left}
 .link{font-weight:700;font-size:14px;text-decoration:underline;white-space:nowrap}
 .muted-s{font-size:13px;color:var(--muted);white-space:nowrap}
 .cal-btns{display:grid;gap:10px;max-width:340px;margin:22px auto 0}
@@ -478,7 +501,7 @@ ${backLink()}
     <section class="detail-hero t-sky">
       <span class="eyebrow">Mentorship · ${naira(CONFIG.hourRate)}/hr</span>
       <h1>One-on-one time with me.</h1>
-      <p>Buy the hours. Book the sessions yourself, whenever suits you.</p>
+      <p>Buy the hours. Split them however you like: twice a week, or all in one day.</p>
     </section>
     <div class="panel">
       <h3>What we can work on</h3>
@@ -637,6 +660,7 @@ function prefetch(svc, len){ const c = slotCache[cacheKey(svc,len)]; if(!c || Da
 
 function startBooker(service){
   Object.assign(B, { service, mode:"new", data:null, date:null, month:null, slot:null, step: service==="mentorship" ? "plan" : "time", busy:false, enter:true });
+  B.basket = service==="mentorship" ? (B.basket || []).filter(x=>tms(x.start) > Date.now()+3600000) : null;
   if(service==="mentorship"){ B.hours = B.hours || 1; B.len = Math.min(B.len || 60, B.hours*60); prefetch("mentorship", B.len); }
   renderBooker();
   if(B.step==="time") loadSlots();
@@ -660,8 +684,15 @@ function applySlots(r, silent){
   B.data = r;
   const days = r.days || [];
   const hasOpen = d => d && d.slots.some(s=>s.open);
-  if(!B.date || !hasOpen(days.find(d=>d.date===B.date))){ const first = days.find(hasOpen); B.date = first ? first.date : null; }
+  const mineOn = ds => Array.isArray(B.basket) && B.basket.some(x=>x.date===ds);
+  if(!B.date || !(hasOpen(days.find(d=>d.date===B.date)) || mineOn(B.date))){ const first = days.find(hasOpen); B.date = first ? first.date : null; }
   if(!B.month) B.month = (B.date || lagosDateStr()).slice(0,7);
+  if(Array.isArray(B.basket) && B.basket.length && r.minutes === B.len){
+    // Drop picked sessions someone else has since taken (only checkable for the current length)
+    const all = days.flatMap(d=>d.slots);
+    const gone = B.basket.filter(x=>x.minutes===B.len && all.some(s=>tms(s.start)===tms(x.start) && !s.open));
+    if(gone.length){ B.basket = B.basket.filter(x=>!gone.includes(x)); toast(`${gone.map(x=>dayParts(x.date).wd+" "+x.label).join(", ")} was just taken, so I took it off your list.`); }
+  }
   if(B.slot){
     const still = days.flatMap(d=>d.slots).find(s=>s.start===B.slot.start);
     if(!still || !still.open){ if(B.step==="time" && silent) toast("That time was just taken. Pick another one."); B.slot = null; }
@@ -682,8 +713,9 @@ function calendarHTML(){
   for(let d=1; d<=dim; d++){
     const ds = `${B.month}-${String(d).padStart(2,"0")}`, info = byDate[ds], open = info ? info.slots.filter(s=>s.open).length : 0;
     const inWin = ds >= today && ds <= last;
-    const cls = !inWin ? "off" : open ? "open" : "closed";
-    const t = ds===today ? " today" : "";
+    const has = Array.isArray(B.basket) && B.basket.some(x=>x.date===ds);
+    const cls = !inWin ? "off" : (open || has) ? "open" : "closed";
+    const t = (ds===today ? " today" : "") + (has ? " has" : "");
     if(cls==="open") cells += `<button type="button" class="cd open${t}" data-d="${ds}" aria-pressed="${ds===B.date}" aria-label="${dayParts(ds).long}, ${open} open">${d}</button>`;
     else cells += `<div class="cd ${cls}${t}" aria-hidden="true">${d}</div>`;
   }
@@ -694,22 +726,40 @@ function calendarHTML(){
       <button type="button" id="mNext" aria-label="Next month" ${canNext?"":"disabled"} style="transform:scaleX(-1)">${I.back}</button></div></div>
     <div class="cal-grid">${cells}</div>
   </div>
-  <p class="cal-note">${B.service==="mentorship" ? `Book up to ${win} days ahead. Times shown fit a ${lenAdj(B.len)} session.` : `Book up to ${win} days ahead.`}</p>`;
+  <p class="cal-note">${B.service==="mentorship" ? `Up to ${win} days ahead. Times shown fit a ${lenAdj(B.len)} session.${Array.isArray(B.basket)&&B.basket.length?" Days with a dark dot have your sessions.":""}` : `Book up to ${win} days ahead.`}</p>`;
 }
 function pickerHTML(){
   if(!B.data) return `<div class="cal"><div class="skeleton" style="height:260px"></div></div><div class="slots">${Array.from({length:6},()=>`<div class="skeleton" style="height:52px"></div>`).join("")}</div>`;
   if(B.data.error) return `<div class="empty">Couldn't load times. Check your connection.<br><button class="btn btn-line" style="margin-top:12px" id="retry">Try again</button></div>`;
   const d = (B.data.days||[]).find(x=>x.date===B.date);
   const enter = B.enterSlots ? " enter" : ""; B.enterSlots = false;
+  const multi = Array.isArray(B.basket);
+  const btn = (s,i) => {
+    if(!multi) return `<button type="button" class="slot" style="--i:${i}" data-s="${s.start}" ${s.open?"":"disabled aria-label=\""+s.label+" taken\""} aria-pressed="${B.slot&&B.slot.start===s.start}">${s.label}</button>`;
+    const mine = inBasket(s.start);
+    if(mine) return `<button type="button" class="slot" style="--i:${i}" data-s="${s.start}" aria-pressed="true" aria-label="${s.label}, in your list. Tap to remove">${s.label}${mine.minutes!==B.len?`<small>${lenLabel(mine.minutes)}</small>`:""}</button>`;
+    if(!s.open) return `<button type="button" class="slot" style="--i:${i}" disabled aria-label="${s.label} taken">${s.label}</button>`;
+    if(clashes(s.start, B.len)) return `<button type="button" class="slot mine-near" style="--i:${i}" disabled aria-label="${s.label} overlaps a session you picked">${s.label}</button>`;
+    return `<button type="button" class="slot" style="--i:${i}" data-s="${s.start}" aria-pressed="false">${s.label}</button>`;
+  };
+  let list = d ? d.slots.slice() : [];
+  if(multi){ // show picked sessions on this day even if this length doesn't fit there
+    B.basket.filter(x=>x.date===B.date && !list.some(s=>tms(s.start)===tms(x.start))).forEach(x=>list.push({ start:x.start, label:x.label, open:true }));
+    list.sort((a,b)=>tms(a.start)-tms(b.start));
+  }
   const slotsHTML = !B.date ? `<div class="empty">Nothing open in the next ${B.data.window_days ?? 3} days${B.service==="mentorship"?" for that session length. Try a shorter session":". New times open every day, so check back tomorrow"}.</div>`
     : `<div class="slot-head"><b>${dayParts(B.date).long}</b><span>Lagos time</span></div>
-       <div class="slots${enter}" role="group" aria-label="Choose a time">${d.slots.map((s,i)=>`<button type="button" class="slot" style="--i:${i}" data-s="${s.start}" ${s.open?"":"disabled aria-label=\""+s.label+" taken\""} aria-pressed="${B.slot&&B.slot.start===s.start}">${s.label}</button>`).join("")}</div>
-       <div class="legend"><span><i></i>Open</span><span><i class="x"></i>Taken</span></div>`;
+       <div class="slots${enter}" role="group" aria-label="Choose a time">${list.map(btn).join("")}</div>
+       <div class="legend"><span><i></i>Open</span>${multi?`<span><i class="y"></i>Yours</span>`:""}<span><i class="x"></i>Taken</span></div>`;
   return calendarHTML() + slotsHTML;
 }
 function wirePicker(el){
   el.querySelectorAll(".cd.open").forEach(b=>b.onclick=()=>{ if(B.date!==b.dataset.d){ B.date=b.dataset.d; B.enterSlots=true; } renderBooker(); });
-  el.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{ const d=B.data.days.find(x=>x.date===B.date); B.slot = { ...d.slots.find(s=>s.start===b.dataset.s), date:d.date }; renderBooker(); });
+  el.querySelectorAll(".slot[data-s]").forEach(b=>b.onclick=()=>{
+    const d=B.data.days.find(x=>x.date===B.date);
+    if(Array.isArray(B.basket)) return toggleSession(b.dataset.s, d);
+    B.slot = { ...d.slots.find(s=>s.start===b.dataset.s), date:d.date }; renderBooker();
+  });
   const mp=el.querySelector("#mPrev"), mn=el.querySelector("#mNext");
   if(mp) mp.onclick=()=>{ B.month=shiftMonth(B.month,-1); renderBooker(); };
   if(mn) mn.onclick=()=>{ B.month=shiftMonth(B.month,1); renderBooker(); };
@@ -730,45 +780,132 @@ function renderBooker(){
   if(B.mode==="plan") return renderPlanBooker(el);
   if(B.step==="plan") return renderPlan(el);
   if(B.step==="details") return renderDetails(el);
-  const isFree = B.service==="free_call";
-  const back = isFree ? "" : `<button type="button" class="back" id="toPlan">${I.back} Change plan</button>`;
-  const sub = isFree ? "" : `<p class="sub">First session · ${lenLabel(B.len)}</p>`;
-  stage(el, `${stepsBar()}${back}<h3>${isFree ? "Pick a day and time" : "Pick your first session"}</h3>${sub}${pickerHTML()}
+  if(B.service==="mentorship") return renderSessions(el);
+  stage(el, `${stepsBar()}<h3>Pick a day and time</h3>${pickerHTML()}
     <div style="height:16px"></div>
     <button class="btn btn-ink btn-block" id="toDetails" ${B.slot?"":"disabled"}>${B.slot ? "Continue with " + B.slot.label : "Choose a time"}</button>`);
   wirePicker(el);
   $("#toDetails").onclick = ()=>{ if(B.slot){ B.step="details"; renderBooker(); el.scrollIntoView({ behavior:"smooth", block:"start" }); } };
-  const tp=$("#toPlan"); if(tp) tp.onclick=()=>{ B.step="plan"; renderBooker(); };
+}
+
+/* ---------- Mentorship: pick several sessions ---------- */
+const tms = s => Date.parse(s);
+const capMins = () => B.mode==="plan" ? B.plan.minutes_left : B.hours*60;
+const pickedMins = () => (B.basket||[]).reduce((a,x)=>a+x.minutes,0);
+const leftMins = () => capMins() - pickedMins();
+const inBasket = start => (B.basket||[]).find(x=>tms(x.start)===tms(start));
+function clashes(start, mins){
+  const t=tms(start), e=t+mins*60000;
+  return (B.basket||[]).find(x=>tms(x.start)!==t && t < tms(x.start)+x.minutes*60000 && tms(x.start) < e);
+}
+const sortBasket = () => B.basket.sort((a,b)=>tms(a.start)-tms(b.start));
+function lenSeg(){
+  const left = leftMins();
+  return `<div class="seg seg-len" role="group" aria-label="Session length">${LENGTHS.map(m=>`<button type="button" data-m="${m}" aria-pressed="${m===B.len}" ${m>Math.max(left,30)||m>capMins()?"disabled":""}>${m<60?"30":m/60===1.5?"1½":m/60}<small>${m<60?"min":m===60?"hour":"hours"}</small></button>`).join("")}</div>`;
+}
+function setLen(m){ if(m===B.len) return; B.len=m; B.data=null; renderBooker(); loadSlots(); }
+function fitLen(){ // shrink the length when what's left can't hold it
+  const left = leftMins();
+  if(left >= 30 && B.len > left){ setLen(LENGTHS.filter(m=>m<=left).pop()); return true; }
+  return false;
+}
+function toggleSession(start, day){
+  const mine = inBasket(start);
+  if(mine){ B.basket = B.basket.filter(x=>x!==mine); renderBooker(); return; }
+  if(B.len > leftMins()){ toast(leftMins() ? `You only have ${minsText(leftMins())} left. Pick a shorter length.` : "That's all your time placed. Remove a session to change it."); return; }
+  const s = day.slots.find(x=>x.start===start);
+  B.basket.push({ start:s.start, minutes:B.len, label:s.label, date:day.date }); sortBasket(); B.fresh=[s.start];
+  if(!fitLen()) renderBooker();
+}
+async function repeatWeekly(start){
+  const it = inBasket(start); if(!it) return;
+  let data = (slotCache[cacheKey("mentorship", it.minutes)]||{}).data;
+  if(!data){ data = await fetchSlots("mentorship", it.minutes); if(!data.ok){ toast(ERR.default); return; } }
+  const all = (data.days||[]).flatMap(d=>d.slots.map(s=>({ ...s, date:d.date })));
+  const lastDay = (data.days||[]).slice(-1)[0];
+  const end = lastDay ? tms(lastDay.date+"T23:59:59+01:00") : 0;
+  let added = 0, skipped = 0; B.fresh = [];
+  for(let k=1; k<=8; k++){
+    if(leftMins() < it.minutes) break;
+    const t = tms(it.start) + k*7*86400000;
+    if(t > end) break;
+    if(inBasket(new Date(t).toISOString())) continue;
+    const s = all.find(x=>tms(x.start)===t);
+    if(!s || !s.open || clashes(s.start, it.minutes)){ skipped++; continue; }
+    B.basket.push({ start:s.start, minutes:it.minutes, label:s.label, date:s.date }); added++; (B.fresh=B.fresh||[]).push(s.start);
+  }
+  sortBasket();
+  const wd = new Date(it.date+"T12:00:00Z").toLocaleDateString("en-GB",{ weekday:"long", timeZone:"UTC" });
+  toast(added ? `Added ${added} more ${wd}${added>1?"s":""} at ${it.label}.${skipped?` ${skipped} week${skipped>1?"s were":" was"} taken, so I skipped ${skipped>1?"them":"it"}.`:""}`
+    : leftMins() < it.minutes ? "No time left on your plan to repeat it." : `${wd}s at ${it.label} are taken for the next few weeks.`);
+  if(!fitLen()) renderBooker();
+}
+function basketHTML(){
+  const cap = capMins(), used = pickedMins(), left = cap - used;
+  if(!B.basket.length) return `<div class="basket empty-b"><p>Tap a time to add it. Add as many as your time allows: twice a week, or all of it in one day.</p></div>`;
+  const fresh = B.fresh || []; B.fresh = null;
+  const rows = B.basket.map(x=>`<li class="sess${fresh.includes(x.start)?" fresh":""}"><div><b>${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}</b><span>${x.label} · ${lenLabel(x.minutes)}</span>${left>=x.minutes?`<button type="button" class="rep" data-rep="${x.start}">↻ Repeat weekly</button>`:""}</div>
+      <button type="button" class="x-btn" data-rm="${x.start}" aria-label="Remove ${x.label}">×</button></li>`).join("");
+  return `<div class="basket">
+    <div class="basket-head"><b>Your sessions</b><span class="num">${minsText(used)} of ${minsText(cap)}</span></div>
+    <div class="meter"><span style="width:${Math.round(100*used/cap)}%"></span></div>
+    <ul class="sess-list" style="margin-top:12px">${rows}</ul>
+  </div>`;
+}
+function wireBasket(el){
+  el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ if(!b.disabled) setLen(+b.dataset.m); });
+  el.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ B.basket = B.basket.filter(x=>tms(x.start)!==tms(b.dataset.rm)); renderBooker(); });
+  el.querySelectorAll("[data-rep]").forEach(b=>b.onclick=()=>{ b.disabled=true; b.innerHTML='<span class="spin"></span>'; repeatWeekly(b.dataset.rep); });
+}
+function renderSessions(el){
+  const n = B.basket.length, left = leftMins();
+  stage(el, `${stepsBar()}<button type="button" class="back" id="toPlan">${I.back} Change hours</button>
+    <h3>Pick your sessions</h3>
+    <p class="hint" style="margin-top:4px">${B.hours} hour${B.hours>1?"s":""} to place. Book some now and the rest later, or all of it now.</p>
+    <p class="mini-label">Session length</p>${lenSeg()}
+    <div style="height:14px"></div>
+    ${pickerHTML()}
+    ${basketHTML()}
+    <div style="height:16px"></div>
+    <button class="btn btn-ink btn-block" id="toDetails" ${n?"":"disabled"}>${n ? `Continue with ${n} session${n>1?"s":""}` : "Pick at least one time"}</button>
+    ${n && left>0 ? `<p class="note">The other ${minsText(left)} stays on your plan. Book it whenever you like.</p>` : ""}`);
+  wirePicker(el); wireBasket(el);
+  $("#toDetails").onclick = ()=>{ if(B.basket.length){ B.step="details"; renderBooker(); el.scrollIntoView({ behavior:"smooth", block:"start" }); } };
+  $("#toPlan").onclick=()=>{ B.step="plan"; renderBooker(); };
 }
 function lagosDateStr(){ const n=lagosNow(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; }
 
 function renderPlan(el){
-  const maxLen = B.hours*60; if(B.len > maxLen) B.len = maxLen;
-  const total = B.hours*CONFIG.hourRate, left = B.hours*60 - B.len;
+  const total = B.hours*CONFIG.hourRate;
   stage(el, `${stepsBar()}
     <h3>How much time do you want?</h3>
     <div class="seg" role="group" aria-label="Hours">${[1,2,4,8].map(h=>`<button type="button" data-h="${h}" aria-pressed="${h===B.hours}">${h}<small>${h===1?"hour":"hours"}</small></button>`).join("")}</div>
-    <p class="hint">Use your hours across as many sessions as you like. You book them yourself, when it suits you.</p>
-    <h3 style="margin-top:22px">How long should your first session be?</h3>
-    <div class="seg seg-len" role="group" aria-label="First session length">${LENGTHS.map(m=>`<button type="button" data-m="${m}" aria-pressed="${m===B.len}" ${m>maxLen?"disabled":""}>${m<60?"30":m/60===1.5?"1½":m/60}<small>${m<60?"min":m===60?"hour":"hours"}</small></button>`).join("")}</div>
-    <div class="plan-sum">
-      <div><span>First session</span><b>${lenLabel(B.len)}</b></div>
-      <div><span>Left to book later</span><b>${left ? minsText(left) : "None"}</b></div>
-    </div>
+    <p class="hint">Split it however you like. Two sessions a week, or all of it in one day. You pick the times next.</p>
     <div class="total"><span style="color:var(--muted);font-weight:600">Total</span><b class="num">${naira(total)}</b></div>
     <div style="height:16px"></div>
-    <button class="btn btn-ink btn-block" id="toTime">Pick a time</button>`);
-  el.querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{ B.hours=+b.dataset.h; if(B.len>B.hours*60) B.len=B.hours*60; prefetch("mentorship",B.len); renderBooker(); bump(".num"); });
-  el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ if(b.disabled) return; B.len=+b.dataset.m; prefetch("mentorship",B.len); B.slot=null; B.data=null; renderBooker(); });
-  $("#toTime").onclick=()=>{ B.step="time"; B.data=null; B.slot=null; B.date=null; renderBooker(); loadSlots(); };
+    <button class="btn btn-ink btn-block" id="toTime">Pick my sessions</button>`);
+  el.querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{
+    B.hours=+b.dataset.h;
+    let cut = 0; while(pickedMins() > B.hours*60){ B.basket.pop(); cut++; }
+    if(cut) toast(`Took ${cut} session${cut>1?"s":""} off your list to fit ${B.hours} hour${B.hours>1?"s":""}.`);
+    if(B.len>B.hours*60) B.len=B.hours*60; prefetch("mentorship",B.len); renderBooker(); bump(".num");
+  });
+  $("#toTime").onclick=()=>{ B.step="time"; if(!fitLen()){ renderBooker(); loadSlots(); } };
 }
 function bump(sel){ const n=$(sel); if(!n) return; n.classList.remove("bump"); void n.offsetWidth; n.classList.add("bump"); }
 
 function renderDetails(el){
-  const isFree = B.service==="free_call", p = dayParts(B.slot.date), saved = B.form || {};
-  const what = isFree ? "Free clarity call · 10 minutes · Video" : `Mentorship · ${B.hours} hour${B.hours>1?"s":""} · first session ${lenLabel(B.len).toLowerCase()} · ${naira(B.hours*CONFIG.hourRate)}`;
+  const isFree = B.service==="free_call", saved = B.form || {};
+  let picked;
+  if(isFree){ const p = dayParts(B.slot.date); picked = `<div class="picked"><div><b>${p.long}, ${B.slot.label}</b><span>Free clarity call · 10 minutes · Video</span></div><button type="button" id="chg">Change</button></div>`; }
+  else {
+    const left = leftMins();
+    picked = `<div class="picked picked-multi"><div><b>Mentorship · ${B.hours} hour${B.hours>1?"s":""} · ${naira(B.hours*CONFIG.hourRate)}</b>
+      <ul>${B.basket.map(x=>`<li>${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}, ${x.label} <em>${lenLabel(x.minutes)}</em></li>`).join("")}</ul>
+      ${left>0?`<span>${minsText(left)} left to book later</span>`:""}</div><button type="button" id="chg">Change</button></div>`;
+  }
   stage(el, `${stepsBar()}
-    <div class="picked"><div><b>${p.long}, ${B.slot.label}</b><span>${what}</span></div><button type="button" id="chg">Change</button></div>
+    ${picked}
     ${isFree?`<div class="callout">${I.video}<span><b>Video call on Google Meet.</b>This is your only free call, so set a reminder.</span></div>`:""}
     <form id="bform" novalidate>
       <div class="field"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" value="${esc(saved.name)}" required></div>
@@ -778,7 +915,7 @@ function renderDetails(el){
       <label class="check"><input type="checkbox" id="f-opt" name="opt" ${saved.opt?"checked":""}><span>Send me Genie's emails<em>Short notes on mindset, communication and getting things done. Leave anytime.</em></span></label>
       <div class="err" id="ferr" hidden></div>
       <button class="btn btn-ink btn-block" type="submit" id="fsub">${isFree?"Confirm my call":"Pay "+naira(B.hours*CONFIG.hourRate)}</button>
-      ${isFree?"":`<p class="note">Secured by Paystack. Your time is held for 15 minutes while you pay.</p>`}
+      ${isFree?"":`<p class="note">Secured by Paystack. Your times are held for 15 minutes while you pay.</p>`}
     </form>`);
   $("#chg").onclick=()=>{ B.form = readForm(); B.step="time"; renderBooker(); loadSlots(true); };
   $("#bform").addEventListener("submit", e=>{ e.preventDefault(); submitBooking(); });
@@ -800,6 +937,19 @@ function setBusy(on, label){ const b=$("#fsub"); if(!b) return; b.disabled=on; b
 const retryable = e => ["slot_taken","too_soon","not_a_slot","too_far"].includes(e);
 function backToTimes(){ B.slot=null; delete slotCache[cacheKey(B.service, B.service==="mentorship"?B.len:10)]; setTimeout(()=>{ B.step="time"; renderBooker(); loadSlots(); }, 1600); }
 
+function sessionsFailed(r){
+  const idx = Number.isInteger(r.index) ? r.index : -1, bad = idx>=0 ? B.basket[idx] : null;
+  let msg;
+  if(bad && ["too_soon","not_a_slot","too_far","slot_taken","sessions_overlap","bad_time"].includes(r.error)){
+    B.basket = B.basket.filter(x=>x!==bad);
+    msg = `${dayParts(bad.date).wd} ${dayParts(bad.date).dd} ${dayParts(bad.date).mon}, ${bad.label} isn't available any more, so I took it off your list.`;
+  } else if(r.error==="slot_taken") msg = "One of your times was just taken. I've refreshed the times. Check your list and try again.";
+  else if(r.error==="not_enough_time") msg = "Those sessions add up to more time than you have. Remove one and try again.";
+  else return showErr(errMsg(r.error));
+  showErr(msg);
+  Object.keys(slotCache).forEach(k=>delete slotCache[k]);
+  setTimeout(()=>{ if(B.mode!=="plan") B.step="time"; renderBooker(); loadSlots(); toast(msg); }, 1800);
+}
 async function submitBooking(){
   if(B.busy) return;
   const f = readForm(); B.form = f;
@@ -808,9 +958,10 @@ async function submitBooking(){
   if(B.service==="free_call" && f.phone.replace(/\D/g,"").length < 7) return showErr(ERR.missing_phone);
   if(B.service==="free_call" && !f.note) return showErr("Tell me in a line what you're stuck on, so we don't waste your ten minutes.");
   $("#ferr").hidden = true; B.busy = true;
-  const base = { service:B.service, start:B.slot.start, name:f.name, email:f.email, phone:f.phone, note:f.note, opt_in:f.opt };
+  const base = { service:B.service, name:f.name, email:f.email, phone:f.phone, note:f.note, opt_in:f.opt };
 
   if(B.service==="free_call"){
+    base.start = B.slot.start;
     setBusy(true, "Booking");
     const r = await api("POST", { action:"book", ...base });
     B.busy = false;
@@ -821,9 +972,10 @@ async function submitBooking(){
   }
 
   const payLabel = "Pay "+naira(B.hours*CONFIG.hourRate);
-  setBusy(true, "Holding your time");
-  const h = await api("POST", { action:"hold", hours:B.hours, minutes:B.len, ...base });
-  if(!h.ok){ B.busy=false; setBusy(false, payLabel); showErr(errMsg(h.error)); if(retryable(h.error)) backToTimes(); return; }
+  setBusy(true, B.basket.length>1 ? "Holding your times" : "Holding your time");
+  sortBasket();
+  const h = await api("POST", { action:"hold", hours:B.hours, sessions:B.basket.map(x=>({ start:x.start, minutes:x.minutes })), ...base });
+  if(!h.ok){ B.busy=false; setBusy(false, payLabel); return sessionsFailed(h); }
   if(typeof PaystackPop==="undefined"){ B.busy=false; setBusy(false, payLabel); return showErr("Payment couldn't load. Refresh the page and try again."); }
   setBusy(true, "Opening payment");
   const handler = PaystackPop.setup({
@@ -836,37 +988,48 @@ async function submitBooking(){
       B.busy = false;
       if(c.ok){
         const wa = c.whatsapp ? `<div class="panel" style="text-align:left"><h3>You can reach me directly</h3><dl class="kv"><dt>WhatsApp</dt><dd>${esc(c.whatsapp)}</dd></dl></div>` : "";
-        const left = c.minutes_left || 0;
-        return showDone({ title:"You're in.", line: c.booking ? `First session: ${c.booking.date} at ${c.booking.label}` : "Payment confirmed",
-          text: left ? `You have ${minsText(left)} left. Book them whenever you like from your plan. The link is in your email too.` : `Your confirmation and call link are on the way to ${esc(f.email)}.`,
-          cal:{ start:c.booking.start, mins:B.len, title:"Mentorship session with Genie" },
-          primary: left ? { href:`/book?plan=${c.plan_token}`, label:"Book my next session" } : null, extra: wa });
+        const plan = c.plan || { minutes_left:0, sessions:[] }, left = plan.minutes_left || 0;
+        const upcoming = (plan.sessions||[]).filter(s=>!s.past);
+        B.basket = [];
+        const lostLine = c.lost ? `${c.lost} of your times got taken while you paid, so that time is back on your plan. ` : "";
+        return showDone({ title:"You're in.", line: upcoming.length ? `${upcoming.length} session${upcoming.length>1?"s":""} booked` : "Payment confirmed",
+          sessions: upcoming,
+          text: lostLine + (left ? `You have ${minsText(left)} left. Book it whenever you like from your plan. The link is in your email too.` : `Everything is in your email at ${esc(f.email)}, with a calendar invite for each session.`),
+          cal: upcoming.length ? upcoming.map(s=>({ start:s.start, mins:s.minutes, title:"Mentorship session with Genie" })) : null,
+          primary: left>=30 ? { href:`/book?plan=${c.plan_token}`, label:"Book the rest of my time" } : { href:`/book?plan=${c.plan_token}`, label:"See my plan" }, extra: wa });
       }
-      if(c.error==="slot_lost_after_payment" && c.plan_token){ location.href = `/book?plan=${c.plan_token}`; return; }
       setBusy(false, payLabel); showErr(errMsg(c.error) + " Reference: " + (res.reference||h.reference));
     }
   });
   handler.openIframe();
 }
-function calLinks(c, quiet){
-  const st=new Date(c.start), en=new Date(st.getTime()+c.mins*60000);
+function calLinks(cal, quiet){
+  const list = Array.isArray(cal) ? cal : [cal];
   const f=d=>d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
   const details=`Join here: ${CONFIG.meet}\nIt's a video call. Come with your camera on.`;
-  const g=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(c.title)}&dates=${f(st)}/${f(en)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(CONFIG.meet)}`;
-  const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//with Genie//EN","BEGIN:VEVENT",`UID:${f(st)}-genie@eugeneobo.com`,`DTSTAMP:${f(new Date())}`,`DTSTART:${f(st)}`,`DTEND:${f(en)}`,`SUMMARY:${c.title}`,`DESCRIPTION:${details.replace(/\n/g,"\\n")}`,`LOCATION:${CONFIG.meet}`,"BEGIN:VALARM","TRIGGER:-PT30M","ACTION:DISPLAY","DESCRIPTION:Call with Genie in 30 minutes","END:VALARM","BEGIN:VALARM","TRIGGER:-PT10M","ACTION:DISPLAY","DESCRIPTION:Call with Genie in 10 minutes","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n");
+  const ev = c => { const st=new Date(c.start), en=new Date(st.getTime()+c.mins*60000);
+    return ["BEGIN:VEVENT",`UID:${f(st)}-genie@eugeneobo.com`,`DTSTAMP:${f(new Date())}`,`DTSTART:${f(st)}`,`DTEND:${f(en)}`,`SUMMARY:${c.title}`,`DESCRIPTION:${details.replace(/\n/g,"\\n")}`,`LOCATION:${CONFIG.meet}`,"BEGIN:VALARM","TRIGGER:-PT30M","ACTION:DISPLAY","DESCRIPTION:Call with Genie in 30 minutes","END:VALARM","BEGIN:VALARM","TRIGGER:-PT10M","ACTION:DISPLAY","DESCRIPTION:Call with Genie in 10 minutes","END:VALARM","END:VEVENT"]; };
+  const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//with Genie//EN",...list.flatMap(ev),"END:VCALENDAR"].join("\r\n");
   const icsUrl=URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));
+  if(list.length > 1) return `<div class="cal-btns">
+    <a class="btn ${quiet?"btn-line":"btn-ink"} btn-block" href="${icsUrl}" download="sessions-with-genie.ics">Add all ${list.length} to my calendar</a>
+    <p class="note" style="margin-top:2px">Each one is also in your email as a calendar invite.</p>
+  </div>`;
+  const c=list[0], st=new Date(c.start), en=new Date(st.getTime()+c.mins*60000);
+  const g=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(c.title)}&dates=${f(st)}/${f(en)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(CONFIG.meet)}`;
   return `<div class="cal-btns">
     <a class="btn ${quiet?"btn-line":"btn-ink"} btn-block" href="${g}" target="_blank" rel="noopener">Add to Google Calendar</a>
     <a class="btn btn-line btn-block" href="${icsUrl}" download="call-with-genie.ics">iPhone or other calendar</a>
   </div>`;
 }
-function showDone({ title, line, text, extra, cal, primary }){
+function showDone({ title, line, text, extra, cal, primary, sessions }){
   clearInterval(B.poll); B.step="done";
   $("#app").innerHTML = `<div class="view"><div class="panel done">
     <div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="draw" d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
     <span class="eyebrow">Confirmed</span>
     <h1 style="margin-top:8px">${title}</h1>
     <p style="font-weight:700;color:var(--ink)">${esc(line)}</p>
+    ${sessions && sessions.length ? `<ul class="sess-list done-list">${sessions.map(s=>`<li class="sess"><div><b>${esc(s.date)}</b><span>${esc(s.label)} · ${lenLabel(s.minutes)}</span></div></li>`).join("")}</ul>` : ""}
     <p>${text}</p>
     ${primary ? `<div class="cal-btns"><a class="btn btn-ink btn-block" href="${primary.href}">${primary.label}</a></div>` : ""}
     ${cal ? calLinks(cal, !!primary) : ""}
@@ -877,7 +1040,7 @@ function showDone({ title, line, text, extra, cal, primary }){
 
 /* ---------- Mentorship plan page (/book?plan=…) ---------- */
 async function openPlan(token){
-  Object.assign(B, { service:"mentorship", mode:"plan", token, step:"time", data:null, date:null, month:null, slot:null, busy:false, len:60 });
+  Object.assign(B, { service:"mentorship", mode:"plan", token, step:"time", data:null, date:null, month:null, slot:null, busy:false, len:60, basket:[] });
   $("#app").innerHTML = `<div class="view"><div class="panel"><div class="skeleton" style="height:120px"></div></div></div>`;
   const r = await api("POST", { action:"plan", token });
   if(!r.ok){ $("#app").innerHTML = `<div class="view"><div class="panel done"><h1>Plan not found</h1><p>Check the link in your confirmation email, or reply to it and I'll sort it out.</p><div class="ctas" style="justify-content:center"><a class="btn btn-ink" href="/book">Go home</a></div></div></div>`; return; }
@@ -923,29 +1086,36 @@ function renderPlanBooker(el){
     return;
   }
   if(B.len > left) B.len = LENGTHS.filter(m=>m<=left).pop();
-  stage(el, `<h3>Book a session</h3>
-    <div class="seg seg-len" role="group" aria-label="Session length">${LENGTHS.map(m=>`<button type="button" data-m="${m}" aria-pressed="${m===B.len}" ${m>left?"disabled":""}>${m<60?"30":m/60===1.5?"1½":m/60}<small>${m<60?"min":m===60?"hour":"hours"}</small></button>`).join("")}</div>
+  const n = B.basket.length;
+  stage(el, `<h3>Book your sessions</h3>
+    <p class="hint" style="margin-top:4px">Pick one or several. Tap a time to add it, tap it again to remove it.</p>
+    <p class="mini-label">Session length</p>${lenSeg()}
     <div style="height:14px"></div>
     ${pickerHTML()}
+    ${basketHTML()}
     <div class="err" id="ferr" hidden></div>
     <div style="height:14px"></div>
-    <button class="btn btn-ink btn-block" id="fsub" ${B.slot?"":"disabled"}>${B.slot ? `Book ${dayParts(B.slot.date).wd} ${B.slot.label}` : "Choose a time"}</button>`);
-  wirePicker(el);
-  el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ if(b.disabled) return; B.len=+b.dataset.m; B.slot=null; B.data=null; B.date=null; renderBooker(); loadSlots(); });
+    <button class="btn btn-ink btn-block" id="fsub" ${n?"":"disabled"}>${n ? `Book ${n} session${n>1?"s":""}` : "Pick at least one time"}</button>`);
+  wirePicker(el); wireBasket(el);
   $("#fsub").onclick = async ()=>{
-    if(!B.slot || B.busy) return;
-    B.busy = true; setBusy(true, "Booking");
-    const r = await api("POST", { action:"book_session", token:B.token, start:B.slot.start, minutes:B.len });
+    if(!B.basket.length || B.busy) return;
+    const label = `Book ${B.basket.length} session${B.basket.length>1?"s":""}`;
+    B.busy = true; setBusy(true, "Booking"); sortBasket();
+    const r = await api("POST", { action:"book_sessions", token:B.token, sessions:B.basket.map(x=>({ start:x.start, minutes:x.minutes })) });
     B.busy = false;
     if(r.ok){
-      B.plan = r.plan; const bk = r.booking;
+      const picked = B.basket.map(x=>tms(x.start));
+      B.plan = r.plan; B.basket = [];
       Object.keys(slotCache).forEach(k=>delete slotCache[k]);
-      showDone({ title:"Session booked.", line:`${bk.date} at ${bk.label} · ${lenLabel(bk.minutes)}`, text: B.plan.minutes_left ? `You have ${minsText(B.plan.minutes_left)} left.` : "That's all your hours booked.",
-        cal:{ start:bk.start, mins:bk.minutes, title:"Mentorship session with Genie" }, primary: B.plan.minutes_left>=30 ? { href:`/book?plan=${B.token}`, label:"Book another session" } : null });
+      const mine = B.plan.sessions.filter(s=>picked.includes(tms(s.start)));
+      const leftNow = B.plan.minutes_left;
+      showDone({ title: mine.length>1 ? "Sessions booked." : "Session booked.", line: `${mine.length} session${mine.length>1?"s":""} added to your plan`, sessions: mine,
+        text: leftNow ? `You have ${minsText(leftNow)} left.` : "That's all your hours booked.",
+        cal: mine.map(s=>({ start:s.start, mins:s.minutes, title:"Mentorship session with Genie" })),
+        primary: { href:`/book?plan=${B.token}`, label: leftNow>=30 ? "Book more sessions" : "Back to my plan" } });
       return;
     }
-    setBusy(false, "Try again"); showErr(r.error==="not_enough_time" ? "You don't have enough time left for that length. Pick a shorter session." : errMsg(r.error));
-    if(retryable(r.error)) backToTimes();
+    setBusy(false, label); sessionsFailed(r);
   };
 }
 

@@ -12,12 +12,13 @@
  *   POST {action:"cancel", token}                 Cancel from the email link (frees the call again).
  *
  * Mentorship (buy hours, book sessions whenever)
- *   POST {action:"hold", service:"mentorship", hours, minutes, start, name, email, phone?, note?, opt_in?}
- *        Holds the first session for 15 minutes, returns a Paystack reference.
- *   POST {action:"confirm", reference}            Verifies payment, creates the plan, confirms the first session.
+ *   POST {action:"hold", service:"mentorship", hours, sessions:[{start,minutes}], name, email, phone?, note?, opt_in?}
+ *        Holds every chosen session for 15 minutes (any number, any days, as long as they fit the hours),
+ *        creates a pending plan and returns a Paystack reference.
+ *   POST {action:"confirm", reference}            Verifies payment, marks the plan paid, confirms its sessions.
  *   POST {action:"release", reference}            Frees a hold when the payment window is closed.
  *   POST {action:"plan", token}                   Hours left and upcoming sessions.
- *   POST {action:"book_session", token, start, minutes}
+ *   POST {action:"book_sessions", token, sessions:[{start,minutes}]}   Book any number of sessions from what's left.
  *   POST {action:"cancel_session", token, id}     Allowed up to 24 hours before; the time goes back on the plan.
  *
  * Other
@@ -221,7 +222,7 @@ async function planUsage(planId: string) {
 }
 async function planByToken(token: string) {
   if (!/^[0-9a-f-]{36}$/i.test(token)) return null;
-  const { data } = await sb.from("mentorship_plans").select("*").eq("token", token).maybeSingle();
+  const { data } = await sb.from("mentorship_plans").select("*").eq("token", token).eq("status", "paid").maybeSingle();
   return data;
 }
 async function planSummary(plan: any) {
@@ -241,6 +242,26 @@ async function planSummary(plan: any) {
   };
 }
 
+/* ---------- session lists ---------- */
+type Want = { start: string; minutes: number; t: number };
+async function readSessions(raw: unknown, service: string): Promise<{ ok: true; list: Want[] } | { ok: false; error: string; index?: number }> {
+  if (!Array.isArray(raw) || !raw.length) return { ok: false, error: "no_sessions" };
+  if (raw.length > 16) return { ok: false, error: "too_many_sessions" };
+  const list: Want[] = raw.map((x: any) => {
+    const start = clean(x?.start, 40);
+    return { start, minutes: sessionLength(service, x?.minutes), t: Date.parse(start) };
+  }).sort((a, b) => a.t - b.t);
+  for (let i = 1; i < list.length; i++) {
+    if (list[i].t < list[i - 1].t + list[i - 1].minutes * 60_000) return { ok: false, error: "sessions_overlap", index: i };
+  }
+  for (let i = 0; i < list.length; i++) {
+    const v = await validateSlot(service, list[i].start, list[i].minutes);
+    if (!v.ok) return { ok: false, error: v.error, index: i };
+  }
+  return { ok: true, list };
+}
+const totalMinutes = (l: Want[]) => l.reduce((a, b) => a + b.minutes, 0);
+
 /* ---------- email ---------- */
 function icsFile(b: any, opts: { method: "REQUEST" | "PUBLISH"; title: string; desc: string; attendee?: string; location: string }) {
   const f = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
@@ -256,10 +277,11 @@ function icsFile(b: any, opts: { method: "REQUEST" | "PUBLISH"; title: string; d
     "END:VEVENT", "END:VCALENDAR",
   ].join("\r\n");
 }
-async function sendEmail(to: string, subject: string, text: string, ics?: string, extra: Record<string, unknown> = {}) {
+async function sendEmail(to: string, subject: string, text: string, ics?: string | string[], extra: Record<string, unknown> = {}) {
   if (!RESEND || !to) return;
   const body: Record<string, unknown> = { from: FROM, to, subject, text, ...extra };
-  if (ics) body.attachments = [{ filename: "invite.ics", content: btoa(unescape(encodeURIComponent(ics))) }];
+  const files = ics ? (Array.isArray(ics) ? ics : [ics]) : [];
+  if (files.length) body.attachments = files.map((f, i) => ({ filename: files.length > 1 ? `session-${i + 1}.ics` : "invite.ics", content: btoa(unescape(encodeURIComponent(f))) }));
   try {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -302,6 +324,33 @@ async function sendConfirmations(b: any, opts: { plan?: any; minutesLeft?: numbe
     await sendEmail(s.notify_email, `${isFree ? "Call" : "Mentorship"}: ${b.name}, ${label(st)} ${longDate(st)}`, genieText,
       icsFile(b, { method: "REQUEST", title: `${isFree ? "Call" : "Mentorship"}: ${b.name}`, desc: genieText, attendee: s.notify_email, location: where }),
       { reply_to: b.email });
+  }
+}
+
+async function sendPlanEmails(plan: any, rows: any[], kind: "paid" | "booked", minutesLeft: number) {
+  if (!rows.length && kind === "booked") return;
+  const s = await settings();
+  const meet = s.meet_link || "";
+  const where = meet || "Google Meet (link coming by email)";
+  const first = (plan.name || "there").split(" ")[0];
+  const link = `${SITE}/book?plan=${plan.token}`;
+  rows = [...rows].sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  const lines = rows.map((b) => { const st = Date.parse(b.starts_at); return `- ${longDate(st)}, ${label(st)}, ${mins(b.minutes ?? 60)}`; }).join("\n");
+  const icsList = rows.map((b) => icsFile(b, { method: "PUBLISH", title: "Mentorship session with Genie", desc: `Join: ${where}`, location: where }));
+  const leftLine = minutesLeft ? `\nYou have ${mins(minutesLeft)} left. Book it whenever suits you:\n${link}\n` : `\nSee or move your sessions here:\n${link}\n`;
+  const subject = kind === "paid"
+    ? `Mentorship confirmed: ${rows.length} session${rows.length === 1 ? "" : "s"} booked`
+    : `Booked: ${rows.length} session${rows.length === 1 ? "" : "s"}`;
+  const text = kind === "paid"
+    ? `Hi ${first},\n\nPayment received. You have ${mins(plan.minutes_total)} with me.\n\nYour sessions:\n${lines || "- None booked yet"}\n\nJoin each one here: ${meet || "I'll send the link before your first session."}\n${leftLine}\nKeep that link. It's how you book, see and move your sessions. You can cancel up to 24 hours before and the time goes back on your plan.\n${s.genie_whatsapp ? `\nYou can now reach me directly on WhatsApp: ${s.genie_whatsapp}\n` : ""}\nGenie`
+    : `Hi ${first},\n\nYou're booked:\n${lines}\n\nJoin here: ${meet || "I'll send the link before the session."}\n${leftLine}\nGenie`;
+  await sendEmail(plan.email, subject, text, icsList);
+
+  if (s.notify_email) {
+    const head = kind === "paid" ? `New PAID mentorship: ${plan.name}` : `Mentorship booked: ${plan.name}`;
+    const body = `${head}\n\nEmail: ${plan.email}\nPhone: ${plan.phone || "-"}\nPlan: ${plan.hours}h, ${mins(minutesLeft)} still to book\n${kind === "paid" ? `Paid: ₦${((plan.amount_kobo ?? 0) / 100).toLocaleString("en-NG")}\n` : ""}\nSessions:\n${lines}\n\nWhat they want to work on:\n${rows[0]?.note || "-"}`;
+    const genieIcs = rows.map((b) => icsFile(b, { method: "REQUEST", title: `Mentorship: ${plan.name}`, desc: body, attendee: s.notify_email, location: where }));
+    await sendEmail(s.notify_email, head, body, genieIcs, { reply_to: plan.email });
   }
 }
 
@@ -352,85 +401,83 @@ async function handleHold(p: Record<string, unknown>) {
   if ("error" in person) return json({ ok: false, error: person.error }, 400);
   const hours = Number(p.hours);
   if (!PLAN_HOURS.includes(hours)) return json({ ok: false, error: "bad_hours" }, 400);
-  const minutes = sessionLength("mentorship", p.minutes);
-  if (minutes > hours * 60) return json({ ok: false, error: "session_too_long" }, 400);
   await expireHolds();
+  const r = await readSessions(p.sessions, "mentorship");
+  if (!r.ok) return json({ ok: false, error: r.error, index: r.index }, 409);
+  if (totalMinutes(r.list) > hours * 60) return json({ ok: false, error: "not_enough_time" }, 409);
 
-  const start = clean(p.start, 40);
-  const v = await validateSlot("mentorship", start, minutes);
-  if (!v.ok) return json({ ok: false, error: v.error }, 409);
-  const startsAt = new Date(Date.parse(start));
   const reference = "MNT_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20);
   const amount_kobo = hours * HOUR_RATE_NAIRA * 100;
-
-  const { data, error } = await sb.from("slot_bookings").insert({
-    service: "mentorship", starts_at: startsAt.toISOString(), ends_at: new Date(startsAt.getTime() + minutes * 60_000).toISOString(),
-    status: "held", hold_expires_at: new Date(Date.now() + HOLD_MINUTES * 60_000).toISOString(), minutes,
-    name: person.name, email: person.email, phone: person.phone || null, note: person.note || null,
-    email_opt_in: person.opt_in, hours, plan: `${hours}h`, amount_kobo, payment_reference: reference, phone_key: phoneKey(person.phone) || null,
+  const { data: plan, error: pe } = await sb.from("mentorship_plans").insert({
+    name: person.name, email: person.email, phone: person.phone || null, hours, minutes_total: hours * 60,
+    amount_kobo, payment_reference: reference, status: "pending",
   }).select().single();
+  if (pe) { console.error(pe); return json({ ok: false, error: "save_failed" }, 500); }
+
+  const holdUntil = new Date(Date.now() + HOLD_MINUTES * 60_000).toISOString();
+  const { error } = await sb.from("slot_bookings").insert(r.list.map((x) => ({
+    service: "mentorship", starts_at: new Date(x.t).toISOString(), ends_at: new Date(x.t + x.minutes * 60_000).toISOString(),
+    status: "held", hold_expires_at: holdUntil, minutes: x.minutes, plan_id: plan.id, hours,
+    name: person.name, email: person.email, phone: person.phone || null, note: person.note || null,
+    email_opt_in: person.opt_in, amount_kobo, phone_key: phoneKey(person.phone) || null,
+  })));
   if (error) {
+    await sb.from("mentorship_plans").update({ status: "abandoned" }).eq("id", plan.id);
     if (overlapErr(error)) return json({ ok: false, error: "slot_taken" }, 409);
     console.error(error);
     return json({ ok: false, error: "save_failed" }, 500);
   }
   await upsertContact(person.email, person.name, person.phone, "mentorship_checkout", person.opt_in);
-  return json({ ok: true, reference, amount_kobo, email: person.email, hold_minutes: HOLD_MINUTES, id: data.id });
+  return json({ ok: true, reference, amount_kobo, email: person.email, hold_minutes: HOLD_MINUTES });
 }
 
 async function handleConfirm(p: Record<string, unknown>) {
   const reference = clean(p.reference, 60);
   if (!reference) return json({ ok: false, error: "missing_reference" }, 400);
-  const { data: b } = await sb.from("slot_bookings").select("*").eq("payment_reference", reference).maybeSingle();
-  if (!b) return json({ ok: false, error: "not_found" }, 404);
-  if (b.status === "confirmed" && b.plan_id) {
-    const { data: plan } = await sb.from("mentorship_plans").select("*").eq("id", b.plan_id).single();
+  const { data: plan } = await sb.from("mentorship_plans").select("*").eq("payment_reference", reference).maybeSingle();
+  if (!plan) return json({ ok: false, error: "not_found" }, 404);
+  if (plan.status === "paid") {
     const sum = await planSummary(plan);
-    return json({ ok: true, already: true, plan_token: plan.token, minutes_left: sum.minutes_left, booking: { start: b.starts_at, label: label(Date.parse(b.starts_at)), date: longDate(Date.parse(b.starts_at)) } });
+    return json({ ok: true, already: true, plan_token: plan.token, plan: sum });
   }
   if (!PAYSTACK) return json({ ok: false, error: "server_misconfigured" }, 500);
-
   const r = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${PAYSTACK}` } });
   const v = await r.json().catch(() => ({}));
   const tx = v?.data;
   if (!r.ok || v?.status !== true || tx?.status !== "success") return json({ ok: false, error: "payment_not_successful" }, 400);
-  if ((tx.amount ?? 0) < (b.amount_kobo ?? 0) || (tx.currency && tx.currency !== "NGN")) return json({ ok: false, error: "amount_mismatch" }, 400);
+  if ((tx.amount ?? 0) < (plan.amount_kobo ?? 0) || (tx.currency && tx.currency !== "NGN")) return json({ ok: false, error: "amount_mismatch" }, 400);
 
-  // Paid: create the plan first, so the money is never lost even if the slot fails.
-  let { data: plan } = await sb.from("mentorship_plans").select("*").eq("payment_reference", reference).maybeSingle();
-  if (!plan) {
-    const ins = await sb.from("mentorship_plans").insert({
-      name: b.name, email: b.email, phone: b.phone, hours: b.hours, minutes_total: (b.hours ?? 1) * 60,
-      amount_kobo: tx.amount, payment_reference: reference,
-    }).select().single();
-    plan = ins.data;
+  // Paid. Mark the plan paid first so the hours are never lost, then confirm each held session.
+  await sb.from("mentorship_plans").update({ status: "paid", amount_kobo: tx.amount }).eq("id", plan.id);
+  plan.status = "paid";
+  const { data: holds } = await sb.from("slot_bookings").select("*").eq("plan_id", plan.id).in("status", ["held", "expired"]);
+  const confirmed: any[] = [], lost: any[] = [];
+  for (const h of holds ?? []) {
+    const { data: upd, error } = await sb.from("slot_bookings")
+      .update({ status: "confirmed", hold_expires_at: null, updated_at: new Date().toISOString() }).eq("id", h.id).select().single();
+    if (error) { lost.push(h); await sb.from("slot_bookings").update({ status: "cancelled" }).eq("id", h.id); }
+    else confirmed.push(upd);
   }
-  const { data: upd, error } = await sb.from("slot_bookings")
-    .update({ status: "confirmed", hold_expires_at: null, plan_id: plan.id, updated_at: new Date().toISOString() })
-    .eq("id", b.id).select().single();
-  await upsertContact(b.email, b.name, b.phone ?? "", "mentorship_paid", b.email_opt_in);
-  if (error) {
-    // Slot lost while paying: the plan still has all its hours.
-    await sendEmail((await settings()).notify_email || "", `ACTION NEEDED: paid mentorship lost its first slot (${b.name})`,
-      `${b.name} (${b.email}) paid ${reference} but ${b.starts_at} was taken while they paid. Their plan has all ${b.hours}h available: ${SITE}/book?plan=${plan.token}`);
-    await sendEmail(b.email, "Payment received: pick your first session",
-      `Hi ${(b.name || "there").split(" ")[0]},\n\nYour payment went through, but the time you picked was taken while you paid. Nothing is lost: all ${mins(plan.minutes_total)} are on your plan.\n\nPick a new time here: ${SITE}/book?plan=${plan.token}\n\nGenie`);
-    return json({ ok: false, error: "slot_lost_after_payment", plan_token: plan.token }, 409);
-  }
+  const first = (holds ?? [])[0];
+  if (first) await upsertContact(plan.email, plan.name, plan.phone ?? "", "mentorship_paid", !!first.email_opt_in);
   const sum = await planSummary(plan);
-  await sendConfirmations(upd, { plan, minutesLeft: sum.minutes_left, firstOfPlan: true });
+  await sendPlanEmails(plan, confirmed, "paid", sum.minutes_left);
+  if (lost.length) {
+    const s = await settings();
+    await sendEmail(s.notify_email || "", `Note: ${lost.length} mentorship time(s) were taken while ${plan.name} paid`,
+      `${plan.name} (${plan.email}) paid ${reference}. ${lost.length} of their picked times were taken during payment. That time is back on their plan for them to rebook: ${SITE}/book?plan=${plan.token}`);
+  }
   const s = await settings();
-  return json({
-    ok: true, whatsapp: s.genie_whatsapp || null, plan_token: plan.token, minutes_left: sum.minutes_left,
-    booking: { start: upd.starts_at, label: label(Date.parse(upd.starts_at)), date: longDate(Date.parse(upd.starts_at)) },
-  });
+  return json({ ok: true, whatsapp: s.genie_whatsapp || null, plan_token: plan.token, plan: sum, lost: lost.length });
 }
 
 async function handleRelease(p: Record<string, unknown>) {
   const reference = clean(p.reference, 60);
   if (!reference) return json({ ok: false }, 400);
-  await sb.from("slot_bookings").update({ status: "expired", updated_at: new Date().toISOString() })
-    .eq("payment_reference", reference).eq("status", "held");
+  const { data: plan } = await sb.from("mentorship_plans").select("id,status").eq("payment_reference", reference).maybeSingle();
+  if (plan && plan.status === "pending") {
+    await sb.from("slot_bookings").update({ status: "expired", updated_at: new Date().toISOString() }).eq("plan_id", plan.id).eq("status", "held");
+  }
   return json({ ok: true });
 }
 
@@ -440,30 +487,29 @@ async function handlePlan(p: Record<string, unknown>) {
   return json({ ok: true, plan: await planSummary(plan) });
 }
 
-async function handleBookSession(p: Record<string, unknown>) {
+async function handleBookSessions(p: Record<string, unknown>) {
   const plan = await planByToken(clean(p.token, 60));
   if (!plan) return json({ ok: false, error: "plan_not_found" }, 404);
-  const minutes = sessionLength("mentorship", p.minutes);
   await expireHolds();
+  const raw = Array.isArray(p.sessions) ? p.sessions : [{ start: p.start, minutes: p.minutes }];
+  const r = await readSessions(raw, "mentorship");
+  if (!r.ok) return json({ ok: false, error: r.error, index: r.index }, 409);
   const { used } = await planUsage(plan.id);
-  if (minutes > plan.minutes_total - used) return json({ ok: false, error: "not_enough_time" }, 409);
-  const start = clean(p.start, 40);
-  const v = await validateSlot("mentorship", start, minutes);
-  if (!v.ok) return json({ ok: false, error: v.error }, 409);
-  const startsAt = new Date(Date.parse(start));
-  const { data, error } = await sb.from("slot_bookings").insert({
-    service: "mentorship", starts_at: startsAt.toISOString(), ends_at: new Date(startsAt.getTime() + minutes * 60_000).toISOString(),
-    status: "confirmed", minutes, plan_id: plan.id, hours: plan.hours,
-    name: plan.name, email: plan.email, phone: plan.phone, note: clean(p.note, 600) || null,
-  }).select().single();
+  if (totalMinutes(r.list) > plan.minutes_total - used) return json({ ok: false, error: "not_enough_time" }, 409);
+  const note = clean(p.note, 600) || null;
+  const { data, error } = await sb.from("slot_bookings").insert(r.list.map((x) => ({
+    service: "mentorship", starts_at: new Date(x.t).toISOString(), ends_at: new Date(x.t + x.minutes * 60_000).toISOString(),
+    status: "confirmed", minutes: x.minutes, plan_id: plan.id, hours: plan.hours,
+    name: plan.name, email: plan.email, phone: plan.phone, note,
+  }))).select();
   if (error) {
     if (overlapErr(error)) return json({ ok: false, error: "slot_taken" }, 409);
     console.error(error);
     return json({ ok: false, error: "save_failed" }, 500);
   }
   const sum = await planSummary(plan);
-  await sendConfirmations(data, { plan, minutesLeft: sum.minutes_left });
-  return json({ ok: true, plan: sum, booking: { start: data.starts_at, label: label(Date.parse(data.starts_at)), date: longDate(Date.parse(data.starts_at)), minutes } });
+  await sendPlanEmails(plan, data ?? [], "booked", sum.minutes_left);
+  return json({ ok: true, plan: sum, booked: (data ?? []).length });
 }
 
 async function handleCancelSession(p: Record<string, unknown>) {
@@ -554,7 +600,8 @@ Deno.serve(async (req) => {
       case "confirm": return await handleConfirm(p);
       case "release": return await handleRelease(p);
       case "plan": return await handlePlan(p);
-      case "book_session": return await handleBookSession(p);
+      case "book_session":
+      case "book_sessions": return await handleBookSessions(p);
       case "cancel_session": return await handleCancelSession(p);
       case "cancel": return await handleCancel(p);
       case "subscribe": return await handleSubscribe(p);
