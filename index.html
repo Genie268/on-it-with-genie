@@ -191,6 +191,22 @@ p{margin:0}
 .seg button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
 .seg button[aria-pressed="true"] small{color:#BDBDB8}
 .opts{display:grid;gap:8px}
+.board-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px}
+.streak{text-align:right;line-height:1.1}.streak b{display:block;font-family:var(--display);font-size:30px;letter-spacing:-0.03em}.streak span{font-size:12px;color:var(--muted)}
+.board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.tile{aspect-ratio:1;min-width:0;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative}
+.tile small{position:absolute;top:6px;left:8px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.tile span{font-weight:800;font-size:15px;letter-spacing:-0.06em}
+.tile.t-done{background:var(--lime);border-color:var(--lime);color:var(--lime-ink)}
+.tile.t-done small{color:var(--lime-ink)}
+.tile.t-up{background:var(--surface);border-color:var(--ink)}
+.tile.t-today{border:2px dashed var(--ink);background:var(--surface)}
+.tile.t-today span{font-size:22px;font-weight:600}
+.board-key{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted);margin-top:12px}
+.board-key span{display:inline-flex;align-items:center;gap:6px}
+.k{width:12px;height:12px;border-radius:4px;display:inline-block;border:1.5px solid var(--line)}
+.k.k-up{border-color:var(--ink);background:var(--surface)}.k.k-done{background:var(--lime);border-color:var(--lime)}.k.k-today{border:1.5px dashed var(--ink)}
+.board-note{font-size:14.5px;color:#3B3B3E;margin-top:14px}
 .opt{display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface);text-align:left;width:100%}
 .opt .r{width:20px;height:20px;border-radius:50%;border:2px solid #BEBEB8;flex:none;display:grid;place-items:center}
 .opt[aria-pressed="true"]{border-color:var(--ink)}
@@ -240,7 +256,9 @@ p{margin:0}
 @keyframes in{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
+.hero.solo h1{max-width:14ch}
 @media (min-width:760px){
+  .hero.solo{grid-template-columns:1fr}
   .wrap{padding-block:26px 60px}
   .topnav{display:flex}
   .signin-sm{display:none}
@@ -353,23 +371,17 @@ function planText(){ const p = RHYTHMS[B.hours].find(x=>x[0]===B.rhythm) || RHYT
 /* ---------- Views ---------- */
 const views = {
 home(){ const h = lagosNow().getHours(); return `
-<section class="hero">
+<section class="hero${CONFIG.photo?"":" solo"}">
   <div>
-    <span class="live"><span class="dot"></span>${h < 10 ? "Free clarity calls today, 9 to 10am" : "Free clarity calls every morning, 9 to 10am"}</span>
-    <h1>Stop planning.<br>Do the work with me.</h1>
-    <p class="lede">I help people follow through on what they keep pushing to next week.</p>
+    <h1>You already know what to do.</h1>
+    <p class="lede">I'm Genie. I help you actually do it.</p>
     <div class="ctas">
-      <a class="btn btn-lime" href="#call">Book a free clarity call</a>
-      <a class="btn btn-ghost" href="#services">See how we can work</a>
+      <a class="btn btn-lime" href="#services">See how we can work</a>
+      <a class="btn btn-ghost" href="#call">Book a clarity call</a>
     </div>
   </div>
-  <div class="photo${CONFIG.photo?"":" empty"}">${photoBox("Genie · Abuja")}</div>
+  ${CONFIG.photo?`<div class="photo">${photoBox("Genie · Abuja")}</div>`:""}
 </section>
-<div class="proof">
-  <div><b>30K</b><span>people learning with me on TikTok</span></div>
-  <div><b>6</b><span>clarity calls every morning</span></div>
-  <div><b>2021</b><span>running accountability since</span></div>
-</div>
 <div class="sec-head" id="services"><h2>Ways to work with me</h2></div>
 <div class="grid">
   ${card("accountability","t-peach",I.target,"Accountability","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["7, 15 or 30 days"],["From ₦8,500","dark"]])}
@@ -427,15 +439,17 @@ ${backLink()}
     <section class="detail-hero t-peach">
       <span class="eyebrow">Accountability</span>
       <h1>One goal. Proof every day. Checked by me.</h1>
-      <p>You upload what you did each day. I review it myself.</p>
+      <p>Upload proof of what you did each day. I review every one.</p>
     </section>
     <div class="panel">
-      <h3>What you get</h3>
-      <ul class="list">
-        <li>${I.tick}<span>One clear goal, written down before you start.</span></li>
-        <li>${I.tick}<span>A daily upload: photo, note, link or voice note.</span></li>
-        <li>${I.tick}<span>My review and reply on your uploads.</span></li>
-      </ul>
+      <div class="board-head"><div><span class="eyebrow">Your dashboard</span><h3 style="margin:4px 0 0">Day 9 of 15</h3></div><div class="streak"><b>8</b><span>day streak</span></div></div>
+      <div class="board">${Array.from({length:15},(_,i)=>{const d=i+1;
+        if(d<=6) return `<div class="tile t-done"><small>${d}</small><span>✓✓</span></div>`;
+        if(d<=8) return `<div class="tile t-up"><small>${d}</small><span>✓</span></div>`;
+        if(d===9) return `<div class="tile t-today"><small>${d}</small><span>+</span></div>`;
+        return `<div class="tile"><small>${d}</small></div>`;}).join("")}</div>
+      <div class="board-key"><span><i class="k k-up"></i>✓ Uploaded</span><span><i class="k k-done"></i>✓✓ Reviewed by me</span><span><i class="k k-today"></i>Today</span></div>
+      <p class="board-note">Every day you show up stays on the board. When I've reviewed your proof, you'll see it, and my reply is one tap away.</p>
     </div>
   </div>
   <div class="panel">
