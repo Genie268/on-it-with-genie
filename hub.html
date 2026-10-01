@@ -129,6 +129,30 @@ p{margin:0}
 .steps{display:flex;gap:6px;margin-bottom:14px}
 .steps span{flex:1;height:4px;border-radius:4px;background:var(--line)}
 .steps span.on{background:var(--ink)}
+.cal{border:1.5px solid var(--line);border-radius:20px;padding:14px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cal-head b{font-family:var(--display);font-size:17px;letter-spacing:-0.02em}
+.cal-nav{display:flex;gap:6px}
+.cal-nav button{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;background:var(--surface)}
+.cal-nav button:disabled{opacity:.3}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal-grid .dow{font-size:11.5px;font-weight:700;color:var(--muted);padding:4px 0 6px;letter-spacing:.04em}
+.cd{aspect-ratio:1;max-width:100%;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:600;font-size:15px;font-variant-numeric:tabular-nums;position:relative;line-height:1}
+.cd.off{color:#C2C2BD}
+.cd.closed{color:#A8A8A4;text-decoration:line-through}
+.cd.open{background:var(--bg);color:var(--ink)}
+.cd.open:hover{outline:1.5px solid var(--ink)}
+.cd.open::after{content:"";width:5px;height:5px;border-radius:50%;background:#5E8A0B;position:absolute;bottom:6px}
+.cd.today{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.cd[aria-pressed="true"]{background:var(--ink);color:#fff}
+.cd[aria-pressed="true"]::after{background:var(--lime)}
+.cal-note{font-size:13px;color:var(--muted);margin-top:10px}
+.slot-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:18px}
+.slot-head b{font-size:15.5px}
+.slot-head span{font-size:13px;color:var(--muted)}
+.callout{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:16px;background:var(--mint);font-size:14.5px;margin-bottom:16px}
+.callout svg{width:22px;height:22px;flex:none;margin-top:1px}
+.callout b{display:block}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-inline:-4px;padding-inline:4px;scrollbar-width:none}
 .days::-webkit-scrollbar{display:none}
 .day{flex:none;width:64px;padding:10px 0;border-radius:16px;border:1.5px solid var(--line);background:var(--surface);text-align:center;line-height:1.15}
@@ -286,7 +310,9 @@ const ERR = {
   not_a_slot:"That time isn't available. Pick another one.",
   bad_email:"That email doesn't look right. Check it and try again.",
   missing_name:"Add your name so I know who I'm talking to.",
-  free_call_limit:"You already have a free call this month. Mentorship is the next step if you want more time.",
+  free_call_used:"You've already had your free call. The next step is mentorship, or ask me directly for another chance.",
+  missing_phone:"Add your phone number. I use it to reach you if the call drops.",
+  too_far:"Bookings only open a few days ahead. Pick a closer date.",
   payment_not_successful:"The payment didn't go through. You haven't been charged. Try again.",
   slot_lost_after_payment:"Your payment went through but that time was taken. I've been told and will email you to pick a new time.",
   default:"Something went wrong on my side. Try again in a minute."
@@ -308,7 +334,7 @@ const photoBox = tag => (CONFIG.photo ? `<img src="${CONFIG.photo}" alt="Genie">
 const backLink = (to="home", text="All services") => `<a class="back" href="#${to}">${I.back} ${text}</a>`;
 
 /* ---------- Booking state ---------- */
-const B = { service:null, data:null, dayIdx:0, slot:null, hours:1, rhythm:"one", step:"time", poll:null, busy:false };
+const B = { service:null, data:null, date:null, month:null, slot:null, hours:1, rhythm:"one", step:"time", poll:null, busy:false };
 const RHYTHMS = {
   1:[["one","Single session","One hour, one sitting"]],
   2:[["one","Same day","Two hours back to back"],["weekly","Weekly","One hour a week for 2 weeks"],["half","Twice a week","30-minute sessions over 2 weeks"]],
@@ -341,7 +367,7 @@ home(){ const h = lagosNow().getHours(); return `
 <div class="grid">
   ${card("accountability","t-peach",I.target,"Accountability","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["Daily check-ins"],["Reviewed by me","dark"]])}
   ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Choose your hours and how to spread them.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
-  ${card("call","t-mint",I.video,"Free call","10 minutes with me. Bring the one thing you're stuck on.",[["10 min"],["Free","dark"]])}
+  ${card("call","t-mint",I.video,"Free call","10 minutes with me. Bring the one thing you're stuck on.",[["10 min video"],["Free","dark"]])}
   ${card("courses","t-lilac",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
 </div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
@@ -356,8 +382,8 @@ ${backLink()}
 <div class="detail">
   <div>
     <section class="detail-hero t-mint">
-      <span class="eyebrow">Free · 10 minutes</span>
-      <h1>Talk to me for 10 minutes.</h1>
+      <span class="eyebrow">Free · 10-minute video call</span>
+      <h1>See me face to face for 10 minutes.</h1>
       <p>Bring one thing you're stuck on. You'll leave knowing your next move, and whether working together makes sense.</p>
     </section>
   </div>
@@ -368,7 +394,8 @@ ${backLink()}
       <ul class="list">
         <li><span class="n">1</span><span>Pick an open time. Taken times are crossed out, so what you see is what's free.</span></li>
         <li><span class="n">2</span><span>Tell me your name, email and what you want to talk about.</span></li>
-        <li><span class="n">3</span><span>You get a confirmation email with the call link. Be on time; ten minutes goes fast.</span></li>
+        <li><span class="n">3</span><span>You get a confirmation email with the Google Meet link. It's a video call, so come with your camera on.</span></li>
+        <li><span class="n">4</span><span>Set a reminder. The free call is one per person; if you miss it, you can't book another.</span></li>
       </ul>
     </div>
 `;},
@@ -512,7 +539,7 @@ function wireWaitForms(){
 
 /* ---------- Booker ---------- */
 function startBooker(service){
-  Object.assign(B, { service, data:null, dayIdx:0, slot:null, step: service==="mentorship" ? "plan" : "time", busy:false });
+  Object.assign(B, { service, data:null, date:null, month:null, slot:null, step: service==="mentorship" ? "plan" : "time", busy:false });
   if(service==="free_call"){ B.hours = 1; }
   renderBooker();
   if(B.step==="time") loadSlots();
@@ -523,16 +550,43 @@ async function loadSlots(silent){
   if(!silent){ B.data = null; renderBooker(); }
   const r = await api("GET", null, `?service=${B.service}&days=14`);
   if(!r.ok){ B.data = { error:true }; renderBooker(); return; }
-  const prevDate = B.data && B.data.days && B.data.days[B.dayIdx] ? B.data.days[B.dayIdx].date : null;
   B.data = r;
   const days = r.days || [];
-  if(prevDate){ const i = days.findIndex(d=>d.date===prevDate); B.dayIdx = i>=0 ? i : 0; }
-  else { const i = days.findIndex(d=>d.slots.some(s=>s.open)); B.dayIdx = i>=0 ? i : 0; }
+  const hasOpen = d => d && d.slots.some(s=>s.open);
+  if(!B.date || !hasOpen(days.find(d=>d.date===B.date))){ const first = days.find(hasOpen); B.date = first ? first.date : null; }
+  if(!B.month) B.month = (B.date || lagosDateStr()).slice(0,7);
   if(B.slot){
     const still = days.flatMap(d=>d.slots).find(s=>s.start===B.slot.start);
     if(!still || !still.open){ if(B.step==="time") toast("That time was just taken. Pick another one."); B.slot = null; }
   }
   if(B.step==="time") renderBooker();
+}
+function addDaysStr(ds, n){ const d=new Date(ds+"T12:00:00Z"); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+function monthLabel(ym){ return new Date(ym+"-15T12:00:00Z").toLocaleDateString("en-GB",{ month:"long", year:"numeric", timeZone:"UTC" }); }
+function shiftMonth(ym, n){ const [y,m]=ym.split("-").map(Number); const d=new Date(Date.UTC(y,m-1+n,1)); return d.toISOString().slice(0,7); }
+function calendarHTML(){
+  const today = lagosDateStr(), win = B.data.window_days ?? 3, last = addDaysStr(today, win);
+  const byDate = Object.fromEntries((B.data.days||[]).map(d=>[d.date,d]));
+  const [y,m] = B.month.split("-").map(Number);
+  const lead = (new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7, dim = new Date(Date.UTC(y,m,0)).getUTCDate();
+  let cells = ["Mo","Tu","We","Th","Fr","Sa","Su"].map(d=>`<div class="dow">${d}</div>`).join("");
+  for(let i=0;i<lead;i++) cells += "<div></div>";
+  for(let d=1; d<=dim; d++){
+    const ds = `${B.month}-${String(d).padStart(2,"0")}`, info = byDate[ds], open = info ? info.slots.filter(s=>s.open).length : 0;
+    const inWin = ds >= today && ds <= last;
+    const cls = !inWin ? "off" : open ? "open" : "closed";
+    const t = ds===today ? " today" : "";
+    if(cls==="open") cells += `<button type="button" class="cd open${t}" data-d="${ds}" aria-pressed="${ds===B.date}" aria-label="${dayParts(ds).long}, ${open} open">${d}</button>`;
+    else cells += `<div class="cd ${cls}${t}" aria-hidden="true">${d}</div>`;
+  }
+  const canPrev = B.month > today.slice(0,7), canNext = B.month < last.slice(0,7);
+  return `<div class="cal">
+    <div class="cal-head"><b>${monthLabel(B.month)}</b><div class="cal-nav">
+      <button type="button" id="mPrev" aria-label="Previous month" ${canPrev?"":"disabled"}>${I.back}</button>
+      <button type="button" id="mNext" aria-label="Next month" ${canNext?"":"disabled"} style="transform:scaleX(-1)">${I.back}</button></div></div>
+    <div class="cal-grid">${cells}</div>
+  </div>
+  <p class="cal-note">You can book up to ${win} days ahead. Days with a dot have open times.</p>`;
 }
 function stepsBar(){
   const order = B.service==="mentorship" ? ["plan","time","details"] : ["time","details"];
@@ -546,25 +600,27 @@ function renderBooker(){
   const isFree = B.service==="free_call";
   let body;
   if(!B.data){
-    body = `<div class="days">${Array.from({length:6},()=>`<div class="day skeleton" style="height:66px"></div>`).join("")}</div><div class="slots">${Array.from({length:6},()=>`<div class="skeleton"></div>`).join("")}</div>`;
+    body = `<div class="cal"><div class="skeleton" style="height:260px"></div></div>`;
   } else if(B.data.error){
     body = `<div class="empty">Couldn't load times. Check your connection.<br><button class="btn btn-line" style="margin-top:12px" id="retry">Try again</button></div>`;
-  } else if(!B.data.days.length){
-    body = `<div class="empty">No open times in the next two weeks. Check back soon.</div>`;
   } else {
-    const days = B.data.days, d = days[B.dayIdx];
-    body = `<div class="days" role="group" aria-label="Choose a day">${days.map((x,i)=>{ const p=dayParts(x.date), open=x.slots.filter(s=>s.open).length;
-      return `<button type="button" class="day ${open?"":"full"}" data-i="${i}" aria-pressed="${i===B.dayIdx}"><small>${i===0&&x.date===lagosDateStr()?"Today":p.wd}</small><b>${p.dd}</b><i>${open?open+" open":"Full"}</i></button>`; }).join("")}</div>
-      <div class="slots" role="group" aria-label="Choose a time">${d.slots.map(s=>`<button type="button" class="slot" data-s="${s.start}" ${s.open?"":"disabled aria-label=\""+s.label+" taken\""} aria-pressed="${B.slot&&B.slot.start===s.start}">${s.label}</button>`).join("")}</div>
-      <div class="legend"><span><i></i>Open</span><span><i class="x"></i>Taken</span><span>Lagos time</span></div>`;
+    const d = (B.data.days||[]).find(x=>x.date===B.date);
+    const slotsHTML = !B.date ? `<div class="empty">Everything in the next ${B.data.window_days ?? 3} days is booked. New times open every day, so check back tomorrow.</div>`
+      : `<div class="slot-head"><b>${dayParts(B.date).long}</b><span>Lagos time</span></div>
+         <div class="slots" role="group" aria-label="Choose a time">${d.slots.map(s=>`<button type="button" class="slot" data-s="${s.start}" ${s.open?"":"disabled aria-label=\""+s.label+" taken\""} aria-pressed="${B.slot&&B.slot.start===s.start}">${s.label}</button>`).join("")}</div>
+         <div class="legend"><span><i></i>Open</span><span><i class="x"></i>Taken</span></div>`;
+    body = calendarHTML() + slotsHTML;
   }
   const back = B.service==="mentorship" ? `<button type="button" class="back" id="toPlan">${I.back} Change plan</button>` : "";
-  el.innerHTML = `${stepsBar()}${back}<h3>${isFree ? "Pick a time" : "Pick your first session"}</h3>${body}
+  el.innerHTML = `${stepsBar()}${back}<h3>${isFree ? "Pick a day and time" : "Pick your first session"}</h3>${body}
     <div style="height:16px"></div>
     <button class="btn btn-ink btn-block" id="toDetails" ${B.slot?"":"disabled"}>${B.slot ? "Continue with " + B.slot.label : "Choose a time"}</button>
-    ${isFree ? `<p class="note">${B.data&&B.data.days?B.data.days.reduce((a,x)=>a+x.slots.filter(s=>s.open).length,0)+" open times in the next two weeks":""}</p>` : `<p class="note">We'll set the rest of your sessions together on the first call.</p>`}`;
-  el.querySelectorAll(".day").forEach(b=>b.onclick=()=>{ B.dayIdx=+b.dataset.i; renderBooker(); });
-  el.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{ const d=B.data.days[B.dayIdx]; B.slot = { ...d.slots.find(s=>s.start===b.dataset.s), date:d.date }; renderBooker(); });
+    ${isFree ? "" : `<p class="note">We'll set the rest of your sessions together on the first call.</p>`}`;
+  el.querySelectorAll(".cd.open").forEach(b=>b.onclick=()=>{ B.date=b.dataset.d; renderBooker(); });
+  el.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{ const d=B.data.days.find(x=>x.date===B.date); B.slot = { ...d.slots.find(s=>s.start===b.dataset.s), date:d.date }; renderBooker(); });
+  const mp=$("#mPrev"), mn=$("#mNext");
+  if(mp) mp.onclick=()=>{ B.month=shiftMonth(B.month,-1); renderBooker(); };
+  if(mn) mn.onclick=()=>{ B.month=shiftMonth(B.month,1); renderBooker(); };
   $("#toDetails").onclick = ()=>{ if(B.slot){ B.step="details"; renderBooker(); el.scrollIntoView({ behavior:"smooth", block:"start" }); } };
   const rt=$("#retry"); if(rt) rt.onclick=()=>loadSlots();
   const tp=$("#toPlan"); if(tp) tp.onclick=()=>{ B.step="plan"; renderBooker(); };
@@ -590,11 +646,12 @@ function renderPlan(el){
 function renderDetails(el){
   const isFree = B.service==="free_call", p = dayParts(B.slot.date), saved = B.form || {};
   el.innerHTML = `${stepsBar()}
-    <div class="picked"><div><b>${p.long}, ${B.slot.label}</b><span>${isFree?"Free call · 10 minutes":`Mentorship · ${B.hours}h · ${naira(B.hours*CONFIG.hourRate)}`}</span></div><button type="button" id="chg">Change</button></div>
+    <div class="picked"><div><b>${p.long}, ${B.slot.label}</b><span>${isFree?"Free video call · 10 minutes":`Mentorship · ${B.hours}h · ${naira(B.hours*CONFIG.hourRate)}`}</span></div><button type="button" id="chg">Change</button></div>
+    ${isFree?`<div class="callout">${I.video}<span><b>This is a video call on Google Meet.</b>Join with your camera on. Set a reminder as soon as you book: you get one free call, and if you miss it you can't book another.</span></div>`:""}
     <form id="bform" novalidate>
       <div class="field"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" value="${esc(saved.name)}" required></div>
       <div class="field"><label for="f-email">Email <em>(your confirmation goes here)</em></label><input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" value="${esc(saved.email)}" required></div>
-      <div class="field"><label for="f-phone">Phone <em>(optional, in case the call drops)</em></label><input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" value="${esc(saved.phone)}"></div>
+      <div class="field"><label for="f-phone">Phone number ${isFree?"<em>(WhatsApp if you have it)</em>":"<em>(optional)</em>"}</label><input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" value="${esc(saved.phone)}" ${isFree?"required":""}></div>
       <div class="field"><label for="f-note">${isFree?"What are you stuck on?":"What do you want to work on?"}</label><textarea id="f-note" name="note" maxlength="600" placeholder="${isFree?"One or two lines is enough.":"Give me a head start."}">${esc(saved.note)}</textarea></div>
       <label class="check"><input type="checkbox" id="f-opt" name="opt" ${saved.opt?"checked":""}><span>Send me Genie's emails<em>Short notes on mindset, communication and getting things done. Leave anytime.</em></span></label>
       <div class="err" id="ferr" hidden></div>
@@ -603,6 +660,17 @@ function renderDetails(el){
     </form>`;
   $("#chg").onclick=()=>{ B.form = readForm(); B.step="time"; renderBooker(); loadSlots(true); };
   $("#bform").addEventListener("submit", e=>{ e.preventDefault(); submitBooking(); });
+  if(isFree){
+    const check = async ()=>{
+      const f = readForm();
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email)) return;
+      const r = await api("POST",{ action:"check", email:f.email, phone:f.phone });
+      if(r.ok && r.eligible===false){ showErr(ERR.free_call_used); $("#fsub").disabled = true; }
+      else if(r.ok){ $("#ferr").hidden = true; $("#fsub").disabled = false; }
+    };
+    $("#f-email").addEventListener("blur", check);
+    $("#f-phone").addEventListener("blur", check);
+  }
 }
 function readForm(){ const f=$("#bform"); if(!f) return {}; const v=n=>f.querySelector(`[name=${n}]`); return { name:v("name").value.trim(), email:v("email").value.trim(), phone:v("phone").value.trim(), note:v("note").value.trim(), opt:v("opt").checked }; }
 function showErr(m){ const e=$("#ferr"); e.textContent=m; e.hidden=false; }
@@ -613,6 +681,7 @@ async function submitBooking(){
   const f = readForm(); B.form = f;
   if(!f.name) return showErr(ERR.missing_name);
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email)) return showErr(ERR.bad_email);
+  if(B.service==="free_call" && f.phone.replace(/\D/g,"").length < 7) return showErr(ERR.missing_phone);
   if(B.service==="free_call" && !f.note) return showErr("Tell me in a line what you're stuck on, so we don't waste your ten minutes.");
   $("#ferr").hidden = true; B.busy = true;
   const base = { service:B.service, start:B.slot.start, name:f.name, email:f.email, phone:f.phone, note:f.note, opt_in:f.opt };
@@ -621,23 +690,23 @@ async function submitBooking(){
     setBusy(true, "Booking");
     const r = await api("POST", { action:"book", ...base });
     B.busy = false;
-    if(r.ok) return showDone({ title:"You're booked.", line:`${r.booking.date} at ${r.booking.label}`, text:`Check ${esc(f.email)} for your confirmation and the call link. If it's not there in a few minutes, look in spam.` });
+    if(r.ok) return showDone({ title:"You're booked.", line:`${r.booking.date} at ${r.booking.label}`, text:`Check ${esc(f.email)} for your confirmation and the Google Meet link. Set a reminder now: it's a video call, and you only get one free call.` });
     setBusy(false, "Confirm my call"); showErr(errMsg(r.error));
-    if(["slot_taken","too_soon","not_a_slot"].includes(r.error)){ B.slot=null; setTimeout(()=>{ B.step="time"; renderBooker(); loadSlots(); }, 1600); }
+    if(["slot_taken","too_soon","not_a_slot","too_far"].includes(r.error)){ B.slot=null; setTimeout(()=>{ B.step="time"; renderBooker(); loadSlots(); }, 1600); }
     return;
   }
 
   setBusy(true, "Holding your time");
   const h = await api("POST", { action:"hold", hours:B.hours, plan:planText(), ...base });
   if(!h.ok){ B.busy=false; setBusy(false, "Pay "+naira(B.hours*CONFIG.hourRate)); showErr(errMsg(h.error));
-    if(["slot_taken","too_soon","not_a_slot"].includes(h.error)){ B.slot=null; setTimeout(()=>{ B.step="time"; renderBooker(); loadSlots(); }, 1600); }
+    if(["slot_taken","too_soon","not_a_slot","too_far"].includes(h.error)){ B.slot=null; setTimeout(()=>{ B.step="time"; renderBooker(); loadSlots(); }, 1600); }
     return; }
   if(typeof PaystackPop==="undefined"){ B.busy=false; setBusy(false,"Pay "+naira(B.hours*CONFIG.hourRate)); return showErr("Payment couldn't load. Refresh the page and try again."); }
   setBusy(true, "Opening payment");
   const handler = PaystackPop.setup({
     key: CONFIG.paystackKey, email: h.email, amount: h.amount_kobo, currency:"NGN", ref: h.reference,
     metadata:{ custom_fields:[{ display_name:"Service", variable_name:"service", value:"Mentorship" },{ display_name:"Plan", variable_name:"plan", value:`${B.hours}h, ${planText()}` }] },
-    onClose: ()=>{ B.busy=false; setBusy(false, "Pay "+naira(B.hours*CONFIG.hourRate)); showErr("Payment closed. Your time is still held for a few minutes if you want to try again."); api("POST",{ action:"release", reference:h.reference }); },
+    onClose: ()=>{ B.busy=false; setBusy(false, "Pay "+naira(B.hours*CONFIG.hourRate)); showErr("Payment closed before it finished. You haven't been charged. Tap pay to try again."); api("POST",{ action:"release", reference:h.reference }); },
     callback: async (res)=>{
       setBusy(true, "Confirming payment");
       const c = await api("POST", { action:"confirm", reference: res.reference || h.reference });

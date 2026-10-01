@@ -1,7 +1,7 @@
 /*
  * booking-api: live booking for free calls and mentorship.
  *
-^ * GET  ?service=free_call|mentorship&days=14
+ * GET  ?service=free_call|mentorship&days=14
  *      Open and taken slots, built from availability_rules, minus
  *      slot_bookings, minus busy times on Genie's Google Calendar (iCal feed).
  * POST {action:"book",    service:"free_call", start, name, email, phone?, note?, opt_in?}
@@ -10,6 +10,11 @@
  * POST {action:"confirm", reference}   Verifies payment with Paystack and confirms the hold.
  * POST {action:"release", reference}   Frees a hold when the payment window is closed.
  * POST {action:"cancel",  token}       Cancels a booking from the link in the confirmation email.
+ * POST {action:"subscribe", email, name?, source}  Waitlist / email list sign-up.
+ * POST {action:"check",   email, phone?}  Has this person already used their free call?
+ *
+ * Rules: bookings only within booking_window_days (private_settings). Free calls need a phone
+ * number and are one per person (email or phone), unless contacts.extra_free_calls grants more.
  *
  * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, PAYSTACK_SECRET_KEY
  */
@@ -108,6 +113,29 @@ function longDate(ms: number) {
 }
 const clean = (v: unknown, max = 300) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const validEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
+/* Same number however it's typed: 0803..., +234803..., 234 803 ... all become 8031234567 */
+function phoneKey(raw: string) {
+  const d = (raw || "").replace(/\D/g, "");
+  if (d.length < 7) return "";
+  return d.length > 10 ? d.slice(-10) : d.replace(/^0/, "");
+}
+async function windowDays() {
+  const n = Number((await settings()).booking_window_days);
+  return Number.isFinite(n) && n >= 0 ? Math.min(n, 30) : 3;
+}
+/* One free call per person, ever, unless Genie grants extra ones. Cancelling before the call frees it up. */
+async function freeCallEligible(email: string, pk: string) {
+  const { data: c } = await sb.from("contacts").select("extra_free_calls").eq("email", email).maybeSingle();
+  const allowed = 1 + ((c as any)?.extra_free_calls ?? 0);
+  const ids = new Set<string>();
+  const { data: byEmail } = await sb.from("slot_bookings").select("id").eq("service", "free_call").eq("status", "confirmed").eq("email", email);
+  (byEmail ?? []).forEach((r: any) => ids.add(r.id));
+  if (pk) {
+    const { data: byPhone } = await sb.from("slot_bookings").select("id").eq("service", "free_call").eq("status", "confirmed").eq("phone_key", pk);
+    (byPhone ?? []).forEach((r: any) => ids.add(r.id));
+  }
+  return ids.size < allowed;
+}
 
 async function expireHolds() {
   await sb.from("slot_bookings").update({ status: "expired", updated_at: new Date().toISOString() })
@@ -123,6 +151,7 @@ async function rulesFor(service: string): Promise<Rule[]> {
 async function buildSlots(service: string, days: number) {
   await expireHolds();
   const rules = await rulesFor(service);
+  days = Math.min(days, await windowDays());
   const now = Date.now();
   const today = lagosDate(now);
   const lastDay = addDays(today, days);
@@ -168,6 +197,7 @@ async function validateSlot(service: string, startIso: string): Promise<{ ok: tr
   const lead = (LEAD_MINUTES[service] ?? 10) * 60_000;
   if (t < Date.now() + lead) return { ok: false, error: "too_soon" };
   const date = lagosDate(t);
+  if (date > addDays(lagosDate(Date.now()), await windowDays())) return { ok: false, error: "too_far" };
   const wd = lagosWeekday(date);
   const rules = (await rulesFor(service)).filter((r) => r.weekday === wd);
   for (const r of rules) {
@@ -237,11 +267,11 @@ async function sendConfirmations(b: any) {
   const first = (b.name || "there").split(" ")[0];
   const cancel = `${SITE}/book?cancel=${b.manage_token}`;
   const isFree = b.service === "free_call";
-  const title = isFree ? "Free call with Genie" : "Mentorship session with Genie";
+  const title = isFree ? "Free video call with Genie" : "Mentorship session with Genie";
   const where = meet || "Google Meet (link coming by email)";
 
   const clientText = isFree
-    ? `Hi ${first},\n\nYou're booked for a 10-minute call with me on ${when}.\n\nJoin here: ${meet || "I'll send the link before the call."}\n\nCome with the one thing you're stuck on. Ten minutes goes fast, so be on time.\n\nCan't make it? Cancel here so someone else can take the slot: ${cancel}\n\nGenie`
+    ? `Hi ${first},\n\nYou're booked for a 10-minute video call with me on ${when}.\n\nJoin here: ${meet || "I'll send the link before the call."}\n\nThis is a video call, so join from a phone or laptop with your camera on, somewhere you can talk.\n\nSet a reminder now. The free call is a one-time thing: if you miss it, you won't be able to book another one.\n\nCome with the one thing you're stuck on. Ten minutes goes fast, so be on time.\n\nCan't make it? Cancel before the call so someone else can take the slot (and you can pick a new time): ${cancel}\n\nGenie`
     : `Hi ${first},\n\nPayment received. Your first mentorship session is on ${when}.\n\nPlan: ${b.hours} hour${b.hours > 1 ? "s" : ""}, ${b.plan}.\nJoin here: ${meet || "I'll send the link before the session."}\n${s.genie_whatsapp ? `\nYou can now reach me directly on WhatsApp: ${s.genie_whatsapp}\n` : ""}\nWe'll set the rest of your sessions together on our first call.\n\nGenie`;
 
   await sendEmail(b.email, isFree ? `You're booked: ${when}` : `Mentorship confirmed: ${when}`, clientText,
@@ -273,11 +303,9 @@ async function handleBook(p: Record<string, unknown>) {
   if ("error" in person) return json({ ok: false, error: person.error }, 400);
   await expireHolds();
 
-  const since = new Date(Date.now() - 30 * 86400000).toISOString();
-  const { data: recent } = await sb.from("slot_bookings").select("id,starts_at")
-    .eq("service", "free_call").eq("status", "confirmed").eq("email", person.email)
-    .gte("starts_at", since).limit(1);
-  if (recent && recent.length) return json({ ok: false, error: "free_call_limit", existing: recent[0].starts_at }, 409);
+  const pk = phoneKey(person.phone);
+  if (!pk) return json({ ok: false, error: "missing_phone" }, 400);
+  if (!(await freeCallEligible(person.email, pk))) return json({ ok: false, error: "free_call_used" }, 409);
 
   const start = clean(p.start, 40);
   const v = await validateSlot("free_call", start);
@@ -287,7 +315,7 @@ async function handleBook(p: Record<string, unknown>) {
 
   const { data, error } = await sb.from("slot_bookings").insert({
     service: "free_call", starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), status: "confirmed",
-    name: person.name, email: person.email, phone: person.phone || null, note: person.note || null, email_opt_in: person.opt_in,
+    name: person.name, email: person.email, phone: person.phone || null, phone_key: pk, note: person.note || null, email_opt_in: person.opt_in,
   }).select().single();
   if (error) {
     if (String(error.message).includes("no_overlapping_slots") || error.code === "23P01") return json({ ok: false, error: "slot_taken" }, 409);
@@ -320,7 +348,7 @@ async function handleHold(p: Record<string, unknown>) {
     service: "mentorship", starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(), status: "held",
     hold_expires_at: new Date(Date.now() + HOLD_MINUTES * 60_000).toISOString(),
     name: person.name, email: person.email, phone: person.phone || null, note: person.note || null,
-    email_opt_in: person.opt_in, hours, plan, amount_kobo, payment_reference: reference,
+    email_opt_in: person.opt_in, hours, plan, amount_kobo, payment_reference: reference, phone_key: phoneKey(person.phone) || null,
   }).select().single();
   if (error) {
     if (String(error.message).includes("no_overlapping_slots") || error.code === "23P01") return json({ ok: false, error: "slot_taken" }, 409);
@@ -385,6 +413,12 @@ async function handleCancel(p: Record<string, unknown>) {
   return json({ ok: true, when: `${longDate(Date.parse(b.starts_at))} at ${label(Date.parse(b.starts_at))}` });
 }
 
+async function handleCheck(p: Record<string, unknown>) {
+  const email = clean(p.email, 120).toLowerCase();
+  if (!validEmail(email)) return json({ ok: false, error: "bad_email" }, 400);
+  return json({ ok: true, eligible: await freeCallEligible(email, phoneKey(clean(p.phone, 30))) });
+}
+
 async function handleSubscribe(p: Record<string, unknown>) {
   const email = clean(p.email, 120).toLowerCase();
   const name = clean(p.name, 80);
@@ -403,7 +437,7 @@ Deno.serve(async (req) => {
       const service = u.searchParams.get("service") ?? "free_call";
       if (!["free_call", "mentorship"].includes(service)) return json({ ok: false, error: "bad_service" }, 400);
       const days = Math.min(Math.max(Number(u.searchParams.get("days") ?? 14), 1), 30);
-      return json({ ok: true, service, tz: "Africa/Lagos", days: await buildSlots(service, days) });
+      return json({ ok: true, service, tz: "Africa/Lagos", window_days: await windowDays(), days: await buildSlots(service, days) });
     }
     if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
     const p = await req.json().catch(() => ({}));
@@ -414,6 +448,7 @@ Deno.serve(async (req) => {
       case "release": return await handleRelease(p);
       case "cancel": return await handleCancel(p);
       case "subscribe": return await handleSubscribe(p);
+      case "check": return await handleCheck(p);
       default: return json({ ok: false, error: "unknown_action" }, 400);
     }
   } catch (e) {
