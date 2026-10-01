@@ -262,8 +262,62 @@ p{margin:0}
 .spin{width:18px;height:18px;border-radius:50%;border:2.5px solid currentColor;border-right-color:transparent;animation:rot .7s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
 
-.view{animation:in .28s ease}
 @keyframes in{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- Motion: quiet, purposeful ---------- */
+:root{--ease:cubic-bezier(.2,.7,.2,1)}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pop{0%{transform:scale(.86)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes draw{from{stroke-dashoffset:30}to{stroke-dashoffset:0}}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes bumpK{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+.rise{animation:rise .7s var(--ease) both;animation-delay:calc(var(--i,0) * 80ms)}
+.view{animation:fadeIn .35s ease both}
+.stage-in{animation:rise .45s var(--ease) both}
+.card{transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
+.card:hover{transform:translateY(-4px);box-shadow:0 22px 40px -24px rgba(60,45,20,.45)}
+.card .arrow,.event .arrow{transition:transform .35s var(--ease)}
+.card:hover .arrow,.event:hover .arrow{transform:rotate(45deg)}
+.event{transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
+.event:hover{transform:translateY(-2px);box-shadow:0 18px 34px -24px rgba(60,45,20,.4)}
+.btn{transition:transform .2s var(--ease),box-shadow .25s var(--ease),background-color .25s,opacity .2s}
+.btn:hover{transform:translateY(-1px)}
+.btn-lime:hover{box-shadow:0 10px 24px -10px rgba(150,190,40,.65)}
+.btn-ink:hover{box-shadow:0 10px 24px -12px rgba(15,15,16,.55)}
+.btn:active{transform:scale(.97)}
+.seg button,.slot,.cd.open,.opt,.day{transition:background-color .2s,border-color .2s,color .2s,transform .2s var(--ease)}
+.seg button[aria-pressed="true"],.cd[aria-pressed="true"],.slot[aria-pressed="true"]{animation:pop .3s var(--ease)}
+.slots.enter .slot{animation:rise .4s var(--ease) both;animation-delay:calc(var(--i,0) * 22ms)}
+.big{animation:pop .5s var(--ease) both}
+.draw{stroke-dasharray:30;animation:draw .5s .25s var(--ease) both}
+.shake{animation:shake .35s ease}
+.bump{display:inline-block;animation:bumpK .35s var(--ease)}
+.board .tile{animation:rise .5s var(--ease) both;animation-delay:calc(var(--i,0) * 35ms)}
+.steps span{transition:background-color .4s var(--ease)}
+.dock a{transition:background-color .25s,color .25s}
+.about-photo img{transition:transform 1.2s var(--ease)}
+.about-photo:hover img{transform:scale(1.03)}
+
+/* ---------- Mentorship plan ---------- */
+.hint{font-size:14px;color:var(--muted);margin-top:10px}
+.sub{font-size:14px;color:var(--muted);margin:-6px 0 14px}
+.seg button:disabled{opacity:.35}
+.plan-sum{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
+.plan-sum div{background:var(--bg);border-radius:14px;padding:12px 14px}
+.plan-sum span{display:block;font-size:12.5px;color:var(--muted)}
+.plan-sum b{font-size:16px}
+.meter{height:8px;border-radius:8px;background:rgba(15,15,16,.1);margin-top:16px;overflow:hidden}
+.meter span{display:block;height:100%;background:var(--ink);border-radius:8px;transition:width .8s var(--ease)}
+.sess-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.sess{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:var(--bg)}
+.sess b{display:block;font-size:15px}.sess span{font-size:13.5px;color:var(--muted)}
+.sess.past{opacity:.55}
+.link{font-weight:700;font-size:14px;text-decoration:underline;white-space:nowrap}
+.muted-s{font-size:13px;color:var(--muted);white-space:nowrap}
+.cal-btns{display:grid;gap:10px;max-width:340px;margin:22px auto 0}
+.cal-btns + .cal-btns{margin-top:10px}
+
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 .hero.solo h1{max-width:14ch}
@@ -348,7 +402,9 @@ const ERR = {
   missing_name:"Add your name so I know who I'm talking to.",
   free_call_used:"You've already had your clarity call. Mentorship is the next step, or ask me for another chance.",
   missing_phone:"Add your phone number. I use it to reach you if the call drops.",
-  too_far:"Bookings only open a few days ahead. Pick a closer date.",
+  too_far:"That date is too far ahead. Pick a closer one.",
+  session_too_long:"That session is longer than the hours you picked.",
+  not_enough_time:"You don't have enough time left for that length.",
   payment_not_successful:"The payment didn't go through. You haven't been charged. Try again.",
   slot_lost_after_payment:"Your payment went through but that time was taken. I've been told and will email you to pick a new time.",
   default:"Something went wrong on my side. Try again in a minute."
@@ -370,14 +426,7 @@ const photoBox = tag => (CONFIG.photo ? `<img src="${CONFIG.photo}" alt="Genie">
 const backLink = (to="home", text="All services") => `<a class="back" href="#${to}">${I.back} ${text}</a>`;
 
 /* ---------- Booking state ---------- */
-const B = { service:null, data:null, date:null, month:null, slot:null, hours:1, rhythm:"one", step:"time", poll:null, busy:false };
-const RHYTHMS = {
-  1:[["one","Single session","One hour, one sitting"]],
-  2:[["one","Same day","Two hours back to back"],["weekly","Weekly","One hour a week for 2 weeks"],["half","Twice a week","30-minute sessions over 2 weeks"]],
-  4:[["weekly","Weekly","One hour a week for 4 weeks"],["half","Twice a week","30-minute sessions over 4 weeks"],["one","Intensive day","All 4 hours in one day"]],
-  8:[["weekly","Weekly","One hour a week for 8 weeks"],["half","Twice a week","30-minute sessions over 8 weeks"],["two","Every other week","Two hours every other week"]]
-};
-function planText(){ const p = RHYTHMS[B.hours].find(x=>x[0]===B.rhythm) || RHYTHMS[B.hours][0]; return `${p[1]} (${p[2]})`; }
+const B = { service:null, mode:"new", data:null, date:null, month:null, slot:null, hours:1, len:60, step:"time", poll:null, busy:false };
 
 /* ---------- Views ---------- */
 const views = {
@@ -396,7 +445,7 @@ home(){ const h = lagosNow().getHours(); return `
 <div class="sec-head" id="services"><h2>Ways to work with me</h2></div>
 <div class="grid">
   ${card("accountability","t-peach",I.target,"Accountability coaching","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["7, 15 or 30 days"],["From ₦8,500","dark"]])}
-  ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Choose your hours and how to spread them.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
+  ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Buy the hours, book sessions when it suits you.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
   ${card("call","t-mint",I.video,"Clarity call","10 minutes on video with me. Bring the one thing you're stuck on.",[["10 min"],["Video call"]],"Free")}
   ${card("courses","t-lilac",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
 </div>
@@ -429,7 +478,7 @@ ${backLink()}
     <section class="detail-hero t-sky">
       <span class="eyebrow">Mentorship · ${naira(CONFIG.hourRate)}/hr</span>
       <h1>One-on-one time with me.</h1>
-      <p>Buy the hours, then choose how to spread them.</p>
+      <p>Buy the hours. Book the sessions yourself, whenever suits you.</p>
     </section>
     <div class="panel">
       <h3>What we can work on</h3>
@@ -572,18 +621,42 @@ function wireWaitForms(){
 }
 
 /* ---------- Booker ---------- */
+const LENGTHS = [30,60,90,120];
+const lenAdj = m => m===30?"30-minute":m===60?"1-hour":m===90?"90-minute":"2-hour";
+const lenLabel = m => m===30?"30 min":m===60?"1 hour":m===90?"1½ hours":"2 hours";
+const minsText = n => n<60 ? `${n} minutes` : (n%60 ? `${Math.floor(n/60)}h ${n%60}m` : `${n/60} hour${n>60?"s":""}`);
+const slotCache = {};
+const cacheKey = (svc, len) => svc + ":" + (svc==="mentorship" ? len : 10);
+async function fetchSlots(svc, len){
+  const k = cacheKey(svc, len);
+  const r = await api("GET", null, `?service=${svc}${svc==="mentorship" ? "&minutes="+len : ""}`);
+  if(r.ok) slotCache[k] = { at:Date.now(), data:r };
+  return r;
+}
+function prefetch(svc, len){ const c = slotCache[cacheKey(svc,len)]; if(!c || Date.now()-c.at > 45000) fetchSlots(svc, len).catch(()=>{}); }
+
 function startBooker(service){
-  Object.assign(B, { service, data:null, date:null, month:null, slot:null, step: service==="mentorship" ? "plan" : "time", busy:false });
-  if(service==="free_call"){ B.hours = 1; }
+  Object.assign(B, { service, mode:"new", data:null, date:null, month:null, slot:null, step: service==="mentorship" ? "plan" : "time", busy:false, enter:true });
+  if(service==="mentorship"){ B.hours = B.hours || 1; B.len = Math.min(B.len || 60, B.hours*60); prefetch("mentorship", B.len); }
   renderBooker();
   if(B.step==="time") loadSlots();
   clearInterval(B.poll);
   B.poll = setInterval(()=>{ if(B.step==="time" && document.visibilityState==="visible") loadSlots(true); }, 30000);
 }
 async function loadSlots(silent){
-  if(!silent){ B.data = null; renderBooker(); }
-  const r = await api("GET", null, `?service=${B.service}&days=14`);
-  if(!r.ok){ B.data = { error:true }; renderBooker(); return; }
+  const len = B.service==="mentorship" ? B.len : 10;
+  const k = cacheKey(B.service, len), c = slotCache[k];
+  if(!silent){
+    if(c){ applySlots(c.data); if(Date.now()-c.at < 20000) return; silent = true; }
+    else { B.data = null; renderBooker(); }
+  }
+  const r = await fetchSlots(B.service, len);
+  if(!r.ok){ if(!B.data){ B.data = { error:true }; renderBooker(); } return; }
+  if(cacheKey(B.service, B.service==="mentorship" ? B.len : 10) !== k) return; // length changed meanwhile
+  applySlots(r, silent);
+}
+function applySlots(r, silent){
+  const firstLoad = !B.data || B.data.error;
   B.data = r;
   const days = r.days || [];
   const hasOpen = d => d && d.slots.some(s=>s.open);
@@ -591,8 +664,9 @@ async function loadSlots(silent){
   if(!B.month) B.month = (B.date || lagosDateStr()).slice(0,7);
   if(B.slot){
     const still = days.flatMap(d=>d.slots).find(s=>s.start===B.slot.start);
-    if(!still || !still.open){ if(B.step==="time") toast("That time was just taken. Pick another one."); B.slot = null; }
+    if(!still || !still.open){ if(B.step==="time" && silent) toast("That time was just taken. Pick another one."); B.slot = null; }
   }
+  if(firstLoad) B.enterSlots = true;
   if(B.step==="time") renderBooker();
 }
 function addDaysStr(ds, n){ const d=new Date(ds+"T12:00:00Z"); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
@@ -620,66 +694,81 @@ function calendarHTML(){
       <button type="button" id="mNext" aria-label="Next month" ${canNext?"":"disabled"} style="transform:scaleX(-1)">${I.back}</button></div></div>
     <div class="cal-grid">${cells}</div>
   </div>
-  <p class="cal-note">Book up to ${win} days ahead.</p>`;
+  <p class="cal-note">${B.service==="mentorship" ? `Book up to ${win} days ahead. Times shown fit a ${lenAdj(B.len)} session.` : `Book up to ${win} days ahead.`}</p>`;
+}
+function pickerHTML(){
+  if(!B.data) return `<div class="cal"><div class="skeleton" style="height:260px"></div></div><div class="slots">${Array.from({length:6},()=>`<div class="skeleton" style="height:52px"></div>`).join("")}</div>`;
+  if(B.data.error) return `<div class="empty">Couldn't load times. Check your connection.<br><button class="btn btn-line" style="margin-top:12px" id="retry">Try again</button></div>`;
+  const d = (B.data.days||[]).find(x=>x.date===B.date);
+  const enter = B.enterSlots ? " enter" : ""; B.enterSlots = false;
+  const slotsHTML = !B.date ? `<div class="empty">Nothing open in the next ${B.data.window_days ?? 3} days${B.service==="mentorship"?" for that session length. Try a shorter session":". New times open every day, so check back tomorrow"}.</div>`
+    : `<div class="slot-head"><b>${dayParts(B.date).long}</b><span>Lagos time</span></div>
+       <div class="slots${enter}" role="group" aria-label="Choose a time">${d.slots.map((s,i)=>`<button type="button" class="slot" style="--i:${i}" data-s="${s.start}" ${s.open?"":"disabled aria-label=\""+s.label+" taken\""} aria-pressed="${B.slot&&B.slot.start===s.start}">${s.label}</button>`).join("")}</div>
+       <div class="legend"><span><i></i>Open</span><span><i class="x"></i>Taken</span></div>`;
+  return calendarHTML() + slotsHTML;
+}
+function wirePicker(el){
+  el.querySelectorAll(".cd.open").forEach(b=>b.onclick=()=>{ if(B.date!==b.dataset.d){ B.date=b.dataset.d; B.enterSlots=true; } renderBooker(); });
+  el.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{ const d=B.data.days.find(x=>x.date===B.date); B.slot = { ...d.slots.find(s=>s.start===b.dataset.s), date:d.date }; renderBooker(); });
+  const mp=el.querySelector("#mPrev"), mn=el.querySelector("#mNext");
+  if(mp) mp.onclick=()=>{ B.month=shiftMonth(B.month,-1); renderBooker(); };
+  if(mn) mn.onclick=()=>{ B.month=shiftMonth(B.month,1); renderBooker(); };
+  const rt=el.querySelector("#retry"); if(rt) rt.onclick=()=>loadSlots();
 }
 function stepsBar(){
   const order = B.service==="mentorship" ? ["plan","time","details"] : ["time","details"];
   const at = order.indexOf(B.step);
   return `<div class="steps" aria-hidden="true">${order.map((_,i)=>`<span class="${i<=at?"on":""}"></span>`).join("")}</div>`;
 }
+function stage(el, html){
+  const changed = el.dataset.step !== B.step;
+  el.dataset.step = B.step;
+  el.innerHTML = `<div class="${changed?"stage-in":""}">${html}</div>`;
+}
 function renderBooker(){
   const el = $("#booker"); if(!el) return;
+  if(B.mode==="plan") return renderPlanBooker(el);
   if(B.step==="plan") return renderPlan(el);
   if(B.step==="details") return renderDetails(el);
   const isFree = B.service==="free_call";
-  let body;
-  if(!B.data){
-    body = `<div class="cal"><div class="skeleton" style="height:260px"></div></div>`;
-  } else if(B.data.error){
-    body = `<div class="empty">Couldn't load times. Check your connection.<br><button class="btn btn-line" style="margin-top:12px" id="retry">Try again</button></div>`;
-  } else {
-    const d = (B.data.days||[]).find(x=>x.date===B.date);
-    const slotsHTML = !B.date ? `<div class="empty">Everything in the next ${B.data.window_days ?? 3} days is booked. New times open every day, so check back tomorrow.</div>`
-      : `<div class="slot-head"><b>${dayParts(B.date).long}</b><span>Lagos time</span></div>
-         <div class="slots" role="group" aria-label="Choose a time">${d.slots.map(s=>`<button type="button" class="slot" data-s="${s.start}" ${s.open?"":"disabled aria-label=\""+s.label+" taken\""} aria-pressed="${B.slot&&B.slot.start===s.start}">${s.label}</button>`).join("")}</div>
-         <div class="legend"><span><i></i>Open</span><span><i class="x"></i>Taken</span></div>`;
-    body = calendarHTML() + slotsHTML;
-  }
-  const back = B.service==="mentorship" ? `<button type="button" class="back" id="toPlan">${I.back} Change plan</button>` : "";
-  el.innerHTML = `${stepsBar()}${back}<h3>${isFree ? "Pick a day and time" : "Pick your first session"}</h3>${body}
+  const back = isFree ? "" : `<button type="button" class="back" id="toPlan">${I.back} Change plan</button>`;
+  const sub = isFree ? "" : `<p class="sub">First session · ${lenLabel(B.len)}</p>`;
+  stage(el, `${stepsBar()}${back}<h3>${isFree ? "Pick a day and time" : "Pick your first session"}</h3>${sub}${pickerHTML()}
     <div style="height:16px"></div>
-    <button class="btn btn-ink btn-block" id="toDetails" ${B.slot?"":"disabled"}>${B.slot ? "Continue with " + B.slot.label : "Choose a time"}</button>
-    ${isFree ? "" : `<p class="note">We'll set the rest of your sessions together on the first call.</p>`}`;
-  el.querySelectorAll(".cd.open").forEach(b=>b.onclick=()=>{ B.date=b.dataset.d; renderBooker(); });
-  el.querySelectorAll(".slot").forEach(b=>b.onclick=()=>{ const d=B.data.days.find(x=>x.date===B.date); B.slot = { ...d.slots.find(s=>s.start===b.dataset.s), date:d.date }; renderBooker(); });
-  const mp=$("#mPrev"), mn=$("#mNext");
-  if(mp) mp.onclick=()=>{ B.month=shiftMonth(B.month,-1); renderBooker(); };
-  if(mn) mn.onclick=()=>{ B.month=shiftMonth(B.month,1); renderBooker(); };
+    <button class="btn btn-ink btn-block" id="toDetails" ${B.slot?"":"disabled"}>${B.slot ? "Continue with " + B.slot.label : "Choose a time"}</button>`);
+  wirePicker(el);
   $("#toDetails").onclick = ()=>{ if(B.slot){ B.step="details"; renderBooker(); el.scrollIntoView({ behavior:"smooth", block:"start" }); } };
-  const rt=$("#retry"); if(rt) rt.onclick=()=>loadSlots();
   const tp=$("#toPlan"); if(tp) tp.onclick=()=>{ B.step="plan"; renderBooker(); };
 }
 function lagosDateStr(){ const n=lagosNow(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; }
 
 function renderPlan(el){
-  const list = RHYTHMS[B.hours]; if(!list.find(x=>x[0]===B.rhythm)) B.rhythm = list[0][0];
-  const total = B.hours*CONFIG.hourRate;
-  el.innerHTML = `${stepsBar()}<h3>Build your plan</h3>
+  const maxLen = B.hours*60; if(B.len > maxLen) B.len = maxLen;
+  const total = B.hours*CONFIG.hourRate, left = B.hours*60 - B.len;
+  stage(el, `${stepsBar()}
+    <h3>How much time do you want?</h3>
     <div class="seg" role="group" aria-label="Hours">${[1,2,4,8].map(h=>`<button type="button" data-h="${h}" aria-pressed="${h===B.hours}">${h}<small>${h===1?"hour":"hours"}</small></button>`).join("")}</div>
-    <div style="height:14px"></div>
-    <div class="opts" role="group" aria-label="How to spread the hours">${list.map(([id,t,d])=>`<button type="button" class="opt" data-r="${id}" aria-pressed="${id===B.rhythm}"><span class="r"></span><span><b>${t}</b><span>${d}</span></span></button>`).join("")}</div>
-    <div class="total"><span style="color:var(--muted);font-weight:600">Total</span><b>${naira(total)}</b></div>
+    <p class="hint">Use your hours across as many sessions as you like. You book them yourself, when it suits you.</p>
+    <h3 style="margin-top:22px">How long should your first session be?</h3>
+    <div class="seg seg-len" role="group" aria-label="First session length">${LENGTHS.map(m=>`<button type="button" data-m="${m}" aria-pressed="${m===B.len}" ${m>maxLen?"disabled":""}>${m<60?"30":m/60===1.5?"1½":m/60}<small>${m<60?"min":m===60?"hour":"hours"}</small></button>`).join("")}</div>
+    <div class="plan-sum">
+      <div><span>First session</span><b>${lenLabel(B.len)}</b></div>
+      <div><span>Left to book later</span><b>${left ? minsText(left) : "None"}</b></div>
+    </div>
+    <div class="total"><span style="color:var(--muted);font-weight:600">Total</span><b class="num">${naira(total)}</b></div>
     <div style="height:16px"></div>
-    <button class="btn btn-ink btn-block" id="toTime">Pick a time</button>`;
-  el.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{ B.hours=+b.dataset.h; renderBooker(); });
-  el.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{ B.rhythm=b.dataset.r; renderBooker(); });
-  $("#toTime").onclick=()=>{ B.step="time"; renderBooker(); loadSlots(); };
+    <button class="btn btn-ink btn-block" id="toTime">Pick a time</button>`);
+  el.querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{ B.hours=+b.dataset.h; if(B.len>B.hours*60) B.len=B.hours*60; prefetch("mentorship",B.len); renderBooker(); bump(".num"); });
+  el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ if(b.disabled) return; B.len=+b.dataset.m; prefetch("mentorship",B.len); B.slot=null; B.data=null; renderBooker(); });
+  $("#toTime").onclick=()=>{ B.step="time"; B.data=null; B.slot=null; B.date=null; renderBooker(); loadSlots(); };
 }
+function bump(sel){ const n=$(sel); if(!n) return; n.classList.remove("bump"); void n.offsetWidth; n.classList.add("bump"); }
 
 function renderDetails(el){
   const isFree = B.service==="free_call", p = dayParts(B.slot.date), saved = B.form || {};
-  el.innerHTML = `${stepsBar()}
-    <div class="picked"><div><b>${p.long}, ${B.slot.label}</b><span>${isFree?"Free clarity call · 10 minutes · Video":`Mentorship · ${B.hours}h · ${naira(B.hours*CONFIG.hourRate)}`}</span></div><button type="button" id="chg">Change</button></div>
+  const what = isFree ? "Free clarity call · 10 minutes · Video" : `Mentorship · ${B.hours} hour${B.hours>1?"s":""} · first session ${lenLabel(B.len).toLowerCase()} · ${naira(B.hours*CONFIG.hourRate)}`;
+  stage(el, `${stepsBar()}
+    <div class="picked"><div><b>${p.long}, ${B.slot.label}</b><span>${what}</span></div><button type="button" id="chg">Change</button></div>
     ${isFree?`<div class="callout">${I.video}<span><b>Video call on Google Meet.</b>This is your only free call, so set a reminder.</span></div>`:""}
     <form id="bform" novalidate>
       <div class="field"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" value="${esc(saved.name)}" required></div>
@@ -690,7 +779,7 @@ function renderDetails(el){
       <div class="err" id="ferr" hidden></div>
       <button class="btn btn-ink btn-block" type="submit" id="fsub">${isFree?"Confirm my call":"Pay "+naira(B.hours*CONFIG.hourRate)}</button>
       ${isFree?"":`<p class="note">Secured by Paystack. Your time is held for 15 minutes while you pay.</p>`}
-    </form>`;
+    </form>`);
   $("#chg").onclick=()=>{ B.form = readForm(); B.step="time"; renderBooker(); loadSlots(true); };
   $("#bform").addEventListener("submit", e=>{ e.preventDefault(); submitBooking(); });
   if(isFree){
@@ -706,8 +795,10 @@ function renderDetails(el){
   }
 }
 function readForm(){ const f=$("#bform"); if(!f) return {}; const v=n=>f.querySelector(`[name=${n}]`); return { name:v("name").value.trim(), email:v("email").value.trim(), phone:v("phone").value.trim(), note:v("note").value.trim(), opt:v("opt").checked }; }
-function showErr(m){ const e=$("#ferr"); e.textContent=m; e.hidden=false; }
+function showErr(m){ const e=$("#ferr"); e.textContent=m; e.hidden=false; e.classList.remove("shake"); void e.offsetWidth; e.classList.add("shake"); }
 function setBusy(on, label){ const b=$("#fsub"); if(!b) return; b.disabled=on; b.innerHTML = on ? `<span class="spin"></span> ${label||""}` : label; }
+const retryable = e => ["slot_taken","too_soon","not_a_slot","too_far"].includes(e);
+function backToTimes(){ B.slot=null; delete slotCache[cacheKey(B.service, B.service==="mentorship"?B.len:10)]; setTimeout(()=>{ B.step="time"; renderBooker(); loadSlots(); }, 1600); }
 
 async function submitBooking(){
   if(B.busy) return;
@@ -725,58 +816,137 @@ async function submitBooking(){
     B.busy = false;
     if(r.ok) return showDone({ title:"You're booked.", line:`${r.booking.date} at ${r.booking.label}`, text:`This is your only free call. Add it to your calendar so your phone reminds you.`, cal:{ start:r.booking.start || B.slot.start, mins:10, title:"Clarity call with Genie" } });
     setBusy(false, "Confirm my call"); showErr(errMsg(r.error));
-    if(["slot_taken","too_soon","not_a_slot","too_far"].includes(r.error)){ B.slot=null; setTimeout(()=>{ B.step="time"; renderBooker(); loadSlots(); }, 1600); }
+    if(retryable(r.error)) backToTimes();
     return;
   }
 
+  const payLabel = "Pay "+naira(B.hours*CONFIG.hourRate);
   setBusy(true, "Holding your time");
-  const h = await api("POST", { action:"hold", hours:B.hours, plan:planText(), ...base });
-  if(!h.ok){ B.busy=false; setBusy(false, "Pay "+naira(B.hours*CONFIG.hourRate)); showErr(errMsg(h.error));
-    if(["slot_taken","too_soon","not_a_slot","too_far"].includes(h.error)){ B.slot=null; setTimeout(()=>{ B.step="time"; renderBooker(); loadSlots(); }, 1600); }
-    return; }
-  if(typeof PaystackPop==="undefined"){ B.busy=false; setBusy(false,"Pay "+naira(B.hours*CONFIG.hourRate)); return showErr("Payment couldn't load. Refresh the page and try again."); }
+  const h = await api("POST", { action:"hold", hours:B.hours, minutes:B.len, ...base });
+  if(!h.ok){ B.busy=false; setBusy(false, payLabel); showErr(errMsg(h.error)); if(retryable(h.error)) backToTimes(); return; }
+  if(typeof PaystackPop==="undefined"){ B.busy=false; setBusy(false, payLabel); return showErr("Payment couldn't load. Refresh the page and try again."); }
   setBusy(true, "Opening payment");
   const handler = PaystackPop.setup({
     key: CONFIG.paystackKey, email: h.email, amount: h.amount_kobo, currency:"NGN", ref: h.reference,
-    metadata:{ custom_fields:[{ display_name:"Service", variable_name:"service", value:"Mentorship" },{ display_name:"Plan", variable_name:"plan", value:`${B.hours}h, ${planText()}` }] },
-    onClose: ()=>{ B.busy=false; setBusy(false, "Pay "+naira(B.hours*CONFIG.hourRate)); showErr("Payment closed before it finished. You haven't been charged. Tap pay to try again."); api("POST",{ action:"release", reference:h.reference }); },
+    metadata:{ custom_fields:[{ display_name:"Service", variable_name:"service", value:"Mentorship" },{ display_name:"Hours", variable_name:"hours", value:String(B.hours) }] },
+    onClose: ()=>{ B.busy=false; setBusy(false, payLabel); showErr("Payment closed before it finished. You haven't been charged. Tap pay to try again."); api("POST",{ action:"release", reference:h.reference }); },
     callback: async (res)=>{
       setBusy(true, "Confirming payment");
       const c = await api("POST", { action:"confirm", reference: res.reference || h.reference });
       B.busy = false;
       if(c.ok){
         const wa = c.whatsapp ? `<div class="panel" style="text-align:left"><h3>You can reach me directly</h3><dl class="kv"><dt>WhatsApp</dt><dd>${esc(c.whatsapp)}</dd></dl></div>` : "";
-        return showDone({ title:"You're in.", line: c.booking ? `First session: ${c.booking.date} at ${c.booking.label}` : "Payment confirmed", text:`Your confirmation and call link are on the way to ${esc(f.email)}. We'll set the rest of your sessions on our first call.`, extra: wa });
+        const left = c.minutes_left || 0;
+        return showDone({ title:"You're in.", line: c.booking ? `First session: ${c.booking.date} at ${c.booking.label}` : "Payment confirmed",
+          text: left ? `You have ${minsText(left)} left. Book them whenever you like from your plan. The link is in your email too.` : `Your confirmation and call link are on the way to ${esc(f.email)}.`,
+          cal:{ start:c.booking.start, mins:B.len, title:"Mentorship session with Genie" },
+          primary: left ? { href:`/book?plan=${c.plan_token}`, label:"Book my next session" } : null, extra: wa });
       }
-      setBusy(false, "Pay "+naira(B.hours*CONFIG.hourRate)); showErr(errMsg(c.error) + " Reference: " + (res.reference||h.reference));
+      if(c.error==="slot_lost_after_payment" && c.plan_token){ location.href = `/book?plan=${c.plan_token}`; return; }
+      setBusy(false, payLabel); showErr(errMsg(c.error) + " Reference: " + (res.reference||h.reference));
     }
   });
   handler.openIframe();
 }
-function calLinks(c){
+function calLinks(c, quiet){
   const st=new Date(c.start), en=new Date(st.getTime()+c.mins*60000);
   const f=d=>d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
   const details=`Join here: ${CONFIG.meet}\nIt's a video call. Come with your camera on.`;
   const g=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(c.title)}&dates=${f(st)}/${f(en)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(CONFIG.meet)}`;
   const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//with Genie//EN","BEGIN:VEVENT",`UID:${f(st)}-genie@eugeneobo.com`,`DTSTAMP:${f(new Date())}`,`DTSTART:${f(st)}`,`DTEND:${f(en)}`,`SUMMARY:${c.title}`,`DESCRIPTION:${details.replace(/\n/g,"\\n")}`,`LOCATION:${CONFIG.meet}`,"BEGIN:VALARM","TRIGGER:-PT30M","ACTION:DISPLAY","DESCRIPTION:Call with Genie in 30 minutes","END:VALARM","BEGIN:VALARM","TRIGGER:-PT10M","ACTION:DISPLAY","DESCRIPTION:Call with Genie in 10 minutes","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n");
   const icsUrl=URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));
-  return `<div style="display:grid;gap:10px;max-width:340px;margin:22px auto 0">
-    <a class="btn btn-ink btn-block" href="${g}" target="_blank" rel="noopener">Add to Google Calendar</a>
+  return `<div class="cal-btns">
+    <a class="btn ${quiet?"btn-line":"btn-ink"} btn-block" href="${g}" target="_blank" rel="noopener">Add to Google Calendar</a>
     <a class="btn btn-line btn-block" href="${icsUrl}" download="call-with-genie.ics">iPhone or other calendar</a>
   </div>`;
 }
-function showDone({ title, line, text, extra, cal }){
+function showDone({ title, line, text, extra, cal, primary }){
   clearInterval(B.poll); B.step="done";
   $("#app").innerHTML = `<div class="view"><div class="panel done">
-    <div class="big">${I.check}</div>
+    <div class="big"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="draw" d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
     <span class="eyebrow">Confirmed</span>
     <h1 style="margin-top:8px">${title}</h1>
     <p style="font-weight:700;color:var(--ink)">${esc(line)}</p>
     <p>${text}</p>
-    ${cal ? calLinks(cal) : ""}
-    <div class="ctas" style="justify-content:center"><a class="btn ${cal?"btn-ghost":"btn-line"}" style="${cal?"color:var(--muted);border-color:var(--line)":""}" href="#services">See other services</a></div>
+    ${primary ? `<div class="cal-btns"><a class="btn btn-ink btn-block" href="${primary.href}">${primary.label}</a></div>` : ""}
+    ${cal ? calLinks(cal, !!primary) : ""}
+    <div class="ctas" style="justify-content:center"><a class="btn btn-ghost" style="color:var(--muted);border-color:var(--line)" href="/book#services">See other services</a></div>
   </div>${extra||""}</div>`;
   window.scrollTo(0,0);
+}
+
+/* ---------- Mentorship plan page (/book?plan=…) ---------- */
+async function openPlan(token){
+  Object.assign(B, { service:"mentorship", mode:"plan", token, step:"time", data:null, date:null, month:null, slot:null, busy:false, len:60 });
+  $("#app").innerHTML = `<div class="view"><div class="panel"><div class="skeleton" style="height:120px"></div></div></div>`;
+  const r = await api("POST", { action:"plan", token });
+  if(!r.ok){ $("#app").innerHTML = `<div class="view"><div class="panel done"><h1>Plan not found</h1><p>Check the link in your confirmation email, or reply to it and I'll sort it out.</p><div class="ctas" style="justify-content:center"><a class="btn btn-ink" href="/book">Go home</a></div></div></div>`; return; }
+  B.plan = r.plan; renderPlanPage();
+  if(B.plan.minutes_left >= 30){ B.len = Math.min(60, B.plan.minutes_left); loadSlots(); }
+  B.poll = setInterval(()=>{ if(document.visibilityState==="visible" && B.plan.minutes_left>=30) loadSlots(true); }, 30000);
+}
+function renderPlanPage(){
+  const p = B.plan, first = esc((p.name||"").split(" ")[0] || "there");
+  const pct = Math.round(100 * (p.minutes_total - p.minutes_left) / p.minutes_total);
+  const upcoming = p.sessions.filter(s=>!s.past), past = p.sessions.filter(s=>s.past);
+  const row = s => `<li class="sess${s.past?" past":""}"><div><b>${s.date}</b><span>${s.label} · ${lenLabel(s.minutes)}</span></div>${!s.past ? (s.can_cancel ? `<button type="button" class="link" data-cancel="${s.id}">Cancel</button>` : `<span class="muted-s">Within 24h</span>`) : `<span class="muted-s">Done</span>`}</li>`;
+  $("#app").innerHTML = `<div class="view"><div class="detail">
+    <div>
+      <section class="detail-hero t-sky">
+        <span class="eyebrow">Your mentorship plan</span>
+        <h1>Hi ${first}.</h1>
+        <p><b>${minsText(p.minutes_left)}</b> left of ${minsText(p.minutes_total)}.</p>
+        <div class="meter"><span style="width:${pct}%"></span></div>
+      </section>
+      <div class="panel">
+        <h3>Your sessions</h3>
+        ${p.sessions.length ? `<ul class="sess-list">${upcoming.map(row).join("")}${past.map(row).join("")}</ul>` : `<p class="muted-s">None booked yet.</p>`}
+        <p class="note" style="text-align:left">Cancel up to 24 hours before and the time goes back on your plan.</p>
+        <div class="err" id="perr" hidden></div>
+      </div>
+    </div>
+    <div class="panel" id="booker"></div>
+  </div></div>`;
+  $("#app").querySelectorAll("[data-cancel]").forEach(b=>b.onclick=async()=>{
+    if(b.dataset.armed!=="1"){ b.dataset.armed="1"; b.textContent="Tap again to cancel"; setTimeout(()=>{ b.dataset.armed=""; b.textContent="Cancel"; }, 4000); return; }
+    b.disabled = true; b.innerHTML = '<span class="spin"></span>';
+    const r = await api("POST", { action:"cancel_session", token:B.token, id:b.dataset.cancel });
+    if(r.ok){ B.plan = r.plan; toast("Cancelled. The time is back on your plan."); Object.keys(slotCache).forEach(k=>delete slotCache[k]); renderPlanPage(); if(B.plan.minutes_left>=30) loadSlots(); }
+    else { const e=$("#perr"); e.textContent = r.error==="too_late_to_cancel" ? "It's less than 24 hours away, so it can't be cancelled here. Reply to your confirmation email." : ERR.default; e.hidden=false; b.disabled=false; b.textContent="Cancel"; }
+  });
+  renderBooker();
+}
+function renderPlanBooker(el){
+  const left = B.plan.minutes_left;
+  if(left < 30){
+    stage(el, `<h3>All your hours are booked</h3><p class="hint">Want more time with me?</p><div style="height:12px"></div><a class="btn btn-ink btn-block" href="/book#mentorship">Buy more hours</a>`);
+    return;
+  }
+  if(B.len > left) B.len = LENGTHS.filter(m=>m<=left).pop();
+  stage(el, `<h3>Book a session</h3>
+    <div class="seg seg-len" role="group" aria-label="Session length">${LENGTHS.map(m=>`<button type="button" data-m="${m}" aria-pressed="${m===B.len}" ${m>left?"disabled":""}>${m<60?"30":m/60===1.5?"1½":m/60}<small>${m<60?"min":m===60?"hour":"hours"}</small></button>`).join("")}</div>
+    <div style="height:14px"></div>
+    ${pickerHTML()}
+    <div class="err" id="ferr" hidden></div>
+    <div style="height:14px"></div>
+    <button class="btn btn-ink btn-block" id="fsub" ${B.slot?"":"disabled"}>${B.slot ? `Book ${dayParts(B.slot.date).wd} ${B.slot.label}` : "Choose a time"}</button>`);
+  wirePicker(el);
+  el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ if(b.disabled) return; B.len=+b.dataset.m; B.slot=null; B.data=null; B.date=null; renderBooker(); loadSlots(); });
+  $("#fsub").onclick = async ()=>{
+    if(!B.slot || B.busy) return;
+    B.busy = true; setBusy(true, "Booking");
+    const r = await api("POST", { action:"book_session", token:B.token, start:B.slot.start, minutes:B.len });
+    B.busy = false;
+    if(r.ok){
+      B.plan = r.plan; const bk = r.booking;
+      Object.keys(slotCache).forEach(k=>delete slotCache[k]);
+      showDone({ title:"Session booked.", line:`${bk.date} at ${bk.label} · ${lenLabel(bk.minutes)}`, text: B.plan.minutes_left ? `You have ${minsText(B.plan.minutes_left)} left.` : "That's all your hours booked.",
+        cal:{ start:bk.start, mins:bk.minutes, title:"Mentorship session with Genie" }, primary: B.plan.minutes_left>=30 ? { href:`/book?plan=${B.token}`, label:"Book another session" } : null });
+      return;
+    }
+    setBusy(false, "Try again"); showErr(r.error==="not_enough_time" ? "You don't have enough time left for that length. Pick a shorter session." : errMsg(r.error));
+    if(retryable(r.error)) backToTimes();
+  };
 }
 
 /* ---------- Cancel link from email ---------- */
@@ -792,6 +962,11 @@ async function handleCancel(token){
 }
 
 /* ---------- Router ---------- */
+function reveal(){
+  const els = $("#app").querySelectorAll(".hero > div > *, .sec-head, .grid > .card, .event, .detail > *, .detail > div > *, .about > *, .about .prose > *, .back");
+  els.forEach((e,i)=>{ e.style.setProperty("--i", Math.min(i,10)); e.classList.add("rise"); });
+  $("#app").querySelectorAll(".board .tile").forEach((t,i)=>t.style.setProperty("--i", i));
+}
 function route(){
   let key = (location.hash || "#home").slice(1);
   const scrollToServices = key === "services";
@@ -800,15 +975,20 @@ function route(){
   clearInterval(B.poll);
   $("#app").innerHTML = `<div class="view">${views[key]()}</div>`;
   document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("on", a.dataset.nav === (scrollToServices ? "services" : key)));
+  reveal();
   if(key==="call") startBooker("free_call");
   if(key==="mentorship") startBooker("mentorship");
   wireWaitForms();
   if(scrollToServices) setTimeout(()=>document.getElementById("services")?.scrollIntoView({ behavior:"smooth" }), 30);
   else window.scrollTo(0,0);
 }
-const cancelToken = new URLSearchParams(location.search).get("cancel");
+const qs = new URLSearchParams(location.search);
+const cancelToken = qs.get("cancel"), planToken = qs.get("plan");
 if(cancelToken) handleCancel(cancelToken);
+else if(planToken) openPlan(planToken);
 else { window.addEventListener("hashchange", route); route(); }
+/* Warm up the calendars in the background so booking pages open instantly */
+setTimeout(()=>{ prefetch("free_call"); prefetch("mentorship", 60); }, 900);
 </script>
 </body>
 </html>
