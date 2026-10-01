@@ -236,7 +236,7 @@ p{margin:0}
 .done h1{font-size:clamp(30px,8vw,44px)}
 .done p{color:#3B3B3E;margin:12px auto 0;max-width:40ch}
 
-.about-photo{border-radius:var(--r-lg);background:var(--ink);min-height:300px;display:grid;place-items:center;position:relative;overflow:hidden}
+.about-photo{border-radius:var(--r-lg);background:var(--ink);min-height:300px;aspect-ratio:4/5;max-width:100%;display:grid;place-items:center;position:relative;overflow:hidden}
 .about-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .prose{font-size:17px;line-height:1.65;display:grid;gap:14px;max-width:62ch}
 .prose p{color:#2A2A2E}
@@ -309,7 +309,8 @@ const CONFIG = {
   api: "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/booking-api",
   paystackKey: "pk_live_e68832aeb38271278b021a3bcfbf5aa2e4c579a9",
   hourRate: 25000,
-  photo: "",                       // e.g. "/genie.jpg"
+  photo: "",                       // homepage photo, e.g. "/img/genie.jpg"
+  aboutPhoto: "/img/genie-about.jpg",
   meet: "https://meet.google.com/mmt-ahkf-zaz",
   accountabilityUrl: "/app?start",  // goes straight into the sign-up flow
   event: { name:"Forward with Genie", mon:"OCT", day:"31", when:"Saturday, 31 October", place:"Jabi, Abuja", length:"90 minutes", seats:"About 10 seats" }
@@ -504,7 +505,7 @@ ${backLink()}
 
 about(){ return `
 <div class="about">
-  <div class="about-photo">${CONFIG.photo?`<img src="${CONFIG.photo}" alt="Genie">`:`<span class="mono" style="font-family:var(--display);font-weight:800;font-size:160px;color:var(--lime);letter-spacing:-0.06em">G</span>`}</div>
+  <div class="about-photo">${(CONFIG.aboutPhoto||CONFIG.photo)?`<img src="${CONFIG.aboutPhoto||CONFIG.photo}" alt="Genie laughing at his desk">`:`<span class="mono" style="font-family:var(--display);font-weight:800;font-size:160px;color:var(--lime);letter-spacing:-0.06em">G</span>`}</div>
   <div>
     <span class="eyebrow">About</span>
     <h1 style="font-size:clamp(32px,8vw,52px);margin:10px 0 18px">I'm Eugene. Most people call me Genie.</h1>
