@@ -290,6 +290,7 @@ const CONFIG = {
   paystackKey: "pk_live_e68832aeb38271278b021a3bcfbf5aa2e4c579a9",
   hourRate: 25000,
   photo: "",                       // e.g. "/genie.jpg"
+  meet: "https://meet.google.com/mmt-ahkf-zaz",
   accountabilityUrl: "/app?start",  // goes straight into the sign-up flow
   event: { name:"Forward with Genie", mon:"OCT", day:"31", when:"Saturday, 31 October", place:"Busy Mart Plaza, Abuja", length:"90 minutes", seats:"About 10 seats" }
 };
@@ -694,7 +695,7 @@ async function submitBooking(){
     setBusy(true, "Booking");
     const r = await api("POST", { action:"book", ...base });
     B.busy = false;
-    if(r.ok) return showDone({ title:"You're booked.", line:`${r.booking.date} at ${r.booking.label}`, text:`Check ${esc(f.email)} for your confirmation and the Google Meet link. Set a reminder now: it's a video call, and you only get one free call.` });
+    if(r.ok) return showDone({ title:"You're booked.", line:`${r.booking.date} at ${r.booking.label}`, text:`You only get one free call, so don't leave it to email. Add it to your calendar now and your phone will remind you.`, cal:{ start:r.booking.start || B.slot.start, mins:10, title:"Free video call with Genie" } });
     setBusy(false, "Confirm my call"); showErr(errMsg(r.error));
     if(["slot_taken","too_soon","not_a_slot","too_far"].includes(r.error)){ B.slot=null; setTimeout(()=>{ B.step="time"; renderBooker(); loadSlots(); }, 1600); }
     return;
@@ -724,7 +725,19 @@ async function submitBooking(){
   });
   handler.openIframe();
 }
-function showDone({ title, line, text, extra }){
+function calLinks(c){
+  const st=new Date(c.start), en=new Date(st.getTime()+c.mins*60000);
+  const f=d=>d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+  const details=`Join here: ${CONFIG.meet}\nIt's a video call. Come with your camera on.`;
+  const g=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(c.title)}&dates=${f(st)}/${f(en)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(CONFIG.meet)}`;
+  const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//with Genie//EN","BEGIN:VEVENT",`UID:${f(st)}-genie@eugeneobo.com`,`DTSTAMP:${f(new Date())}`,`DTSTART:${f(st)}`,`DTEND:${f(en)}`,`SUMMARY:${c.title}`,`DESCRIPTION:${details.replace(/\n/g,"\\n")}`,`LOCATION:${CONFIG.meet}`,"BEGIN:VALARM","TRIGGER:-PT30M","ACTION:DISPLAY","DESCRIPTION:Call with Genie in 30 minutes","END:VALARM","BEGIN:VALARM","TRIGGER:-PT10M","ACTION:DISPLAY","DESCRIPTION:Call with Genie in 10 minutes","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n");
+  const icsUrl=URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));
+  return `<div style="display:grid;gap:10px;max-width:340px;margin:22px auto 0">
+    <a class="btn btn-ink btn-block" href="${g}" target="_blank" rel="noopener">Add to Google Calendar</a>
+    <a class="btn btn-line btn-block" href="${icsUrl}" download="call-with-genie.ics">iPhone or other calendar</a>
+  </div>`;
+}
+function showDone({ title, line, text, extra, cal }){
   clearInterval(B.poll); B.step="done";
   $("#app").innerHTML = `<div class="view"><div class="panel done">
     <div class="big">${I.check}</div>
@@ -732,7 +745,8 @@ function showDone({ title, line, text, extra }){
     <h1 style="margin-top:8px">${title}</h1>
     <p style="font-weight:700;color:var(--ink)">${esc(line)}</p>
     <p>${text}</p>
-    <div class="ctas" style="justify-content:center"><a class="btn btn-line" href="#services">See other services</a></div>
+    ${cal ? calLinks(cal) : ""}
+    <div class="ctas" style="justify-content:center"><a class="btn ${cal?"btn-ghost":"btn-line"}" style="${cal?"color:var(--muted);border-color:var(--line)":""}" href="#services">See other services</a></div>
   </div>${extra||""}</div>`;
   window.scrollTo(0,0);
 }
