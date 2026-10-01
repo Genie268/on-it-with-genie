@@ -50,7 +50,7 @@
       ]
     },
     {
-      "source": "/hub.html",
+      "source": "/book",
       "headers": [
         {
           "key": "Cache-Control",
@@ -59,7 +59,16 @@
       ]
     },
     {
-      "source": "/book",
+      "source": "/app.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/app",
       "headers": [
         {
           "key": "Cache-Control",
@@ -71,11 +80,23 @@
   "rewrites": [
     {
       "source": "/book",
-      "destination": "/hub.html"
+      "destination": "/index.html"
     },
     {
-      "source": "/((?!sw\\.js$|icon-192\\.png$).*)",
-      "destination": "/index.html"
+      "source": "/app",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/app/(.*)",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/((?!sw\\.js$|icon-192\\.png$|index\\.html$|app\\.html$).+)",
+      "destination": "/app.html"
     }
   ]
 }

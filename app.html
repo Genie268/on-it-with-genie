@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#060606">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="On It With Genie">
+<link rel="manifest" href="/manifest.json">
+<title>On It With Genie</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23060606'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-size='20' font-weight='900' fill='%23c49a1c' font-family='system-ui'%3EG%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Bebas+Neue&family=Archivo+Black&family=Syne:wght@400;500;600;700;800&family=Archivo:wght@400;600;700;800;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://js.paystack.co/v2/inline.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="css/styles.css?v=20260926bulk">
+</head>
+<body>
+<script>
+// Immediate route detection — no DOMContentLoaded wait needed
+if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAttribute('data-route','admin');}
+// Witness invite: accepts /witness/<t>, /?witness=<t>, or /#/witness/<t>
+if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(window.location.search)||/witness[\/=]/.test(window.location.hash)){document.documentElement.setAttribute('data-route','witness');}
+</script>
+<div id="grain-overlay"></div>
+<div id="app">
+
+<!-- LANDING -->
+<div id="s-land" class="screen active">
+  <div id="landing-hero" class="dz-hero" style="align-items:var(--align-items,flex-start);text-align:var(--align,left);position:relative">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 0% 0%,rgba(196,154,28,.07),transparent 60%);pointer-events:none"></div>
+    <div id="landing-canvas-layer" class="dz-canvas-layer"></div>
+
+    <div class="kl-wrap">
+
+      <!-- 1. NAV -->
+      <nav class="kl-nav">
+        <span class="kl-brand" data-dz-id="logo">ON&nbsp;IT <span class="kl-brand-sub">WITH GENIE</span></span>
+        <span class="kl-signin" data-dz-id="signin" onclick="showSignIn()">Sign in <span aria-hidden="true">&rarr;</span></span>
+      </nav>
+
+      <!-- HERO -->
+      <header class="kl-hero">
+        <!-- 2. HEADLINE (two blocks) -->
+        <h1 class="kl-h1">
+          <span class="kl-h1-line" data-dz-id="headline">You already know what to do.</span>
+          <span class="kl-h1-line ac" data-dz-id="headline2">Now do it.</span>
+        </h1>
+
+        <!-- 3. SUBHEAD with a gold dash to its left -->
+        <p class="kl-sub" data-dz-id="subhead">Pick one thing. Show up every day. I'll hold you to it.</p>
+
+        <!-- 4. PRIMARY BUTTON — same onboarding flow, keep id + handler -->
+        <button class="bp kl-cta" data-dz-id="cta" onclick="startOB()">I'm ready <span aria-hidden="true">&rarr;</span></button>
+
+        <!-- 5. META LINE -->
+        <p class="kl-meta" data-dz-id="meta">15 days <i>&bull;</i> One goal <i>&bull;</i> Daily proof</p>
+      </header>
+
+      <!-- 6. DIVIDER -->
+      <hr class="kl-rule">
+
+      <!-- 7. EYEBROW -->
+      <p class="kl-eyebrow"><span data-dz-id="eyebrow">This is for you if&hellip;</span></p>
+
+      <!-- 8. THREE COLUMNS (gold circle-check above each) -->
+      <div class="kl-cols">
+        <div class="kl-col">
+          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+          <p class="kl-col-p" data-dz-id="feat1">You know what to do but struggle to follow through.</p>
+        </div>
+        <div class="kl-col">
+          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+          <p class="kl-col-p" data-dz-id="feat2">You need structure, accountability and someone in your corner.</p>
+        </div>
+        <div class="kl-col">
+          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+          <p class="kl-col-p" data-dz-id="feat3">You're done starting over. You're ready to finish what you start.</p>
+        </div>
+      </div>
+
+      <!-- 8. QUOTE -->
+      <figure class="kl-quote">
+        <span class="kl-qmark" aria-hidden="true">&ldquo;</span>
+        <div class="kl-quote-body">
+          <blockquote data-dz-id="quote">The gap between knowing and doing is where I come in.</blockquote>
+          <figcaption class="kl-cite">
+            <div class="genie-float" style="width:38px;height:38px;border-radius:50%;border:2px solid var(--accent,#c49a1c);overflow:hidden;flex-shrink:0;background:var(--accent,#c49a1c)">
+              <img class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
+            </div>
+            <span class="kl-cite-name" data-dz-id="coachline">&mdash; Genie</span>
+          </figcaption>
+        </div>
+      </figure>
+
+    </div>
+  </div>
+</div>
+
+<!-- ONBOARDING -->
+<div id="s-ob" class="screen">
+  <div class="nav">
+    <div class="lm"><div class="lmk">G</div><span class="lmt">ON IT <b>WITH GENIE</b></span></div>
+    <span id="ob-ct" class="muted" style="font-size:12px"></span>
+  </div>
+  <div style="height:2px;background:#1b1b1b"><div id="ob-bar" style="height:100%;background:#c49a1c;transition:width .4s;width:0%"></div></div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:32px 20px">
+    <div id="ob-body" style="max-width:500px;width:100%"></div>
+  </div>
+</div>
+
+<!-- DURATION SELECTOR -->
+<div id="s-duration" class="screen">
+  <div class="nav"><div class="lm"><div class="lmk">G</div><span class="lmt">ON IT <b>WITH GENIE</b></span></div></div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:28px 20px">
+    <div style="max-width:480px;width:100%">
+      <span class="lbl lbl-a" style="display:block;margin-bottom:6px">CHOOSE YOUR CHALLENGE</span>
+      <h2 style="font-size:22px;font-weight:900;margin-bottom:4px">How long are you committing?</h2>
+      <p class="muted mb20" style="font-size:13px">Pick your duration. The grid is your battleground.</p>
+
+      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px">
+        <button class="dur-btn" id="dur-7" onclick="selectDuration(7)">7 Days</button>
+        <button class="dur-btn active" id="dur-15" onclick="selectDuration(15)">15 Days</button>
+        <button class="dur-btn" id="dur-30" onclick="selectDuration(30)">30 Days</button>
+      </div>
+
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:6px">
+        <div id="dur-grid" class="dur-grid cols-7"></div>
+        <div style="margin-top:12px">
+          <div class="goal-slot active" id="goal-slot-1">GOAL 1</div>
+          <div class="goal-slot" id="goal-slot-2" style="display:none">GOAL 2</div>
+        </div>
+      </div>
+
+      <div id="tier-card-wrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- COMMITMENT -->
+<div id="s-commit" class="screen">
+  <div class="nav"><div class="lm"><div class="lmk">G</div><span class="lmt">ON IT <b>WITH GENIE</b></span></div></div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:32px 20px">
+    <div style="max-width:480px;width:100%">
+      <span class="lbl lbl-a" style="color:#4dc98a">YOU'RE IN</span>
+      <h2 style="font-size:22px;font-weight:900;margin-bottom:6px">Now sign your commitment.</h2>
+      <p class="muted mb16" style="font-size:13px" id="commit-sub">This is the document you are accountable to.</p>
+      <div class="card mb16" style="padding:20px">
+        <div id="cl-text" style="font-size:14px;line-height:1.9;font-style:italic;min-height:60px"></div>
+        <p style="font-size:13px;line-height:1.8;color:#c49a1c;margin-top:14px;padding-top:14px;border-top:1px solid rgba(196,154,28,.15)">If you fall off, come back and tell me. I'd rather hear from you than lose you to silence. That door doesn't close here.</p>
+        <div style="height:1px;background:#171717;margin:16px 0"></div>
+        <span class="lbl">YOUR SIGNATURE</span>
+        <input id="sig" type="text" placeholder="Type your full name to sign" style="font-style:italic">
+      </div>
+      <button id="commit-btn" class="bp" style="width:100%;font-size:15px;padding:13px" onclick="doCommit()" disabled>I Commit. Start My 15 Days →</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAYMENT GATE -->
+<div id="s-pay" class="screen">
+  <div class="nav"><div class="lm"><div class="lmk">G</div><span class="lmt">ON IT <b>WITH GENIE</b></span></div></div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:32px 20px">
+    <div style="max-width:420px;width:100%">
+      <span class="lbl lbl-a">SECURE YOUR SPOT</span>
+      <h2 style="font-size:22px;font-weight:900;margin-bottom:6px">Commitment requires investment</h2>
+      <p class="muted mb20" style="font-size:13px;line-height:1.65">This isn't a subscription you forget about. It's a structure you show up to.</p>
+      
+      <div class="card ca mb16" id="pay-summary">
+        <div class="row" style="justify-content:space-between;margin-bottom:10px">
+          <div>
+            <p style="font-size:16px;font-weight:900" id="pay-tier-name">The Challenge</p>
+            <p class="muted" style="font-size:11px" id="pay-tier-desc">15 days · 1 goal</p>
+          </div>
+          <p style="font-size:22px;font-weight:900;color:#c49a1c" id="pay-price">₦15,000</p>
+        </div>
+        <div style="height:1px;background:rgba(196,154,28,.15);margin-bottom:10px"></div>
+        <div class="row mb6" style="gap:6px"><span class="ok" style="font-size:10px">✓</span><span style="font-size:12px;color:var(--mid)">Daily uploads reviewed by Genie</span></div>
+        <div class="row mb6" style="gap:6px"><span class="ok" style="font-size:10px">✓</span><span style="font-size:12px;color:var(--mid)">Lil AI nudges + check-ins</span></div>
+        <div class="row mb6" style="gap:6px"><span class="ok" style="font-size:10px">✓</span><span style="font-size:12px;color:var(--mid)" id="pay-call-info">Scheduled calls with Genie</span></div>
+      </div>
+
+      <div class="mb16">
+        <p style="font-size:11px;font-weight:700;color:#5a5a5a;margin-bottom:6px">HAVE AN ACCESS CODE?</p>
+        <div class="row" style="gap:8px">
+          <input id="access-code-input" type="text" placeholder="Enter code" style="flex:1;text-transform:uppercase;font-size:13px;padding:10px 14px">
+          <button class="bs" style="padding:10px 16px;font-size:13px;flex-shrink:0" onclick="applyAccessCode()">Apply</button>
+        </div>
+        <p id="access-code-msg" style="font-size:11px;margin-top:6px;display:none"></p>
+      </div>
+
+      <div id="pay-email-area" class="mb12">
+        <p style="font-size:11px;font-weight:700;color:#5a5a5a;margin-bottom:6px">YOUR EMAIL</p>
+        <input id="pay-email" type="email" placeholder="your@email.com" style="font-size:13px;padding:10px 14px">
+        <p class="muted" style="font-size:10px;margin-top:4px">Used to sign back in and receive updates</p>
+      </div>
+
+      <div class="mb16">
+        <p style="font-size:11px;font-weight:700;color:#5a5a5a;margin-bottom:6px">YOUR PHONE NUMBER</p>
+        <input id="pay-phone" type="tel" placeholder="+234..." style="font-size:13px;padding:10px 14px">
+        <p class="muted" style="font-size:10px;margin-top:4px">For call scheduling and reminders</p>
+      </div>
+
+      <button id="pay-btn" class="bp" style="width:100%;font-size:15px;padding:14px" onclick="initiatePayment()">
+        Pay & Start Challenge →
+      </button>
+      <p id="pay-status" class="muted" style="font-size:11px;text-align:center;margin-top:8px"></p>
+      <p style="font-size:10px;color:#5a5a5a;text-align:center;margin-top:12px;line-height:1.5">Need help? Reach Genie at <a href="mailto:oboeugene@gmail.com" style="color:#c49a1c;text-decoration:none">oboeugene@gmail.com</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- PHOTO UPLOAD -->
+<div id="s-photo" class="screen">
+  <div class="nav"><div class="lm"><div class="lmk">G</div><span class="lmt">ON IT <b>WITH GENIE</b></span></div></div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:32px 20px">
+    <div style="max-width:420px;width:100%;text-align:center">
+      <div style="display:flex;align-items:center;justify-content:center;margin-bottom:24px">
+        <div id="photo-preview-circle" style="width:68px;height:68px;border-radius:50%;border:2px solid #c49a1c;overflow:hidden;background:var(--s3);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--muted);font-size:18px;z-index:2;position:relative;animation:popIn .5s ease forwards">?</div>
+        <div style="width:68px;height:68px;border-radius:50%;border:2px solid rgba(196,154,28,.4);overflow:hidden;background:#c49a1c;margin-left:-18px;z-index:1;position:relative;animation:popIn .5s ease .15s forwards;opacity:0;animation-fill-mode:forwards">
+          <img class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
+        </div>
+      </div>
+      <span class="lbl lbl-a" style="display:block;margin-bottom:6px">ONE LAST THING</span>
+      <h2 style="font-size:21px;font-weight:900;margin-bottom:8px">Add your photo</h2>
+      <p class="muted mb24" style="font-size:13px;line-height:1.65">So Genie knows who he's working with. This shows on your dashboard and helps the challenge feel personal.</p>
+      <div class="avatar-upload" id="photo-upload-zone" style="margin:0 auto 20px;width:96px;height:96px" onclick="el('photo-file').click()">
+        <img id="photo-preview-large" style="width:100%;height:100%;object-fit:cover;display:none">
+        <div id="photo-placeholder" style="text-align:center;padding:10px"><p style="font-size:22px;margin-bottom:4px">+</p><p style="font-size:10px;color:var(--muted)">Upload photo</p></div>
+      </div>
+      <input type="file" id="photo-file" accept="image/*" style="display:none" onchange="handlePhoto(this)">
+      <div class="col" style="align-items:center">
+        <button class="bp" id="photo-continue-btn" style="width:100%;max-width:280px;padding:12px;font-size:15px" onclick="goTo('dash')">Continue →</button>
+        <button class="bg" onclick="goTo('dash')" style="font-size:12px;margin-top:4px">Skip for now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GENIE TRANSITION -->
+<div id="s-transition" class="screen">
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:48px 24px;text-align:center">
+    <div style="max-width:420px;width:100%;animation:popIn .5s ease forwards">
+      <div style="width:64px;height:64px;border-radius:50%;border:3px solid #c49a1c;overflow:hidden;margin:0 auto 24px;background:#c49a1c">
+        <img class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
+      </div>
+      <span class="lbl lbl-a" style="display:block;margin-bottom:8px">FROM GENIE</span>
+      <p id="genie-transition-msg" style="font-size:clamp(17px,3vw,22px);font-weight:600;line-height:1.65;color:#ebebeb;margin-bottom:32px"></p>
+      <button class="bp" style="width:100%;max-width:280px;font-size:15px;padding:13px" onclick="goTo('dash')">Open My Dashboard →</button>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="s-dash" class="screen">
+  <div class="nav" style="padding:10px 18px">
+    <div id="profile-area" style="display:flex;align-items:center;gap:10px;cursor:pointer;position:relative" onclick="openProfile()">
+      <span id="menu-new-dot" style="display:none;position:absolute;top:-2px;left:30px;z-index:5;width:9px;height:9px;border-radius:50%;background:#c49a1c;border:2px solid #060606;box-shadow:0 0 0 0 rgba(196,154,28,.5);animation:menuDotPulse 2s infinite"></span>
+      <div class="circles-wrap" style="height:40px;width:72px;flex-shrink:0;position:relative">
+        <div class="circle-img circle-user initials" id="dash-user-circle" style="width:36px;height:36px;left:2px;font-size:11px;z-index:2">?</div>
+        <img class="circle-img circle-genie genie-photo-img" style="width:36px;height:36px;left:20px;z-index:1" src="" alt="Genie">
+      </div>
+      <div>
+        <p style="font-size:11px;font-weight:700;line-height:1.2" id="dash-user-name">Loading...</p>
+        <p style="font-size:10px;color:var(--muted)">with Genie</p>
+      </div>
+    </div>
+    <div class="row" style="gap:10px">
+      <span class="bdg bdg-a" id="day-bdg" onclick="_adminTap()">Day 1 / 15</span>
+    </div>
+  </div>
+  <div class="sb">
+    <div id="miss-gate"></div>
+    <div id="goal-bar"></div>
+    <div class="card mb10" id="goal-c"></div>
+    <div id="coach-notes"></div>
+    <div class="card mb10">
+      <div class="row mb12" style="justify-content:space-between">
+        <span class="lbl m0" id="grid-lbl">CHALLENGE GRID</span>
+        <div class="row" style="gap:10px;font-size:9px;color:#5a5a5a">
+          <span class="row" style="gap:3px"><span style="width:6px;height:6px;border-radius:50%;background:#4dc98a;display:inline-block"></span>Up</span>
+          <span class="row" style="gap:3px"><span style="width:6px;height:6px;border-radius:50%;background:#d9503a;display:inline-block"></span>Miss</span>
+        </div>
+      </div>
+      <div class="g15" id="d-grid"></div>
+      <div class="row mt12" id="day-nav-row" style="display:none">
+        <button class="bs" id="prev-b" style="padding:7px 12px;font-size:11px" onclick="chDay(-1)">← Prev</button>
+        <button class="bs" id="next-b" style="padding:7px 12px;font-size:11px" onclick="chDay(1)">Next →</button>
+        <span class="muted" id="sim-l" style="margin-left:auto;font-size:10px">Sim day 1</span>
+      </div>
+    </div>
+    <div id="completion-slot"></div>
+    <div class="card mb10" id="stats-card" style="display:none"></div>
+    <div id="plan-area"></div>
+    <div id="call-day-banner" style="display:none;margin-bottom:10px;padding:12px 14px;background:rgba(196,154,28,.06);border:1px solid rgba(196,154,28,.18);border-radius:10px">
+      <p style="font-size:12px;font-weight:700;color:#c49a1c;margin-bottom:2px">Today is a call day</p>
+      <p style="font-size:12px;color:#888;line-height:1.5">Upload your proof first, then <a id="call-day-link" href="#" target="_blank" style="color:#c49a1c;text-decoration:none">book your call with Genie →</a></p>
+    </div>
+    <div id="rec-c"></div>
+  </div>
+  <div class="stk">
+    <button id="up-btn" class="bp" style="width:100%;max-width:320px;font-size:15px;padding:13px" onclick="openMod()">Upload Day 1 Proof ↑</button>
+  </div>
+</div>
+
+<!-- FLOATING CHAT -->
+<div id="chat-fab" onclick="toggleFloatingChat()" style="display:none">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span class="chat-fab-label">Message Genie</span>
+  <span id="msg-badge" class="chat-fab-badge" style="display:none">0</span>
+</div>
+<div id="chat-float" class="chat-float" style="display:none">
+  <div class="chat-float-header">
+    <span style="font-weight:700;font-size:14px">Message Genie</span>
+    <button onclick="toggleFloatingChat()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer;padding:0 4px">✕</button>
+  </div>
+  <div id="chat-container"></div>
+</div>
+
+<!-- DAY COMPLETE -->
+<div id="s-d15" class="screen">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 20px;text-align:center;position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 35%,rgba(196,154,28,.1),transparent 60%);pointer-events:none"></div>
+    <div style="position:relative;z-index:1;width:100%;max-width:400px">
+
+      <div class="proof-card" id="proof-card">
+        <div class="proof-seal pc-anim" style="animation-delay:.2s"><span style="animation:sealSpin .8s ease forwards;display:inline-block">✦</span></div>
+        <span class="lbl lbl-a pc-anim" style="display:block;text-align:center;letter-spacing:.18em;margin-bottom:4px;animation-delay:.4s" id="pf-dur-lbl">CHALLENGE COMPLETE</span>
+        <p id="pf-lbl" class="pc-anim" style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#888;text-align:center;margin-bottom:14px;animation-delay:.5s"></p>
+        
+        <div class="pc-anim" style="display:flex;align-items:center;justify-content:center;gap:-8px;margin-bottom:16px;animation-delay:.6s">
+          <div id="pf-user-photo" style="width:48px;height:48px;border-radius:50%;border:2px solid #c49a1c;overflow:hidden;background:var(--s3);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--muted);font-size:14px;z-index:2">?</div>
+          <div style="width:48px;height:48px;border-radius:50%;border:2px solid rgba(196,154,28,.4);overflow:hidden;background:#c49a1c;margin-left:-12px;z-index:1">
+            <img id="genie-avatar-1" class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
+          </div>
+        </div>
+
+        <h2 class="hero-title pc-anim" style="font-size:clamp(32px,7vw,44px);font-weight:400;line-height:1.1;margin-bottom:12px;animation-delay:.7s">You proved it.</h2>
+        
+        <div class="pc-anim" style="display:flex;justify-content:center;gap:4px;margin-bottom:16px;animation-delay:.8s">
+          <div class="proof-stat"><div class="proof-stat-num" id="pf-days">15</div><div class="proof-stat-lbl">DAYS</div></div>
+          <div style="width:1px;background:rgba(196,154,28,.15);margin:6px 12px"></div>
+          <div class="proof-stat"><div class="proof-stat-num" id="pf-uploads">15</div><div class="proof-stat-lbl">UPLOADS</div></div>
+          <div style="width:1px;background:rgba(196,154,28,.15);margin:6px 12px"></div>
+          <div class="proof-stat"><div class="proof-stat-num" id="pf-streak">15</div><div class="proof-stat-lbl">STREAK</div></div>
+        </div>
+
+        <p id="pf-goal" class="pc-anim" style="font-size:12px;color:#888;line-height:1.6;margin-bottom:14px;animation-delay:.9s"></p>
+        <p id="pf-txt" class="pc-anim" style="font-size:14px;line-height:1.75;color:#ebebeb;margin-bottom:0;animation-delay:1s"></p>
+        
+        <div class="proof-watermark">ON IT WITH GENIE</div>
+      </div>
+
+      <div class="proof-share-hint" style="margin-top:12px;animation:heroFadeUp .5s ease 1.2s forwards;opacity:0"><span>↑</span> Screenshot this</div>
+
+      <div class="col mt12" style="opacity:0;animation:heroFadeUp .5s ease 1.5s forwards">
+        <button class="bp" style="width:100%;font-size:15px;padding:14px" onclick="_startNewChallenge()">Start a New Challenge</button>
+        <button class="bs" style="width:100%;font-size:14px;padding:12px;margin-top:8px" onclick="openFinishedDash()">View my dashboard</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="s-admin" class="screen">
+  <div class="nav" style="flex-shrink:0">
+    <div class="lm"><div class="lmk">G</div><span class="lmt">ON IT <b>WITH GENIE</b></span></div>
+    <div class="row" style="gap:12px">
+      <span class="lbl lbl-a m0" style="letter-spacing:.08em">ADMIN</span>
+      <button class="bs" style="padding:5px 11px;font-size:11px" onclick="adminDataLoaded=false;renderAdmin()">↻</button>
+      <button class="bs" style="padding:5px 11px;font-size:11px" onclick="window.location='/'">← Home</button>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="admin-tabs" id="admin-tab-bar">
+    <button id="tab-overview" class="admin-tab active" onclick="adminTab('overview')">Overview</button>
+    <button id="tab-messages" class="admin-tab" onclick="adminTab('messages')">Messages</button>
+    <button id="tab-challengers" class="admin-tab" onclick="adminTab('challengers')">Challengers</button>
+    <button id="tab-flagged" class="admin-tab" onclick="adminTab('flagged')">Attention</button>
+    <button id="tab-inbox" class="admin-tab" onclick="adminTab('inbox')">Reviews</button>
+    <button id="tab-notifications" class="admin-tab" onclick="adminTab('notifications')">Notifications</button>
+    <button id="tab-analytics" class="admin-tab" onclick="adminTab('analytics')">Analytics</button>
+    <button id="tab-settings" class="admin-tab" onclick="adminTab('settings')">Settings</button>
+    <button id="tab-design" class="admin-tab" onclick="adminTab('design')">Design</button>
+  </div>
+
+  <!-- Tab content -->
+  <div id="admin-content" style="flex:1;overflow-y:auto;padding:18px;max-width:720px;margin:0 auto;width:100%">
+    <div id="admin-pin-static" style="max-width:300px;margin:60px auto;text-align:center">
+      <span class="lbl lbl-a" style="display:block;margin-bottom:12px">ADMIN ACCESS</span>
+      <h3 style="font-size:18px;font-weight:800;margin-bottom:16px;color:#ebebeb">Enter PIN</h3>
+      <input id="admin-pin-input" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="····" maxlength="6" autocomplete="off" style="text-align:center;font-size:28px;letter-spacing:8px;padding:14px;width:100%;max-width:200px;display:block;margin:0 auto 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;color:#ebebeb" onkeydown="if(event.key==='Enter')checkAdminPin()">
+      <button class="bp" style="width:100%;max-width:200px;padding:12px;font-size:15px" onclick="checkAdminPin()">Enter →</button>
+      <p id="admin-pin-msg" style="font-size:12px;margin-top:12px;min-height:18px"></p>
+    </div>
+  </div>
+</div>
+
+<!-- WITNESS VIEW (landed on from an invite link: /witness/<token>) -->
+<div id="s-witness" class="screen">
+  <div class="nav" style="flex-shrink:0">
+    <div class="lm"><div class="lmk">G</div><span class="lmt">ON IT <b>WITH GENIE</b></span></div>
+    <span class="lbl lbl-a m0" style="letter-spacing:.08em">WITNESS</span>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:24px 20px">
+    <div id="witness-view-body" style="max-width:460px;margin:0 auto;width:100%">
+      <div style="text-align:center;padding:60px 0"><span class="spinner"></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE SHEET -->
+<div class="profile-overlay" id="profile-overlay" onclick="closeProfile(event)">
+  <div class="profile-sheet">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+      <div class="avatar-upload" style="width:64px;height:64px" onclick="el('profile-photo-file').click()">
+        <img id="profile-photo-preview" style="width:100%;height:100%;object-fit:cover;display:none">
+        <div id="profile-photo-placeholder" style="font-size:20px;color:var(--muted)">+</div>
+      </div>
+      <input type="file" id="profile-photo-file" accept="image/*" style="display:none" onchange="handleProfilePhoto(this)">
+      <div>
+        <p style="font-weight:800;font-size:16px" id="profile-name-display">Your Name</p>
+        <p style="font-size:12px;color:var(--muted)">Tap photo to change</p>
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <div><p style="font-size:14px;font-weight:600">Light mode</p><p style="font-size:11px;color:var(--muted)">Switch between dark and light</p></div>
+      <div class="toggle-pill" id="theme-toggle" onclick="toggleTheme()"></div>
+    </div>
+    <div class="toggle-row" id="notif-toggle-row" style="margin-top:10px;display:none">
+      <div><p style="font-size:14px;font-weight:600">Notifications</p><p style="font-size:11px;color:var(--muted)" id="notif-toggle-sub">Push alerts for messages</p></div>
+      <div class="toggle-pill" id="notif-toggle" onclick="toggleNotifications()"></div>
+    </div>
+    <!-- Witnesses menu entry (only shows when enabled for this challenger) -->
+    <div id="profile-witness-entry" style="margin-top:10px"></div>
+    <!-- Early completion request (only shows for an active round) -->
+    <div id="profile-completion" style="margin-top:10px"></div>
+
+    <div style="margin-top:16px">
+      <span class="lbl">DISPLAY NAME</span>
+      <input class="profile-input" id="profile-name-input" type="text" placeholder="Your first name">
+    </div>
+    <div style="margin-top:12px">
+      <span class="lbl">EMAIL</span>
+      <input class="profile-input" id="profile-email" type="email" placeholder="your@email.com">
+    </div>
+    <div style="margin-top:12px;margin-bottom:16px">
+      <span class="lbl">PHONE NUMBER</span>
+      <input class="profile-input" id="profile-phone" type="tel" placeholder="+234 000 000 0000">
+    </div>
+
+    <div id="profile-payment-info" style="display:none;margin-bottom:16px;padding:12px 14px;background:rgba(77,201,138,.04);border:1px solid rgba(77,201,138,.12);border-radius:10px">
+      <span class="lbl" style="color:#4dc98a;margin-bottom:8px;display:block">PAYMENT</span>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="color:var(--muted)">Status</span><span id="profile-pay-status" style="font-weight:700;color:#4dc98a">Paid</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="color:var(--muted)">Amount</span><span id="profile-pay-amount" style="font-weight:600">-</span></div>
+      <div id="profile-pay-ref-row" style="display:flex;justify-content:space-between;font-size:13px"><span style="color:var(--muted)">Reference</span><span id="profile-pay-ref" style="font-weight:600;font-size:11px;word-break:break-all;max-width:55%;text-align:right">-</span></div>
+    </div>
+
+    <button class="bp" style="width:100%;padding:12px;font-size:14px" onclick="saveProfile()">Save Changes</button>
+    <button class="bg" style="width:100%;padding:10px;margin-top:8px" onclick="closeProfile()">Close</button>
+    <div style="border-top:1px solid var(--bd);margin-top:16px;padding-top:16px;display:flex;flex-direction:column;gap:8px">
+      <button onclick="logOut()" style="width:100%;padding:10px;background:transparent;border:1px solid var(--bd);border-radius:9px;color:var(--fg,#e8e8e8);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">Log Out</button>
+      <p style="font-size:11px;color:var(--muted,#5a5a5a);line-height:1.5;margin:-2px 0 6px">Signs you out of this device. Your challenge and progress stay safe, just sign back in anytime.</p>
+      <button onclick="if(confirm('End this challenge? Your grid, uploads and progress will be cleared from this device. Your account stays.'))clearState()" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(217,80,58,.3);border-radius:9px;color:#d9503a;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">End My Challenge</button>
+      <button onclick="deleteMyAccount()" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(217,80,58,.5);border-radius:9px;color:#d9503a;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer">Delete My Account</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- SHARE CARD MODAL -->
+<div id="share-mod" class="mo">
+  <div class="mb" style="max-width:360px">
+    <div class="row mb16" style="justify-content:space-between;align-items:flex-start">
+      <div><span class="lbl lbl-a">SHARE YOUR PROGRESS</span><h3 style="font-size:18px;font-weight:800">Progress Card</h3></div>
+      <button onclick="el('share-mod').classList.remove('show')" style="background:#232323;border:none;color:#888;width:28px;height:28px;border-radius:7px;font-size:12px;cursor:pointer">✕</button>
+    </div>
+    <div id="share-card-preview" style="margin-bottom:14px;border-radius:10px;overflow:hidden"></div>
+    <button class="bp" style="width:100%;padding:12px;font-size:14px" onclick="downloadShareCard()">Download Image</button>
+    <button class="bg" style="width:100%;padding:10px;margin-top:8px;font-size:13px" onclick="nativeShareCard()">Share...</button>
+  </div>
+</div>
+<canvas id="share-canvas" style="display:none"></canvas>
+
+<!-- VIEW UPLOAD MODAL -->
+<div id="view-mod" class="mo">
+  <div class="mb">
+    <div class="row mb16" style="justify-content:space-between;align-items:flex-start">
+      <div><span class="lbl lbl-o" id="view-mod-dl">DAY 1</span><h3 style="font-size:18px;font-weight:800">Upload Review</h3></div>
+      <button onclick="closeViewMod()" style="background:#232323;border:none;color:#888;width:28px;height:28px;border-radius:7px;font-size:12px;cursor:pointer">✕</button>
+    </div>
+    <div id="view-mod-body"></div>
+    <div id="view-mod-actions" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<!-- WALKTHROUGH -->
+<div id="wt-wrap" style="display:none"></div>
+
+<!-- CONFETTI -->
+<div id="confetti-wrap" style="display:none" class="confetti-wrap"></div>
+
+<!-- WELCOME OVERLAY (first visit) -->
+<div id="welcome-overlay" style="display:none"></div>
+
+<!-- SIGN IN MODAL -->
+<div id="signin-mod" class="mo">
+  <div class="mb" style="max-width:360px">
+    <div class="row mb16" style="justify-content:space-between">
+      <h3 style="font-size:18px;font-weight:800">Welcome back</h3>
+      <button onclick="el('signin-mod').classList.remove('show')" style="background:#232323;border:none;color:#888;width:28px;height:28px;border-radius:7px;font-size:12px;cursor:pointer">✕</button>
+    </div>
+    <p class="muted mb16" style="font-size:13px;line-height:1.6">Enter your email or the name you used when you started your challenge.</p>
+    <input id="signin-email" type="text" placeholder="Email or full name" class="mb12" style="font-size:14px" onkeydown="if(event.key==='Enter')attemptSignIn()">
+    <button id="signin-btn" class="bp" style="width:100%;padding:12px;font-size:14px" onclick="attemptSignIn()">Find My Challenge →</button>
+    <p id="signin-msg" class="muted" style="font-size:11px;margin-top:8px;text-align:center"></p>
+    <div id="signin-results" style="display:none;margin-top:12px"></div>
+  </div>
+</div>
+
+</div>
+<div id="mod" class="mo">
+  <div class="mb">
+    <div class="row mb16" style="justify-content:space-between;align-items:flex-start">
+      <div><span class="lbl lbl-a" id="mod-dl">DAY 1 UPLOAD</span><h3 style="font-size:18px;font-weight:800">Submit Your Proof</h3><p class="muted" id="mod-pt" style="font-size:12px;margin-top:2px"></p></div>
+      <button onclick="closeMod()" style="background:#232323;border:none;color:#888;width:28px;height:28px;border-radius:7px;font-size:12px;cursor:pointer">✕</button>
+    </div>
+    <div id="mod-form"></div>
+    <div id="mod-ack" style="display:none;text-align:center;padding:8px 0">
+      <div id="mod-ack-icon" style="width:56px;height:56px;background:rgba(77,201,138,.1);border:2px solid #4dc98a;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:22px;color:#4dc98a;animation:popIn .4s ease forwards">✓</div>
+      <span class="lbl lbl-o" style="display:block;margin-bottom:6px">DAY <span id="ack-day">1</span> UPLOADED</span>
+      <p id="ack-t" style="font-size:14px;line-height:1.7;margin-bottom:14px"></p>
+      <p class="muted" style="font-size:12px">Genie will review and respond.</p>
+      <p id="ack-next" class="muted mb14" style="font-size:11px;margin-top:6px"></p>
+      <button class="bs" style="width:100%" onclick="closeMod()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE SLIDE-OVER -->
+<div id="profile-panel-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100" onclick="closeProfilePanel()"></div>
+<div id="profile-panel" style="position:fixed;top:0;right:0;height:100%;width:min(460px,100%);background:#111;border-left:1px solid #1f1f1f;z-index:1101;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #1a1a1a;flex-shrink:0">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">CHALLENGER PROFILE</span>
+    <button onclick="closeProfilePanel()" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:0;line-height:1">×</button>
+  </div>
+  <div id="profile-panel-body" style="flex:1;overflow-y:auto;padding:20px"></div>
+</div>
+
+<!-- UPLOAD DETAIL SLIDE-OVER -->
+<div id="upload-detail-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100" onclick="closeUploadDetail()"></div>
+<div id="upload-detail-panel" style="position:fixed;top:0;right:0;height:100%;width:min(420px,100%);background:#111;border-left:1px solid #1f1f1f;z-index:1101;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #1a1a1a;flex-shrink:0">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#5a5a5a">UPLOAD DETAIL</span>
+    <button onclick="closeUploadDetail()" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:0;line-height:1">×</button>
+  </div>
+  <div id="upload-detail-body" style="flex:1;overflow-y:auto;padding:20px"></div>
+</div>
+
+<!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
+     re-download after a deploy instead of serving the cached old build. -->
+<script src="js/config.js?v=20260926bulk"></script>
+<script src="js/theme.js?v=20260926bulk"></script>
+<script src="js/lil.js?v=20260926bulk"></script>
+<script src="js/auth.js?v=20260926bulk"></script>
+<script src="js/onboarding.js?v=20260926bulk"></script>
+<script src="js/goals.js?v=20260926bulk"></script>
+<script src="js/witnesses.js?v=20260926bulk"></script>
+<script src="js/miss.js?v=20260926bulk"></script>
+<script src="js/completion.js?v=20260926bulk"></script>
+<script src="js/miss-preview.js?v=20260926bulk"></script>
+<script src="js/dashboard.js?v=20260926bulk"></script>
+<script src="js/uploads.js?v=20260926bulk"></script>
+<script src="js/admin.js?v=20260926bulk"></script>
+<script src="js/design.js?v=20260926bulk"></script>
+<script src="js/ui.js?v=20260926bulk"></script>
+
+<!-- Add-to-home-screen prompt: shown on the dashboard to signed-in challengers who opened the app in a browser -->
+<style>
+#a2hs{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9999;max-width:460px;margin:0 auto;background:#111;color:#fff;border:1px solid #c49a1c;border-radius:18px;padding:14px 14px 14px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 12px 30px rgba(0,0,0,.45);font-family:"DM Sans",system-ui,sans-serif}
+#a2hs[hidden]{display:none}
+#a2hs .t{flex:1;min-width:0;font-size:14px;line-height:1.35}
+#a2hs .t b{display:block;font-size:15px;margin-bottom:2px}
+#a2hs .go{background:#c49a1c;color:#111;border:0;border-radius:999px;padding:10px 16px;font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap}
+#a2hs .x{background:none;border:0;color:#999;font-size:22px;line-height:1;padding:4px;cursor:pointer}
+</style>
+<div id="a2hs" hidden role="dialog" aria-label="Add to home screen">
+  <div class="t"><b>Put me on your home screen</b><span id="a2hs-msg">Open your dashboard in one tap next time, no links to find.</span></div>
+  <button class="go" id="a2hs-go" type="button">Add</button>
+  <button class="x" id="a2hs-x" type="button" aria-label="Not now">×</button>
+</div>
+<script>
+(function(){
+  var KEY="oiwg_a2hs_dismissed", deferred=null;
+  var standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone===true;
+  if(standalone) return;
+  try{ var d=+localStorage.getItem(KEY)||0; if(Date.now()-d < 7*864e5) return; }catch(e){}
+  var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var box=document.getElementById("a2hs"), go=document.getElementById("a2hs-go"), msg=document.getElementById("a2hs-msg");
+  window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); deferred=e; maybeShow(); });
+  function signedIn(){ try{ var s=JSON.parse(localStorage.getItem("oiwg_state")||"null"); return !!(s&&s.user&&(s.user.supabaseId||s.user.email)); }catch(e){ return false; } }
+  function onDash(){ var d=document.getElementById("s-dash"); return d && d.classList.contains("active"); }
+  function maybeShow(){
+    if(!signedIn() || !onDash()) return;
+    if(!deferred && !ios){ msg.textContent="In your browser menu, tap \"Add to Home screen\" or \"Install app\". Next time, open me in one tap."; go.hidden=true; }
+    if(ios){ msg.textContent="Tap the Share button, then \"Add to Home Screen\". Next time, open me in one tap."; go.hidden=true; }
+    box.hidden=false;
+  }
+  go.onclick=function(){ if(!deferred) return; deferred.prompt(); deferred.userChoice.finally(function(){ box.hidden=true; deferred=null; }); };
+  document.getElementById("a2hs-x").onclick=function(){ box.hidden=true; try{ localStorage.setItem(KEY, String(Date.now())); }catch(e){} };
+  window.addEventListener("appinstalled", function(){ box.hidden=true; });
+  var dash=document.getElementById("s-dash");
+  if(dash && window.MutationObserver) new MutationObserver(function(){ setTimeout(maybeShow, 1500); }).observe(dash,{attributes:true,attributeFilter:["class"]});
+  setTimeout(maybeShow, 2500);
+})();
+</script>
+</body>
+</html>

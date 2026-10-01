@@ -1,7 +1,7 @@
 {
   "name": "On It With Genie",
   "short_name": "Genie",
-  "start_url": "/",
+  "start_url": "/app",
   "display": "standalone",
   "background_color": "#060606",
   "theme_color": "#060606",
@@ -16,5 +16,6 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "scope": "/"
 }

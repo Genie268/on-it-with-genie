@@ -1,6 +1,6 @@
 // On It With Genie — Service Worker
 // CACHE_VERSION — bump on every deploy that must reach browsers immediately.
-const CACHE_VERSION = 'oiwg-bulk1';
+const CACHE_VERSION = 'oiwg-hub1';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -34,7 +34,7 @@ self.addEventListener('fetch', event => {
 });
 
 self.addEventListener('push', event => {
-  let data = { title: 'On It With Genie', body: '', tag: 'oiwg-msg', url: '/' };
+  let data = { title: 'On It With Genie', body: '', tag: 'oiwg-msg', url: '/app' };
   try { if (event.data) data = { ...data, ...event.data.json() }; } catch (e) {}
 
   const iconUrl = self.location.origin + '/icon-192.png';
@@ -48,14 +48,14 @@ self.addEventListener('push', event => {
       tag: data.tag,
       renotify: true,
       vibrate: [200, 100, 200],
-      data: { url: data.url || '/' }
+      data: { url: data.url || '/app' }
     })
   );
 });
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const url = event.notification.data?.url || '/';
+  const url = event.notification.data?.url || '/app';
   const fullUrl = self.location.origin + (url.startsWith('/') ? url : '/' + url);
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
