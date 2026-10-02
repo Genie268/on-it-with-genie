@@ -108,6 +108,13 @@ p{margin:0}
 .free-tag{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.14em;color:#fff;background:#178A4A;padding:6px 11px;border-radius:999px}
 .free-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--lime)}
 .chip.soon{background:transparent;border:1.5px dashed #9B95B5;color:#4A4466}
+.t-onit{background:#0B0B0A;color:#EDEDED;background-image:radial-gradient(80% 70% at 0% 0%,rgba(196,154,28,.16),transparent 70%)}
+.t-onit .ico{background:#161512}.t-onit .ico svg{width:26px;height:26px;fill:#C49A1C}
+.t-onit h3{color:#EDEDED}.t-onit p{color:#A9A9A4}.t-onit .arrow{background:#C49A1C;color:#0B0B0A}
+.t-onit .chip{background:#1A1916;color:#D9D9D4}.t-onit .chip.dark{background:#C49A1C;color:#0B0B0A}
+.app-tag{display:inline-flex;align-self:flex-start;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;color:#C49A1C;border:1px solid rgba(196,154,28,.4);padding:5px 10px;border-radius:999px}
+#leave{position:fixed;inset:0;z-index:200;background:#060606;opacity:0;pointer-events:none;transition:opacity .28s ease}
+#leave.on{opacity:1;pointer-events:auto}
 .t-mint{background:var(--mint)}.t-peach{background:var(--peach)}.t-lilac{background:var(--lilac)}.t-sky{background:var(--sky)}.t-sand{background:var(--sand)}
 
 .event{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;display:flex;align-items:center;gap:16px}
@@ -467,7 +474,7 @@ home(){ const h = lagosNow().getHours(); return `
 </section>
 <div class="sec-head" id="services"><h2>Ways to work with me</h2></div>
 <div class="grid">
-  ${card("accountability","t-peach",I.target,"Accountability coaching","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["7, 15 or 30 days"],["From ₦8,500","dark"]])}
+  ${card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["7, 15 or 30 days"],["From ₦8,500","dark"]],null,"ON IT APP")}
   ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Buy the hours, book sessions when it suits you.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
   ${card("call","t-mint",I.video,"Clarity call","10 minutes on video with me. Bring the one thing you're stuck on.",[["10 min"],["Video call"]],"Free")}
   ${card("courses","t-lilac",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
@@ -613,10 +620,12 @@ about(){ return `
 </div>`;},
 };
 
-function card(route,tint,icon,title,text,chips,tag){
-  return `<a class="card ${tint}" href="#${route}">
+const ONIT_MARK = '<svg viewBox="0 0 40 40" aria-hidden="true">'+[0,15,30].flatMap(y=>[0,15,30].map(x=>`<rect x="${x}" y="${y}" width="10" height="10" rx="2.4"/>`)).join("")+'</svg>';
+function card(route,tint,icon,title,text,chips,tag,appTag){
+  const app = route.startsWith("/");
+  return `<a class="card ${tint}" href="${app?route:"#"+route}"${app?' data-app':''}>
     <div class="row"><span class="ico">${icon}</span><span class="arrow">${I.arrow}</span></div>
-    ${tag?`<span class="free-tag">${tag.toUpperCase()}</span>`:""}
+    ${tag?`<span class="free-tag">${tag.toUpperCase()}</span>`:""}${appTag?`<span class="app-tag">${appTag}</span>`:""}
     <h3>${title}</h3><p>${text}</p>
     <div class="chips">${chips.map(([t,c])=>`<span class="chip ${c||""}">${t}</span>`).join("")}</div>
   </a>`;
@@ -1131,6 +1140,23 @@ async function handleCancel(token){
   };
 }
 
+/* ---------- Going into the On It app: fade to its black, then load it ---------- */
+document.addEventListener("click", e=>{
+  const a = e.target.closest && e.target.closest("a[data-app]");
+  if(!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+  e.preventDefault();
+  let ov = document.getElementById("leave");
+  if(!ov){ ov = document.createElement("div"); ov.id = "leave"; document.body.appendChild(ov); }
+  requestAnimationFrame(()=>ov.classList.add("on"));
+  setTimeout(()=>{ location.href = a.getAttribute("href"); }, 280);
+});
+let _pf = false;
+document.addEventListener("pointerover", e=>{
+  if(_pf || !(e.target.closest && e.target.closest("a[data-app]"))) return;
+  _pf = true; const l = document.createElement("link"); l.rel = "prefetch"; l.href = "/app"; document.head.appendChild(l);
+});
+window.addEventListener("pageshow", e=>{ if(e.persisted){ const ov=document.getElementById("leave"); if(ov) ov.classList.remove("on"); } });
+
 /* ---------- Router ---------- */
 function reveal(){
   const els = $("#app").querySelectorAll(".hero > div > *, .sec-head, .grid > .card, .event, .detail > *, .detail > div > *, .about > *, .about .prose > *, .back");
@@ -1141,6 +1167,7 @@ function route(){
   let key = (location.hash || "#home").slice(1);
   const scrollToServices = key === "services";
   if(scrollToServices) key = "home";
+  if(key==="accountability"){ location.replace("/app"); return; }
   if(!views[key]) key = "home";
   clearInterval(B.poll);
   $("#app").innerHTML = `<div class="view">${views[key]()}</div>`;

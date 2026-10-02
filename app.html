@@ -9,13 +9,33 @@
 <meta name="apple-mobile-web-app-title" content="On It With Genie">
 <link rel="manifest" href="/manifest.json">
 <title>On It With Genie</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23060606'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-size='20' font-weight='900' fill='%23c49a1c' font-family='system-ui'%3EG%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='11' fill='%23060606'/%3E%3Cg fill='%23c49a1c'%3E%3Crect x='8' y='8' width='8' height='8' rx='2'/%3E%3Crect x='20' y='8' width='8' height='8' rx='2'/%3E%3Crect x='32' y='8' width='8' height='8' rx='2'/%3E%3Crect x='8' y='20' width='8' height='8' rx='2'/%3E%3Crect x='20' y='20' width='8' height='8' rx='2'/%3E%3Crect x='32' y='20' width='8' height='8' rx='2'/%3E%3Crect x='8' y='32' width='8' height='8' rx='2'/%3E%3Crect x='20' y='32' width='8' height='8' rx='2'/%3E%3Crect x='32' y='32' width='8' height='8' rx='2'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&family=Lora:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&family=Bebas+Neue&family=Archivo+Black&family=Syne:wght@400;500;600;700;800&family=Archivo:wght@400;600;700;800;900&family=Spectral:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="css/styles.css?v=20260926bulk">
+<style>
+/* On It splash: the app's own front door. Paints before anything else. */
+#oi-splash{position:fixed;inset:0;z-index:100000;background:#060606;display:grid;place-items:center;transition:opacity .4s ease}
+#oi-splash.out{opacity:0;pointer-events:none}
+.oi-sp-in{display:flex;flex-direction:column;align-items:center;gap:22px}
+#oi-splash .oi-mark{width:72px;height:72px;fill:#c49a1c;overflow:visible}
+#oi-splash .oi-mark rect{transform-box:fill-box;transform-origin:center;animation:oiTile .42s cubic-bezier(.2,.9,.3,1.25) both}
+#oi-splash .oi-mark rect:nth-child(1){animation-delay:.10s}#oi-splash .oi-mark rect:nth-child(2){animation-delay:.16s}#oi-splash .oi-mark rect:nth-child(3){animation-delay:.22s}
+#oi-splash .oi-mark rect:nth-child(4){animation-delay:.28s}#oi-splash .oi-mark rect:nth-child(5){animation-delay:.34s}#oi-splash .oi-mark rect:nth-child(6){animation-delay:.40s}
+#oi-splash .oi-mark rect:nth-child(7){animation-delay:.46s}#oi-splash .oi-mark rect:nth-child(8){animation-delay:.52s}#oi-splash .oi-mark rect:nth-child(9){animation-delay:.62s}
+#oi-splash .oi-tick{fill:none;stroke:#060606;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:9;stroke-dashoffset:9;animation:oiTick .3s .86s ease-out forwards}
+.oi-sp-word{font-family:"Archivo",Helvetica,Arial,sans-serif;font-weight:900;font-size:26px;letter-spacing:.2em;color:#ededed;text-align:center;line-height:1;animation:oiWord .5s .78s ease-out both;padding-left:.2em}
+.oi-sp-word small{display:block;font-family:"DM Sans",system-ui,sans-serif;font-weight:600;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:#8a8a8a;margin-top:10px}
+@keyframes oiTile{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:scale(1)}}
+@keyframes oiTick{to{stroke-dashoffset:0}}
+@keyframes oiWord{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#oi-splash *{animation:none!important;stroke-dashoffset:0!important}}
+html[data-route="admin"] #oi-splash,html[data-route="witness"] #oi-splash{display:none}
+</style>
+<link rel="stylesheet" href="css/styles.css?v=20261002onit">
 </head>
 <body>
 <script>
@@ -24,76 +44,97 @@ if(/^\/admin\/?$/.test(window.location.pathname)){document.documentElement.setAt
 // Witness invite: accepts /witness/<t>, /?witness=<t>, or /#/witness/<t>
 if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(window.location.search)||/witness[\/=]/.test(window.location.hash)){document.documentElement.setAttribute('data-route','witness');}
 </script>
+<div id="oi-splash" aria-hidden="true"><div class="oi-sp-in"><svg class="oi-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="0" y="0" width="10" height="10" rx="2.4"/><rect x="15" y="0" width="10" height="10" rx="2.4"/><rect x="30" y="0" width="10" height="10" rx="2.4"/><rect x="0" y="15" width="10" height="10" rx="2.4"/><rect x="15" y="15" width="10" height="10" rx="2.4"/><rect x="30" y="15" width="10" height="10" rx="2.4"/><rect x="0" y="30" width="10" height="10" rx="2.4"/><rect x="15" y="30" width="10" height="10" rx="2.4"/><rect class="oi-last" x="30" y="30" width="10" height="10" rx="2.4"/><path class="oi-tick" d="M32.6 35.2l1.8 1.8 3.2-3.6"/></svg><div class="oi-sp-word">ON IT<small>with Genie</small></div></div></div>
+<script>
+(function(){
+  var sp=document.getElementById("oi-splash"), r=document.documentElement.getAttribute("data-route");
+  if(r==="admin"||r==="witness"){ sp.remove(); return; }
+  document.documentElement.classList.add("oi-splashing");
+  function done(){ if(!sp.parentNode) return; sp.classList.add("out"); document.documentElement.classList.remove("oi-splashing"); document.documentElement.classList.add("oi-arrived"); setTimeout(function(){ sp.remove(); }, 420); }
+  var quick = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  setTimeout(done, quick ? 350 : 1450);
+})();
+</script>
 <div id="grain-overlay"></div>
 <div id="app">
 
 <!-- LANDING -->
 <div id="s-land" class="screen active">
   <div id="landing-hero" class="dz-hero" style="align-items:var(--align-items,flex-start);text-align:var(--align,left);position:relative">
-    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 0% 0%,rgba(196,154,28,.07),transparent 60%);pointer-events:none"></div>
+    <div class="oi-glow" aria-hidden="true"></div>
     <div id="landing-canvas-layer" class="dz-canvas-layer"></div>
 
-    <div class="kl-wrap">
+    <div class="kl-wrap oi-page">
 
-      <!-- 1. NAV -->
-      <nav class="kl-nav">
-        <span class="kl-brand" data-dz-id="logo">ON&nbsp;IT <span class="kl-brand-sub">WITH GENIE</span></span>
+      <nav class="kl-nav oi-in" style="--d:0">
+        <span class="oi-brand" data-dz-id="logo"><svg class="oi-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="0" y="0" width="10" height="10" rx="2.4"/><rect x="15" y="0" width="10" height="10" rx="2.4"/><rect x="30" y="0" width="10" height="10" rx="2.4"/><rect x="0" y="15" width="10" height="10" rx="2.4"/><rect x="15" y="15" width="10" height="10" rx="2.4"/><rect x="30" y="15" width="10" height="10" rx="2.4"/><rect x="0" y="30" width="10" height="10" rx="2.4"/><rect x="15" y="30" width="10" height="10" rx="2.4"/><rect class="oi-last" x="30" y="30" width="10" height="10" rx="2.4"/><path class="oi-tick" d="M32.6 35.2l1.8 1.8 3.2-3.6"/></svg><span>ON IT <em>with Genie</em></span></span>
         <span class="kl-signin" data-dz-id="signin" onclick="showSignIn()">Sign in <span aria-hidden="true">&rarr;</span></span>
       </nav>
 
-      <!-- HERO -->
-      <header class="kl-hero">
-        <!-- 2. HEADLINE (two blocks) -->
-        <h1 class="kl-h1">
-          <span class="kl-h1-line" data-dz-id="headline">You already know what to do.</span>
-          <span class="kl-h1-line ac" data-dz-id="headline2">Now do it.</span>
-        </h1>
+      <header class="oi-hero">
+        <div class="oi-hero-text">
+          <h1 class="kl-h1 oi-in" style="--d:1">
+            <span class="kl-h1-line" data-dz-id="headline">You already know what to&nbsp;do.</span>
+            <span class="kl-h1-line ac" data-dz-id="headline2">Now do it.</span>
+          </h1>
+          <p class="kl-sub oi-in" style="--d:2" data-dz-id="subhead">Pick one goal. Upload proof every day. I check every single one myself.</p>
+          <div class="oi-cta-row oi-in" style="--d:3">
+            <button class="bp kl-cta" data-dz-id="cta" onclick="startOB()">Start my challenge <span aria-hidden="true">&rarr;</span></button>
+            <span class="oi-cta-note" data-dz-id="meta">7, 15 or 30 days <i>&bull;</i> from &#8358;8,500</span>
+          </div>
+        </div>
 
-        <!-- 3. SUBHEAD with a gold dash to its left -->
-        <p class="kl-sub" data-dz-id="subhead">Pick one thing. Show up every day. I'll hold you to it.</p>
-
-        <!-- 4. PRIMARY BUTTON — same onboarding flow, keep id + handler -->
-        <button class="bp kl-cta" data-dz-id="cta" onclick="startOB()">I'm ready <span aria-hidden="true">&rarr;</span></button>
-
-        <!-- 5. META LINE -->
-        <p class="kl-meta" data-dz-id="meta">15 days <i>&bull;</i> One goal <i>&bull;</i> Daily proof</p>
+        <div class="oi-board oi-in" style="--d:3" aria-label="What your dashboard looks like">
+          <div class="oi-board-top">
+            <div><span class="oi-eyebrow">Your board</span><b>Day 9 of 15</b></div>
+            <div class="oi-streak"><b>8</b><span>day streak</span></div>
+          </div>
+          <div class="oi-tiles"><div class="oi-t done" style="--i:1"><small>1</small><b>✓✓</b></div><div class="oi-t done" style="--i:2"><small>2</small><b>✓✓</b></div><div class="oi-t done" style="--i:3"><small>3</small><b>✓✓</b></div><div class="oi-t done" style="--i:4"><small>4</small><b>✓✓</b></div><div class="oi-t done" style="--i:5"><small>5</small><b>✓✓</b></div><div class="oi-t done" style="--i:6"><small>6</small><b>✓✓</b></div><div class="oi-t up" style="--i:7"><small>7</small><b>✓</b></div><div class="oi-t up" style="--i:8"><small>8</small><b>✓</b></div><div class="oi-t today" style="--i:9"><small>9</small><b>+</b></div><div class="oi-t" style="--i:10"><small>10</small></div><div class="oi-t" style="--i:11"><small>11</small></div><div class="oi-t" style="--i:12"><small>12</small></div><div class="oi-t" style="--i:13"><small>13</small></div><div class="oi-t" style="--i:14"><small>14</small></div><div class="oi-t" style="--i:15"><small>15</small></div></div>
+          <div class="oi-reply">
+            <span class="oi-av">G</span>
+            <p><b>Genie</b>Good work on day 8. Same time tomorrow, and send the full page this time.</p>
+          </div>
+          <div class="oi-key"><span><i class="k-up"></i>&#10003; Uploaded</span><span><i class="k-done"></i>&#10003;&#10003; Checked by Genie</span></div>
+        </div>
       </header>
 
-      <!-- 6. DIVIDER -->
-      <hr class="kl-rule">
+      <section class="oi-sec">
+        <p class="oi-label">How it works</p>
+        <div class="oi-steps">
+          <div class="oi-step"><span class="oi-num">01</span><h3>Name the one thing</h3><p>Tell me what you've been putting off and why it matters now. I read every answer.</p></div>
+          <div class="oi-step"><span class="oi-num">02</span><h3>Show proof every day</h3><p>A photo, a screenshot, a short video. Anything that shows you did the work today.</p></div>
+          <div class="oi-step"><span class="oi-num">03</span><h3>I check it</h3><p>I look at your proof and reply. When you see two ticks, I've seen it. If you go quiet, I'll notice.</p></div>
+        </div>
+      </section>
 
-      <!-- 7. EYEBROW -->
-      <p class="kl-eyebrow"><span data-dz-id="eyebrow">This is for you if&hellip;</span></p>
+      <section class="oi-sec">
+        <p class="oi-label">Pick your length</p>
+        <div class="oi-plans" id="oi-plans"></div>
+        <p class="oi-small">You set your goal first. You pay at the end, once you're sure.</p>
+      </section>
 
-      <!-- 8. THREE COLUMNS (gold circle-check above each) -->
-      <div class="kl-cols">
-        <div class="kl-col">
-          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-          <p class="kl-col-p" data-dz-id="feat1">You know what to do but struggle to follow through.</p>
-        </div>
-        <div class="kl-col">
-          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-          <p class="kl-col-p" data-dz-id="feat2">You need structure, accountability and someone in your corner.</p>
-        </div>
-        <div class="kl-col">
-          <span class="kl-check"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
-          <p class="kl-col-p" data-dz-id="feat3">You're done starting over. You're ready to finish what you start.</p>
-        </div>
-      </div>
+      <section class="oi-sec oi-for">
+        <p class="oi-label" data-dz-id="eyebrow">This is for you if</p>
+        <ul>
+          <li data-dz-id="feat1">You keep starting things and dropping them halfway.</li>
+          <li data-dz-id="feat2">You do better when someone is actually watching.</li>
+          <li data-dz-id="feat3">You want honest feedback on what you did, every day.</li>
+        </ul>
+      </section>
 
-      <!-- 8. QUOTE -->
-      <figure class="kl-quote">
-        <span class="kl-qmark" aria-hidden="true">&ldquo;</span>
-        <div class="kl-quote-body">
-          <blockquote data-dz-id="quote">The gap between knowing and doing is where I come in.</blockquote>
-          <figcaption class="kl-cite">
-            <div class="genie-float" style="width:38px;height:38px;border-radius:50%;border:2px solid var(--accent,#c49a1c);overflow:hidden;flex-shrink:0;background:var(--accent,#c49a1c)">
-              <img class="genie-photo-img" src="" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block">
-            </div>
-            <span class="kl-cite-name" data-dz-id="coachline">&mdash; Genie</span>
-          </figcaption>
+      <section class="oi-sec oi-genie">
+        <img src="/img/genie-about-bw.jpg" alt="Genie" loading="lazy">
+        <div>
+          <blockquote data-dz-id="quote">I look at every upload myself. That's the whole point. You're not shouting into an app.</blockquote>
+          <p class="oi-cite" data-dz-id="coachline">Genie</p>
+          <p class="oi-small" style="margin-top:18px">Not sure yet? <a href="/book#call">Book a free 10-minute call with me first.</a></p>
         </div>
-      </figure>
+      </section>
+
+      <footer class="oi-foot">
+        <span class="oi-brand sm"><svg class="oi-mark" viewBox="0 0 40 40" aria-hidden="true"><rect x="0" y="0" width="10" height="10" rx="2.4"/><rect x="15" y="0" width="10" height="10" rx="2.4"/><rect x="30" y="0" width="10" height="10" rx="2.4"/><rect x="0" y="15" width="10" height="10" rx="2.4"/><rect x="15" y="15" width="10" height="10" rx="2.4"/><rect x="30" y="15" width="10" height="10" rx="2.4"/><rect x="0" y="30" width="10" height="10" rx="2.4"/><rect x="15" y="30" width="10" height="10" rx="2.4"/><rect class="oi-last" x="30" y="30" width="10" height="10" rx="2.4"/><path class="oi-tick" d="M32.6 35.2l1.8 1.8 3.2-3.6"/></svg><span>ON IT</span></span>
+        <a href="/">Part of Genie's work. See everything &rarr;</a>
+      </footer>
 
     </div>
   </div>
@@ -632,6 +673,17 @@ window.addEventListener("load", function(){
     if(want==="signin" && typeof showSignIn==="function") showSignIn();
   }, 400);
 });
+</script>
+<script>
+/* Plan cards on the landing, built from TIERS so prices live in one place. */
+(function(){
+  var box=document.getElementById("oi-plans"); if(!box||typeof TIERS==="undefined") return;
+  box.innerHTML=[7,15,30].map(function(d){ var t=TIERS[d];
+    return '<div class="oi-plan'+(d===30?' deep':'')+'"><div class="oi-plan-top"><span>'+d+' days</span><small>'+t.name+'</small></div>'+
+      '<b class="oi-price">'+t.price+'</b><ul>'+t.perks.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>'+
+      '<button class="oi-plan-btn" onclick="startOB();S.ans.duration='+d+'">Start '+d+' days</button></div>';
+  }).join("");
+})();
 </script>
 </body>
 </html>

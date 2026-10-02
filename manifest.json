@@ -1,6 +1,6 @@
 {
   "name": "On It With Genie",
-  "short_name": "Genie",
+  "short_name": "On It",
   "start_url": "/app",
   "display": "standalone",
   "background_color": "#060606",
@@ -9,12 +9,14 @@
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
   "scope": "/"

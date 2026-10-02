@@ -1,6 +1,6 @@
 // On It With Genie — Service Worker
 // CACHE_VERSION — bump on every deploy that must reach browsers immediately.
-const CACHE_VERSION = 'oiwg-hub1';
+const CACHE_VERSION = 'oiwg-onit2';
 
 self.addEventListener('install', () => self.skipWaiting());
 
