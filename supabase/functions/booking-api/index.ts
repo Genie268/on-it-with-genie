@@ -143,21 +143,30 @@ function sessionLength(service: string, raw: unknown) {
   return SESSION_LENGTHS.includes(n) ? n : 60;
 }
 
+/*
+ * Clarity calls: show today plus the next few days (booking_window_days). If calls fill up so
+ * fewer than that many days still have space, keep opening the next days until enough do,
+ * never more than FREE_CALL_MAX_DAYS out. Mentorship: a fixed window (mentorship_window_days).
+ */
+const FREE_CALL_MAX_DAYS = 14;
 async function buildSlots(service: string, minutes: number) {
   await expireHolds();
   const rules = await rulesFor(service);
-  const days = await windowDays(service);
+  const base = await windowDays(service);
+  const maxDays = service === "free_call" ? Math.max(base, FREE_CALL_MAX_DAYS) : base;
   const now = Date.now();
   const today = lagosDate(now);
   const fromMs = at(today, "00:00");
-  const toMs = at(addDays(today, days), "23:59");
+  const toMs = at(addDays(today, maxDays), "23:59");
   const taken = await takenRanges(fromMs, toMs);
   const overlaps = (a: number, b: number) => taken.some(([s, e]) => a < e && b > s);
   const lead = (LEAD_MINUTES[service] ?? 10) * 60_000;
   const dur = minutes * 60_000;
 
   const out: Array<{ date: string; slots: Array<{ start: string; label: string; open: boolean }> }> = [];
-  for (let i = 0; i <= days; i++) {
+  let openDays = 0, last = base;
+  for (let i = 0; i <= maxDays; i++) {
+    if (i > base && openDays >= base) break; // enough days with space; stop extending
     const date = addDays(today, i);
     const wd = lagosWeekday(date);
     const slots: Array<{ start: string; label: string; open: boolean }> = [];
@@ -171,8 +180,10 @@ async function buildSlots(service: string, minutes: number) {
     }
     slots.sort((a, b) => a.start.localeCompare(b.start));
     if (slots.length) out.push({ date, slots });
+    if (slots.some((x) => x.open)) openDays++;
+    last = i;
   }
-  return { days: out, window_days: days };
+  return { days: out, window_days: Math.max(base, last) };
 }
 
 /* Is this exact start a real, open slot for a session of this length? */
@@ -181,7 +192,8 @@ async function validateSlot(service: string, startIso: string, minutes: number):
   if (!Number.isFinite(t)) return { ok: false, error: "bad_time" };
   if (t < Date.now() + (LEAD_MINUTES[service] ?? 10) * 60_000) return { ok: false, error: "too_soon" };
   const date = lagosDate(t);
-  if (date > addDays(lagosDate(Date.now()), await windowDays(service))) return { ok: false, error: "too_far" };
+  const reach = service === "free_call" ? (await buildSlots(service, minutes)).window_days : await windowDays(service);
+  if (date > addDays(lagosDate(Date.now()), reach)) return { ok: false, error: "too_far" };
   const dur = minutes * 60_000;
   const rules = (await rulesFor(service)).filter((r) => r.weekday === lagosWeekday(date));
   for (const r of rules) {
