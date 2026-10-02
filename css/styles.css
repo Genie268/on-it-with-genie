@@ -398,6 +398,59 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
   .oi-cta-row .kl-cta{width:100%;justify-content:center}
 }
 
+.oi-swipe{display:none;font-size:12px;color:var(--muted,#8a8a8a);margin:10px 0 0}
+/* Phone layout: everything below only applies under 760px, so the desktop page is untouched */
+@media(max-width:760px){
+  .oi-hero{padding-top:40px;gap:36px}
+  .oi-hero .kl-h1{font-size:clamp(36px,10.4vw,46px);line-height:.98;margin-bottom:18px}
+  .oi-hero .kl-sub{font-size:16px;padding-left:0;margin-bottom:24px}
+  .oi-hero .kl-sub::before{display:none}
+  .oi-cta-row{gap:12px}
+  .oi-cta-note{width:100%;text-align:center}
+
+  /* the sample board becomes a compact preview card */
+  .oi-board{max-width:none;padding:16px;border-radius:20px;box-shadow:0 24px 60px -30px rgba(196,154,28,.35)}
+  .oi-board-top{margin-bottom:12px}
+  .oi-board-top b{font-size:18px}
+  .oi-streak b{font-size:22px}
+  .oi-tiles{gap:6px}
+  .oi-t{border-radius:9px}
+  .oi-t small{top:4px;left:6px;font-size:9px}
+  .oi-t b{font-size:12px}
+  .oi-reply{margin-top:12px;padding:10px 12px;border-radius:14px}
+  .oi-reply p{font-size:13px}
+  .oi-av{width:26px;height:26px;font-size:12px}
+  .oi-key{display:none}
+
+  .oi-sec{margin-top:64px}
+  .oi-label{margin-bottom:22px}
+
+  /* steps: number beside the text, not above it */
+  .oi-steps{gap:0}
+  .oi-step{display:grid;grid-template-columns:44px 1fr;column-gap:12px;padding:18px 0}
+  .oi-num{grid-row:span 2;font-size:24px;margin:2px 0 0}
+  .oi-step h3{font-size:17px;margin-bottom:4px}
+  .oi-step p{font-size:14px;line-height:1.5}
+
+  /* plans: swipe sideways instead of stacking three tall cards */
+  .oi-plans{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:24px;margin:0 -24px;padding:2px 24px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .oi-plans::-webkit-scrollbar{display:none}
+  .oi-plan{flex:0 0 82%;scroll-snap-align:start;padding:20px}
+  .oi-plan:hover{transform:none}
+  .oi-price{font-size:32px;margin:10px 0 14px}
+  .oi-plan ul{margin-bottom:18px}
+  .oi-plan li{font-size:13.5px}
+  .oi-swipe{display:block}
+
+  .oi-for li{font-size:18px;padding:14px 0 14px 24px}
+  .oi-for li::before{top:calc(14px + .4em);width:10px;height:10px}
+
+  /* Genie: small photo beside the name, quote underneath */
+  .oi-genie{display:block}
+  .oi-genie img{display:block;width:96px;max-width:none;aspect-ratio:1;border-radius:18px;margin:0 0 18px}
+  .oi-genie blockquote{font-size:22px}
+  .oi-foot{margin-top:64px;flex-direction:column;align-items:flex-start;gap:12px}
+}
 /* Entrance: only after the splash, so the page arrives instead of just appearing */
 html.oi-splashing .oi-in{opacity:0}
 html.oi-arrived .oi-in{animation:oiRise .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--d,0) * 90ms)}
