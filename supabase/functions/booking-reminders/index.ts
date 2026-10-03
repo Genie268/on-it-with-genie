@@ -4,6 +4,7 @@
  *   - 30 minutes before: "In 30 minutes"
  *   - 10 minutes before: "In 10 minutes"
  *   - at the start time:  "I'm on the call now"
+ *   - 3 minutes before, to Genie: one alert per call with the name and the join link
  * Each reminder is sent once. Someone who books late only gets the reminders still ahead of them.
  * Requires header x-cron-key matching private_settings.cron_key.
  */
@@ -56,19 +57,33 @@ function copy(kind: "30" | "10" | "live", b: any, meet: string) {
 }
 
 Deno.serve(async (req) => {
-  const { data: rows } = await sb.from("private_settings").select("key,value").in("key", ["cron_key", "meet_link"]);
+  const { data: rows } = await sb.from("private_settings").select("key,value").in("key", ["cron_key", "meet_link", "notify_email"]);
   const s: Record<string, string> = {};
   (rows ?? []).forEach((r: any) => (s[r.key] = r.value));
   if (!s.cron_key || req.headers.get("x-cron-key") !== s.cron_key) return new Response("forbidden", { status: 403 });
 
   const now = Date.now();
   const { data: due } = await sb.from("slot_bookings")
-    .select("id,service,name,email,starts_at,reminded_30,reminded_10,reminded_live")
+    .select("id,service,name,email,phone,note,minutes,starts_at,reminded_30,reminded_10,reminded_live,reminded_genie")
     .eq("status", "confirmed")
     .gte("starts_at", new Date(now - 5 * 60_000).toISOString())
     .lte("starts_at", new Date(now + 31 * 60_000).toISOString());
 
   let sent = 0;
+  // One alert to Genie, 3 minutes before each call: join now, and wrap up whoever is on now.
+  if (s.notify_email) {
+    for (const b of due ?? []) {
+      const mins = (Date.parse(b.starts_at) - now) / 60_000;
+      if (b.reminded_genie || mins > 3.5 || mins < -2) continue;
+      const { data: claimed } = await sb.from("slot_bookings").update({ reminded_genie: new Date().toISOString() }).eq("id", b.id).is("reminded_genie", null).select("id");
+      if (!claimed || !claimed.length) continue;
+      const at = label(Date.parse(b.starts_at));
+      const what = b.service === "free_call" ? "Clarity call" : `Mentorship (${b.minutes ?? 60} min)`;
+      const link = s.meet_link || "";
+      const text = `${b.name} at ${at}. Wrap up and join.\n\n${link}\n\n${what}\nWants to talk about: ${b.note || "-"}\nPhone: ${b.phone || "-"}\nEmail: ${b.email}`;
+      if (await send(s.notify_email, `${at} ${b.name}: join now`, text)) sent++;
+    }
+  }
   for (const b of due ?? []) {
     const mins = (Date.parse(b.starts_at) - now) / 60_000;
     let kind: "30" | "10" | "live" | null = null;
