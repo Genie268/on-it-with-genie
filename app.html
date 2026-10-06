@@ -80,7 +80,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
           <p class="kl-sub oi-in" style="--d:2" data-dz-id="subhead">Pick one goal. Upload proof every day. I check every single one myself.</p>
           <div class="oi-cta-row oi-in" style="--d:3">
             <button class="bp kl-cta" data-dz-id="cta" onclick="startOB()">Start my challenge <span aria-hidden="true">&rarr;</span></button>
-            <span class="oi-cta-note" data-dz-id="meta">7, 15 or 30 days <i>&bull;</i> from &#8358;8,500</span>
+            <span class="oi-cta-note" data-dz-id="meta">15 days to 3 months <i>&bull;</i> from &#8358;15,000</span>
           </div>
         </div>
 
@@ -163,9 +163,9 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
       <p class="muted mb20" style="font-size:13px">Pick your duration. The grid is your battleground.</p>
 
       <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px">
-        <button class="dur-btn" id="dur-7" onclick="selectDuration(7)">7 Days</button>
         <button class="dur-btn active" id="dur-15" onclick="selectDuration(15)">15 Days</button>
         <button class="dur-btn" id="dur-30" onclick="selectDuration(30)">30 Days</button>
+        <button class="dur-btn" id="dur-90" onclick="selectDuration(90)">3 Months</button>
       </div>
 
       <div style="background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:6px">
@@ -681,11 +681,12 @@ window.addEventListener("load", function(){
 /* Plan cards on the landing, built from TIERS so prices live in one place. */
 (function(){
   var box=document.getElementById("oi-plans"); if(!box||typeof TIERS==="undefined") return;
-  box.innerHTML=[7,15,30].map(function(d){ var t=TIERS[d];
-    return '<div class="oi-plan'+(d===30?' deep':'')+'"><div class="oi-plan-top"><span>'+d+' days</span><small>'+t.name+'</small></div>'+
+  box.innerHTML=SELECTABLE_DURATIONS.map(function(d){ var t=TIERS[d], lab=durLabel(d);
+    return '<div class="oi-plan'+(d===90?' deep':'')+'"><div class="oi-plan-top"><span>'+lab+'</span><small>'+t.name+'</small></div>'+
       '<b class="oi-price">'+t.price+'</b><ul>'+t.perks.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>'+
-      '<button class="oi-plan-btn" onclick="startOB();S.ans.duration='+d+'">Start '+d+' days</button></div>';
+      '<button class="oi-plan-btn" onclick="startOB();S.ans.duration='+d+'">Start '+lab+'</button></div>';
   }).join("");
+  box.insertAdjacentHTML("afterend",'<p style="text-align:center;margin-top:18px;font-size:13px;opacity:.7">Need longer than 3 months? <a href="https://eugeneobo.com/#call" style="color:#c49a1c;text-decoration:underline">Talk to me</a> and I\'ll set it up for you.</p>');
 })();
 </script>
 </body>

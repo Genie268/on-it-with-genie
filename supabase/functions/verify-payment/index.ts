@@ -30,7 +30,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 // Tier prices in kobo — must match PRICES in js/config.js.
-const PRICES: Record<number, number> = { 7: 850000, 15: 1500000, 30: 5000000 };
+const PRICES: Record<number, number> = { 7: 850000, 15: 1500000, 30: 5000000, 90: 15000000 }; // 7 retired; kept for old unpaid signups
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",

@@ -11,7 +11,7 @@
    Single-goal users: the map holds only slot 1, S.uploads is that
    array, behaviour is exactly what it was before.
 
-   Slot 2 is gated in the DATABASE (RLS: duration must be 30).
+   Slot 2 is gated in the DATABASE (RLS: duration must be 30 or more).
    The UI checks below are convenience, never the real lock.
    ============================================================ */
 
@@ -19,7 +19,7 @@ function goalsList(){ return Array.isArray(S.goals) ? S.goals : []; }
 function goalBySlot(slot){ return goalsList().find(g => g.slot === slot) || null; }
 function hasSecondGoal(){ return !!goalBySlot(2); }
 function _dur(){ return (typeof getDur === "function") ? getDur() : (S.user?.duration || 15); }
-function isIntensive(){ return _dur() === 30; }
+function isIntensive(){ return _dur() >= 30; }
 function canAddSecondGoal(){ return isIntensive() && !hasSecondGoal(); }
 function activeSlot(){ return (S.activeGoal === 2 && hasSecondGoal()) ? 2 : 1; }
 function activeGoalRow(){ return goalBySlot(activeSlot()); }

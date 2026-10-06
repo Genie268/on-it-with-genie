@@ -474,7 +474,7 @@ home(){ const h = lagosNow().getHours(); return `
 </section>
 <div class="sec-head" id="services"><h2>Ways to work with me</h2></div>
 <div class="grid">
-  ${card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["7, 15 or 30 days"],["From ₦8,500","dark"]],null,"ON IT APP")}
+  ${card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["15 days to 3 months"],["From ₦15,000","dark"]],null,"ON IT APP")}
   ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Buy the hours, book sessions when it suits you.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
   ${card("call","t-mint",I.video,"Clarity call","10 minutes on video with me. Bring the one thing you're stuck on.",[["10 min"],["Video call"]],"Free")}
   ${card("courses","t-lilac",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
@@ -545,11 +545,11 @@ ${backLink()}
   <div class="panel">
     <h3>Pick your length</h3>
     <div class="opts" style="pointer-events:none">
-      <div class="opt"><span><b>7 days · ₦8,500</b><span>One goal, daily uploads, a check-in call with me</span></span></div>
       <div class="opt"><span><b>15 days · ₦15,000</b><span>One goal, two calls with me, personal feedback on your uploads</span></span></div>
       <div class="opt"><span><b>30 days · ₦50,000</b><span>Two goals, a call with me every week, priority voice feedback</span></span></div>
+      <div class="opt"><span><b>3 months · ₦150,000</b><span>Two goals, a call with me every 2 weeks, a progress review every month</span></span></div>
     </div>
-    <p class="note" style="text-align:left">You pick your length after you set your goal.</p>
+    <p class="note" style="text-align:left">You pick your length after you set your goal. Need longer than 3 months? <a href="#call" style="text-decoration:underline">Book a call</a> and I'll set it up for you.</p>
     <div style="height:14px"></div>
     <a class="btn btn-ink btn-block" href="${CONFIG.accountabilityUrl}">I'm ready to start</a>
     <p class="note">Not sure yet? <a href="#call" style="text-decoration:underline">Book a free clarity call first.</a></p>

@@ -46,7 +46,9 @@ const PUSH_FUNCTION_URL = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1
 const VERIFY_PAYMENT_URL = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/verify-payment";
 const ADMIN_LOGIN_URL = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/admin-login";
 const ADMIN_API_URL = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/admin-api";
-const PRICES = {7:850000, 15:1500000, 30:5000000}; // Kobo
+const PRICES = {7:850000, 15:1500000, 30:5000000, 90:15000000}; // Kobo. 7 is retired: kept only so old unpaid 7-day signups can still finish.
+/* The lengths people can pick. 7 days was retired in Oct 2026. */
+const SELECTABLE_DURATIONS = [15, 30, 90];
 /* ── GENIE PHOTO ──────────────────────────────────────────
    To use your real photo: host it anywhere (Google Drive,
    Imgur, Cloudinary) and paste the direct image URL below.
@@ -183,7 +185,7 @@ const FB = {
 
 
 /* ── DURATION SELECTOR ── */
-const CALL_DAYS = {7:[2],15:[2,9],30:[2,9,16,23]};
+const CALL_DAYS = {7:[2],15:[2,9],30:[2,9,16,23],90:[2,16,30,44,58,72,86]};
 const CALENDLY_URL = "https://calendly.com/eugeneobo/conversations-with-genie";
 
 /* ── MISS HANDLING (miss-gate, frozen lock, coach-cleared re-entry) ──
@@ -204,8 +206,11 @@ const MISS_STARTERS = [
 const TIERS = {
   7:  {name:"The Sprint",     price:"₦8,500",  perks:["1 goal · daily uploads","Lil AI support","1 check-in call with Genie","Genie batch review"],color:"#c49a1c",goals:1},
   15: {name:"The Challenge",   price:"₦15,000", perks:["1 goal · daily uploads","Lil AI nudges + check-ins","2 calls with Genie","Personal feedback on uploads"],color:"#c49a1c",goals:1},
-  30: {name:"The Intensive",   price:"₦50,000", perks:["2 goals · daily uploads","4 weekly calls with Genie","Priority voice feedback","Energy & mood tracking insights"],color:"#4dc98a",goals:2}
+  30: {name:"The Intensive",   price:"₦50,000", perks:["2 goals · daily uploads","4 weekly calls with Genie","Priority voice feedback","Energy & mood tracking insights"],color:"#4dc98a",goals:2},
+  90: {name:"The Long Game",   price:"₦150,000", perks:["2 goals · daily uploads","A call with Genie every 2 weeks","Priority voice feedback","A progress review at the end of each month"],color:"#4dc98a",goals:2,label:"3 months"}
 };
+/* "15 days", "30 days", "3 months" */
+function durLabel(d){ const t=TIERS[d]; return (t&&t.label)||(d+" days"); }
 
 function initDuration(){
   /* Duration is chosen here in onboarding (the landing no longer shows pills).
@@ -217,7 +222,7 @@ function initDuration(){
 function selectDuration(days){
   trackEvent("duration_selected",{days});
   S.ans.duration=days;
-  [7,15,30].forEach(d=>{
+  [7,...SELECTABLE_DURATIONS].forEach(d=>{
     const btn=el("dur-"+d);
     if(btn)btn.className="dur-btn"+(d===days?" active":"");
   });
@@ -236,7 +241,7 @@ function selectDuration(days){
 function buildDurGrid(days){
   const g=el("dur-grid");
   g.innerHTML="";
-  const cols=days<=7?7:days<=15?5:6;
+  const cols=days<=7?7:days<=15?5:days<=30?6:10;
   g.className=`dur-grid cols-${cols}`;
   const callDays=CALL_DAYS[days]||[];
   for(let i=0;i<days;i++){
@@ -265,7 +270,7 @@ function renderTierCard(days){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div>
         <p style="font-size:17px;font-weight:900;color:var(--text)">${t.name}</p>
-        <p style="font-size:11px;color:var(--muted);margin-top:2px">${days} days · ${t.goals} goal${t.goals>1?"s":""}</p>
+        <p style="font-size:11px;color:var(--muted);margin-top:2px">${durLabel(days)}${t.label?` (${days} days)`:""} · ${t.goals} goal${t.goals>1?"s":""}</p>
       </div>
       <div style="text-align:right">
         <p style="font-size:20px;font-weight:900;color:${t.color}">${t.price}</p>
@@ -274,7 +279,8 @@ function renderTierCard(days){
     ${t.perks.map(p=>`<div class="tier-perk"><div class="tp-icon" style="background:rgba(196,154,28,.1);color:#c49a1c">✓</div><span>${p}</span></div>`).join("")}
     ${callDaysForTier.length>0?`<div style="margin-top:10px;padding:8px 10px;background:rgba(196,154,28,.04);border:1px solid rgba(196,154,28,.1);border-radius:8px;font-size:11px;color:#888">📞 Call day${callDaysForTier.length>1?"s":""}: Day ${callDaysForTier.join(", ")}</div>`:""}
     <button class="bp" style="width:100%;margin-top:14px;font-size:15px;padding:13px" onclick="confirmDuration()">Continue to Commitment →</button>
-    ${days>7?`<p style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Most first-timers start with 7 days. But if you're ready, we're ready.</p>`:""}
+    ${days>15?`<p style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Not sure you can go this long? Start with 15 days. If you're ready, we're ready.</p>`:""}
+    <p style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Need longer than 3 months? <a href="https://eugeneobo.com/#call" style="color:#c49a1c;text-decoration:underline">Talk to me first</a> and I'll set it up for you.</p>
   </div>`;
 }
 
