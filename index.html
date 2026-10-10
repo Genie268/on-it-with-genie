@@ -112,6 +112,9 @@ p{margin:0}
 .t-onit .ico{background:#161512}.t-onit .ico svg{width:26px;height:26px;fill:#C49A1C}
 .t-onit h3{color:#EDEDED}.t-onit p{color:#A9A9A4}.t-onit .arrow{background:#C49A1C;color:#0B0B0A}
 .t-onit .chip{background:#1A1916;color:#D9D9D4}.t-onit .chip.dark{background:#C49A1C;color:#0B0B0A}
+.card.has-ribbon{position:relative;overflow:hidden}
+.card.has-ribbon .chips{padding-right:110px}
+.ribbon{position:absolute;right:-62px;bottom:46px;width:270px;transform:rotate(-38deg);background:#E5432F;color:#fff;text-align:center;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.16em;padding:8px 0;box-shadow:0 6px 18px -6px rgba(229,67,47,.55);pointer-events:none;z-index:1}
 .app-tag{display:inline-flex;align-self:flex-start;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;color:#C49A1C;border:1px solid rgba(196,154,28,.4);padding:5px 10px;border-radius:999px}
 #leave{position:fixed;inset:0;z-index:200;background:#060606;opacity:0;pointer-events:none;transition:opacity .28s ease}
 #leave.on{opacity:1;pointer-events:auto}
@@ -397,6 +400,7 @@ p{margin:0}
 </div>
 <div class="toast" id="toast" role="status"></div>
 
+<script src="/js/intake.js?v=20261010"></script>
 <script>
 /* ===== EDIT THESE ===== */
 const CONFIG = {
@@ -474,7 +478,7 @@ home(){ const h = lagosNow().getHours(); return `
 </section>
 <div class="sec-head" id="services"><h2>Ways to work with me</h2></div>
 <div class="grid">
-  ${card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal. Send me proof every day. I check it myself and tell you the truth.",[["15 days to 3 months"],["From ₦15,000","dark"]],null,"ON IT APP")}
+  ${(()=>{ const st=intakeState(); return card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal and send me proof every day. I check every upload myself, and I call to see how you're doing."+(st.cap?` I take ${st.cap} people per intake, so everyone gets that attention.`:""),[["15 days to 3 months"],["First call in 48 hrs"],["From ₦15,000","dark"]],null,"ON IT APP",st.mode==="off"?null:st.ribbon); })()}
   ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Buy the hours, book sessions when it suits you.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
   ${card("call","t-mint",I.video,"Clarity call","10 minutes on video with me. Bring the one thing you're stuck on.",[["10 min"],["Video call"]],"Free")}
   ${card("courses","t-lilac",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
@@ -529,7 +533,7 @@ ${backLink()}
     <section class="detail-hero t-peach">
       <span class="eyebrow">Accountability coaching</span>
       <h1>One goal. Proof every day. Checked by me.</h1>
-      <p>Upload proof of what you did each day. I review every one.</p>
+      <p>Upload proof of what you did each day. I review every one, and I call you within 48 hours of joining.</p>
     </section>
     <div class="panel">
       <div class="board-head"><div><span class="eyebrow">Your dashboard</span><h3 style="margin:4px 0 0">Day 9 of 15</h3></div><div class="streak"><b>8</b><span>day streak</span></div></div>
@@ -545,7 +549,7 @@ ${backLink()}
   <div class="panel">
     <h3>Pick your length</h3>
     <div class="opts" style="pointer-events:none">
-      <div class="opt"><span><b>15 days · ₦15,000</b><span>One goal, two calls with me, personal feedback on your uploads</span></span></div>
+      <div class="opt"><span><b>15 days · ₦15,000</b><span>One goal, two calls with me (the first within 48 hours), personal feedback on your uploads</span></span></div>
       <div class="opt"><span><b>30 days · ₦50,000</b><span>Two goals, a call with me every week, priority voice feedback</span></span></div>
       <div class="opt"><span><b>3 months · ₦150,000</b><span>Two goals, a call with me every 2 weeks, a progress review every month</span></span></div>
     </div>
@@ -621,9 +625,9 @@ about(){ return `
 };
 
 const ONIT_MARK = '<svg viewBox="0 0 40 40" aria-hidden="true">'+[0,15,30].flatMap(y=>[0,15,30].map(x=>`<rect x="${x}" y="${y}" width="10" height="10" rx="2.4"/>`)).join("")+'</svg>';
-function card(route,tint,icon,title,text,chips,tag,appTag){
+function card(route,tint,icon,title,text,chips,tag,appTag,ribbon){
   const app = route.startsWith("/");
-  return `<a class="card ${tint}" href="${app?route:"#"+route}"${app?' data-app':''}>
+  return `<a class="card ${tint}${ribbon?" has-ribbon":""}" href="${app?route:"#"+route}"${app?' data-app':''}>${ribbon?`<span class="ribbon" aria-label="${ribbon.toLowerCase()}">${ribbon}</span>`:""}
     <div class="row"><span class="ico">${icon}</span><span class="arrow">${I.arrow}</span></div>
     ${tag?`<span class="free-tag">${tag.toUpperCase()}</span>`:""}${appTag?`<span class="app-tag">${appTag}</span>`:""}
     <h3>${title}</h3><p>${text}</p>

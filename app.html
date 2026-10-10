@@ -34,6 +34,13 @@
 @keyframes oiWord{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){#oi-splash *{animation:none!important;stroke-dashoffset:0!important}}
 html[data-route="admin"] #oi-splash,html[data-route="witness"] #oi-splash{display:none}
+.oi-intake{margin-top:16px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 0;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#ededed}
+.oi-intake i{font-style:normal;color:#c49a1c;margin:0 8px}
+.oi-intake .oi-dot{width:8px;height:8px;border-radius:50%;background:#E5432F;margin-right:10px;box-shadow:0 0 0 4px rgba(229,67,47,.18)}
+.oi-intake.closed{display:block;text-transform:none;letter-spacing:0;font-weight:600;font-size:14px;color:#cfcfcf;line-height:1.5}
+.oi-intake.closed .oi-dot{display:inline-block;vertical-align:1px}
+.oi-intake.closed a{color:#c49a1c;text-decoration:underline}
+#s-land .kl-cta:disabled{opacity:.55;cursor:not-allowed}
 </style>
 <link rel="stylesheet" href="css/styles.css?v=20261002onit3">
 </head>
@@ -77,11 +84,12 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
             <span class="kl-h1-line" data-dz-id="headline">You already know what to&nbsp;do.</span>
             <span class="kl-h1-line ac" data-dz-id="headline2">Now let's do it.</span>
           </h1>
-          <p class="kl-sub oi-in" style="--d:2" data-dz-id="subhead">Pick one goal. Upload proof every day. I check every single one myself.</p>
+          <p class="kl-sub oi-in" style="--d:2" data-dz-id="subhead">Pick one goal. Upload proof every day. I check every single one myself, and I call you within 48 hours of joining.</p>
           <div class="oi-cta-row oi-in" style="--d:3">
             <button class="bp kl-cta" data-dz-id="cta" onclick="startOB()">Start my challenge <span aria-hidden="true">&rarr;</span></button>
             <span class="oi-cta-note" data-dz-id="meta">15 days to 3 months <i>&bull;</i> from &#8358;15,000</span>
           </div>
+          <p class="oi-intake oi-in" style="--d:3" id="oi-intake" hidden></p>
         </div>
 
         <div class="oi-board oi-in" style="--d:3" aria-label="What your dashboard looks like">
@@ -103,7 +111,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
         <div class="oi-steps">
           <div class="oi-step"><span class="oi-num">01</span><h3>Name the one thing</h3><p>Tell me what you've been putting off and why it matters now. I read every answer.</p></div>
           <div class="oi-step"><span class="oi-num">02</span><h3>Show proof every day</h3><p>A photo, a screenshot, a short video. Anything that shows you did the work today.</p></div>
-          <div class="oi-step"><span class="oi-num">03</span><h3>I check it</h3><p>I look at your proof and reply. When you see two ticks, I've seen it. If you go quiet, I'll notice.</p></div>
+          <div class="oi-step"><span class="oi-num">03</span><h3>I check it, and I call</h3><p>I look at your proof and reply. Two ticks means I've seen it. Your first call with me is within 48 hours, and if you go quiet, I'll notice.</p></div>
         </div>
       </section>
 
@@ -126,7 +134,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
       <section class="oi-sec oi-genie">
         <img src="/img/genie-about-bw.jpg" alt="Genie" loading="lazy">
         <div>
-          <blockquote data-dz-id="quote">I look at every upload myself. That's the whole point. You're not shouting into an app.</blockquote>
+          <blockquote data-dz-id="quote">I look at every upload myself, and I call to hear how it's really going. You're not shouting into an app.</blockquote>
           <p class="oi-cite" data-dz-id="coachline">Genie</p>
           <p class="oi-small" style="margin-top:18px">Not sure yet? <a href="/book#call">Book a free 10-minute call with me first.</a></p>
         </div>
@@ -606,11 +614,12 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/config.js?v=20260926bulk"></script>
+<script src="js/intake.js?v=20261010"></script>
+<script src="js/config.js?v=20261010"></script>
 <script src="js/theme.js?v=20260926bulk"></script>
 <script src="js/lil.js?v=20260926bulk"></script>
 <script src="js/auth.js?v=20260926bulk"></script>
-<script src="js/onboarding.js?v=20260926bulk"></script>
+<script src="js/onboarding.js?v=20261010"></script>
 <script src="js/goals.js?v=20260926bulk"></script>
 <script src="js/witnesses.js?v=20260926bulk"></script>
 <script src="js/miss.js?v=20260926bulk"></script>
@@ -664,6 +673,22 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 </script>
 
 <script>
+/* Intake note under the main button. Settings live in js/intake.js. */
+(function(){
+  var el=document.getElementById("oi-intake"), cta=document.querySelector('#s-land .kl-cta');
+  if(!el || !window.intakeState) return;
+  var st=intakeState(), cap=st.cap?" <i>&bull;</i> "+st.cap+" people per intake":"";
+  if(st.mode==="open"){
+    el.innerHTML='<span class="oi-dot"></span>'+(st.daysLeft===0?"Joining closes today":st.daysLeft===1?"Joining closes tomorrow":"Joining closes "+st.closes)+cap;
+    el.hidden=false;
+  } else if(st.mode==="closed"){
+    el.innerHTML='<span class="oi-dot"></span>This intake is closed'+(st.nextOpens?". The next one opens "+st.nextOpens:"")+'. <a href="/book#call">Book a free call</a> and I\'ll let you know when it opens.';
+    el.hidden=false; el.classList.add("closed");
+    if(cta){ cta.disabled=true; cta.removeAttribute("onclick"); cta.innerHTML=st.nextOpens?"Opens "+st.nextOpens:"Intake closed"; }
+  }
+})();
+</script>
+<script>
 /* Links from the services page: /app?start opens the sign-up flow, /app?signin opens sign-in. */
 window.addEventListener("load", function(){
   var q=new URLSearchParams(location.search), want=q.has("start")?"start":q.has("signin")?"signin":"";
@@ -672,7 +697,7 @@ window.addEventListener("load", function(){
   setTimeout(function(){
     var land=document.getElementById("s-land");
     if(!land || !land.classList.contains("active")) return;   // already signed in: leave them on their dashboard
-    if(want==="start" && typeof startOB==="function") startOB();
+    if(want==="start" && typeof startOB==="function" && !(window.intakeState && intakeState().mode==="closed")) startOB();
     if(want==="signin" && typeof showSignIn==="function") showSignIn();
   }, 400);
 });

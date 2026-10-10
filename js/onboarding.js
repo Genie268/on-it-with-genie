@@ -1,5 +1,7 @@
 /* ── ONBOARDING ── */
 function startOB(){
+  /* Intake closed (see js/intake.js): point to the note instead of starting sign-up. */
+  if(window.intakeState && intakeState().mode==="closed"){ var n=document.getElementById("oi-intake"); if(n) n.scrollIntoView({behavior:"smooth",block:"center"}); return; }
   trackEvent("onboarding_start");
   S.stepIdx=-1; S.ans={}; S.inFU=false; S.fuQ="";
   goTo("ob"); renderOB();

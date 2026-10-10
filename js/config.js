@@ -205,9 +205,9 @@ const MISS_STARTERS = [
 ];
 const TIERS = {
   7:  {name:"The Sprint",     price:"₦8,500",  perks:["1 goal · daily uploads","Lil AI support","1 check-in call with Genie","Genie batch review"],color:"#c49a1c",goals:1},
-  15: {name:"The Challenge",   price:"₦15,000", perks:["1 goal · daily uploads","Lil AI nudges + check-ins","2 calls with Genie","Personal feedback on uploads"],color:"#c49a1c",goals:1},
-  30: {name:"The Intensive",   price:"₦50,000", perks:["2 goals · daily uploads","4 weekly calls with Genie","Priority voice feedback","Energy & mood tracking insights"],color:"#4dc98a",goals:2},
-  90: {name:"The Long Game",   price:"₦150,000", perks:["2 goals · daily uploads","A call with Genie every 2 weeks","Priority voice feedback","A progress review at the end of each month"],color:"#4dc98a",goals:2,label:"3 months"}
+  15: {name:"The Challenge",   price:"₦15,000", perks:["1 goal · daily uploads","Lil AI nudges + check-ins","2 calls with Genie, the first within 48 hours","Personal feedback on uploads"],color:"#c49a1c",goals:1},
+  30: {name:"The Intensive",   price:"₦50,000", perks:["2 goals · daily uploads","4 weekly calls with Genie, the first within 48 hours","Priority voice feedback","Energy & mood tracking insights"],color:"#4dc98a",goals:2},
+  90: {name:"The Long Game",   price:"₦150,000", perks:["2 goals · daily uploads","A call with Genie every 2 weeks, the first within 48 hours","Priority voice feedback","A progress review at the end of each month"],color:"#4dc98a",goals:2,label:"3 months"}
 };
 /* "15 days", "30 days", "3 months" */
 function durLabel(d){ const t=TIERS[d]; return (t&&t.label)||(d+" days"); }
