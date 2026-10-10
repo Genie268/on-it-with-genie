@@ -8,7 +8,7 @@
    - After the close day: sign-up is paused and the page says when the next intake opens.
    - Once nextOpens arrives and you haven't set a new close date: ribbon disappears and sign-up reopens.
    ======================================================== */
-window.INTAKE = { closes: null, nextOpens: null, cap: 12 };
+window.INTAKE = { closes: "2026-10-16", nextOpens: "2026-11-02", cap: 12 };
 
 window.intakeState = function(){
   var C = window.INTAKE || {};
