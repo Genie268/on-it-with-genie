@@ -478,7 +478,7 @@ home(){ const h = lagosNow().getHours(); return `
 </section>
 <div class="sec-head" id="services"><h2>Ways to work with me</h2></div>
 <div class="grid">
-  ${(()=>{ const st=intakeState(); return card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal. Upload your proof to the dashboard every day. I review every upload and call to see how you're doing."+(st.cap?` I only take ${st.cap} people at a time, because I can't do that well for more.`:""),[["15 days to 3 months"],["First call in 48 hrs"],["From ₦15,000","dark"]],null,"ON IT APP",st.mode==="off"?null:st.ribbon); })()}
+  ${(()=>{ const st=intakeState(); return card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal. Upload your proof to the dashboard. I review every upload, and I call to see how you're doing.",[["15 days to 3 months"],["First call in 48 hrs"]].concat(st.cap?[[`${st.cap} at a time`]]:[]).concat([["From ₦15,000","dark"]]),null,"ON IT APP",st.mode==="off"?null:st.ribbon); })()}
   ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Buy the hours, book sessions when it suits you.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
   ${card("call","t-mint",I.video,"Clarity call","10 minutes on video with me. Bring the one thing you're stuck on.",[["10 min"],["Video call"]],"Free")}
   ${card("courses","t-lilac",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
