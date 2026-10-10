@@ -1313,7 +1313,16 @@ function renderAdminOverview(c){
   /* Calls today */
   active.forEach(u=>{
     const callDays=CALL_DAYS[u.dur||15]||[];
-    if(callDays.includes(u.day)){
+    const firstCall=callDays[0];
+    /* First call is promised publicly within 48 hours of joining (Day 2), so it
+       gets a heads-up the day before and sits near the top of the queue on the day. */
+    if(firstCall && u.day===firstCall-1){
+      queue.push({pri:5,icon:"📞",color:"#c49a1c",label:"First call due tomorrow",name:u.name,meta:"48-hour promise · book it now",
+        actionLabel:"Book →",onClick:`openCallSchedule('${u.id}')`});
+    } else if(firstCall && u.day===firstCall){
+      queue.push({pri:2.5,icon:"📞",color:"#d9503a",label:"First call due today",name:u.name,meta:"48-hour promise",
+        actionLabel:"Book →",onClick:`openCallSchedule('${u.id}')`});
+    } else if(callDays.includes(u.day)){
       queue.push({pri:5,icon:"📞",color:"#c49a1c",label:`Call day · D${u.day}`,name:u.name,meta:"Book a slot",
         actionLabel:"Book →",onClick:`openCallSchedule('${u.id}')`});
     }

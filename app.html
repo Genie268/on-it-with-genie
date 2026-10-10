@@ -614,7 +614,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/intake.js?v=20261010"></script>
+<script src="js/intake.js?v=20261010b"></script>
 <script src="js/config.js?v=20261010"></script>
 <script src="js/theme.js?v=20260926bulk"></script>
 <script src="js/lil.js?v=20260926bulk"></script>
@@ -627,7 +627,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 <script src="js/miss-preview.js?v=20260926bulk"></script>
 <script src="js/dashboard.js?v=20260926bulk"></script>
 <script src="js/uploads.js?v=20260926bulk"></script>
-<script src="js/admin.js?v=20261003bk"></script>
+<script src="js/admin.js?v=20261010"></script>
 <script src="js/bookings-admin.js?v=20261003bk"></script>
 <script src="js/design.js?v=20260926bulk"></script>
 <script src="js/ui.js?v=20260926bulk"></script>
@@ -677,10 +677,12 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 (function(){
   var el=document.getElementById("oi-intake"), cta=document.querySelector('#s-land .kl-cta');
   if(!el || !window.intakeState) return;
-  var st=intakeState(), cap=st.cap?" <i>&bull;</i> "+st.cap+" people per intake":"";
+  var st=intakeState(), cap=st.cap?" <i>&bull;</i> Only "+st.cap+" people at a time":"";
   if(st.mode==="open"){
     el.innerHTML='<span class="oi-dot"></span>'+(st.daysLeft===0?"Joining closes today":st.daysLeft===1?"Joining closes tomorrow":"Joining closes "+st.closes)+cap;
     el.hidden=false;
+  } else if(st.mode==="off" && st.cap){
+    el.innerHTML="Only "+st.cap+" people at a time"; el.hidden=false;
   } else if(st.mode==="closed"){
     el.innerHTML='<span class="oi-dot"></span>This intake is closed'+(st.nextOpens?". The next one opens "+st.nextOpens:"")+'. <a href="/book#call">Book a free call</a> and I\'ll let you know when it opens.';
     el.hidden=false; el.classList.add("closed");
