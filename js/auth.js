@@ -107,7 +107,7 @@ function initPayment(){
   el("pay-tier-name").textContent=t.name;
   el("pay-tier-desc").textContent=`${dur} days · ${t.goals} goal${t.goals>1?"s":""}`;
   el("pay-price").textContent=t.price;
-  el("pay-call-info").textContent=callDays.length>0?`${callDays.length} call${callDays.length>1?"s":""} with Genie`:"Genie batch review";
+  el("pay-call-info").textContent=callDays.length>0?`${callDays.length} strategy session${callDays.length>1?"s":""} with Genie`:"Genie batch review";
   el("pay-btn").textContent=`Pay ${t.price} & Start Challenge →`;
   el("pay-btn").disabled=false;
   el("pay-status").textContent="";

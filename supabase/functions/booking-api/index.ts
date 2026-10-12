@@ -10,6 +10,10 @@
  *   POST {action:"book", service:"free_call", start, name, email, phone, note?, opt_in?}
  *   POST {action:"check", email, phone?}          Has this person already used their clarity call?
  *   POST {action:"cancel", token}                 Cancel from the email link (frees the call again).
+ *   Already had one? check/book return status {reason: upcoming|attended|missed|appeal_pending|appeal_declined}.
+ *   POST {action:"appeal", email, phone, name?, reason}   Missed the call: ask Genie for another one.
+ *   POST {action:"appeal_get", token}             Genie opens the link in his email.
+ *   POST {action:"appeal_decide", token, decision:"approve"|"decline"}   Approve gives one more free call.
  *
  * Mentorship (buy hours, book sessions whenever)
  *   POST {action:"hold", service:"mentorship", hours, sessions:[{start,minutes}], name, email, phone?, note?, opt_in?}
@@ -38,7 +42,8 @@ const TZ_OFFSET = "+01:00"; // Africa/Lagos, no daylight saving
 const OFFSET_MS = 60 * 60 * 1000;
 const HOUR_RATE_NAIRA = 25000;
 const HOLD_MINUTES = 15;
-const LEAD_MINUTES: Record<string, number> = { free_call: 10, mentorship: 120 };
+/* Paid sessions need a day's notice so Genie can prepare; free calls can be booked up to 10 minutes before. */
+const LEAD_MINUTES: Record<string, number> = { free_call: 10, mentorship: 24 * 60 };
 const SESSION_LENGTHS = [30, 60, 90, 120];
 const PLAN_HOURS = [1, 2, 4, 8];
 const CANCEL_NOTICE_H = 24;
@@ -104,18 +109,45 @@ function phoneKey(raw: string) {
   return d.length > 10 ? d.slice(-10) : d.replace(/^0/, "");
 }
 
-async function freeCallEligible(email: string, pk: string) {
+/*
+ * Where someone stands with their one free call.
+ *   eligible        they can book
+ *   upcoming        they already have one coming up (show when)
+ *   attended        they had it (Genie marked them as showed up): paid sessions only
+ *   missed          it passed and Genie didn't mark them as showed up: they can appeal
+ *   appeal_pending  they appealed and Genie hasn't decided yet
+ *   appeal_declined Genie said no: paid sessions only
+ */
+type FreeStatus = { eligible: boolean; reason?: string; when?: string; name?: string; booking_id?: string };
+async function freeCallStatus(email: string, pk: string): Promise<FreeStatus> {
   const { data: c } = await sb.from("contacts").select("extra_free_calls").eq("email", email).maybeSingle();
   const allowed = 1 + ((c as any)?.extra_free_calls ?? 0);
-  const ids = new Set<string>();
-  const { data: byEmail } = await sb.from("slot_bookings").select("id").eq("service", "free_call").eq("status", "confirmed").eq("email", email);
-  (byEmail ?? []).forEach((r: any) => ids.add(r.id));
+  const rows = new Map<string, any>();
+  const cols = "id,name,starts_at,attended";
+  const { data: byEmail } = await sb.from("slot_bookings").select(cols).eq("service", "free_call").eq("status", "confirmed").eq("email", email);
+  (byEmail ?? []).forEach((r: any) => rows.set(r.id, r));
   if (pk) {
-    const { data: byPhone } = await sb.from("slot_bookings").select("id").eq("service", "free_call").eq("status", "confirmed").eq("phone_key", pk);
-    (byPhone ?? []).forEach((r: any) => ids.add(r.id));
+    const { data: byPhone } = await sb.from("slot_bookings").select(cols).eq("service", "free_call").eq("status", "confirmed").eq("phone_key", pk);
+    (byPhone ?? []).forEach((r: any) => rows.set(r.id, r));
   }
-  return ids.size < allowed;
+  if (rows.size < allowed) return { eligible: true };
+  const list = [...rows.values()].sort((x, y) => Date.parse(y.starts_at) - Date.parse(x.starts_at));
+  const last = list[0];
+  const st = Date.parse(last.starts_at);
+  const base = { eligible: false, when: `${longDate(st)} at ${label(st)}`, name: last.name, booking_id: last.id };
+  if (st > Date.now()) return { ...base, reason: "upcoming" };
+  if (list.some((r) => r.attended === "showed")) return { ...base, reason: "attended" };
+  const { data: ap } = await sb.from("free_call_appeals").select("status").eq("booking_id", last.id)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (ap?.status === "pending") return { ...base, reason: "appeal_pending" };
+  if (ap?.status === "declined") return { ...base, reason: "appeal_declined" };
+  return { ...base, reason: "missed" };
 }
+async function freeCallEligible(email: string, pk: string) {
+  return (await freeCallStatus(email, pk)).eligible;
+}
+/* What the page may see: never another person's name. */
+const publicStatus = (st: FreeStatus) => ({ reason: st.reason, when: st.when });
 
 async function expireHolds() {
   await sb.from("slot_bookings").update({ status: "expired", updated_at: new Date().toISOString() })
@@ -386,7 +418,8 @@ async function handleBook(p: Record<string, unknown>) {
   await expireHolds();
   const pk = phoneKey(person.phone);
   if (!pk) return json({ ok: false, error: "missing_phone" }, 400);
-  if (!(await freeCallEligible(person.email, pk))) return json({ ok: false, error: "free_call_used" }, 409);
+  const fs = await freeCallStatus(person.email, pk);
+  if (!fs.eligible) return json({ ok: false, error: "free_call_used", status: publicStatus(fs) }, 409);
 
   const start = clean(p.start, 40);
   const v = await validateSlot("free_call", start, 10);
@@ -558,7 +591,78 @@ async function handleCancel(p: Record<string, unknown>) {
 async function handleCheck(p: Record<string, unknown>) {
   const email = clean(p.email, 120).toLowerCase();
   if (!validEmail(email)) return json({ ok: false, error: "bad_email" }, 400);
-  return json({ ok: true, eligible: await freeCallEligible(email, phoneKey(clean(p.phone, 30))) });
+  const st = await freeCallStatus(email, phoneKey(clean(p.phone, 30)));
+  return json({ ok: true, eligible: st.eligible, status: st.eligible ? null : publicStatus(st) });
+}
+
+/* ---------- appeals: missed the free call ---------- */
+async function handleAppeal(p: Record<string, unknown>) {
+  const email = clean(p.email, 120).toLowerCase();
+  const pk = phoneKey(clean(p.phone, 30));
+  const reason = clean(p.reason, 800);
+  if (!validEmail(email)) return json({ ok: false, error: "bad_email" }, 400);
+  if (reason.length < 10) return json({ ok: false, error: "appeal_too_short" }, 400);
+  const st = await freeCallStatus(email, pk);
+  if (st.eligible) return json({ ok: true, eligible: true });
+  if (st.reason !== "missed") return json({ ok: false, error: "appeal_not_allowed", status: publicStatus(st) }, 409);
+  const name = clean(p.name, 80) || st.name || "";
+  const { data: ap, error } = await sb.from("free_call_appeals")
+    .insert({ booking_id: st.booking_id, name, email, phone_key: pk || null, reason })
+    .select("decide_token").single();
+  if (error) { console.error(error); return json({ ok: false, error: "save_failed" }, 500); }
+
+  const s = await settings();
+  const link = `${SITE}/?appeal=${ap.decide_token}`;
+  if (s.notify_email) {
+    await sendEmail(s.notify_email, `Appeal: ${name || email} wants another free call`,
+      `${name || "Someone"} missed their free call and is asking for another one.\n\nMissed call: ${st.when}\nEmail: ${email}\nPhone: ${clean(p.phone, 30) || "-"}\n\nWhat happened:\n${reason}\n\nApprove or decline here:\n${link}`,
+      undefined, { reply_to: email });
+  }
+  const first = (name || "there").split(" ")[0];
+  await sendEmail(email, "I got your request",
+    `Hi ${first},\n\nI got your request for another free call. I read every one myself and I'll reply by email within a day.\n\nIf you'd rather not wait, you can book a paid session any day from Monday to Saturday, 10am to 6pm: ${SITE}/#mentorship\n\nGenie`);
+  return json({ ok: true, status: { reason: "appeal_pending", when: st.when } });
+}
+
+async function appealByToken(token: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(token)) return null;
+  const { data } = await sb.from("free_call_appeals").select("*").eq("decide_token", token).maybeSingle();
+  return data;
+}
+async function appealView(ap: any) {
+  let missed = "";
+  if (ap.booking_id) {
+    const { data: b } = await sb.from("slot_bookings").select("starts_at").eq("id", ap.booking_id).maybeSingle();
+    if (b) missed = `${longDate(Date.parse(b.starts_at))} at ${label(Date.parse(b.starts_at))}`;
+  }
+  return { name: ap.name, email: ap.email, reason: ap.reason, status: ap.status, missed, asked: longDate(Date.parse(ap.created_at)) };
+}
+async function handleAppealGet(p: Record<string, unknown>) {
+  const ap = await appealByToken(clean(p.token, 60));
+  if (!ap) return json({ ok: false, error: "not_found" }, 404);
+  return json({ ok: true, appeal: await appealView(ap) });
+}
+async function handleAppealDecide(p: Record<string, unknown>) {
+  const ap = await appealByToken(clean(p.token, 60));
+  if (!ap) return json({ ok: false, error: "not_found" }, 404);
+  const decision = p.decision === "approve" ? "approved" : p.decision === "decline" ? "declined" : "";
+  if (!decision) return json({ ok: false, error: "bad_decision" }, 400);
+  if (ap.status !== "pending") return json({ ok: true, already: true, appeal: await appealView(ap) });
+  const { data: upd } = await sb.from("free_call_appeals").update({ status: decision, decided_at: new Date().toISOString() })
+    .eq("id", ap.id).eq("status", "pending").select("id");
+  if (!upd || !upd.length) return json({ ok: true, already: true, appeal: await appealView(await appealByToken(ap.decide_token)) });
+  const first = (ap.name || "there").split(" ")[0];
+  if (decision === "approved") {
+    const { data: c } = await sb.from("contacts").select("extra_free_calls").eq("email", ap.email).maybeSingle();
+    if (c) await sb.from("contacts").update({ extra_free_calls: ((c as any).extra_free_calls ?? 0) + 1 }).eq("email", ap.email);
+    else await sb.from("contacts").insert({ email: ap.email, name: ap.name || null, first_source: "appeal", last_source: "appeal", extra_free_calls: 1 });
+    await sendEmail(ap.email, "You can book again",
+      `Hi ${first},\n\nI've opened another free call for you. Pick a time here: ${SITE}/#call\n\nUse the same email and phone number as before. This one is your last free call, so set a reminder once you book.\n\nGenie`);
+  } else {
+    await sendEmail(ap.email, "About your free call",
+      `Hi ${first},\n\nI read your request. I'm keeping the free call at one per person, so I can't open another one this time.\n\nIf you still want to talk, you can book a paid session any day from Monday to Saturday, 10am to 6pm: ${SITE}/#mentorship\n\nGenie`);
+  }
+  return json({ ok: true, appeal: await appealView({ ...ap, status: decision }) });
 }
 
 const WAITLISTS: Record<string, { subject: string; body: (first: string) => string }> = {
@@ -618,6 +722,9 @@ Deno.serve(async (req) => {
       case "cancel": return await handleCancel(p);
       case "subscribe": return await handleSubscribe(p);
       case "check": return await handleCheck(p);
+      case "appeal": return await handleAppeal(p);
+      case "appeal_get": return await handleAppealGet(p);
+      case "appeal_decide": return await handleAppealDecide(p);
       default: return json({ ok: false, error: "unknown_action" }, 400);
     }
   } catch (e) {

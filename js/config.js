@@ -205,9 +205,9 @@ const MISS_STARTERS = [
 ];
 const TIERS = {
   7:  {name:"The Sprint",     price:"₦8,500",  perks:["1 goal · daily uploads","Lil AI support","1 check-in call with Genie","Genie batch review"],color:"#c49a1c",goals:1},
-  15: {name:"The Challenge",   price:"₦15,000", perks:["1 goal · daily uploads","Lil AI nudges + check-ins","2 calls with Genie, the first within 48 hours","Personal feedback on uploads"],color:"#c49a1c",goals:1},
-  30: {name:"The Intensive",   price:"₦50,000", perks:["2 goals · daily uploads","4 weekly calls with Genie, the first within 48 hours","Priority voice feedback","Energy & mood tracking insights"],color:"#4dc98a",goals:2},
-  90: {name:"The Long Game",   price:"₦150,000", perks:["2 goals · daily uploads","A call with Genie every 2 weeks, the first within 48 hours","Priority voice feedback","A progress review at the end of each month"],color:"#4dc98a",goals:2,label:"3 months"}
+  15: {name:"The Challenge",   price:"₦15,000", perks:["1 goal","Daily check-ins: I review every upload","Progress tracking on your dashboard","2 strategy sessions with me, the first within 48 hours"],color:"#c49a1c",goals:1},
+  30: {name:"The Intensive",   price:"₦50,000", perks:["2 goals","Daily check-ins with priority voice feedback","Progress tracking, plus energy and mood insights","4 weekly strategy sessions, the first within 48 hours"],color:"#4dc98a",goals:2},
+  90: {name:"The Long Game",   price:"₦150,000", perks:["2 goals","Daily check-ins with priority voice feedback","Progress tracking, with a review at the end of each month","A strategy session every 2 weeks, the first within 48 hours"],color:"#4dc98a",goals:2,label:"3 months"}
 };
 /* "15 days", "30 days", "3 months" */
 function durLabel(d){ const t=TIERS[d]; return (t&&t.label)||(d+" days"); }
@@ -277,7 +277,7 @@ function renderTierCard(days){
       </div>
     </div>
     ${t.perks.map(p=>`<div class="tier-perk"><div class="tp-icon" style="background:rgba(196,154,28,.1);color:#c49a1c">✓</div><span>${p}</span></div>`).join("")}
-    ${callDaysForTier.length>0?`<div style="margin-top:10px;padding:8px 10px;background:rgba(196,154,28,.04);border:1px solid rgba(196,154,28,.1);border-radius:8px;font-size:11px;color:#888">📞 Call day${callDaysForTier.length>1?"s":""}: Day ${callDaysForTier.join(", ")}</div>`:""}
+    ${callDaysForTier.length>0?`<div style="margin-top:10px;padding:8px 10px;background:rgba(196,154,28,.04);border:1px solid rgba(196,154,28,.1);border-radius:8px;font-size:11px;color:#888">📞 Strategy sessions: Day ${callDaysForTier.join(", ")}</div>`:""}
     <button class="bp" style="width:100%;margin-top:14px;font-size:15px;padding:13px" onclick="confirmDuration()">Continue to Commitment →</button>
     ${days>15?`<p style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Not sure you can go this long? Start with 15 days. If you're ready, we're ready.</p>`:""}
     <p style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Need longer than 3 months? <a href="https://eugeneobo.com/#call" style="color:#c49a1c;text-decoration:underline">Talk to me first</a> and I'll set it up for you.</p>
