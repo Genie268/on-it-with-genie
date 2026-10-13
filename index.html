@@ -216,6 +216,28 @@ p{margin:0}
 .gt-what .gt-opt{font-size:14px;padding:13px 12px;line-height:1.3}
 .gt-hero-art{margin:-8px -8px 6px;line-height:0}
 .gt-hero-art svg{display:block;width:100%;height:auto;max-height:190px}
+/* result reveal */
+.gt-spin{display:grid;justify-items:center;text-align:center;padding:18px 0 8px}
+.gt-wheel-wrap{position:relative;width:220px;height:220px;margin:4px 0 18px}
+.gt-wheel{width:100%;height:100%;border-radius:50%;border:6px solid var(--ink);box-sizing:border-box;transition:transform 2.3s cubic-bezier(.15,.75,.15,1);box-shadow:0 18px 40px -18px rgba(15,15,16,.45)}
+.gt-wheel::after{content:"";position:absolute;inset:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:var(--ink)}
+.gt-wheel-wrap .g{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:50%;display:grid;place-items:center;color:var(--lime);font-family:var(--display);font-weight:800;font-size:20px;z-index:2}
+.gt-pin{position:absolute;left:50%;top:-12px;margin-left:-13px;width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:24px solid #E5432F;z-index:3;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+.gt-spin-name{font-family:var(--display);font-size:26px;letter-spacing:-0.03em;min-height:34px}
+.gt-spin-sub{color:var(--muted);font-size:14px;margin-top:4px}
+.gt-land{animation:gtLand .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes gtLand{0%{transform:scale(.6);opacity:.3}100%{transform:none;opacity:1}}
+.gt-play .gt-hero-art svg>g,.gt-play .gt-hero-art svg>rect,.gt-play .gt-hero-art svg>circle,.gt-play .gt-hero-art svg>path,.gt-play .gt-hero-art svg>text{transform-box:fill-box;transform-origin:50% 100%;animation:gtPop .55s cubic-bezier(.2,1.5,.4,1) backwards}
+.gt-play .gt-hero-art svg>*:nth-child(2){animation-delay:.12s}.gt-play .gt-hero-art svg>*:nth-child(3){animation-delay:.3s}.gt-play .gt-hero-art svg>*:nth-child(4){animation-delay:.42s}.gt-play .gt-hero-art svg>*:nth-child(n+5){animation-delay:.52s}
+@keyframes gtPop{from{scale:.4;opacity:0}to{scale:1;opacity:1}}
+.gt-hero-art svg>g:not(:first-child){animation:gtFloat 3.2s ease-in-out infinite}
+.gt-play .gt-hero-art svg>g:not(:first-child){animation:gtPop .55s cubic-bezier(.2,1.5,.4,1) .35s backwards,gtFloat 3.2s ease-in-out 1s infinite}
+@keyframes gtFloat{0%,100%{translate:0 0}50%{translate:0 -4px}}
+.gt-play .gt-rise{animation:gtIn .5s ease backwards;animation-delay:var(--dl,0s)}
+.gt-play .gt-type{animation:gtType .6s cubic-bezier(.2,1.2,.3,1) .25s backwards}
+@keyframes gtType{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+.gt-play .gt-bar .t i{animation:gtGrow .8s cubic-bezier(.2,.8,.2,1) backwards;transform-origin:left}
+@keyframes gtGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .gt-from{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px;border-radius:999px;background:var(--lilac);margin-bottom:8px}
 .paid-hint{font-size:13.5px;color:var(--muted);text-align:center;margin-top:12px}
 .paid-hint a{text-decoration:underline;color:inherit;font-weight:600}
@@ -1225,7 +1247,7 @@ function gtNote(){
   const label = GT.res.type==="steady" ? "Steady" : t.name;
   return `From my Communication Gap Test, I'm ${label}${GT.res.second ? `, with a bit of ${GT_TYPES[GT.res.second].name}` : ""}. ${t.me}${where} ${t.want}`;
 }
-function startTest(){ Object.assign(GT, { i:-1, sit:{}, what:[], checks:{}, res:null, id:null, unlocked:false }); gtRender(); }
+function startTest(){ Object.assign(GT, { i:-1, sit:{}, what:[], checks:{}, res:null, id:null, unlocked:false, spun:false, played:false }); gtRender(); }
 function gtGo(i){ GT.i = i; gtRender(); const p=$("#gt"); if(p && (p.getBoundingClientRect().top < 0 || i===0)) p.scrollIntoView({ behavior:"smooth", block:"start" }); }
 function gtRender(){
   const el = $("#gt"); if(!el) return;
@@ -1284,14 +1306,48 @@ function gtRender(){
     });
   }
 }
+function gtSpin(el){
+  const keys = ["freezer","scrambler","over","mumbler","peace","steady"];
+  const cols = ["#8DB8E0","#F2A98A","#A99BE0","#8FD1A6","#D9C499","#C8EF62"];
+  const seg = 360/keys.length;
+  const grad = keys.map((k,i)=>`${cols[i]} ${i*seg}deg ${(i+1)*seg}deg`).join(",");
+  const lines = keys.map((k,i)=>`<i style="position:absolute;left:50%;top:0;width:3px;height:50%;margin-left:-1.5px;background:var(--ink);transform-origin:50% 100%;transform:rotate(${i*seg}deg)"></i>`).join("");
+  el.innerHTML = `<div class="gt-anim gt-spin">
+    <div class="gt-wheel-wrap"><span class="gt-pin"></span><div class="gt-wheel" id="gt-wheel" style="background:conic-gradient(${grad});position:relative">${lines}</div><span class="g">G</span></div>
+    <div class="gt-spin-name" id="gt-spin-name">&nbsp;</div>
+    <div class="gt-spin-sub" id="gt-spin-sub">Reading your answers...</div>
+  </div>`;
+  const idx = keys.indexOf(GT.res.type);
+  const target = 360*5 + (360 - (idx*seg + seg/2)) + (Math.random()*seg*0.5 - seg*0.25);
+  const wheel = $("#gt-wheel"), nameEl = $("#gt-spin-name");
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ wheel.style.transform = `rotate(${target}deg)`; }));
+  const start = performance.now(), dur = 2300;
+  let last = -1;
+  const tick = ()=>{
+    const t = Math.min(1,(performance.now()-start)/dur);
+    const ang = target * (1 - Math.pow(1-t, 3.2));
+    const at = ((360 - (ang % 360)) % 360);
+    const k = Math.floor(at/seg) % keys.length;
+    if(k!==last){ last=k; nameEl.textContent = GT_TYPES[keys[k]].name; }
+    if(t<1) requestAnimationFrame(tick);
+    else {
+      nameEl.textContent = GT_TYPES[GT.res.type].name; nameEl.classList.add("gt-land");
+      $("#gt-spin-sub").textContent = "That's you.";
+      setTimeout(()=>{ if($("#gt-wheel")) { gtResult(el); const p=$("#gt"); if(p) p.scrollIntoView({ behavior:"smooth", block:"start" }); } }, 900);
+    }
+  };
+  requestAnimationFrame(tick);
+}
 async function gtResult(el){
   if(!GT.res){
     GT.res = gtScore();
     api("POST", { action:"gap_save", type:GT.res.type, second:GT.res.second, scores:GT.res.scores, answers:{ sit:GT.sit, what:GT.what, checks:GT.checks } })
       .then(r=>{ if(r && r.ok) GT.id = r.id; }).catch(()=>{});
   }
+  if(!GT.spun){ GT.spun = true; if(!matchMedia("(prefers-reduced-motion: reduce)").matches) return gtSpin(el); }
+  const play = !GT.played; GT.played = true;
   const t = GT_TYPES[GT.res.type], sec = GT.res.second ? GT_TYPES[GT.res.second] : null;
-  const bars = GT_SIT.map(x=>{ const v = GT.sit[x.id]||0; return `<div class="gt-bar"><span>${esc(x.q.split(":")[0])}</span><span class="t"><i class="${v>=2?"hot":""}" style="width:${Math.max(6, v/3*100)}%"></i></span></div>`; }).join("");
+  const bars = GT_SIT.map((x,i)=>{ const v = GT.sit[x.id]||0; return `<div class="gt-bar"><span>${esc(x.q.split(":")[0])}</span><span class="t"><i class="${v>=2?"hot":""}" style="width:${Math.max(6, v/3*100)}%;animation-delay:${(1+i*0.09).toFixed(2)}s"></i></span></div>`; }).join("");
   const full = GT.unlocked ? `<p style="margin:0;font-size:15.5px;line-height:1.55">${esc(t.whats)}</p><div class="gt-drill"><b>This week's drill</b>${esc(t.drill)}</div>`
     : `<p class="hint" style="margin-top:0">Get the full breakdown of what's going on, and one drill to start this week. I'll email you a copy too.</p>
       <form id="gt-form" novalidate>
@@ -1301,17 +1357,17 @@ async function gtResult(el){
         <div class="err" id="gt-err" hidden></div>
         <button class="btn btn-ink btn-block" type="submit" id="gt-sub">Show my full result</button>
       </form>`;
-  el.innerHTML = `<div class="gt-anim">
+  el.innerHTML = `<div class="${play?"gt-play":"gt-anim"}">
     <section class="detail-hero ${t.tint}" style="margin:-6px -6px 0">
       ${GA.R[GT.res.type]?`<div class="gt-hero-art">${GA.R[GT.res.type]}</div>`:""}
-      <span class="eyebrow">Your result</span>
+      <span class="eyebrow gt-rise" style="--dl:.15s">Your result</span>
       <h2 class="gt-type">${esc(t.name)}</h2>
-      <p class="gt-line">${esc(t.line)}</p>
-      ${sec?`<span class="gt-second">with a bit of ${esc(sec.name)}</span>`:""}
+      <p class="gt-line gt-rise" style="--dl:.55s">${esc(t.line)}</p>
+      ${sec?`<span class="gt-second gt-rise" style="--dl:.75s">with a bit of ${esc(sec.name)}</span>`:""}
     </section>
     <div style="height:22px"></div>
-    <h3>Where it breaks</h3>
-    <div class="gt-bars">${bars}</div>
+    <h3 class="gt-rise" style="--dl:.9s">Where it breaks</h3>
+    <div class="gt-bars gt-rise" style="--dl:.95s">${bars}</div>
     <p class="gt-key">Longer bars are harder for you. Red is where you struggle or avoid speaking.</p>
     <div style="height:22px"></div>
     <h3>What's going on</h3>
