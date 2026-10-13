@@ -941,9 +941,17 @@ function fitLen(){ // shrink the length when what's left can't hold it
 function toggleSession(start, day){
   const mine = inBasket(start);
   if(mine){ B.basket = B.basket.filter(x=>x!==mine); renderBooker(); return; }
-  if(B.len > leftMins()){ toast(leftMins() ? `You only have ${minsText(leftMins())} left. Pick a shorter length.` : "That's all your time placed. Remove a session to change it."); return; }
   const s = day.slots.find(x=>x.start===start);
-  B.basket.push({ start:s.start, minutes:B.len, label:s.label, date:day.date }); sortBasket(); B.fresh=[s.start];
+  // Out of time? Move the most recent pick here instead of blocking.
+  let moved = null;
+  while(B.len > leftMins() && B.basket.length){
+    const last = B.basket.reduce((a,x)=>(x.seq||0) > (a.seq||0) ? x : a);
+    B.basket = B.basket.filter(x=>x!==last); moved = moved || last;
+  }
+  if(B.len > leftMins()){ toast(`You only have ${minsText(leftMins())} left. Pick a shorter length.`); return; }
+  B.seq = (B.seq||0) + 1;
+  B.basket.push({ start:s.start, minutes:B.len, label:s.label, date:day.date, seq:B.seq }); sortBasket(); B.fresh=[s.start];
+  if(moved){ const d = dayParts(day.date); toast(`Moved to ${d.wd} ${d.dd} ${d.mon}, ${s.label}.`); }
   if(!fitLen()) renderBooker();
 }
 async function repeatWeekly(start){
