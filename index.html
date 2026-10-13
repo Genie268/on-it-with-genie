@@ -179,6 +179,34 @@ p{margin:0}
 .used .btn{margin-top:10px}
 .used .alt{display:block;margin-top:12px;font-size:13.5px;color:var(--muted)}
 .used .alt a{text-decoration:underline;color:inherit}
+.gt-prog{height:6px;border-radius:99px;background:var(--bg);overflow:hidden;margin-bottom:18px}
+.gt-prog i{display:block;height:100%;background:var(--ink);border-radius:99px;transition:width .35s ease}
+.gt-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-family:var(--mono);font-size:12px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.gt-top button{background:none;border:0;font:inherit;color:inherit;cursor:pointer;padding:6px 0;text-transform:uppercase;letter-spacing:.1em}
+.gt-q{font-family:var(--display);font-size:24px;letter-spacing:-0.03em;line-height:1.15;margin:0 0 6px}
+.gt-sub{color:var(--muted);font-size:14.5px;margin:0 0 16px}
+.gt-opts{display:grid;gap:8px}
+.gt-opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:15px 16px;border-radius:16px;border:1.5px solid var(--line);background:#fff;font:inherit;font-size:15.5px;font-weight:600;color:var(--ink);cursor:pointer;transition:border-color .15s,background .15s}
+.gt-opt:hover{border-color:var(--ink)}
+.gt-opt[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.gt-opt .k{width:26px;height:26px;border-radius:50%;background:var(--bg);display:grid;place-items:center;font-family:var(--mono);font-size:12px;flex:none;color:var(--ink)}
+.gt-opt[aria-pressed="true"] .k{background:var(--lime)}
+.gt-anim{animation:gtIn .28s ease both}
+@keyframes gtIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.gt-type{font-family:var(--display);font-size:clamp(38px,10vw,56px);letter-spacing:-0.045em;line-height:1;margin:10px 0 0}
+.gt-line{font-size:18px;margin-top:12px;color:#2F2F33;max-width:34ch}
+.gt-second{display:inline-block;margin-top:12px;font-size:13px;font-weight:600;padding:6px 11px;border-radius:999px;background:rgba(255,255,255,.6)}
+.gt-bars{display:grid;gap:9px;margin-top:4px}
+.gt-bar{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:14px}
+.gt-bar .t{height:10px;border-radius:99px;background:var(--bg);overflow:hidden}
+.gt-bar .t i{display:block;height:100%;border-radius:99px;background:var(--ink)}
+.gt-bar .t i.hot{background:#E5432F}
+.gt-key{font-size:12.5px;color:var(--muted);margin-top:10px}
+.gt-drill{padding:16px;border-radius:16px;background:var(--lime);color:var(--ink);margin-top:14px}
+.gt-drill b{display:block;font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+.gt-share{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.gt-note{width:100%;min-height:118px;border-radius:14px;border:1.5px solid var(--line);padding:12px 14px;font:inherit;font-size:15px;background:#fff;resize:vertical;box-sizing:border-box}
+.gt-from{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px;border-radius:999px;background:var(--lilac);margin-bottom:8px}
 .paid-hint{font-size:13.5px;color:var(--muted);text-align:center;margin-top:12px}
 .paid-hint a{text-decoration:underline;color:inherit;font-weight:600}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-inline:-4px;padding-inline:4px;scrollbar-width:none}
@@ -491,6 +519,7 @@ home(){ const h = lagosNow().getHours(); return `
   ${(()=>{ const st=intakeState(); return card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal. I check in on your daily proof, track your progress with you, and we plan your moves in strategy sessions.",[["15 days to 3 months"],["First call in 48 hrs"]].concat(st.cap?[[`${st.cap} at a time`]]:[]).concat([["From ₦15,000","dark"]]),null,"ON IT APP",st.mode==="off"?null:st.ribbon); })()}
   ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Buy the hours, book sessions when it suits you.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
   ${card("call","t-mint",I.video,"Clarity call","10 minutes on video with me. Bring the one thing you're stuck on.",[["10 min"],["Video call"]],"Free")}
+  ${card("test","t-sand",I.mic,"Where does your communication break?","A 4-minute test. Find out what happens when you speak under pressure, and what to work on first.",[["4 minutes"],["Instant result"]],"Free")}
   ${card("courses","t-lilac",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
 </div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
@@ -599,6 +628,20 @@ ${backLink()}
   </div>
 </div>`;},
 
+test(){ return `
+${backLink()}
+<div class="detail">
+  <div>
+    <section class="detail-hero t-sand">
+      <span class="free-tag">FREE</span>
+      <span class="eyebrow" style="display:block;margin-top:14px">Communication test · 4 minutes</span>
+      <h1>Where does your communication break?</h1>
+      <p>Most people don't struggle everywhere. They struggle in certain rooms. Find yours, and what to do about it.</p>
+    </section>
+  </div>
+  <div class="panel" id="gt"></div>
+</div>`;},
+
 courses(){ return `
 ${backLink()}
 <div class="detail">
@@ -609,6 +652,7 @@ ${backLink()}
   </section>
   <div class="panel">
     <h3>Be first to know</h3>
+    <p class="hint" style="margin:-4px 0 12px">Not sure where you stand? <a href="#test" style="text-decoration:underline;font-weight:600">Take the free 4-minute test</a>.</p>
     
     ${waitForm("courses","Join the waitlist")}
   </div>
@@ -910,6 +954,11 @@ function lagosDateStr(){ const n=lagosNow(); return `${n.getFullYear()}-${String
 function renderPlan(el){
   const total = B.hours*CONFIG.hourRate;
   stage(el, `${stepsBar()}
+    ${B.fromTest?`<span class="gt-from">From your test · ${esc(B.fromTest)}</span>`:""}
+    <h3>What's this session for?</h3>
+    <textarea class="gt-note" id="m-note" maxlength="600" placeholder="Tell me what you want to work on, so we start on the real thing.">${esc((B.form && B.form.note) || B.prefillNote || "")}</textarea>
+    <p class="hint" style="margin-top:6px">${B.fromTest?"Written from your result. Change anything you like.":"A line or two is enough. I read it before we meet."}</p>
+    <div style="height:18px"></div>
     <h3>How much time do you want?</h3>
     <div class="seg" role="group" aria-label="Hours">${[1,2,4,8].map(h=>`<button type="button" data-h="${h}" aria-pressed="${h===B.hours}">${h}<small>${h===1?"hour":"hours"}</small></button>`).join("")}</div>
     <p class="hint">Split it however you like. Two sessions a week, or all of it in one day. You pick the times next.</p>
@@ -922,9 +971,226 @@ function renderPlan(el){
     if(cut) toast(`Took ${cut} session${cut>1?"s":""} off your list to fit ${B.hours} hour${B.hours>1?"s":""}.`);
     if(B.len>B.hours*60) B.len=B.hours*60; prefetch("mentorship",B.len); renderBooker(); bump(".num");
   });
-  $("#toTime").onclick=()=>{ B.step="time"; if(!fitLen()){ renderBooker(); loadSlots(); } };
+  const keepNote = ()=>{ const n=$("#m-note"); if(n){ B.form = Object.assign({}, B.form||{}, { note:n.value.trim() }); } };
+  $("#m-note").addEventListener("input", keepNote);
+  $("#toTime").onclick=()=>{ keepNote(); B.step="time"; if(!fitLen()){ renderBooker(); loadSlots(); } };
 }
 function bump(sel){ const n=$(sel); if(!n) return; n.classList.remove("bump"); void n.offsetWidth; n.classList.add("bump"); }
+
+/* ---------- Communication Gap Test ---------- */
+const GT_SIT = [
+  { id:"A", q:"Talking with friends or family", p:"talking with friends or family" },
+  { id:"B", q:"Meeting someone new", p:"meeting someone new" },
+  { id:"C", q:"Speaking to a boss, elder or someone senior", p:"speaking to someone senior" },
+  { id:"D", q:"Speaking in a group or a meeting", p:"speaking in a group" },
+  { id:"E", q:"Speaking on camera or recording yourself", p:"speaking on camera" },
+  { id:"F", q:"Disagreeing with someone", p:"disagreeing with someone" },
+  { id:"G", q:"Explaining an idea or something you know well", p:"explaining an idea" },
+  { id:"H", q:"Asking for something: money, a favour, a raise", p:"asking for something" }
+];
+const GT_LEVELS = ["I'm fine","A bit uneasy","I struggle","I avoid it"];
+const GT_WHAT = [
+  { id:"blank", t:"My mind goes blank", to:["freezer"] },
+  { id:"shake", t:"My heart races or my voice shakes", to:["freezer"] },
+  { id:"jumble", t:"I know what I mean, but it comes out jumbled", to:["scrambler"] },
+  { id:"restart", t:"I start, stop, and start again", to:["scrambler"] },
+  { id:"long", t:"I keep talking and I can see I've lost them", to:["over"] },
+  { id:"repeat", t:"People ask me to repeat myself or speak up", to:["mumbler"] },
+  { id:"rush", t:"I rush and swallow my words", to:["mumbler"] },
+  { id:"agree", t:"I agree or go quiet, even when I don't agree", to:["peace"] },
+  { id:"silent", t:"I don't speak at all", to:["freezer"] }
+];
+const GT_CHECKS = [
+  { id:"q1", q:"How often do people ask you, \"What do you mean?\"", type:"scrambler", o:["Rarely","Sometimes","Often"], pts:[0,1,2] },
+  { id:"q2", q:"How often do people ask you to repeat yourself or speak up?", type:"mumbler", o:["Rarely","Sometimes","Often"], pts:[0,1,2] },
+  { id:"q3", q:"How long are your voice notes, usually?", type:"over", o:["Under a minute","1 to 3 minutes","Over 3 minutes","I send several in a row"], pts:[0,1,2,2] },
+  { id:"q4", q:"Someone senior says something you think is wrong. You usually:", type:"peace", o:["Say so plainly","Say it softly","Hint at it","Keep quiet"], pts:[0,0,1,2] },
+  { id:"q5", q:"Before an important conversation, you:", type:"freezer", o:["Just go","Plan it a little","Replay it in your head again and again","Find a way to avoid it"], pts:[0,0,2,2] }
+];
+const GT_TYPES = {
+  freezer:{ name:"The Freezer", me:"I have the words, but pressure takes them.", line:"You have the words. Pressure takes them.", tint:"t-sky",
+    whats:"With people you're comfortable with, you talk just fine. The trouble starts when the stakes go up: someone senior, a group, a camera. Your body reads the room as danger and shuts the words down. That's a nerves problem, not a vocabulary problem, and it gets better with small, regular exposure.",
+    drill:"Send one 30-second voice note every day this week. Start with one to yourself. By the weekend, send one to someone you'd usually avoid speaking to.",
+    want:"I want to be able to speak without freezing when the pressure is on." },
+  scrambler:{ name:"The Scrambler", me:"My thoughts come faster than I can put them in order.", line:"Your thoughts come faster than you can put them in order.", tint:"t-peach",
+    whats:"You know what you mean, but it comes out in pieces, so people get the parts and miss the point. You start, stop, and start again. More words won't fix it. Deciding your point before you start talking will.",
+    drill:"Before you explain anything this week, say your point in one sentence first: \"My point is...\" Then explain. Do it three times a day.",
+    want:"I want to get my point across the first time." },
+  over:{ name:"The Over-explainer", me:"I give people everything, and my point gets lost.", line:"You give people everything, and the point gets lost.", tint:"t-lilac",
+    whats:"You want to be understood, so you add context, then more context, then a story. By the time you reach the point, they've drifted. Long voice notes are a clue. People don't need everything you know, only the part that matters to them.",
+    drill:"The one-breath rule: answer in one breath, then stop and let them ask for more. Try it in every conversation for a week.",
+    want:"I want to say what matters and stop, without losing people." },
+  mumbler:{ name:"The Mumbler", me:"What I say makes sense, but my delivery buries it.", line:"Your message is fine. Your delivery buries it.", tint:"t-mint",
+    whats:"What you say makes sense, but people miss it. You speak fast or soft, or fill the gaps with \"ehm\" and \"you know\". People ask you to repeat yourself, and you start to feel unheard. This is the easiest gap to fix, because you can hear it yourself.",
+    drill:"Record yourself talking for one minute every day. Play it back and count your fillers. Beat yesterday's number.",
+    want:"I want people to hear me the first time." },
+  peace:{ name:"The Peacekeeper", me:"I say what keeps the peace, not what I really think.", line:"You say what keeps the peace, not what you think.", tint:"t-sand",
+    whats:"You can speak. You hold back the part that might cause friction: the disagreement, the no, the request. People like you, but they don't know where you stand, and you leave conversations carrying what you didn't say.",
+    drill:"Once a day, say one honest \"no\" or \"I see it differently\" in a moment where little is at stake.",
+    want:"I want to say what I really think without fear of the fallout." },
+  steady:{ name:"Steady", me:"I don't have one big gap, but I want to sharpen how I speak.", line:"No big gap. You're ready to sharpen what works.", tint:"t-mint",
+    whats:"You're comfortable in most situations, and nothing in your answers points to one clear problem. Your next step is sharpening: speaking with more weight, telling better stories, holding a room.",
+    drill:"This week, pick one conversation that matters and plan your first sentence before you walk in.",
+    want:"I want to take how I speak from good to strong." }
+};
+const GT = { i:0, sit:{}, what:[], checks:{}, res:null, id:null, unlocked:false };
+const gtSteps = () => [...GT_SIT.map(x=>({ k:"sit", x })), { k:"what" }, ...GT_CHECKS.map(x=>({ k:"check", x }))];
+const GT_ORDER = ["C","D","E","F","H","B","G","A"];
+function gtHardest(n){
+  return GT_ORDER.slice().sort((a,b)=>(GT.sit[b]||0)-(GT.sit[a]||0) || GT_ORDER.indexOf(a)-GT_ORDER.indexOf(b))
+    .filter(id=>(GT.sit[id]||0)>=1).slice(0,n).map(id=>GT_SIT.find(x=>x.id===id));
+}
+function gtScore(){
+  const v = id => GT.sit[id] || 0;
+  const sc = { freezer:0, scrambler:0, over:0, mumbler:0, peace:0 };
+  if(v("A")<=1 && (v("C")+v("D")+v("E"))/3 >= 2) sc.freezer += 4;
+  if(v("F")>=2) sc.peace += 2;
+  if(v("H")>=2) sc.peace += 2;
+  if(v("G")>=2) sc.scrambler += 2;
+  if(v("E")>=2) sc.mumbler += 1;
+  if(v("D")>=2) sc.mumbler += 1;
+  const hard = gtHardest(1)[0];
+  GT.what.forEach(w=>{
+    const o = GT_WHAT.find(x=>x.id===w); if(!o) return;
+    o.to.forEach(t=>sc[t]+=3);
+    if(w==="silent" && hard && (hard.id==="F" || hard.id==="H")) sc.peace += 3;
+  });
+  GT_CHECKS.forEach(c=>{ const a = GT.checks[c.id]; if(a!=null) sc[c.type] += c.pts[a]; });
+  const ranked = Object.keys(sc).sort((a,b)=>sc[b]-sc[a]);
+  const allLow = GT_SIT.every(x=>v(x.id)<=1);
+  let type = ranked[0], second = null;
+  if(allLow && sc[type] < 4) type = "steady";
+  else if(sc[ranked[1]] >= sc[type]-2 && sc[ranked[1]] > 0) second = ranked[1];
+  return { type, second, scores:sc };
+}
+function gtNote(){
+  const t = GT_TYPES[GT.res.type], hard = gtHardest(2);
+  const where = hard.length ? ` It's hardest for me when it comes to ${hard.map(h=>h.p).join(" and ")}.` : "";
+  const label = GT.res.type==="steady" ? "Steady" : t.name;
+  return `From my Communication Gap Test, I'm ${label}${GT.res.second ? `, with a bit of ${GT_TYPES[GT.res.second].name}` : ""}. ${t.me}${where} ${t.want}`;
+}
+function startTest(){ Object.assign(GT, { i:-1, sit:{}, what:[], checks:{}, res:null, id:null, unlocked:false }); gtRender(); }
+function gtGo(i){ GT.i = i; gtRender(); const p=$("#gt"); if(p && (p.getBoundingClientRect().top < 0 || i===0)) p.scrollIntoView({ behavior:"smooth", block:"start" }); }
+function gtRender(){
+  const el = $("#gt"); if(!el) return;
+  const steps = gtSteps();
+  const hero = el.parentElement && el.parentElement.querySelector(".detail-hero");
+  if(hero) hero.style.display = GT.i < 0 ? "" : "none";
+  if(GT.i < 0){
+    el.innerHTML = `<div class="gt-anim"><h3>How it works</h3>
+      <ul class="list">
+        <li><span class="n">1</span><span>Rate 8 everyday situations, from easy to hard.</span></li>
+        <li><span class="n">2</span><span>Tell me what happens when it gets hard.</span></li>
+        <li><span class="n">3</span><span>Five quick questions about your habits.</span></li>
+      </ul>
+      <p class="hint">Answer with what actually happens, not what you wish happened. Nobody sees your answers but me.</p>
+      <div style="height:14px"></div><button class="btn btn-ink btn-block" id="gt-go">Start the test</button></div>`;
+    $("#gt-go").onclick = ()=>gtGo(0);
+    return;
+  }
+  if(GT.i >= steps.length) return gtResult(el);
+  const st = steps[GT.i], pct = Math.round(GT.i/steps.length*100);
+  const top = `<div class="gt-top"><button type="button" id="gt-back">${GT.i>0?"Back":"Intro"}</button><span>${GT.i+1} of ${steps.length}</span></div><div class="gt-prog"><i style="width:${pct}%"></i></div>`;
+  let body = "";
+  if(st.k==="sit"){
+    const cur = GT.sit[st.x.id];
+    body = `<p class="gt-sub">${GT.i===0?"How do you do in each of these?":"And this one?"}</p><h3 class="gt-q">${esc(st.x.q)}</h3><div style="height:12px"></div>
+      <div class="gt-opts">${GT_LEVELS.map((l,i)=>`<button type="button" class="gt-opt" data-v="${i}" aria-pressed="${cur===i}"><span class="k">${i+1}</span>${l}</button>`).join("")}</div>`;
+  } else if(st.k==="what"){
+    const hard = gtHardest(1)[0];
+    body = `<h3 class="gt-q">${hard ? `Think about ${esc(hard.p)}. What usually happens?` : "Think of the last time speaking felt hard. What happened?"}</h3>
+      <p class="gt-sub">Pick up to two.</p>
+      <div class="gt-opts">${GT_WHAT.map(w=>`<button type="button" class="gt-opt" data-w="${w.id}" aria-pressed="${GT.what.includes(w.id)}">${esc(w.t)}</button>`).join("")}</div>
+      <div style="height:14px"></div><button class="btn btn-ink btn-block" id="gt-next" ${GT.what.length?"":"disabled"}>Continue</button>`;
+  } else {
+    const cur = GT.checks[st.x.id];
+    body = `<h3 class="gt-q">${esc(st.x.q)}</h3><div style="height:12px"></div>
+      <div class="gt-opts">${st.x.o.map((l,i)=>`<button type="button" class="gt-opt" data-v="${i}" aria-pressed="${cur===i}"><span class="k">${String.fromCharCode(65+i)}</span>${esc(l)}</button>`).join("")}</div>`;
+  }
+  el.innerHTML = `${top}<div class="gt-anim">${body}</div>`;
+  $("#gt-back").onclick = ()=>gtGo(GT.i-1);
+  if(st.k==="what"){
+    el.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{
+      const id = b.dataset.w, on = GT.what.includes(id);
+      if(on) GT.what = GT.what.filter(x=>x!==id);
+      else { if(GT.what.length>=2) GT.what.shift(); GT.what.push(id); }
+      gtRender();
+    });
+    $("#gt-next").onclick = ()=>gtGo(GT.i+1);
+  } else {
+    el.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{
+      if(st.k==="sit") GT.sit[st.x.id] = +b.dataset.v; else GT.checks[st.x.id] = +b.dataset.v;
+      b.setAttribute("aria-pressed","true");
+      setTimeout(()=>gtGo(GT.i+1), 180);
+    });
+  }
+}
+async function gtResult(el){
+  if(!GT.res){
+    GT.res = gtScore();
+    api("POST", { action:"gap_save", type:GT.res.type, second:GT.res.second, scores:GT.res.scores, answers:{ sit:GT.sit, what:GT.what, checks:GT.checks } })
+      .then(r=>{ if(r && r.ok) GT.id = r.id; }).catch(()=>{});
+  }
+  const t = GT_TYPES[GT.res.type], sec = GT.res.second ? GT_TYPES[GT.res.second] : null;
+  const bars = GT_SIT.map(x=>{ const v = GT.sit[x.id]||0; return `<div class="gt-bar"><span>${esc(x.q.split(":")[0])}</span><span class="t"><i class="${v>=2?"hot":""}" style="width:${Math.max(6, v/3*100)}%"></i></span></div>`; }).join("");
+  const full = GT.unlocked ? `<p style="margin:0;font-size:15.5px;line-height:1.55">${esc(t.whats)}</p><div class="gt-drill"><b>This week's drill</b>${esc(t.drill)}</div>`
+    : `<p class="hint" style="margin-top:0">Get the full breakdown of what's going on, and one drill to start this week. I'll email you a copy too.</p>
+      <form id="gt-form" novalidate>
+        <div class="field"><label for="gt-name">First name</label><input id="gt-name" autocomplete="given-name"></div>
+        <div class="field"><label for="gt-email">Email</label><input id="gt-email" type="email" inputmode="email" autocomplete="email" required></div>
+        <label class="check"><input type="checkbox" id="gt-opt" checked><span>Send me Genie's emails<em>Short notes on mindset, communication and getting things done. Leave anytime.</em></span></label>
+        <div class="err" id="gt-err" hidden></div>
+        <button class="btn btn-ink btn-block" type="submit" id="gt-sub">Show my full result</button>
+      </form>`;
+  el.innerHTML = `<div class="gt-anim">
+    <section class="detail-hero ${t.tint}" style="margin:-6px -6px 0">
+      <span class="eyebrow">Your result</span>
+      <h2 class="gt-type">${esc(t.name)}</h2>
+      <p class="gt-line">${esc(t.line)}</p>
+      ${sec?`<span class="gt-second">with a bit of ${esc(sec.name)}</span>`:""}
+    </section>
+    <div style="height:22px"></div>
+    <h3>Where it breaks</h3>
+    <div class="gt-bars">${bars}</div>
+    <p class="gt-key">Longer bars are harder for you. Red is where you struggle or avoid speaking.</p>
+    <div style="height:22px"></div>
+    <h3>What's going on</h3>
+    <div id="gt-full">${full}</div>
+    <div style="height:22px"></div>
+    <div class="callout" style="background:var(--sky);display:block">
+      <b style="font-size:17px;margin-bottom:4px">Want to work on this with me?</b>
+      A one-hour session, ${naira(CONFIG.hourRate)}. I'll already know your result, so we start on the real thing.
+      <div style="height:12px"></div>
+      <button type="button" class="btn btn-ink btn-block" id="gt-book">Yes, book a session</button>
+    </div>
+    <h3 style="margin-top:18px">Share your result</h3>
+    <div class="gt-share">
+      <a class="btn btn-line" id="gt-wa" target="_blank" rel="noopener">WhatsApp</a>
+      <button type="button" class="btn btn-line" id="gt-more">Share</button>
+    </div>
+    <p class="note"><a href="#test" id="gt-again" style="text-decoration:underline">Take it again</a></p>
+  </div>`;
+  const shareText = `I took Genie's communication test and I'm ${t.name}. Where does yours break? https://eugeneobo.com/#test`;
+  $("#gt-wa").href = "https://wa.me/?text=" + encodeURIComponent(shareText);
+  $("#gt-more").onclick = async ()=>{
+    if(navigator.share){ try{ await navigator.share({ title:"Where does your communication break?", text:shareText }); }catch(e){} }
+    else { try{ await navigator.clipboard.writeText(shareText); toast("Copied. Paste it anywhere."); }catch(e){ toast(shareText); } }
+  };
+  $("#gt-again").onclick = e=>{ e.preventDefault(); startTest(); };
+  $("#gt-book").onclick = ()=>{ B.prefillNote = gtNote(); B.fromTest = t.name; location.hash = "#mentorship"; };
+  const f = $("#gt-form");
+  if(f) f.addEventListener("submit", async e=>{
+    e.preventDefault();
+    const email = $("#gt-email").value.trim(), name = $("#gt-name").value.trim(), err = $("#gt-err");
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ err.textContent = ERR.bad_email; err.hidden = false; return; }
+    err.hidden = true; const b = $("#gt-sub"); b.disabled = true; b.innerHTML = '<span class="spin"></span> One moment';
+    for(let k=0; !GT.id && k<20; k++) await new Promise(r=>setTimeout(r,150));
+    if(GT.id) api("POST", { action:"gap_email", id:GT.id, email, name, opt_in:$("#gt-opt").checked }).catch(()=>{});
+    B.form = Object.assign({}, B.form||{}, { name, email });
+    GT.unlocked = true; gtResult(el);
+    setTimeout(()=>{ const g=$("#gt-full"); if(g) g.scrollIntoView({ behavior:"smooth", block:"center" }); }, 60);
+  });
+}
 
 /* ---------- Already used the free call ---------- */
 const PAID_LINE = `Paid sessions are open Monday to Saturday, 10am to 6pm.`;
@@ -1257,7 +1523,8 @@ function route(){
   document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("on", a.dataset.nav === (scrollToServices ? "services" : key)));
   reveal();
   if(key==="call") startBooker("free_call");
-  if(key==="mentorship") startBooker("mentorship");
+  if(key==="mentorship"){ startBooker("mentorship"); if(B.fromTest) setTimeout(()=>$("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }), 120); }
+  if(key==="test") startTest();
   wireWaitForms();
   if(scrollToServices) setTimeout(()=>document.getElementById("services")?.scrollIntoView({ behavior:"smooth" }), 30);
   else window.scrollTo(0,0);

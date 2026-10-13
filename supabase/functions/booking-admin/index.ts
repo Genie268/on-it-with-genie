@@ -81,6 +81,10 @@ async function list() {
     const { data: us } = await sb.from("slot_bookings").select("plan_id,minutes").in("plan_id", ids).in("status", ["held", "confirmed"]);
     (us ?? []).forEach((r: any) => (used[r.plan_id] = (used[r.plan_id] ?? 0) + (r.minutes ?? 60)));
   }
+  // Communication Gap Test: how people split across the types
+  const { data: gapRows } = await sb.from("gap_results").select("type,second,email,name,created_at").order("created_at", { ascending: false }).limit(2000);
+  const gapCounts: Record<string, number> = {};
+  (gapRows ?? []).forEach((r: any) => (gapCounts[r.type] = (gapCounts[r.type] ?? 0) + 1));
   // how many free calls each person has ever had (to flag repeat bookers)
   const { data: allFree } = await sb.from("slot_bookings").select("name,email,phone_key").eq("service", "free_call").eq("status", "confirmed");
   const norm = (n: string) => (n || "").toLowerCase().replace(/[^a-z]/g, "");
@@ -94,6 +98,7 @@ async function list() {
       return { ...b, date: longDate(t), label: label(t), same_name: b.service === "free_call" && b.status === "confirmed" ? (byName[norm(b.name)] ?? 0) : 0 };
     }),
     plans: (plans ?? []).map((p: any) => ({ ...p, minutes_used: used[p.id] ?? 0, link: `${SITE}/book?plan=${p.token}`, manual: String(p.payment_reference || "").startsWith("MANUAL_") })),
+    gap: { total: (gapRows ?? []).length, counts: gapCounts, emails: (gapRows ?? []).filter((r: any) => r.email).length, recent: (gapRows ?? []).slice(0, 30) },
     waitlist: waitlist ?? [],
     contacts: contacts ?? [],
     rules: rules ?? [],

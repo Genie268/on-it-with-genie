@@ -103,8 +103,8 @@ function bkRender(){
   const d = BK.data, now = Date.parse(d.now);
   const upcoming = d.bookings.filter(b=>b.status==="confirmed" && Date.parse(b.ends_at) > now);
   const optedIn = d.contacts.filter(x=>x.opted_in).length;
-  const tabs = [["calls","Calls"],["mentorship","Mentorship"],["lists","Waitlists & emails"],["hours","Hours & settings"]];
-  const body = { calls:bkCalls, mentorship:bkMentorship, lists:bkLists, hours:bkHours }[BK.view](d, now);
+  const tabs = [["calls","Calls"],["mentorship","Mentorship"],["test","Comm test"],["lists","Waitlists & emails"],["hours","Hours & settings"]];
+  const body = { calls:bkCalls, mentorship:bkMentorship, test:bkTest, lists:bkLists, hours:bkHours }[BK.view](d, now);
   c.innerHTML = `<div class="bk">
     <div class="bk-stats">
       <div class="bk-stat"><b>${upcoming.filter(b=>b.service==="free_call").length}</b><span>Clarity calls coming</span></div>
@@ -222,6 +222,21 @@ async function bkNewPlan(btn){
 }
 
 /* ---------- Waitlists & email list ---------- */
+/* ---------- Communication Gap Test ---------- */
+function bkTest(d){
+  const g = d.gap || { total:0, counts:{}, emails:0, recent:[] };
+  const names = { freezer:"The Freezer", scrambler:"The Scrambler", over:"The Over-explainer", mumbler:"The Mumbler", peace:"The Peacekeeper", steady:"Steady" };
+  const order = Object.keys(names).sort((a,b)=>(g.counts[b]||0)-(g.counts[a]||0));
+  const max = Math.max(1, ...order.map(k=>g.counts[k]||0));
+  const bars = order.map(k=>{ const n=g.counts[k]||0, pct=g.total?Math.round(n/g.total*100):0;
+    return `<div style="display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;margin:8px 0;font-size:13px"><span style="color:#ededed;font-weight:700">${names[k]}</span><span style="height:10px;background:#1c1c1c;border-radius:99px;overflow:hidden"><i style="display:block;height:100%;width:${n/max*100}%;background:#c49a1c;border-radius:99px"></i></span><span style="color:#999;text-align:right">${n} · ${pct}%</span></div>`; }).join("");
+  const recent = g.recent.length ? g.recent.map(r=>`<div class="bk-row" style="padding:10px 12px"><b style="color:#ededed">${bkEsc(names[r.type]||r.type)}</b>${r.second?` <span style="color:#777">with a bit of ${bkEsc(names[r.second]||r.second)}</span>`:""}<div style="font-size:12px;color:#777;margin-top:3px">${bkEsc(r.name||"")} ${bkEsc(r.email||"No email given")} · ${new Date(r.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</div></div>`).join("")
+    : `<div class="bk-empty">Nobody has taken the test yet. Share eugeneobo.com/#test</div>`;
+  return `<div class="bk-card"><div class="bk-top"><h4>How your audience splits</h4><b style="color:#c49a1c;font-size:18px">${g.total}</b></div>
+      <p class="h">Everyone who finished the Communication Gap Test. ${g.emails} left their email. The biggest group is where your course should start.</p>${bars}</div>
+    <div class="bk-day">Latest results</div>${recent}`;
+}
+
 function bkLists(d){
   const lists = { event:"Forward with Genie (event)", courses:"Communication courses" };
   const wl = Object.keys(lists).map(k=>{

@@ -25,6 +25,10 @@
  *   POST {action:"book_sessions", token, sessions:[{start,minutes}]}   Book any number of sessions from what's left.
  *   POST {action:"cancel_session", token, id}     Allowed up to 24 hours before; the time goes back on the plan.
  *
+ * Communication Gap Test
+ *   POST {action:"gap_save", type, second?, scores, answers}   Store a result, returns its id.
+ *   POST {action:"gap_email", id, email, name?, opt_in}       Email the full result (once) and add to contacts.
+ *
  * Other
  *   POST {action:"subscribe", email, name?, source}   Waitlists (event, courses) and email list.
  *
@@ -665,6 +669,65 @@ async function handleAppealDecide(p: Record<string, unknown>) {
   return json({ ok: true, appeal: await appealView({ ...ap, status: decision }) });
 }
 
+/* ---------- Communication Gap Test ---------- */
+const GAP_TYPES: Record<string, { name: string; line: string; whats: string; drill: string }> = {
+  freezer: { name: "The Freezer", line: "You have the words. Pressure takes them.",
+    whats: "With people you're comfortable with, you talk just fine. The trouble starts when the stakes go up: someone senior, a group, a camera. Your body reads the room as danger and shuts the words down. That's a nerves problem, not a vocabulary problem, and it gets better with small, regular exposure.",
+    drill: "Send one 30-second voice note every day this week. Start with one to yourself. By the weekend, send one to someone you'd usually avoid speaking to." },
+  scrambler: { name: "The Scrambler", line: "Your thoughts come faster than you can put them in order.",
+    whats: "You know what you mean, but it comes out in pieces, so people get the parts and miss the point. You start, stop, and start again. More words won't fix it. Deciding your point before you start talking will.",
+    drill: "Before you explain anything this week, say your point in one sentence first: \"My point is...\" Then explain. Do it three times a day." },
+  over: { name: "The Over-explainer", line: "You give people everything, and the point gets lost.",
+    whats: "You want to be understood, so you add context, then more context, then a story. By the time you reach the point, they've drifted. Long voice notes are a clue. People don't need everything you know, only the part that matters to them.",
+    drill: "The one-breath rule: answer in one breath, then stop and let them ask for more. Try it in every conversation for a week." },
+  mumbler: { name: "The Mumbler", line: "Your message is fine. Your delivery buries it.",
+    whats: "What you say makes sense, but people miss it. You speak fast or soft, or fill the gaps with \"ehm\" and \"you know\". People ask you to repeat yourself, and you start to feel unheard. This is the easiest gap to fix, because you can hear it yourself.",
+    drill: "Record yourself talking for one minute every day. Play it back and count your fillers. Beat yesterday's number." },
+  peace: { name: "The Peacekeeper", line: "You say what keeps the peace, not what you think.",
+    whats: "You can speak. You hold back the part that might cause friction: the disagreement, the no, the request. People like you, but they don't know where you stand, and you leave conversations carrying what you didn't say.",
+    drill: "Once a day, say one honest \"no\" or \"I see it differently\" in a moment where little is at stake." },
+  steady: { name: "Steady", line: "No big gap. You're ready to sharpen what works.",
+    whats: "You're comfortable in most situations, and nothing in your answers points to one clear problem. Your next step is sharpening: speaking with more weight, telling better stories, holding a room.",
+    drill: "This week, pick one conversation that matters and plan your first sentence before you walk in." },
+};
+const smallJson = (v: unknown, max = 4000) => {
+  if (!v || typeof v !== "object") return {};
+  const sJ = JSON.stringify(v);
+  return sJ.length > max ? {} : JSON.parse(sJ);
+};
+
+async function handleGapSave(p: Record<string, unknown>) {
+  const type = clean(p.type, 20);
+  if (!GAP_TYPES[type]) return json({ ok: false, error: "bad_type" }, 400);
+  const second = GAP_TYPES[clean(p.second, 20)] && clean(p.second, 20) !== type ? clean(p.second, 20) : null;
+  const { data, error } = await sb.from("gap_results")
+    .insert({ type, second, scores: smallJson(p.scores, 1000), answers: smallJson(p.answers, 3000) })
+    .select("id").single();
+  if (error) { console.error(error); return json({ ok: false, error: "save_failed" }, 500); }
+  return json({ ok: true, id: data.id });
+}
+
+async function handleGapEmail(p: Record<string, unknown>) {
+  const id = clean(p.id, 60);
+  const email = clean(p.email, 120).toLowerCase();
+  const name = clean(p.name, 80);
+  const optIn = p.opt_in === true;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ ok: false, error: "not_found" }, 404);
+  if (!validEmail(email)) return json({ ok: false, error: "bad_email" }, 400);
+  const { data: row } = await sb.from("gap_results").select("id,type,second,emailed_at").eq("id", id).maybeSingle();
+  if (!row) return json({ ok: false, error: "not_found" }, 404);
+  await sb.from("gap_results").update({ email, name: name || null, opted_in: optIn }).eq("id", id);
+  await upsertContact(email, name, "", "gap_test", optIn);
+  if (!row.emailed_at) {
+    const t = GAP_TYPES[row.type], sec = row.second ? GAP_TYPES[row.second] : null;
+    const first = (name || "there").split(" ")[0];
+    await sendEmail(email, `Your result: ${t.name}`,
+      `Hi ${first},\n\nYou took my Communication Gap Test. Your result: ${t.name}${sec ? `, with a bit of ${sec.name}` : ""}.\n\n${t.line}\n\n${t.whats}\n\nThis week's drill:\n${t.drill}\n\nWant to work on it with me? Book a session and I'll already know your result, so we start on the real thing:\n${SITE}/#mentorship\n\nGenie`);
+    await sb.from("gap_results").update({ emailed_at: new Date().toISOString() }).eq("id", id);
+  }
+  return json({ ok: true });
+}
+
 const WAITLISTS: Record<string, { subject: string; body: (first: string) => string }> = {
   event: {
     subject: "You're on the list for Forward with Genie",
@@ -725,6 +788,8 @@ Deno.serve(async (req) => {
       case "appeal": return await handleAppeal(p);
       case "appeal_get": return await handleAppealGet(p);
       case "appeal_decide": return await handleAppealDecide(p);
+      case "gap_save": return await handleGapSave(p);
+      case "gap_email": return await handleGapEmail(p);
       default: return json({ ok: false, error: "unknown_action" }, 400);
     }
   } catch (e) {
