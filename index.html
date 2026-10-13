@@ -402,7 +402,12 @@ p{margin:0}
 .basket.empty-b{border-style:dashed;background:transparent}
 .basket.empty-b p{font-size:14px;color:var(--muted);margin:0}
 .basket-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.basket-head b{font-size:15.5px}.basket-head span{font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.basket-head b{font-size:15.5px}
+.hstep{display:inline-flex;align-items:center;gap:4px;background:var(--bg);border-radius:999px;padding:3px}
+.hstep button{width:32px;height:32px;border-radius:50%;border:0;background:#fff;font:inherit;font-size:19px;font-weight:700;line-height:1;cursor:pointer;color:var(--ink)}
+.hstep button:disabled{opacity:.35;cursor:default}
+.hstep .num{min-width:62px;text-align:center;font-size:14px;color:var(--ink)!important}
+.basket-sub{margin:8px 0 0;font-size:13px;color:var(--muted)}.basket-head span{font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .basket .meter{margin-top:10px}
 .basket .sess.fresh{animation:rise .35s var(--ease) both}
 .basket .sess{align-items:flex-start}
@@ -928,6 +933,16 @@ function clashes(start, mins){
   return (B.basket||[]).find(x=>tms(x.start)!==t && t < tms(x.start)+x.minutes*60000 && tms(x.start) < e);
 }
 const sortBasket = () => B.basket.sort((a,b)=>tms(a.start)-tms(b.start));
+const HOUR_TIERS = [1,2,4,8];
+function setHours(h){
+  B.hours = h;
+  let cut = 0;
+  while(pickedMins() > B.hours*60){ const last = B.basket.reduce((a,x)=>(x.seq||0) > (a.seq||0) ? x : a); B.basket = B.basket.filter(x=>x!==last); cut++; }
+  if(cut) toast(`Took ${cut} session${cut>1?"s":""} off your list to fit ${B.hours} hour${B.hours>1?"s":""}.`);
+  if(B.len>B.hours*60){ B.len=B.hours*60; B.data=null; renderBooker(); loadSlots(); }
+  else renderBooker();
+  bump(".num");
+}
 function lenSeg(){
   const left = leftMins();
   return `<div class="seg seg-len" role="group" aria-label="Session length">${LENGTHS.map(m=>`<button type="button" data-m="${m}" aria-pressed="${m===B.len}" ${m>Math.max(left,30)||m>capMins()?"disabled":""}>${m<60?"30":m/60===1.5?"1½":m/60}<small>${m<60?"min":m===60?"hour":"hours"}</small></button>`).join("")}</div>`;
@@ -951,7 +966,7 @@ function toggleSession(start, day){
   if(B.len > leftMins()){ toast(`You only have ${minsText(leftMins())} left. Pick a shorter length.`); return; }
   B.seq = (B.seq||0) + 1;
   B.basket.push({ start:s.start, minutes:B.len, label:s.label, date:day.date, seq:B.seq }); sortBasket(); B.fresh=[s.start];
-  if(moved){ const d = dayParts(day.date); toast(`Moved to ${d.wd} ${d.dd} ${d.mon}, ${s.label}.`); }
+  if(moved){ const d = dayParts(day.date); toast(`Moved to ${d.wd} ${d.dd} ${d.mon}, ${s.label}.${B.mode!=="plan" && B.hours<8 ? " Want both? Tap + for more hours." : ""}`); }
   if(!fitLen()) renderBooker();
 }
 async function repeatWeekly(start){
@@ -984,13 +999,20 @@ function basketHTML(){
   const rows = B.basket.map(x=>`<li class="sess${fresh.includes(x.start)?" fresh":""}"><div><b>${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}</b><span>${x.label} · ${lenLabel(x.minutes)}</span>${left>=x.minutes?`<button type="button" class="rep" data-rep="${x.start}">↻ Repeat weekly</button>`:""}</div>
       <button type="button" class="x-btn" data-rm="${x.start}" aria-label="Remove ${x.label}">×</button></li>`).join("");
   return `<div class="basket">
-    <div class="basket-head"><b>Your sessions</b><span class="num">${minsText(used)} of ${minsText(cap)}</span></div>
+    <div class="basket-head"><b>Your sessions</b>${B.mode==="plan" ? `<span class="num">${minsText(used)} of ${minsText(cap)}</span>`
+      : `<span class="hstep"><button type="button" data-hs="-1" aria-label="Fewer hours" ${B.hours<=HOUR_TIERS[0]?"disabled":""}>−</button><b class="num">${B.hours} hour${B.hours>1?"s":""}</b><button type="button" data-hs="1" aria-label="More hours" ${B.hours>=HOUR_TIERS[HOUR_TIERS.length-1]?"disabled":""}>+</button></span>`}</div>
     <div class="meter"><span style="width:${Math.round(100*used/cap)}%"></span></div>
+    ${B.mode==="plan" ? "" : `<p class="basket-sub">${minsText(used)} placed${left>0?`, ${minsText(left)} free`:""} · ${naira(B.hours*CONFIG.hourRate)}</p>`}
     <ul class="sess-list" style="margin-top:12px">${rows}</ul>
   </div>`;
 }
 function wireBasket(el){
   el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ if(!b.disabled) setLen(+b.dataset.m); });
+  el.querySelectorAll("[data-hs]").forEach(b=>b.onclick=()=>{
+    const i = HOUR_TIERS.indexOf(B.hours) + (+b.dataset.hs);
+    if(i<0 || i>=HOUR_TIERS.length) return;
+    setHours(HOUR_TIERS[i]);
+  });
   el.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ B.basket = B.basket.filter(x=>tms(x.start)!==tms(b.dataset.rm)); renderBooker(); });
   el.querySelectorAll("[data-rep]").forEach(b=>b.onclick=()=>{ b.disabled=true; b.innerHTML='<span class="spin"></span>'; repeatWeekly(b.dataset.rep); });
 }
