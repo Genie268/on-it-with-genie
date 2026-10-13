@@ -206,6 +206,16 @@ p{margin:0}
 .gt-drill b{display:block;font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
 .gt-share{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
 .gt-note{width:100%;min-height:118px;border-radius:14px;border:1.5px solid var(--line);padding:12px 14px;font:inherit;font-size:15px;background:#fff;resize:vertical;box-sizing:border-box}
+.gt-art{border-radius:20px;overflow:hidden;margin:0 0 16px;line-height:0}
+.gt-art svg{display:block;width:100%;height:auto;max-height:210px}
+.gt-part{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px;border-radius:999px;background:var(--bg);color:var(--ink)}
+.gt-opt .k.face{background:none;width:30px;height:30px}
+.gt-opt .k.face svg{width:30px;height:30px}
+.gt-opt[aria-pressed="true"] .k.face{background:none;color:var(--lime)}
+.gt-what{grid-template-columns:1fr 1fr}
+.gt-what .gt-opt{font-size:14px;padding:13px 12px;line-height:1.3}
+.gt-hero-art{margin:-8px -8px 6px;line-height:0}
+.gt-hero-art svg{display:block;width:100%;height:auto;max-height:190px}
 .gt-from{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px;border-radius:999px;background:var(--lilac);margin-bottom:8px}
 .paid-hint{font-size:13.5px;color:var(--muted);text-align:center;margin-top:12px}
 .paid-hint a{text-decoration:underline;color:inherit;font-weight:600}
@@ -519,8 +529,7 @@ home(){ const h = lagosNow().getHours(); return `
   ${(()=>{ const st=intakeState(); return card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal. I check in on your daily proof, track your progress with you, and we plan your moves in strategy sessions.",[["15 days to 3 months"],["First call in 48 hrs"]].concat(st.cap?[[`${st.cap} at a time`]]:[]).concat([["From ₦15,000","dark"]]),null,"ON IT APP",st.mode==="off"?null:st.ribbon); })()}
   ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Buy the hours, book sessions when it suits you.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
   ${card("call","t-mint",I.video,"Clarity call","10 minutes on video with me. Bring the one thing you're stuck on.",[["10 min"],["Video call"]],"Free")}
-  ${card("test","t-sand",I.mic,"Where does your communication break?","A 4-minute test. Find out what happens when you speak under pressure, and what to work on first.",[["4 minutes"],["Instant result"]],"Free")}
-  ${card("courses","t-lilac",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
+  ${card("communication","t-lilac",I.mic,"Communication","Speak so people listen. Find where your communication breaks, then learn to fix it.",[["Free test"],["Courses coming soon","soon"]])}
 </div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
 <a class="event" href="#event">
@@ -629,7 +638,7 @@ ${backLink()}
 </div>`;},
 
 test(){ return `
-${backLink()}
+${backLink("communication","Communication")}
 <div class="detail">
   <div>
     <section class="detail-hero t-sand">
@@ -642,8 +651,30 @@ ${backLink()}
   <div class="panel" id="gt"></div>
 </div>`;},
 
-courses(){ return `
+communication(){ return `
 ${backLink()}
+<div class="detail">
+  <div>
+    <section class="detail-hero t-lilac">
+      <span class="eyebrow">Communication</span>
+      <h1>Speak so people listen.</h1>
+      <p>Most people don't struggle everywhere. They struggle in certain rooms. Start by finding yours.</p>
+    </section>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr;margin-top:12px">
+    <a class="card t-sand" href="#test">
+      <div class="gt-art" style="margin:-8px -8px 0;background:rgba(255,255,255,.35)">${GA.S.intro}</div>
+      <span class="free-tag">FREE</span>
+      <h3>Where does your communication break?</h3>
+      <p>A 4-minute test. See what happens when you speak under pressure, and what to work on first.</p>
+      <div class="chips"><span class="chip">4 minutes</span><span class="chip">Instant result</span></div>
+    </a>
+    ${card("courses","t-peach",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
+  </div>
+</div>`;},
+
+courses(){ return `
+${backLink("communication","Communication")}
 <div class="detail">
   <section class="detail-hero t-lilac">
     <span class="eyebrow">Coming soon</span>
@@ -977,6 +1008,131 @@ function renderPlan(el){
 }
 function bump(sel){ const n=$(sel); if(!n) return; n.classList.remove("bump"); void n.offsetWidth; n.classList.add("bump"); }
 
+/* ---------- Gap Test illustrations ---------- */
+const GA = (()=>{
+  const INK="#0F0F10", SKIN=["#7A4A2E","#5E3A24","#9A6544"], C={ lime:"#C8EF62", coral:"#E5432F", sky:"#8DB8E0", peach:"#F2A98A", lilac:"#A99BE0", sand:"#D9C499", mint:"#8FD1A6", white:"#FFFFFF" };
+  const mouthD = { smile:"M-5 -55.5q5 4.5 10 0", flat:"M-4.5 -55h9", wavy:"M-6 -55q1.5 -2.4 3 0t3 0t3 0t3 0", o:"", laugh:"M-5.5 -57q5.5 7 11 0z", zip:"M-6 -55h12M-4 -57v4M0 -57v4M4 -57v4" };
+  function person(x, y, o={}){
+    const s=(o.s||1)*1.14, skin=o.skin||SKIN[0], top=o.top||C.sky, look=o.look||0, mood=o.mood||"smile";
+    let back="", front="";
+    if(o.hair==="afro") back += `<circle cx="0" cy="-66" r="21" fill="${INK}"/>`;
+    if(o.hair==="puff") back += `<circle cx="0" cy="-80" r="10" fill="${INK}"/>`;
+    const arm = (d)=>`<path d="${d}" stroke="${top}" stroke-width="10" stroke-linecap="round" fill="none"/>`;
+    const hand = (hx,hy)=>`<circle cx="${hx}" cy="${hy}" r="5.5" fill="${skin}"/>`;
+    if(o.arm==="wave") front += arm("M18 -32 L30 -56")+hand(31,-60);
+    if(o.arm==="point") front += arm("M18 -30 L44 -42")+hand(48,-44);
+    if(o.arm==="open") front += arm("M18 -24 L38 -22")+`<ellipse cx="44" cy="-24" rx="7" ry="4.5" fill="${skin}"/>`;
+    if(o.arm==="ear") front += arm("M-18 -30 L-22 -54")+hand(-17,-62);
+    if(o.arm==="cross") front += `<path d="M-16 -22 H16" stroke="${top}" stroke-width="11" stroke-linecap="round"/><path d="M-16 -22 H16" stroke="rgba(0,0,0,.12)" stroke-width="2"/>`;
+    let hair="";
+    if(o.hair==="short") hair = `<path d="M-15.5 -63a15.5 15.5 0 0 1 31 0c-7 -6 -24 -6 -31 0z" fill="${INK}"/>`;
+    if(o.hair==="wrap") hair = `<path d="M-19 -64Q-22 -88 0 -86Q23 -90 19 -64Q0 -73 -19 -64Z" fill="${o.wrap||C.coral}"/><circle cx="14" cy="-82" r="6" fill="${o.wrap||C.coral}"/>`;
+    if(o.hair==="puff") hair = `<path d="M-15 -64a15 15 0 0 1 30 0c-7 -5 -23 -5 -30 0z" fill="${INK}"/>`;
+    const ex = look*3;
+    const eyes = o.eyes==="shut" ? `<path d="M${-7+ex} -63h4M${3+ex} -63h4" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`
+      : `<circle cx="${-5+ex}" cy="-63" r="1.9" fill="${INK}"/><circle cx="${5+ex}" cy="-63" r="1.9" fill="${INK}"/>`;
+    const m = mood==="o" ? `<circle cx="${ex}" cy="-55" r="2.4" fill="${INK}"/>`
+      : `<path d="${mouthD[mood]}" transform="translate(${ex} 0)" stroke="${INK}" stroke-width="1.8" stroke-linecap="round" fill="${mood==="laugh"?INK:"none"}"/>`;
+    const extra = (o.tie?`<path d="M0 -42l-4 5 4 22 4 -22z" fill="${C.coral}"/>`:"")
+      + (o.glasses?`<g stroke="${INK}" stroke-width="1.5" fill="none"><circle cx="${-5+ex}" cy="-63" r="4.2"/><circle cx="${5+ex}" cy="-63" r="4.2"/><path d="M${-1+ex} -63h2"/></g>`:"")
+      + (o.sweat?`<path d="M19 -76q4 6 0 8q-4 -2 0 -8z" fill="${C.sky}"/>`:"");
+    return `<g transform="translate(${x} ${y}) scale(${s})">${back}
+      <path d="M-26 0C-26 -30 -16 -44 0 -44C16 -44 26 -30 26 0Z" fill="${top}"/>
+      <rect x="-5" y="-50" width="10" height="9" fill="${skin}"/>
+      <circle cx="0" cy="-62" r="15.5" fill="${skin}"/>${hair}${eyes}${m}${extra}${front}</g>`;
+  }
+  function bubble(x, y, w, h, text, o={}){
+    const fill=o.fill||C.white, tx=o.tail==="right"?w-22:(o.tail==="mid"?w/2-6:14);
+    const tail = o.tail==="none" ? "" : `<path d="M${tx} ${h-1} l6 12 l8 -12z" fill="${fill}"/>`;
+    const lines = Array.isArray(text)?text:[text];
+    const fs = o.fs||17;
+    const tspans = lines.map((l,i)=>`<tspan x="${w/2}" dy="${i?fs*1.05:0}">${l}</tspan>`).join("");
+    return `<g transform="translate(${x} ${y})${o.rot?` rotate(${o.rot})`:""}"${o.op?` opacity="${o.op}"`:""}><rect width="${w}" height="${h}" rx="${Math.min(14,h/2)}" fill="${fill}"/>${tail}
+      ${text?`<text x="${w/2}" y="${h/2 - (lines.length-1)*fs*0.52 + fs*0.36}" text-anchor="middle" font-family="Kalam,cursive" font-size="${fs}" fill="${o.color||INK}">${tspans}</text>`:""}${o.inner||""}</g>`;
+  }
+  const cloud = (x,y,inner,fill=C.white)=>`<g transform="translate(${x} ${y})" fill="${fill}"><circle cx="-26" cy="4" r="18"/><circle cx="0" cy="-8" r="24"/><circle cx="27" cy="2" r="19"/><rect x="-40" y="2" width="82" height="20" rx="10"/><circle cx="-8" cy="36" r="5"/><circle cx="-14" cy="48" r="3"/>${inner}</g>`;
+  const floor = (fill="rgba(15,15,16,.06)")=>`<ellipse cx="160" cy="184" rx="150" ry="10" fill="${fill}"/>`;
+  const svg = (inner)=>`<svg viewBox="0 0 320 190" role="img" aria-hidden="true" preserveAspectRatio="xMidYMax meet">${inner}</svg>`;
+
+  const S = {
+    intro: svg(`${floor()}
+      <g transform="translate(160 0)"><rect x="-17" y="46" width="34" height="62" rx="17" fill="${INK}"/><path d="M-17 70h34M-17 80h34M-17 90h34" stroke="#3A3A3E" stroke-width="2"/>
+      <path d="M-28 88a28 28 0 0 0 56 0" stroke="${INK}" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M0 116v46M-22 168h44" stroke="${INK}" stroke-width="5" stroke-linecap="round"/></g>
+      ${bubble(28,30,84,38,"ehm...",{tail:"right",fill:C.white})}
+      ${bubble(208,22,90,38,"so like...",{fill:C.lime})}
+      ${bubble(212,96,82,36,"wait o",{fill:C.peach,fs:16})}
+      ${bubble(34,108,70,34,"",{tail:"right",fill:C.lilac,inner:`<path d="M18 17h6M30 17h6M42 17h6" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`})}`),
+    A: svg(`${floor()}<rect x="62" y="118" width="196" height="54" rx="22" fill="${C.sand}"/><rect x="50" y="132" width="30" height="48" rx="14" fill="#CDB585"/><rect x="240" y="132" width="30" height="48" rx="14" fill="#CDB585"/>
+      ${person(125,170,{hair:"wrap",top:C.peach,mood:"laugh",look:1,skin:SKIN[2],wrap:C.coral})}${person(198,170,{hair:"afro",top:C.sky,mood:"laugh",look:-1,skin:SKIN[1]})}
+      ${bubble(118,20,86,40,"haha!",{tail:"mid",fill:C.white})}<path d="M232 44c-6 -9 -18 -2 -10 7l10 9l10 -9c8 -9 -4 -16 -10 -7z" fill="${C.coral}"/>`),
+    B: svg(`${floor()}${person(110,178,{hair:"short",top:C.lime,mood:"wavy",look:1,arm:"wave",sweat:true})}${person(218,178,{hair:"wrap",top:C.lilac,mood:"flat",look:-1,skin:SKIN[2],wrap:"#3C6FB5"})}
+      ${bubble(30,22,112,40,"Hi, I'm...",{tail:"right"})}${bubble(196,26,52,34,"?",{fill:C.white,fs:20})}`),
+    C: svg(`${floor()}${person(238,150,{s:1.15,hair:"short",top:INK,mood:"flat",look:-1,glasses:true,tie:true,skin:SKIN[1]})}
+      <rect x="170" y="128" width="136" height="12" rx="4" fill="#8A6A44"/><rect x="180" y="140" width="10" height="42" fill="#8A6A44"/><rect x="286" y="140" width="10" height="42" fill="#8A6A44"/>
+      <path d="M196 128l6 -24h40l-6 24z" fill="#3A3A3E"/>
+      ${person(92,180,{s:.92,hair:"puff",top:C.peach,mood:"wavy",look:1,sweat:true,skin:SKIN[2]})}
+      ${bubble(196,14,64,36,"So?",{tail:"mid"})}`),
+    D: svg(`${floor()}${person(84,150,{s:.85,hair:"afro",top:C.mint,mood:"flat",look:1,skin:SKIN[1]})}${person(236,150,{s:.85,hair:"wrap",top:C.lilac,mood:"flat",look:-1,wrap:C.lime})}
+      ${person(160,140,{s:.9,hair:"short",top:C.coral,mood:"o",sweat:true,skin:SKIN[2]})}
+      <ellipse cx="160" cy="150" rx="132" ry="22" fill="${C.sand}"/><ellipse cx="160" cy="146" rx="132" ry="20" fill="#E7D7B4"/>
+      <rect x="96" y="134" width="22" height="14" rx="3" fill="${C.white}"/><rect x="200" y="132" width="26" height="16" rx="3" fill="${C.white}"/>
+      ${bubble(126,12,70,36,"Ehm...",{tail:"mid"})}`),
+    E: svg(`${floor()}<path d="M228 120l-22 60M228 120l22 60M228 120v60" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>
+      <rect x="206" y="52" width="44" height="72" rx="8" fill="${INK}"/><rect x="211" y="58" width="34" height="58" rx="4" fill="#2E2E33"/><circle cx="220" cy="66" r="4" fill="${C.coral}"/><text x="228" y="69.5" font-family="DM Mono,monospace" font-size="8" fill="#fff">REC</text>
+      ${person(112,180,{hair:"afro",top:C.lime,mood:"o",look:1,sweat:true,skin:SKIN[0]})}
+      <path d="M150 74q10 -8 20 0M146 64q14 -12 28 0" stroke="${C.coral}" stroke-width="3" fill="none" stroke-linecap="round"/>`),
+    F: svg(`${floor()}${person(96,178,{hair:"short",top:C.sky,mood:"flat",look:1,skin:SKIN[1]})}${person(226,178,{hair:"wrap",top:C.peach,mood:"flat",look:-1,arm:"cross",skin:SKIN[2],wrap:"#7A4FB8"})}
+      ${bubble(22,26,104,38,"I think...",{tail:"right",fs:16})}${bubble(194,20,70,40,"No!",{fill:C.coral,color:"#fff",fs:20})}
+      <path d="M156 64l10 14l-8 6l12 16" stroke="${INK}" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`),
+    G: svg(`${floor()}<rect x="150" y="26" width="150" height="100" rx="8" fill="${C.white}" stroke="${INK}" stroke-width="3"/><path d="M172 126l-10 56M278 126l10 56" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/>
+      <g stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round"><rect x="166" y="44" width="34" height="22" rx="4"/><rect x="246" y="44" width="38" height="22" rx="4"/><path d="M204 55h36M234 50l6 5l-6 5"/><path d="M183 70q0 30 40 34q30 2 40 -34"/><path d="M258 72l5 -4l3 6"/></g>
+      <circle cx="222" cy="104" r="6" fill="${C.coral}"/>
+      ${person(92,180,{hair:"short",top:C.lilac,mood:"smile",look:1,arm:"point",skin:SKIN[0]})}
+      ${bubble(14,22,112,40,["So basically..."],{tail:"right",fs:15})}`),
+    H: svg(`${floor()}${person(100,180,{hair:"puff",top:C.mint,mood:"wavy",look:1,arm:"open",sweat:true,skin:SKIN[2]})}${person(228,180,{hair:"short",top:"#3A3A3E",mood:"flat",look:-1,glasses:true,skin:SKIN[1]})}
+      <circle cx="166" cy="70" r="20" fill="${C.lime}"/><circle cx="166" cy="70" r="14" fill="none" stroke="#8FB23A" stroke-width="2"/><text x="166" y="77" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-weight="800" font-size="19" fill="${INK}">₦</text>
+      ${bubble(20,18,108,40,"Please, can I...",{tail:"right",fs:15})}`),
+    what: svg(`${floor()}${person(160,182,{hair:"afro",top:C.coral,mood:"wavy",eyes:"shut",skin:SKIN[1]})}
+      ${cloud(160,36,`<path d="M-30 4c10 -22 22 18 32 -4s-20 -16 -6 6s28 -12 14 -18s-6 26 18 10" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`)}`),
+    q1: svg(`${floor()}${person(104,178,{hair:"short",top:C.sky,mood:"smile",look:1,skin:SKIN[0]})}${person(222,178,{hair:"wrap",top:C.lime,mood:"flat",look:-1,skin:SKIN[2],wrap:C.coral})}
+      ${bubble(30,30,90,34,"",{tail:"right",inner:`<path d="M14 17h62" stroke="#B9B3A6" stroke-width="5" stroke-linecap="round" stroke-dasharray="10 7"/>`})}${bubble(178,20,118,42,"What do you mean?",{fs:15})}`),
+    q2: svg(`${floor()}${person(104,178,{hair:"puff",top:C.peach,mood:"o",look:1,skin:SKIN[2]})}${person(222,178,{hair:"short",top:C.mint,mood:"flat",look:-1,arm:"ear",skin:SKIN[1]})}
+      ${bubble(40,40,56,30,"mm..",{tail:"right",fs:13,op:.45})}${bubble(186,14,104,40,"Say again?",{fs:17})}`),
+    q3: svg(`${floor()}<rect x="104" y="14" width="112" height="170" rx="16" fill="${INK}"/><rect x="111" y="24" width="98" height="152" rx="10" fill="#ECE5D8"/>
+      ${[0,1,2].map(i=>`<g transform="translate(${126+i*0} ${38+i*44})"><rect width="76" height="32" rx="10" fill="#D7F5C4"/><path d="M10 9v14l11 -7z" fill="${INK}"/><path d="${Array.from({length:7},(_,k)=>`M${28+k*3.6} ${16-((k*7)%5+2)}v${((k*7)%5+2)*2}`).join("")}" stroke="#4E8A3A" stroke-width="2" stroke-linecap="round"/><text x="72" y="28" text-anchor="end" font-family="DM Mono,monospace" font-size="8" fill="#556">${["4:52","3:17","6:08"][i]}</text></g>`).join("")}
+      <circle cx="248" cy="44" r="16" fill="${C.coral}"/><text x="248" y="50" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-weight="800" font-size="16" fill="#fff">3</text>`),
+    q4: svg(`${floor()}${person(214,170,{s:1.15,hair:"short",top:"#3A3A3E",mood:"smile",look:-1,glasses:true,tie:true,skin:SKIN[1]})}${person(92,180,{s:.92,hair:"afro",top:C.lilac,mood:"zip",look:1,skin:SKIN[0]})}
+      ${bubble(178,14,104,42,"2 + 2 = 5",{fs:19})}${cloud(64,42,`<text x="0" y="12" text-anchor="middle" font-family="Kalam,cursive" font-size="26" fill="${C.coral}">!!</text>`)}`),
+    q5: svg(`${floor()}${person(160,182,{hair:"wrap",top:C.sky,mood:"wavy",look:0,skin:SKIN[2],wrap:C.lime})}
+      ${cloud(160,36,`<path d="M-20 0a20 20 0 1 1 6 14" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M-20 0l-6 -8M-20 0l9 -4" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><path d="M0 -10v10l7 5" stroke="${C.coral}" stroke-width="3" fill="none" stroke-linecap="round"/>`)}`),
+  };
+  const R = {
+    freezer: svg(`${person(100,190,{hair:"short",top:C.white,mood:"o",skin:SKIN[0],look:1})}
+      <rect x="58" y="62" width="84" height="128" rx="16" fill="rgba(235,247,255,.22)" stroke="#fff" stroke-width="2.5"/><path d="M70 74l14 0M70 82l8 0" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      ${["M200 52","M262 94","M226 140"].map((m,i)=>`<g transform="translate(${[200,262,226][i]} ${[52,94,140][i]})" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M-10 0h20M0 -10v20M-7 -7l14 14M7 -7l-14 14"/></g>`).join("")}
+      ${bubble(150,30,70,36,"...",{fs:22})}`),
+    scrambler: svg(`${person(92,190,{hair:"afro",top:C.white,mood:"wavy",skin:SKIN[1],look:1})}
+      ${bubble(140,18,160,96,"",{tail:"left",inner:`${"what I mean is".split("").map((ch,i)=>`<text x="${16+((i*37)%128)}" y="${28+((i*23)%58)}" font-family="Kalam,cursive" font-size="${16+(i%3)*4}" transform="rotate(${(i*29)%50-25} ${16+((i*37)%128)} ${28+((i*23)%58)})" fill="${INK}">${ch}</text>`).join("")}`})}`),
+    over: svg(`${person(70,190,{hair:"wrap",top:C.white,mood:"laugh",skin:SKIN[2],wrap:C.coral,look:1})}
+      ${bubble(110,14,230,126,"",{tail:"left",inner:[0,1,2,3,4,5].map(i=>`<path d="M16 ${20+i*17}h${[190,170,196,150,184,120][i]}" stroke="#B9B3A6" stroke-width="5" stroke-linecap="round"/>`).join("")})}
+      <text x="300" y="168" text-anchor="end" font-family="Kalam,cursive" font-size="17" fill="${INK}">...and another thing</text>`),
+    mumbler: svg(`${person(96,190,{hair:"puff",top:C.white,mood:"flat",skin:SKIN[2],look:1})}${person(232,190,{hair:"short",top:"rgba(255,255,255,.6)",mood:"o",skin:SKIN[1],look:-1,arm:"ear"})}
+      ${bubble(116,72,46,24,"mm",{fs:12,op:.4})}${bubble(198,26,64,38,"Huh?",{fs:19})}`),
+    peace: svg(`${person(110,190,{hair:"short",top:C.white,mood:"smile",skin:SKIN[0],look:1})}
+      ${bubble(22,30,108,40,"It's fine o",{tail:"right",fs:17})}${cloud(234,70,`<text x="0" y="8" text-anchor="middle" font-family="Kalam,cursive" font-size="19" fill="${C.coral}">NOT fine</text>`)}`),
+    steady: svg(`${person(110,190,{hair:"afro",top:C.white,mood:"smile",skin:SKIN[1],look:1,arm:"wave"})}
+      ${bubble(160,40,128,44,"Here's my point.",{tail:"left",fs:16})}<circle cx="280" cy="40" r="15" fill="${C.lime}"/><path d="M273 40l5 5l9 -10" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`),
+  };
+  const faces = [
+    `<path d="M8.5 14.5q3.5 3 7 0" />`,
+    `<path d="M8.5 15h7" />`,
+    `<path d="M7.5 15.5q1.1 -1.6 2.2 0t2.2 0t2.2 0t2.2 0" /><path d="M18.5 4.5q2 3 0 4q-2 -1 0 -4z" fill="${C.sky}" stroke="none"/>`,
+    `<path d="M8 15.5q4 -3 8 0" /><path d="M7.5 10h3M13.5 10h3" />`
+  ].map((m,i)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/>${i<3?`<circle cx="9" cy="10" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1.1" fill="currentColor" stroke="none"/>`:""}${m}</svg>`);
+  return { S, R, faces };
+})();
+const GT_TINTS = ["t-peach","t-sky","t-mint","t-lilac","t-sand"];
+
 /* ---------- Communication Gap Test ---------- */
 const GT_SIT = [
   { id:"A", q:"Talking with friends or family", p:"talking with friends or family" },
@@ -1077,7 +1233,7 @@ function gtRender(){
   const hero = el.parentElement && el.parentElement.querySelector(".detail-hero");
   if(hero) hero.style.display = GT.i < 0 ? "" : "none";
   if(GT.i < 0){
-    el.innerHTML = `<div class="gt-anim"><h3>How it works</h3>
+    el.innerHTML = `<div class="gt-anim"><div class="gt-art t-peach">${GA.S.intro}</div><h3>How it works</h3>
       <ul class="list">
         <li><span class="n">1</span><span>Rate 8 everyday situations, from easy to hard.</span></li>
         <li><span class="n">2</span><span>Tell me what happens when it gets hard.</span></li>
@@ -1090,24 +1246,27 @@ function gtRender(){
   }
   if(GT.i >= steps.length) return gtResult(el);
   const st = steps[GT.i], pct = Math.round(GT.i/steps.length*100);
-  const top = `<div class="gt-top"><button type="button" id="gt-back">${GT.i>0?"Back":"Intro"}</button><span>${GT.i+1} of ${steps.length}</span></div><div class="gt-prog"><i style="width:${pct}%"></i></div>`;
+  const part = st.k==="sit" ? "Part 1 · Situations" : st.k==="what" ? "Part 2 · What happens" : "Part 3 · Habits";
+  const top = `<div class="gt-top"><button type="button" id="gt-back">${GT.i>0?"Back":"Intro"}</button><span class="gt-part">${part}</span><span>${GT.i+1}/${steps.length}</span></div><div class="gt-prog"><i style="width:${pct}%"></i></div>`;
+  const artKey = st.k==="sit" ? st.x.id : st.k==="what" ? "what" : st.x.id;
+  const art = GA.S[artKey] ? `<div class="gt-art ${GT_TINTS[GT.i % GT_TINTS.length]}">${GA.S[artKey]}</div>` : "";
   let body = "";
   if(st.k==="sit"){
     const cur = GT.sit[st.x.id];
     body = `<p class="gt-sub">${GT.i===0?"How do you do in each of these?":"And this one?"}</p><h3 class="gt-q">${esc(st.x.q)}</h3><div style="height:12px"></div>
-      <div class="gt-opts">${GT_LEVELS.map((l,i)=>`<button type="button" class="gt-opt" data-v="${i}" aria-pressed="${cur===i}"><span class="k">${i+1}</span>${l}</button>`).join("")}</div>`;
+      <div class="gt-opts">${GT_LEVELS.map((l,i)=>`<button type="button" class="gt-opt" data-v="${i}" aria-pressed="${cur===i}"><span class="k face">${GA.faces[i]}</span>${l}</button>`).join("")}</div>`;
   } else if(st.k==="what"){
     const hard = gtHardest(1)[0];
     body = `<h3 class="gt-q">${hard ? `Think about ${esc(hard.p)}. What usually happens?` : "Think of the last time speaking felt hard. What happened?"}</h3>
       <p class="gt-sub">Pick up to two.</p>
-      <div class="gt-opts">${GT_WHAT.map(w=>`<button type="button" class="gt-opt" data-w="${w.id}" aria-pressed="${GT.what.includes(w.id)}">${esc(w.t)}</button>`).join("")}</div>
+      <div class="gt-opts gt-what">${GT_WHAT.map(w=>`<button type="button" class="gt-opt" data-w="${w.id}" aria-pressed="${GT.what.includes(w.id)}">${esc(w.t)}</button>`).join("")}</div>
       <div style="height:14px"></div><button class="btn btn-ink btn-block" id="gt-next" ${GT.what.length?"":"disabled"}>Continue</button>`;
   } else {
     const cur = GT.checks[st.x.id];
     body = `<h3 class="gt-q">${esc(st.x.q)}</h3><div style="height:12px"></div>
       <div class="gt-opts">${st.x.o.map((l,i)=>`<button type="button" class="gt-opt" data-v="${i}" aria-pressed="${cur===i}"><span class="k">${String.fromCharCode(65+i)}</span>${esc(l)}</button>`).join("")}</div>`;
   }
-  el.innerHTML = `${top}<div class="gt-anim">${body}</div>`;
+  el.innerHTML = `${top}<div class="gt-anim">${art}${body}</div>`;
   $("#gt-back").onclick = ()=>gtGo(GT.i-1);
   if(st.k==="what"){
     el.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>{
@@ -1144,6 +1303,7 @@ async function gtResult(el){
       </form>`;
   el.innerHTML = `<div class="gt-anim">
     <section class="detail-hero ${t.tint}" style="margin:-6px -6px 0">
+      ${GA.R[GT.res.type]?`<div class="gt-hero-art">${GA.R[GT.res.type]}</div>`:""}
       <span class="eyebrow">Your result</span>
       <h2 class="gt-type">${esc(t.name)}</h2>
       <p class="gt-line">${esc(t.line)}</p>
