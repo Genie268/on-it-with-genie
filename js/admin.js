@@ -2189,6 +2189,8 @@ async function renderAdminAnalytics(c){
       {key:"onboarding_start",label:"Started Onboarding",icon:"✦"},
       {key:"duration_selected",label:"Picked Duration",icon:"📅"},
       {key:"checkout_started",label:"Clicked Pay",icon:"💳"},
+      {key:"payment_opened",label:"Saw Paystack",icon:"🏦"},
+      {key:"payment_closed",label:"Closed Paystack",icon:"✕"},
       {key:"payment_completed",label:"Paid",icon:"✓"},
       {key:"upload_submitted",label:"Uploaded Proof",icon:"↑"},
       {key:"challenge_completed",label:"Completed Challenge",icon:"★"},

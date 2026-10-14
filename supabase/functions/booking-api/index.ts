@@ -348,7 +348,7 @@ async function sendConfirmations(b: any, opts: { plan?: any; minutesLeft?: numbe
   const first = (b.name || "there").split(" ")[0];
   const isFree = b.service === "free_call";
   const len = b.minutes ?? Math.round((Date.parse(b.ends_at) - st) / 60000);
-  const title = isFree ? "Clarity call with Genie" : "Mentorship session with Genie";
+  const title = isFree ? "Clarity session with Genie" : "Coaching session with Genie";
   const where = meet || "Google Meet (link coming by email)";
   const planLink = opts.plan ? `${SITE}/book?plan=${opts.plan.token}` : "";
 
@@ -356,9 +356,9 @@ async function sendConfirmations(b: any, opts: { plan?: any; minutesLeft?: numbe
   if (isFree) {
     const cancel = `${SITE}/book?cancel=${b.manage_token}`;
     subject = `You're booked: ${when}`;
-    clientText = `Hi ${first},\n\nYou're booked for a free 10-minute clarity call with me on ${when}.\n\nJoin here: ${meet || "I'll send the link before the call."}\n\nThis is a video call, so join from a phone or laptop with your camera on, somewhere you can talk.\n\nSet a reminder now. The free call is a one-time thing: if you miss it, you won't be able to book another one.\n\nCome with the one thing you're stuck on. Ten minutes goes fast, so be on time.\n\nCan't make it? Cancel before the call so someone else can take the slot (and you can pick a new time): ${cancel}\n\nGenie`;
+    clientText = `Hi ${first},\n\nYou're booked for a free 10-minute clarity session with me on ${when}.\n\nJoin here: ${meet || "I'll send the link before the call."}\n\nThis is a video call, so join from a phone or laptop with your camera on, somewhere you can talk.\n\nSet a reminder now. The free session is a one-time thing: if you miss it, you won't be able to book another one.\n\nCome with the one thing you're stuck on. Ten minutes goes fast, so be on time.\n\nCan't make it? Cancel before the call so someone else can take the slot (and you can pick a new time): ${cancel}\n\nGenie`;
   } else if (opts.firstOfPlan) {
-    subject = `Mentorship confirmed: ${when}`;
+    subject = `Coaching confirmed: ${when}`;
     clientText = `Hi ${first},\n\nPayment received. You have ${mins(opts.plan.minutes_total)} with me.\n\nYour first session: ${when}, ${mins(len)}.\nJoin here: ${meet || "I'll send the link before the session."}\n\nYou have ${mins(opts.minutesLeft ?? 0)} left. Book the rest whenever suits you:\n${planLink}\n\nKeep that link. It's how you book, see and move your sessions.\n${s.genie_whatsapp ? `\nYou can now reach me directly on WhatsApp: ${s.genie_whatsapp}\n` : ""}\nGenie`;
   } else {
     subject = `Session booked: ${when}`;
@@ -366,11 +366,11 @@ async function sendConfirmations(b: any, opts: { plan?: any; minutesLeft?: numbe
   }
   await sendEmail(b.email, subject, clientText, icsFile(b, { method: "PUBLISH", title, desc: `Join: ${where}`, location: where }));
 
-  const head = isFree ? "New clarity call" : opts.firstOfPlan ? "New PAID mentorship" : "Mentorship session booked";
+  const head = isFree ? "New clarity session" : opts.firstOfPlan ? "New PAID coaching" : "Coaching session booked";
   const genieText = `${head}.\n\nWho: ${b.name}\nEmail: ${b.email}\nPhone: ${b.phone || "-"}\nWhen: ${when}\nLength: ${mins(len)}\n${opts.plan ? `Plan: ${opts.plan.hours}h, ${mins(opts.minutesLeft ?? 0)} left\n` : ""}${opts.firstOfPlan ? `Paid: ₦${((opts.plan.amount_kobo ?? 0) / 100).toLocaleString("en-NG")}\n` : ""}Email list: ${b.email_opt_in ? "yes" : "no"}\n\nWhat they want to talk about:\n${b.note || "-"}`;
   if (s.notify_email) {
-    await sendEmail(s.notify_email, `${isFree ? "Call" : "Mentorship"}: ${b.name}, ${label(st)} ${longDate(st)}`, genieText,
-      icsFile(b, { method: "REQUEST", title: `${isFree ? "Call" : "Mentorship"}: ${b.name}`, desc: genieText, attendee: s.notify_email, location: where }),
+    await sendEmail(s.notify_email, `${isFree ? "Clarity" : "Coaching"}: ${b.name}, ${label(st)} ${longDate(st)}`, genieText,
+      icsFile(b, { method: "REQUEST", title: `${isFree ? "Clarity" : "Coaching"}: ${b.name}`, desc: genieText, attendee: s.notify_email, location: where }),
       { reply_to: b.email });
   }
 }
@@ -384,10 +384,10 @@ async function sendPlanEmails(plan: any, rows: any[], kind: "paid" | "booked", m
   const link = `${SITE}/book?plan=${plan.token}`;
   rows = [...rows].sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
   const lines = rows.map((b) => { const st = Date.parse(b.starts_at); return `- ${longDate(st)}, ${label(st)}, ${mins(b.minutes ?? 60)}`; }).join("\n");
-  const icsList = rows.map((b) => icsFile(b, { method: "PUBLISH", title: "Mentorship session with Genie", desc: `Join: ${where}`, location: where }));
+  const icsList = rows.map((b) => icsFile(b, { method: "PUBLISH", title: "Coaching session with Genie", desc: `Join: ${where}`, location: where }));
   const leftLine = minutesLeft ? `\nYou have ${mins(minutesLeft)} left. Book it whenever suits you:\n${link}\n` : `\nSee or move your sessions here:\n${link}\n`;
   const subject = kind === "paid"
-    ? `Mentorship confirmed: ${rows.length} session${rows.length === 1 ? "" : "s"} booked`
+    ? `Coaching confirmed: ${rows.length} session${rows.length === 1 ? "" : "s"} booked`
     : `Booked: ${rows.length} session${rows.length === 1 ? "" : "s"}`;
   const text = kind === "paid"
     ? `Hi ${first},\n\nPayment received. You have ${mins(plan.minutes_total)} with me.\n\nYour sessions:\n${lines || "- None booked yet"}\n\nJoin each one here: ${meet || "I'll send the link before your first session."}\n${leftLine}\nKeep that link. It's how you book, see and move your sessions. You can cancel up to 24 hours before and the time goes back on your plan.\n${s.genie_whatsapp ? `\nYou can now reach me directly on WhatsApp: ${s.genie_whatsapp}\n` : ""}\nGenie`
@@ -395,9 +395,9 @@ async function sendPlanEmails(plan: any, rows: any[], kind: "paid" | "booked", m
   await sendEmail(plan.email, subject, text, icsList);
 
   if (s.notify_email) {
-    const head = kind === "paid" ? `New PAID mentorship: ${plan.name}` : `Mentorship booked: ${plan.name}`;
+    const head = kind === "paid" ? `New PAID coaching: ${plan.name}` : `Coaching booked: ${plan.name}`;
     const body = `${head}\n\nEmail: ${plan.email}\nPhone: ${plan.phone || "-"}\nPlan: ${plan.hours}h, ${mins(minutesLeft)} still to book\n${kind === "paid" ? `Paid: ₦${((plan.amount_kobo ?? 0) / 100).toLocaleString("en-NG")}\n` : ""}\nSessions:\n${lines}\n\nWhat they want to work on:\n${rows[0]?.note || "-"}`;
-    const genieIcs = rows.map((b) => icsFile(b, { method: "REQUEST", title: `Mentorship: ${plan.name}`, desc: body, attendee: s.notify_email, location: where }));
+    const genieIcs = rows.map((b) => icsFile(b, { method: "REQUEST", title: `Coaching: ${plan.name}`, desc: body, attendee: s.notify_email, location: where }));
     await sendEmail(s.notify_email, head, body, genieIcs, { reply_to: plan.email });
   }
 }
@@ -513,7 +513,7 @@ async function handleConfirm(p: Record<string, unknown>) {
   await sendPlanEmails(plan, confirmed, "paid", sum.minutes_left);
   if (lost.length) {
     const s = await settings();
-    await sendEmail(s.notify_email || "", `Note: ${lost.length} mentorship time(s) were taken while ${plan.name} paid`,
+    await sendEmail(s.notify_email || "", `Note: ${lost.length} coaching time(s) were taken while ${plan.name} paid`,
       `${plan.name} (${plan.email}) paid ${reference}. ${lost.length} of their picked times were taken during payment. That time is back on their plan for them to rebook: ${SITE}/book?plan=${plan.token}`);
   }
   const s = await settings();
@@ -571,7 +571,7 @@ async function handleCancelSession(p: Record<string, unknown>) {
   await sb.from("slot_bookings").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("id", b.id);
   const s = await settings();
   const st = Date.parse(b.starts_at);
-  if (s.notify_email) await sendEmail(s.notify_email, `Mentorship moved: ${b.name}, ${label(st)} ${longDate(st)}`,
+  if (s.notify_email) await sendEmail(s.notify_email, `Coaching moved: ${b.name}, ${label(st)} ${longDate(st)}`,
     `${b.name} cancelled their ${mins(b.minutes ?? 60)} session on ${longDate(st)} at ${label(st)}. The time went back on their plan.`);
   return json({ ok: true, plan: await planSummary(plan) });
 }
@@ -588,7 +588,7 @@ async function handleCancel(p: Record<string, unknown>) {
   const s = await settings();
   const st = Date.parse(b.starts_at);
   if (s.notify_email) await sendEmail(s.notify_email, `Cancelled: ${b.name}, ${label(st)} ${longDate(st)}`,
-    `${b.name} cancelled their clarity call. The slot is open again.`);
+    `${b.name} cancelled their clarity session. The slot is open again.`);
   return json({ ok: true, when: `${longDate(st)} at ${label(st)}` });
 }
 
@@ -624,7 +624,7 @@ async function handleAppeal(p: Record<string, unknown>) {
   }
   const first = (name || "there").split(" ")[0];
   await sendEmail(email, "I got your request",
-    `Hi ${first},\n\nI got your request for another free call. I read every one myself and I'll reply by email within a day.\n\nIf you'd rather not wait, you can book a paid session any day from Monday to Saturday, 10am to 6pm: ${SITE}/#mentorship\n\nGenie`);
+    `Hi ${first},\n\nI got your request for another free session. I read every one myself and I'll reply by email within a day.\n\nIf you'd rather not wait, you can book a coaching session any day from Monday to Saturday, 10am to 6pm: ${SITE}/#coaching\n\nGenie`);
   return json({ ok: true, status: { reason: "appeal_pending", when: st.when } });
 }
 
@@ -661,10 +661,10 @@ async function handleAppealDecide(p: Record<string, unknown>) {
     if (c) await sb.from("contacts").update({ extra_free_calls: ((c as any).extra_free_calls ?? 0) + 1 }).eq("email", ap.email);
     else await sb.from("contacts").insert({ email: ap.email, name: ap.name || null, first_source: "appeal", last_source: "appeal", extra_free_calls: 1 });
     await sendEmail(ap.email, "You can book again",
-      `Hi ${first},\n\nI've opened another free call for you. Pick a time here: ${SITE}/#call\n\nUse the same email and phone number as before. This one is your last free call, so set a reminder once you book.\n\nGenie`);
+      `Hi ${first},\n\nI've opened another free session for you. Pick a time here: ${SITE}/#call\n\nUse the same email and phone number as before. This one is your last free session, so set a reminder once you book.\n\nGenie`);
   } else {
-    await sendEmail(ap.email, "About your free call",
-      `Hi ${first},\n\nI read your request. I'm keeping the free call at one per person, so I can't open another one this time.\n\nIf you still want to talk, you can book a paid session any day from Monday to Saturday, 10am to 6pm: ${SITE}/#mentorship\n\nGenie`);
+    await sendEmail(ap.email, "About your free session",
+      `Hi ${first},\n\nI read your request. I'm keeping the free session at one per person, so I can't open another one this time.\n\nIf you still want to talk, you can book a coaching session any day from Monday to Saturday, 10am to 6pm: ${SITE}/#coaching\n\nGenie`);
   }
   return json({ ok: true, appeal: await appealView({ ...ap, status: decision }) });
 }
@@ -722,7 +722,7 @@ async function handleGapEmail(p: Record<string, unknown>) {
     const t = GAP_TYPES[row.type], sec = row.second ? GAP_TYPES[row.second] : null;
     const first = (name || "there").split(" ")[0];
     await sendEmail(email, `Your result: ${t.name}`,
-      `Hi ${first},\n\nYou took my Communication Gap Test. Your result: ${t.name}${sec ? `, with a bit of ${sec.name}` : ""}.\n\n${t.line}\n\n${t.whats}\n\nThis week's drill:\n${t.drill}\n\nWant to work on it with me? Book a session and I'll already know your result, so we start on the real thing:\n${SITE}/#mentorship\n\nGenie`);
+      `Hi ${first},\n\nYou took my Communication Gap Test. Your result: ${t.name}${sec ? `, with a bit of ${sec.name}` : ""}.\n\n${t.line}\n\n${t.whats}\n\nThis week's drill:\n${t.drill}\n\nWant to work on it with me? Book a session and I'll already know your result, so we start on the real thing:\n${SITE}/#coaching\n\nGenie`);
     await sb.from("gap_results").update({ emailed_at: new Date().toISOString() }).eq("id", id);
   }
   return json({ ok: true });

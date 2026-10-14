@@ -232,8 +232,8 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
         <div class="row mb6" style="gap:6px"><span class="ok" style="font-size:10px">✓</span><span style="font-size:12px;color:var(--mid)" id="pay-call-info">Strategy sessions with Genie</span></div>
       </div>
 
-      <div class="mb16">
-        <p style="font-size:11px;font-weight:700;color:#5a5a5a;margin-bottom:6px">HAVE AN ACCESS CODE?</p>
+      <div class="mb16" id="code-wrap" style="display:none">
+        <p style="font-size:11px;font-weight:700;color:#5a5a5a;margin-bottom:6px">ACCESS CODE</p>
         <div class="row" style="gap:8px">
           <input id="access-code-input" type="text" placeholder="Enter code" style="flex:1;text-transform:uppercase;font-size:13px;padding:10px 14px">
           <button class="bs" style="padding:10px 16px;font-size:13px;flex-shrink:0" onclick="applyAccessCode()">Apply</button>
@@ -253,10 +253,21 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
         <p class="muted" style="font-size:10px;margin-top:4px">For call scheduling and reminders</p>
       </div>
 
+      <div class="mb16">
+        <p style="font-size:11px;font-weight:700;color:#5a5a5a;margin-bottom:6px">HOW DO YOU WANT TO PAY?</p>
+        <div class="paym">
+          <label class="paym-o"><input type="radio" name="paym" value="transfer" checked><span><b>Bank transfer</b><em>From any Nigerian bank app. Confirms by itself.</em></span></label>
+          <label class="paym-o"><input type="radio" name="paym" value="card"><span><b>Card</b><em>Visa, Mastercard or Verve.</em></span></label>
+          <label class="paym-o"><input type="radio" name="paym" value="other"><span><b>USSD or bank account</b><em>No card needed.</em></span></label>
+        </div>
+      </div>
       <button id="pay-btn" class="bp" style="width:100%;font-size:15px;padding:14px" onclick="initiatePayment()">
         Pay & Start Challenge →
       </button>
       <p id="pay-status" class="muted" style="font-size:11px;text-align:center;margin-top:8px"></p>
+      <p style="font-size:11px;color:#8a8a8a;text-align:center;margin-top:6px">🔒 Paid securely through Paystack</p>
+      <p style="font-size:11px;text-align:center;margin-top:10px"><a href="#" onclick="document.getElementById('code-wrap').style.display='block';this.parentNode.style.display='none';return false" style="color:#8a8a8a;text-decoration:underline">Have an access code?</a></p>
+      <style>.paym{display:grid;gap:8px}.paym-o{display:flex;gap:10px;align-items:flex-start;padding:12px 13px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);cursor:pointer}.paym-o input{margin:2px 0 0;accent-color:#c49a1c;width:16px;height:16px;flex:none}.paym-o b{display:block;font-size:13.5px}.paym-o em{display:block;font-style:normal;font-size:11.5px;color:#8a8a8a}.paym-o:has(input:checked){border-color:#c49a1c}</style>
       <p style="font-size:10px;color:#5a5a5a;text-align:center;margin-top:12px;line-height:1.5">Need help? Reach Genie at <a href="mailto:oboeugene@gmail.com" style="color:#c49a1c;text-decoration:none">oboeugene@gmail.com</a></p>
     </div>
   </div>

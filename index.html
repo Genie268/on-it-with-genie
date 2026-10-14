@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Work with Genie</title>
-<meta name="description" content="Book a free clarity call with Genie, join accountability, or start one-on-one mentorship.">
+<meta name="description" content="Book a free clarity session with Genie, a coaching session, or join accountability.">
 <meta name="theme-color" content="#EAE6DD">
 <meta property="og:title" content="Work with Genie">
-<meta property="og:description" content="Book a free clarity call, join accountability, or start mentorship.">
+<meta property="og:description" content="Book a free clarity session, a coaching session, or join accountability.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%230F0F10'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='17' font-weight='800' fill='%23C8EF62' font-family='system-ui'%3EG%3C/text%3E%3C/svg%3E">
 <script>
 /* Witness links and returning challengers skip this page and go straight to the app.
@@ -239,6 +239,27 @@ p{margin:0}
 .gt-play .gt-bar .t i{animation:gtGrow .8s cubic-bezier(.2,.8,.2,1) backwards;transform-origin:left}
 @keyframes gtGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .gt-from{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px;border-radius:999px;background:var(--lilac);margin-bottom:8px}
+.dstrip{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin:0 -2px 6px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.dstrip::-webkit-scrollbar{display:none}
+.dchip{flex:none;width:62px;height:auto;padding:9px 0 8px;border-radius:16px;display:grid;justify-items:center;gap:1px;scroll-snap-align:start;position:relative}
+.dchip small{font-size:11.5px;font-weight:600;color:var(--muted)}
+.dchip b{font-family:var(--display);font-size:21px;letter-spacing:-0.03em;line-height:1.1}
+.dchip em{font-style:normal;font-size:11px;color:var(--muted)}
+.dchip[aria-pressed="true"] small,.dchip[aria-pressed="true"] em{color:rgba(255,255,255,.7)}
+.dstrip .dchip{aspect-ratio:auto}
+.dstrip .dchip::after{display:none}
+.dstrip .dchip.has::after{display:block;content:"";position:absolute;top:7px;right:8px;bottom:auto;left:auto;transform:none;width:7px;height:7px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 2px var(--surface)}
+.dchip-sk{flex:none;width:62px;height:66px;border-radius:16px}
+.paym{display:grid;gap:8px;margin:0 0 16px}
+.paym-o{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;border-radius:14px;border:1.5px solid var(--line);background:#fff;cursor:pointer}
+.paym-o input{margin:3px 0 0;accent-color:var(--ink);width:18px;height:18px;flex:none}
+.paym-o b{display:block;font-size:15px}
+.paym-o em{display:block;font-style:normal;font-size:13px;color:var(--muted)}
+.paym-o:has(input:checked){border-color:var(--ink)}
+.pay-trust{display:flex;align-items:center;justify-content:center;gap:6px}
+.for-line{display:block;margin-top:6px;font-size:13px;color:var(--muted)}
+.chip.next{background:#fff;color:var(--ink)}
+.chip.next::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#178A4A;margin-right:6px;vertical-align:1px}
 .paid-hint{font-size:13.5px;color:var(--muted);text-align:center;margin-top:12px}
 .paid-hint a{text-decoration:underline;color:inherit;font-weight:600}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-inline:-4px;padding-inline:4px;scrollbar-width:none}
@@ -454,7 +475,7 @@ p{margin:0}
     </a>
     <nav class="topnav" aria-label="Main">
       <a href="#home" data-nav="home">Home</a>
-      <a href="#call" data-nav="call">Clarity call</a>
+      <a href="#call" data-nav="call">Free session</a>
       <a href="#about" data-nav="about">About</a>
       <a href="/app?signin">Sign in</a>
     </nav>
@@ -499,6 +520,7 @@ const I = {
   mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5"/></svg>',
   back:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18 9 12l6-6"/></svg>',
   tick:'<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5" stroke-width="1.6"/><path d="m8 12.3 2.7 2.7L16 9.6"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>'
 };
 const ERR = {
@@ -507,7 +529,7 @@ const ERR = {
   not_a_slot:"That time isn't available. Pick another one.",
   bad_email:"That email doesn't look right. Check it and try again.",
   missing_name:"Add your name so I know who I'm talking to.",
-  free_call_used:"You've already used your free call.",
+  free_call_used:"You've already had your free session.",
   appeal_too_short:"Tell me a little more about what happened.",
   appeal_not_allowed:"You can't send a request for this call.",
   missing_phone:"Add your phone number. I use it to reach you if the call drops.",
@@ -546,7 +568,7 @@ home(){ const h = lagosNow().getHours(); return `
     <p class="lede">I help people think straight, speak well and finish what they start.</p>
     <div class="ctas">
       <a class="btn btn-lime" href="#services">See how we can work</a>
-      <a class="btn btn-ghost" href="#call">Book a clarity call</a>
+      <a class="btn btn-ghost" href="#call">Book a free session</a>
     </div>
   </div>
   ${CONFIG.photo?`<div class="photo">${photoBox("Genie · Abuja")}</div>`:""}
@@ -554,8 +576,8 @@ home(){ const h = lagosNow().getHours(); return `
 <div class="sec-head" id="services"><h2>Ways to work with me</h2></div>
 <div class="grid">
   ${(()=>{ const st=intakeState(); return card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal. I check in on your daily proof, track your progress with you, and we plan your moves in strategy sessions.",[["15 days to 3 months"],["First call in 48 hrs"]].concat(st.cap?[[`${st.cap} at a time`]]:[]).concat([["From ₦15,000","dark"]]),null,"ON IT APP",st.mode==="off"?null:st.ribbon); })()}
-  ${card("mentorship","t-sky",I.people,"Mentorship","One-on-one time with me. Buy the hours, book sessions when it suits you.",[["From 1 hour"],[naira(CONFIG.hourRate)+"/hr","dark"]])}
-  ${card("call","t-mint",I.video,"Clarity call","10 minutes on video with me. Bring the one thing you're stuck on.",[["10 min"],["Video call"]],"Free")}
+  ${card("coaching","t-sky",I.people,"Coaching","An hour with me on what you're stuck on. We find the real problem and work on it.",[["1 hour"],[naira(CONFIG.hourRate),"dark"],["","next",'data-next="mentorship"']])}
+  ${card("call","t-mint",I.video,"Clarity session","10 minutes with me. You'll leave knowing what's really in the way.",[["10 min"],["Video call"],["","next",'data-next="free_call"']],"Free")}
   ${card("communication","t-lilac",I.mic,"Communication","Speak so people listen. Find where your communication breaks, then learn to fix it.",[["Free test"],["Courses coming soon","soon"]])}
 </div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
@@ -571,23 +593,23 @@ ${backLink()}
   <div>
     <section class="detail-hero t-mint">
       <span class="free-tag">FREE</span>
-      <span class="eyebrow" style="display:block;margin-top:14px">Clarity call · 10 minutes · Video</span>
-      <h1>A free 10-minute call with me.</h1>
-      <p>Bring one thing you're stuck on. You'll leave knowing your next move.</p>
+      <span class="eyebrow" style="display:block;margin-top:14px">Clarity session · 10 minutes · Video</span>
+      <h1>Ten minutes with me, free.</h1>
+      <p>Bring one thing you're stuck on. I'll help you see what's really in the way, and your first step.</p>
     </section>
   </div>
   <div class="panel" id="booker"></div>
 </div>
 `;},
 
-mentorship(){ return `
+coaching(){ return `
 ${backLink()}
 <div class="detail">
   <div>
     <section class="detail-hero t-sky">
-      <span class="eyebrow">Mentorship · ${naira(CONFIG.hourRate)}/hr</span>
-      <h1>One-on-one time with me.</h1>
-      <p>Buy the hours. Split them however you like: twice a week, or all in one day. Monday to Saturday, 10am to 6pm. Book at least a day ahead.</p>
+      <span class="eyebrow">Coaching · ${naira(CONFIG.hourRate)} an hour</span>
+      <h1>An hour with me, on the thing you're stuck on.</h1>
+      <p>We find what's really in the way and work on it together. Need more than an hour? Add it when you pick your time.</p>
     </section>
     <div class="panel">
       <h3>What we can work on</h3>
@@ -639,7 +661,7 @@ ${backLink()}
     <p class="note" style="text-align:left">You pick your length after you set your goal. Need longer than 3 months? <a href="#call" style="text-decoration:underline">Book a call</a> and I'll set it up for you.</p>
     <div style="height:14px"></div>
     <a class="btn btn-ink btn-block" href="${CONFIG.accountabilityUrl}">I'm ready to start</a>
-    <p class="note">Not sure yet? <a href="#call" style="text-decoration:underline">Book a free clarity call first.</a></p>
+    <p class="note">Not sure yet? <a href="#call" style="text-decoration:underline">Book a free clarity session first.</a></p>
   </div>
 </div>`;},
 
@@ -734,10 +756,10 @@ about(){ return `
     <ul class="hand-list">
       <li><span>I explain everything on a whiteboard. I can't help it.</span></li>
       <li><span>I started my podcast, The Genie Effect, on my birthday.</span></li>
-      <li><span>I take clarity calls every morning, 9 to 10.</span></li>
+      <li><span>I take free clarity sessions every morning, 9 to 10.</span></li>
     </ul>
     <div class="ctas">
-      <a class="btn btn-ink" href="#call">Book a free clarity call</a>
+      <a class="btn btn-ink" href="#call">Book a free clarity session</a>
       <a class="btn btn-line" href="#services">See services</a>
     </div>
   </div>
@@ -751,7 +773,7 @@ function card(route,tint,icon,title,text,chips,tag,appTag,ribbon){
     <div class="row"><span class="ico">${icon}</span><span class="arrow">${I.arrow}</span></div>
     ${tag?`<span class="free-tag">${tag.toUpperCase()}</span>`:""}${appTag?`<span class="app-tag">${appTag}</span>`:""}
     <h3>${title}</h3><p>${text}</p>
-    <div class="chips">${chips.map(([t,c])=>`<span class="chip ${c||""}">${t}</span>`).join("")}</div>
+    <div class="chips">${chips.map(([t,c,a])=>`<span class="chip ${c||""}" ${a||""}${t?"":" hidden"}>${t}</span>`).join("")}</div>
   </a>`;
 }
 function waitForm(source, label){
@@ -861,8 +883,17 @@ function calendarHTML(){
   </div>
   <p class="cal-note">${B.service==="mentorship" ? `Up to ${win} days ahead. Times shown fit a ${lenAdj(B.len)} session.${Array.isArray(B.basket)&&B.basket.length?" Days with a dark dot have your sessions.":""}` : `Book up to ${win} days ahead.`}</p>`;
 }
+function dayStripHTML(){
+  const days = (B.data.days||[]).filter(d=>d.slots.some(s=>s.open) || (Array.isArray(B.basket) && B.basket.some(x=>x.date===d.date)));
+  const today = lagosDateStr(), tmr = addDaysStr(today,1);
+  return `<div class="dstrip" role="group" aria-label="Choose a day">${days.map(d=>{
+    const p = dayParts(d.date), has = Array.isArray(B.basket) && B.basket.some(x=>x.date===d.date);
+    const top = d.date===today ? "Today" : d.date===tmr ? "Tmrw" : p.wd;
+    return `<button type="button" class="cd open dchip${has?" has":""}" data-d="${d.date}" aria-pressed="${d.date===B.date}" aria-label="${p.long}"><small>${top}</small><b>${p.dd}</b><em>${p.mon}</em></button>`;
+  }).join("")}</div>`;
+}
 function pickerHTML(){
-  if(!B.data) return `<div class="cal"><div class="skeleton" style="height:260px"></div></div><div class="slots">${Array.from({length:6},()=>`<div class="skeleton" style="height:52px"></div>`).join("")}</div>`;
+  if(!B.data) return `<div class="dstrip">${Array.from({length:5},()=>`<div class="skeleton dchip-sk"></div>`).join("")}</div><div class="slots">${Array.from({length:6},()=>`<div class="skeleton" style="height:52px"></div>`).join("")}</div>`;
   if(B.data.error) return `<div class="empty">Couldn't load times. Check your connection.<br><button class="btn btn-line" style="margin-top:12px" id="retry">Try again</button></div>`;
   const d = (B.data.days||[]).find(x=>x.date===B.date);
   const enter = B.enterSlots ? " enter" : ""; B.enterSlots = false;
@@ -881,12 +912,13 @@ function pickerHTML(){
     list.sort((a,b)=>tms(a.start)-tms(b.start));
   }
   const slotsHTML = !B.date ? `<div class="empty">Nothing open in the next ${B.data.window_days ?? 3} days${B.service==="mentorship"?" for that session length. Try a shorter session":". New times open every day, so check back tomorrow"}.</div>`
-    : `<div class="slot-head"><b>${dayParts(B.date).long}</b><span>Lagos time</span></div>
-       <div class="slots${enter}" role="group" aria-label="Choose a time">${list.map(btn).join("")}</div>
-       <div class="legend"><span><i></i>Open</span>${multi?`<span><i class="y"></i>Yours</span>`:""}<span><i class="x"></i>Taken</span></div>`;
-  return calendarHTML() + slotsHTML;
+    : `<div class="slot-head"><b>${dayParts(B.date).long}</b><span>Lagos time${B.service==="mentorship" && B.len!==60 ? ` · ${lenLabel(B.len)} sessions` : ""}</span></div>
+       <div class="slots${enter}" role="group" aria-label="Choose a time">${list.map(btn).join("")}</div>`;
+  return dayStripHTML() + slotsHTML;
 }
 function wirePicker(el){
+  const strip = el.querySelector(".dstrip"), on = strip && strip.querySelector('[aria-pressed="true"]');
+  if(on){ const r = on.offsetLeft - strip.offsetLeft - 8; if(r > strip.clientWidth - on.offsetWidth - 8 || r < strip.scrollLeft) strip.scrollLeft = Math.max(0, r - 40); }
   el.querySelectorAll(".cd.open").forEach(b=>b.onclick=()=>{ if(B.date!==b.dataset.d){ B.date=b.dataset.d; B.enterSlots=true; } renderBooker(); });
   el.querySelectorAll(".slot[data-s]").forEach(b=>b.onclick=()=>{
     const d=B.data.days.find(x=>x.date===B.date);
@@ -917,7 +949,8 @@ function renderBooker(){
   stage(el, `${stepsBar()}<h3>Pick a day and time</h3>${pickerHTML()}
     <div style="height:16px"></div>
     <button class="btn btn-ink btn-block" id="toDetails" ${B.slot?"":"disabled"}>${B.slot ? "Continue with " + B.slot.label : "Choose a time"}</button>
-    <p class="paid-hint">None of these days work? <a href="#mentorship">Book a paid session</a>. Monday to Saturday, 10am to 6pm.</p>`);
+    <p class="paid-hint" id="paid-hint" hidden></p>`);
+  fillPaidHint();
   wirePicker(el);
   $("#toDetails").onclick = ()=>{ if(B.slot){ B.step="details"; renderBooker(); el.scrollIntoView({ behavior:"smooth", block:"start" }); } };
 }
@@ -994,16 +1027,16 @@ async function repeatWeekly(start){
 }
 function basketHTML(){
   const cap = capMins(), used = pickedMins(), left = cap - used;
-  if(!B.basket.length) return `<div class="basket empty-b"><p>Tap a time to add it. Add as many as your time allows: twice a week, or all of it in one day.</p></div>`;
+  if(!B.basket.length && B.mode==="plan") return `<div class="basket empty-b"><p>Tap a time to add it.</p></div>`;
   const fresh = B.fresh || []; B.fresh = null;
   const rows = B.basket.map(x=>`<li class="sess${fresh.includes(x.start)?" fresh":""}"><div><b>${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}</b><span>${x.label} · ${lenLabel(x.minutes)}</span>${left>=x.minutes?`<button type="button" class="rep" data-rep="${x.start}">↻ Repeat weekly</button>`:""}</div>
       <button type="button" class="x-btn" data-rm="${x.start}" aria-label="Remove ${x.label}">×</button></li>`).join("");
   return `<div class="basket">
     <div class="basket-head"><b>Your sessions</b>${B.mode==="plan" ? `<span class="num">${minsText(used)} of ${minsText(cap)}</span>`
       : `<span class="hstep"><button type="button" data-hs="-1" aria-label="Fewer hours" ${B.hours<=HOUR_TIERS[0]?"disabled":""}>−</button><b class="num">${B.hours} hour${B.hours>1?"s":""}</b><button type="button" data-hs="1" aria-label="More hours" ${B.hours>=HOUR_TIERS[HOUR_TIERS.length-1]?"disabled":""}>+</button></span>`}</div>
-    <div class="meter"><span style="width:${Math.round(100*used/cap)}%"></span></div>
-    ${B.mode==="plan" ? "" : `<p class="basket-sub">${minsText(used)} placed${left>0?`, ${minsText(left)} free`:""} · ${naira(B.hours*CONFIG.hourRate)}</p>`}
-    <ul class="sess-list" style="margin-top:12px">${rows}</ul>
+    ${!rows && B.mode!=="plan" ? "" : `<div class="meter"><span style="width:${Math.round(100*used/cap)}%"></span></div>`}
+    ${B.mode==="plan" || !rows ? "" : `<p class="basket-sub">${minsText(used)} placed${left>0?`, ${minsText(left)} free`:""} · ${naira(B.hours*CONFIG.hourRate)}</p>`}
+    ${rows ? `<ul class="sess-list" style="margin-top:12px">${rows}</ul>` : `<p class="basket-sub" style="margin-top:10px">Tap a time above. Need more than an hour? Tap +.</p>`}
   </div>`;
 }
 function wireBasket(el){
@@ -1018,15 +1051,13 @@ function wireBasket(el){
 }
 function renderSessions(el){
   const n = B.basket.length, left = leftMins();
-  stage(el, `${stepsBar()}<button type="button" class="back" id="toPlan">${I.back} Change hours</button>
-    <h3>Pick your sessions</h3>
-    <p class="hint" style="margin-top:4px">${B.hours} hour${B.hours>1?"s":""} to place. Book some now and the rest later, or all of it now.</p>
-    <p class="mini-label">Session length</p>${lenSeg()}
-    <div style="height:14px"></div>
+  stage(el, `${stepsBar()}<button type="button" class="back" id="toPlan">${I.back} Back</button>
+    <h3>Pick a time</h3>
+    ${B.hours>1 ? `<p class="mini-label">How long is each session?</p>${lenSeg()}<div style="height:14px"></div>` : `<div style="height:10px"></div>`}
     ${pickerHTML()}
     ${basketHTML()}
     <div style="height:16px"></div>
-    <button class="btn btn-ink btn-block" id="toDetails" ${n?"":"disabled"}>${n ? `Continue with ${n} session${n>1?"s":""}` : "Pick at least one time"}</button>
+    <button class="btn btn-ink btn-block" id="toDetails" ${n?"":"disabled"}>${n ? `Continue with ${n} session${n>1?"s":""}` : "Pick a time"}</button>
     ${n && left>0 ? `<p class="note">The other ${minsText(left)} stays on your plan. Book it whenever you like.</p>` : ""}`);
   wirePicker(el); wireBasket(el);
   $("#toDetails").onclick = ()=>{ if(B.basket.length){ B.step="details"; renderBooker(); el.scrollIntoView({ behavior:"smooth", block:"start" }); } };
@@ -1041,22 +1072,48 @@ function renderPlan(el){
     <h3>What's this session for?</h3>
     <textarea class="gt-note" id="m-note" maxlength="600" placeholder="Tell me what you want to work on, so we start on the real thing.">${esc((B.form && B.form.note) || B.prefillNote || "")}</textarea>
     <p class="hint" style="margin-top:6px">${B.fromTest?"Written from your result. Change anything you like.":"A line or two is enough. I read it before we meet."}</p>
-    <div style="height:18px"></div>
-    <h3>How much time do you want?</h3>
-    <div class="seg" role="group" aria-label="Hours">${[1,2,4,8].map(h=>`<button type="button" data-h="${h}" aria-pressed="${h===B.hours}">${h}<small>${h===1?"hour":"hours"}</small></button>`).join("")}</div>
-    <p class="hint">Split it however you like. Two sessions a week, or all of it in one day. You pick the times next.</p>
-    <div class="total"><span style="color:var(--muted);font-weight:600">Total</span><b class="num">${naira(total)}</b></div>
     <div style="height:16px"></div>
-    <button class="btn btn-ink btn-block" id="toTime">Pick my sessions</button>`);
-  el.querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{
-    B.hours=+b.dataset.h;
-    let cut = 0; while(pickedMins() > B.hours*60){ B.basket.pop(); cut++; }
-    if(cut) toast(`Took ${cut} session${cut>1?"s":""} off your list to fit ${B.hours} hour${B.hours>1?"s":""}.`);
-    if(B.len>B.hours*60) B.len=B.hours*60; prefetch("mentorship",B.len); renderBooker(); bump(".num");
-  });
+    <button class="btn btn-ink btn-block" id="toTime">Pick a time</button>`);
   const keepNote = ()=>{ const n=$("#m-note"); if(n){ B.form = Object.assign({}, B.form||{}, { note:n.value.trim() }); } };
   $("#m-note").addEventListener("input", keepNote);
   $("#toTime").onclick=()=>{ keepNote(); B.step="time"; if(!fitLen()){ renderBooker(); loadSlots(); } };
+}
+const PAY_CHANNELS = { transfer:["bank_transfer"], card:["card"], other:["ussd","bank"] };
+function payMethodsHTML(){
+  const m = B.payMethod || "transfer";
+  const opt = (v,t,sub)=>`<label class="paym-o"><input type="radio" name="paym" value="${v}" ${m===v?"checked":""}><span><b>${t}</b><em>${sub}</em></span></label>`;
+  return `<p class="mini-label" style="margin-top:6px">How do you want to pay?</p><div class="paym">
+    ${opt("transfer","Bank transfer","From any Nigerian bank app. Confirms by itself.")}
+    ${opt("card","Card", CONFIG.intlCards ? "Visa, Mastercard or Verve. Works from abroad." : "Visa, Mastercard or Verve.")}
+    ${opt("other","USSD or bank account","No card needed.")}
+  </div>`;
+}
+function whenText(slot, date){
+  const today = lagosDateStr(), tmr = addDaysStr(today,1);
+  const d = date===today ? "today" : date===tmr ? "tomorrow" : dayParts(date).wd;
+  return `${d} ${slot.label}`;
+}
+function firstOpen(data){
+  for(const d of (data && data.days) || []){ const s = d.slots.find(x=>x.open); if(s) return { s, date:d.date }; }
+  return null;
+}
+async function nextOpen(svc){
+  const len = svc==="mentorship" ? 60 : 10, k = cacheKey(svc, len);
+  let data = slotCache[k] && Date.now()-slotCache[k].at < 120000 ? slotCache[k].data : null;
+  if(!data){ try{ const r = await fetchSlots(svc, len); if(r.ok) data = r; }catch(e){} }
+  return firstOpen(data);
+}
+async function fillNext(){
+  for(const svc of ["free_call","mentorship"]){
+    const n = await nextOpen(svc);
+    document.querySelectorAll(`[data-next="${svc}"]`).forEach(c=>{ if(n){ c.textContent = "Next: " + whenText(n.s, n.date); c.hidden = false; } });
+  }
+}
+async function fillPaidHint(){
+  const n = await nextOpen("mentorship"), el = $("#paid-hint");
+  if(!el || !n) return;
+  el.innerHTML = `Want a full hour instead? <a href="#coaching">Coaching</a> is open from ${whenText(n.s, n.date)}.`;
+  el.hidden = false;
 }
 function bump(sel){ const n=$(sel); if(!n) return; n.classList.remove("bump"); void n.offsetWidth; n.classList.add("bump"); }
 
@@ -1423,7 +1480,7 @@ async function gtResult(el){
     else { try{ await navigator.clipboard.writeText(shareText); toast("Copied. Paste it anywhere."); }catch(e){ toast(shareText); } }
   };
   $("#gt-again").onclick = e=>{ e.preventDefault(); startTest(); };
-  $("#gt-book").onclick = ()=>{ B.prefillNote = gtNote(); B.fromTest = t.name; location.hash = "#mentorship"; };
+  $("#gt-book").onclick = ()=>{ B.prefillNote = gtNote(); B.fromTest = t.name; location.hash = "#coaching"; };
   const f = $("#gt-form");
   if(f) f.addEventListener("submit", async e=>{
     e.preventDefault();
@@ -1439,20 +1496,20 @@ async function gtResult(el){
 }
 
 /* ---------- Already used the free call ---------- */
-const PAID_LINE = `Paid sessions are open Monday to Saturday, 10am to 6pm.`;
+const PAID_LINE = `Coaching is open Monday to Saturday, 10am to 6pm.`;
 function usedHTML(st){
   const when = esc(st.when||"");
-  const paidBtn = `<a class="btn btn-ink btn-block" href="#mentorship">Book a paid session</a>`;
+  const paidBtn = `<a class="btn btn-ink btn-block" href="#coaching">Book a coaching session</a>`;
   switch(st.reason){
-    case "upcoming": return `<div class="used"><b>You're already booked.</b>Your free call is on ${when}. The link is in your confirmation email.</div>`;
-    case "missed": return `<div class="used" id="appeal-box"><b>We know you.</b>You booked a free call for ${when}, and it's one per person. Missed it for a good reason? Tell me what happened and I'll look at it.
+    case "upcoming": return `<div class="used"><b>You're already booked.</b>Your free session is on ${when}. The link is in your confirmation email.</div>`;
+    case "missed": return `<div class="used" id="appeal-box"><b>We know you.</b>You booked a free session for ${when}, and it's one per person. Missed it for a good reason? Tell me what happened and I'll look at it.
       <div class="field"><label for="ap-reason">What happened?</label><textarea id="ap-reason" maxlength="800" placeholder="A line or two is enough."></textarea></div>
       <div class="err" id="aperr" hidden></div>
       <button type="button" class="btn btn-ink btn-block" id="ap-send">Send to Genie</button>
-      <span class="alt">Or <a href="#mentorship">book a paid session</a>. ${PAID_LINE}</span></div>`;
-    case "appeal_pending": return `<div class="used"><b>Your request is with me.</b>I'll reply by email within a day.<span class="alt">Can't wait? <a href="#mentorship">Book a paid session</a>. ${PAID_LINE}</span></div>`;
-    case "appeal_declined": return `<div class="used"><b>We've been here before.</b>The free call is one per person. To keep going, book a paid session. ${PAID_LINE}${paidBtn}</div>`;
-    default: return `<div class="used"><b>We've spoken before.</b>The free call is one per person. To keep going, book a paid session. ${PAID_LINE}${paidBtn}</div>`;
+      <span class="alt">Or <a href="#coaching">book a coaching session</a>. ${PAID_LINE}</span></div>`;
+    case "appeal_pending": return `<div class="used"><b>Your request is with me.</b>I'll reply by email within a day.<span class="alt">Can't wait? <a href="#coaching">Book a coaching session</a>. ${PAID_LINE}</span></div>`;
+    case "appeal_declined": return `<div class="used"><b>We've been here before.</b>The free session is one per person. To keep going, book a coaching session. ${PAID_LINE}${paidBtn}</div>`;
+    default: return `<div class="used"><b>We've spoken before.</b>The free session is one per person. To keep going, book a coaching session. ${PAID_LINE}${paidBtn}</div>`;
   }
 }
 function showUsed(st){
@@ -1476,28 +1533,30 @@ function hideUsed(){ const box=$("#fused"); if(box){ box.hidden=true; box.innerH
 function renderDetails(el){
   const isFree = B.service==="free_call", saved = B.form || {};
   let picked;
-  if(isFree){ const p = dayParts(B.slot.date); picked = `<div class="picked"><div><b>${p.long}, ${B.slot.label}</b><span>Free clarity call · 10 minutes · Video</span></div><button type="button" id="chg">Change</button></div>`; }
+  if(isFree){ const p = dayParts(B.slot.date); picked = `<div class="picked"><div><b>${p.long}, ${B.slot.label}</b><span>Free clarity session · 10 minutes · Video</span></div><button type="button" id="chg">Change</button></div>`; }
   else {
     const left = leftMins();
-    picked = `<div class="picked picked-multi"><div><b>Mentorship · ${B.hours} hour${B.hours>1?"s":""} · ${naira(B.hours*CONFIG.hourRate)}</b>
+    picked = `<div class="picked picked-multi"><div><b>Coaching · ${B.hours} hour${B.hours>1?"s":""} · ${naira(B.hours*CONFIG.hourRate)}</b>
       <ul>${B.basket.map(x=>`<li>${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}, ${x.label} <em>${lenLabel(x.minutes)}</em></li>`).join("")}</ul>
-      ${left>0?`<span>${minsText(left)} left to book later</span>`:""}</div><button type="button" id="chg">Change</button></div>`;
+      ${left>0?`<span>${minsText(left)} left to book later</span>`:""}${saved.note?`<span class="for-line">For: ${esc(saved.note.length>110?saved.note.slice(0,107)+"...":saved.note)}</span>`:""}</div><button type="button" id="chg">Change</button></div>`;
   }
   stage(el, `${stepsBar()}
     ${picked}
-    ${isFree?`<div class="callout">${I.video}<span><b>Video call on Google Meet.</b>This is your only free call, so set a reminder.</span></div>`:""}
+    ${isFree?`<div class="callout">${I.video}<span><b>Video call on Google Meet.</b>This is your only free session, so set a reminder.</span></div>`:""}
     <form id="bform" novalidate>
       <div class="field"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" value="${esc(saved.name)}" required></div>
       <div class="field"><label for="f-email">Email <em>(your confirmation goes here)</em></label><input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" value="${esc(saved.email)}" required></div>
       <div class="field"><label for="f-phone">Phone number ${isFree?"<em>(WhatsApp if you have it)</em>":"<em>(optional)</em>"}</label><input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" value="${esc(saved.phone)}" ${isFree?"required":""}></div>
-      <div class="field"><label for="f-note">${isFree?"What are you stuck on?":"What do you want to work on?"}</label><textarea id="f-note" name="note" maxlength="600" placeholder="${isFree?"One or two lines is enough.":"Give me a head start."}">${esc(saved.note)}</textarea></div>
+      ${isFree?`<div class="field"><label for="f-note">What are you stuck on?</label><textarea id="f-note" name="note" maxlength="600" placeholder="One or two lines is enough.">${esc(saved.note)}</textarea></div>`:`<input type="hidden" name="note" value="${esc(saved.note)}">`}
       <label class="check"><input type="checkbox" id="f-opt" name="opt" ${saved.opt?"checked":""}><span>Send me Genie's emails<em>Short notes on mindset, communication and getting things done. Leave anytime.</em></span></label>
       <div id="fused" hidden></div>
       <div class="err" id="ferr" hidden></div>
-      <button class="btn btn-ink btn-block" type="submit" id="fsub">${isFree?"Confirm my call":"Pay "+naira(B.hours*CONFIG.hourRate)}</button>
-      ${isFree?"":`<p class="note">Secured by Paystack. Your times are held for 15 minutes while you pay.</p>`}
+      ${isFree?"":payMethodsHTML()}
+      <button class="btn btn-ink btn-block" type="submit" id="fsub">${isFree?"Confirm my session":"Pay "+naira(B.hours*CONFIG.hourRate)}</button>
+      ${isFree?"":`<p class="note pay-trust">${I.lock} Paid securely through Paystack</p>`}
     </form>`);
   $("#chg").onclick=()=>{ B.form = readForm(); B.step="time"; renderBooker(); loadSlots(true); };
+  el.querySelectorAll("[name=paym]").forEach(r=>r.onchange=()=>{ B.payMethod = r.value; });
   $("#bform").addEventListener("submit", e=>{ e.preventDefault(); submitBooking(); });
   if(isFree){
     const check = async ()=>{
@@ -1545,8 +1604,8 @@ async function submitBooking(){
     setBusy(true, "Booking");
     const r = await api("POST", { action:"book", ...base });
     B.busy = false;
-    if(r.ok) return showDone({ title:"You're booked.", line:`${r.booking.date} at ${r.booking.label}`, text:`This is your only free call. Add it to your calendar so your phone reminds you.`, cal:{ start:r.booking.start || B.slot.start, mins:10, title:"Clarity call with Genie" } });
-    setBusy(false, "Confirm my call");
+    if(r.ok) return showDone({ title:"You're booked.", line:`${r.booking.date} at ${r.booking.label}`, text:`This is your only free session. Add it to your calendar so your phone reminds you.`, cal:{ start:r.booking.start || B.slot.start, mins:10, title:"Clarity session with Genie" } });
+    setBusy(false, "Confirm my session");
     if(r.error==="free_call_used") return showUsed(r.status);
     showErr(errMsg(r.error));
     if(retryable(r.error)) backToTimes();
@@ -1562,7 +1621,8 @@ async function submitBooking(){
   setBusy(true, "Opening payment");
   const handler = PaystackPop.setup({
     key: CONFIG.paystackKey, email: h.email, amount: h.amount_kobo, currency:"NGN", ref: h.reference,
-    metadata:{ custom_fields:[{ display_name:"Service", variable_name:"service", value:"Mentorship" },{ display_name:"Hours", variable_name:"hours", value:String(B.hours) }] },
+    channels: PAY_CHANNELS[B.payMethod||"transfer"],
+    metadata:{ custom_fields:[{ display_name:"Service", variable_name:"service", value:"Coaching" },{ display_name:"Hours", variable_name:"hours", value:String(B.hours) }] },
     onClose: ()=>{ B.busy=false; setBusy(false, payLabel); showErr("Payment closed before it finished. You haven't been charged. Tap pay to try again."); api("POST",{ action:"release", reference:h.reference }); },
     callback: async (res)=>{
       setBusy(true, "Confirming payment");
@@ -1577,7 +1637,7 @@ async function submitBooking(){
         return showDone({ title:"You're in.", line: upcoming.length ? `${upcoming.length} session${upcoming.length>1?"s":""} booked` : "Payment confirmed",
           sessions: upcoming,
           text: lostLine + (left ? `You have ${minsText(left)} left. Book it whenever you like from your plan. The link is in your email too.` : `Everything is in your email at ${esc(f.email)}, with a calendar invite for each session.`),
-          cal: upcoming.length ? upcoming.map(s=>({ start:s.start, mins:s.minutes, title:"Mentorship session with Genie" })) : null,
+          cal: upcoming.length ? upcoming.map(s=>({ start:s.start, mins:s.minutes, title:"Coaching session with Genie" })) : null,
           primary: left>=30 ? { href:`/book?plan=${c.plan_token}`, label:"Book the rest of my time" } : { href:`/book?plan=${c.plan_token}`, label:"See my plan" }, extra: wa });
       }
       setBusy(false, payLabel); showErr(errMsg(c.error) + " Reference: " + (res.reference||h.reference));
@@ -1638,7 +1698,7 @@ function renderPlanPage(){
   $("#app").innerHTML = `<div class="view"><div class="detail">
     <div>
       <section class="detail-hero t-sky">
-        <span class="eyebrow">Your mentorship plan</span>
+        <span class="eyebrow">Your coaching hours</span>
         <h1>Hi ${first}.</h1>
         <p><b>${minsText(p.minutes_left)}</b> left of ${minsText(p.minutes_total)}.</p>
         <div class="meter"><span style="width:${pct}%"></span></div>
@@ -1664,7 +1724,7 @@ function renderPlanPage(){
 function renderPlanBooker(el){
   const left = B.plan.minutes_left;
   if(left < 30){
-    stage(el, `<h3>All your hours are booked</h3><p class="hint">Want more time with me?</p><div style="height:12px"></div><a class="btn btn-ink btn-block" href="/book#mentorship">Buy more hours</a>`);
+    stage(el, `<h3>All your hours are booked</h3><p class="hint">Want more time with me?</p><div style="height:12px"></div><a class="btn btn-ink btn-block" href="/book#coaching">Buy more hours</a>`);
     return;
   }
   if(B.len > left) B.len = LENGTHS.filter(m=>m<=left).pop();
@@ -1693,7 +1753,7 @@ function renderPlanBooker(el){
       const leftNow = B.plan.minutes_left;
       showDone({ title: mine.length>1 ? "Sessions booked." : "Session booked.", line: `${mine.length} session${mine.length>1?"s":""} added to your plan`, sessions: mine,
         text: leftNow ? `You have ${minsText(leftNow)} left.` : "That's all your hours booked.",
-        cal: mine.map(s=>({ start:s.start, mins:s.minutes, title:"Mentorship session with Genie" })),
+        cal: mine.map(s=>({ start:s.start, mins:s.minutes, title:"Coaching session with Genie" })),
         primary: { href:`/book?plan=${B.token}`, label: leftNow>=30 ? "Book more sessions" : "Back to my plan" } });
       return;
     }
@@ -1763,14 +1823,16 @@ function route(){
   const scrollToServices = key === "services";
   if(scrollToServices) key = "home";
   if(key==="accountability"){ location.replace("/app"); return; }
+  if(key==="mentorship"){ history.replaceState(null,"","#coaching"); key="coaching"; }
   if(!views[key]) key = "home";
   clearInterval(B.poll);
   $("#app").innerHTML = `<div class="view">${views[key]()}</div>`;
   document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("on", a.dataset.nav === (scrollToServices ? "services" : key)));
   reveal();
   if(key==="call") startBooker("free_call");
-  if(key==="mentorship"){ startBooker("mentorship"); if(B.fromTest) setTimeout(()=>$("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }), 120); }
+  if(key==="coaching"){ startBooker("mentorship"); if(B.fromTest) setTimeout(()=>$("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }), 120); }
   if(key==="test") startTest();
+  if(key==="home") fillNext();
   wireWaitForms();
   if(scrollToServices) setTimeout(()=>document.getElementById("services")?.scrollIntoView({ behavior:"smooth" }), 30);
   else window.scrollTo(0,0);

@@ -209,6 +209,7 @@ async function initiatePayment(){
   trackEvent("checkout_started",{duration:dur,has_discount:S._accessDiscount>0});
 
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    trackEvent("payment_blocked",{reason:"email"});
     payError("Enter a valid email to continue");
     return;
   }
@@ -220,7 +221,7 @@ async function initiatePayment(){
 
   /* Create the pending row first so verify-payment can promote it. */
   const hasRow=await ensureChallengerRow();
-  if(!hasRow){payError("Connection problem. Try again.");return;}
+  if(!hasRow){trackEvent("payment_blocked",{reason:"no_row"});payError("Connection problem. Try again.");return;}
 
   /* ── 100% ACCESS CODE PATH ───────────────────────────────────────
      The server decides whether this becomes a 'paid' or 'free' seat
@@ -250,9 +251,10 @@ async function initiatePayment(){
   try{
     const h=PaystackPop.setup({
       key:PAYSTACK_PUBLIC_KEY,email,amount:fk,currency:"NGN",
+      channels:({transfer:["bank_transfer"],card:["card"],other:["ussd","bank"]})[document.querySelector("[name=paym]:checked")?.value||"transfer"],
       ref:"OIWG_"+Date.now()+"_"+Math.random().toString(36).substr(2,6),
       metadata:{custom_fields:[{display_name:"Challenger",variable_name:"name",value:S.user?.name||""},{display_name:"Tier",variable_name:"tier",value:TIERS[dur].name}]},
-      onClose:()=>{el("pay-btn").disabled=false;el("pay-btn").textContent="Pay & Start →";el("pay-status").textContent="Payment cancelled";el("pay-status").style.color="#d9503a";},
+      onClose:()=>{trackEvent("payment_closed",{duration:dur,method:document.querySelector("[name=paym]:checked")?.value||"transfer"});el("pay-btn").disabled=false;el("pay-btn").textContent="Pay & Start →";el("pay-status").textContent="Payment cancelled";el("pay-status").style.color="#d9503a";},
       callback:async(r)=>{
         el("pay-btn").textContent="Verifying payment...";
         /* Paystack's client-side callback is NOT trustworthy on its own —
@@ -289,7 +291,9 @@ async function initiatePayment(){
       }
     });
     h.openIframe();
+    trackEvent("payment_opened",{duration:dur,method:document.querySelector("[name=paym]:checked")?.value||"transfer"});
   }catch(e){
+    trackEvent("payment_error",{duration:dur,msg:String(e&&e.message||e).slice(0,120)});
     payError("Payment failed. Check connection.");
   }
 }
