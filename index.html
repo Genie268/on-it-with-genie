@@ -62,16 +62,12 @@ p{margin:0}
 .topnav a.on{background:var(--ink);color:#fff}
 .signin-sm{font-size:14px;font-weight:700;padding:10px 14px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
 
-.hero{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-lg);padding:26px;display:grid;gap:22px;overflow:hidden;position:relative}
-.hero::before{content:"";position:absolute;width:420px;height:420px;right:-160px;top:-180px;border-radius:50%;background:radial-gradient(closest-side,rgba(200,239,98,.55),rgba(200,239,98,0));pointer-events:none}
-.hero>*{position:relative}
-.hero-art{display:none;align-self:end;line-height:0}
-.hero-art svg{width:100%;height:auto}
+.hero{background:var(--ink);color:#fff;border-radius:var(--r-lg);padding:26px;display:grid;gap:22px;overflow:hidden}
 .live{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:#E9E9E4}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--lime);animation:pulse 2.2s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(200,239,98,.55)}70%{box-shadow:0 0 0 9px rgba(200,239,98,0)}100%{box-shadow:0 0 0 0 rgba(200,239,98,0)}}
 .hero h1{font-size:clamp(38px,10vw,64px);margin-top:14px}
-.hero .lede{color:#3B3B3E;margin-top:14px;max-width:36ch;font-size:17px}
+.hero .lede{color:#BDBDB8;margin-top:14px;max-width:36ch}
 .ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 24px;border-radius:999px;font-weight:700;font-size:16px;white-space:nowrap;transition:transform .15s ease,opacity .15s}
 .btn:active{transform:scale(.97)}
@@ -93,7 +89,9 @@ p{margin:0}
 .proof b{display:block;font-family:var(--display);font-size:22px;letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
 .proof span{font-size:12.5px;color:var(--muted);line-height:1.3;display:block;margin-top:2px}
 .hero .proof{margin-top:22px}
-.hero .proof div{background:var(--bg);border-color:transparent}
+.hero .proof div{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1)}
+.hero .proof b{color:#fff}
+.hero .proof span{color:rgba(255,255,255,.6)}
 
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:34px 0 14px}
 .sec-head h2{font-size:26px}
@@ -112,7 +110,7 @@ p{margin:0}
 .chip{font-size:13px;font-weight:600;padding:7px 12px;border-radius:999px;background:var(--surface)}
 .chip.dark{background:var(--ink);color:#fff}
 .chip.free{background:#178A4A;color:#fff}
-.card .ico svg rect{fill:currentColor}
+.card:not(.t-onit) .ico svg rect{fill:currentColor}
 .free-tag{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.14em;color:#fff;background:#178A4A;padding:6px 11px;border-radius:999px}
 .free-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--lime)}
 .chip.soon{background:transparent;border:1.5px dashed #9B95B5;color:#4A4466}
@@ -522,8 +520,6 @@ p{margin:0}
   .grid{grid-template-columns:1fr 1fr}
   .detail-hero{padding:36px}
   .slots{grid-template-columns:repeat(4,1fr)}
-  .hero.with-art{grid-template-columns:1.2fr .8fr;align-items:center}
-  .hero-art{display:block}
 }
 /* Side-by-side only when there's real room; tablets get one clean column. */
 @media (min-width:980px){
@@ -633,13 +629,13 @@ const B = { service:null, mode:"new", data:null, date:null, month:null, slot:nul
 /* ---------- Views ---------- */
 const views = {
 home(){ const h = lagosNow().getHours(); return `
-<section class="hero${CONFIG.photo?"":" with-art"}">
+<section class="hero${CONFIG.photo?"":" solo"}">
   <div>
     <h1>I'm Genie.</h1>
     <p class="lede">You already know what to do. I help you actually do it, and say it well when it counts.</p>
     <div class="ctas">
-      <a class="btn btn-ink" href="#services">See how I can help</a>
-      <a class="btn btn-line" href="#call">Talk to me free</a>
+      <a class="btn btn-lime" href="#services">See how I can help</a>
+      <a class="btn btn-ghost" href="#call">Talk to me free</a>
     </div>
     <div class="proof">
       <div><b>30K+</b><span>follow me on TikTok</span></div>
@@ -647,13 +643,13 @@ home(){ const h = lagosNow().getHours(); return `
       <div><b>Every</b><span>upload checked by me</span></div>
     </div>
   </div>
-  ${CONFIG.photo?`<div class="photo">${photoBox("Genie · Abuja")}</div>`:`<div class="hero-art">${GA.S.G}</div>`}
+  ${CONFIG.photo?`<div class="photo">${photoBox("Genie · Abuja")}</div>`:""}
 </section>
 <div class="sec-head" id="services"><h2>Pick where to start</h2></div>
 <div class="grid">
+  ${(()=>{ const st=intakeState(); return card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal and show proof every day. I check every upload, so quitting quietly stops being an option.",[["From ₦15,000","dark"],["15 days to 3 months"],["First call in 48 hrs"]].concat(st.cap?[[`${st.cap} at a time`]]:[]),null,null,st.mode==="off"?null:st.ribbon); })()}
   ${card("coaching","t-sky",I.people,"Coaching session","One hour on the thing you can't shake. You leave with the real problem named and a plan to start the same day.",[[naira(CONFIG.hourRate),"dark"],["1 hour"],["","next",'data-next="mentorship"']])}
   ${card("call","t-mint",I.video,"Clarity session","Ten minutes, free. You leave knowing what's really in the way and your first step.",[["Free","free"],["10 min"],["","next",'data-next="free_call"']])}
-  ${(()=>{ const st=intakeState(); return card("/app","t-peach",ONIT_MARK,"Accountability coaching","Pick one goal and show proof every day. I check every upload, so quitting quietly stops being an option.",[["From ₦15,000","dark"],["15 days to 3 months"]].concat(st.cap?[[`${st.cap} at a time`]]:[]),null,null,st.mode==="off"?null:st.ribbon); })()}
   ${card("communication","t-lilac",I.mic,"Communication","Find exactly where your speaking breaks down, then fix it. Start with a free 4-minute test.",[["Free test","free"],["Courses coming soon","soon"]])}
 </div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
@@ -668,7 +664,6 @@ ${backLink()}
 <div class="detail">
   <div id="lcol">
     <section class="detail-hero t-mint">
-      <div class="dh-art">${GA.S.what}</div>
       <span class="free-tag">FREE</span>
       <span class="eyebrow" style="display:block;margin-top:14px">Clarity session · 10 minutes · Video</span>
       <h1>Get unstuck in ten minutes, free.</h1>
