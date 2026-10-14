@@ -62,12 +62,16 @@ p{margin:0}
 .topnav a.on{background:var(--ink);color:#fff}
 .signin-sm{font-size:14px;font-weight:700;padding:10px 14px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
 
-.hero{background:var(--ink);color:#fff;border-radius:var(--r-lg);padding:26px;display:grid;gap:22px;overflow:hidden}
+.hero{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-lg);padding:26px;display:grid;gap:22px;overflow:hidden;position:relative}
+.hero::before{content:"";position:absolute;width:420px;height:420px;right:-160px;top:-180px;border-radius:50%;background:radial-gradient(closest-side,rgba(200,239,98,.55),rgba(200,239,98,0));pointer-events:none}
+.hero>*{position:relative}
+.hero-art{display:none;align-self:end;line-height:0}
+.hero-art svg{width:100%;height:auto}
 .live{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:#E9E9E4}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--lime);animation:pulse 2.2s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(200,239,98,.55)}70%{box-shadow:0 0 0 9px rgba(200,239,98,0)}100%{box-shadow:0 0 0 0 rgba(200,239,98,0)}}
 .hero h1{font-size:clamp(38px,10vw,64px);margin-top:14px}
-.hero .lede{color:#BDBDB8;margin-top:14px;max-width:36ch}
+.hero .lede{color:#3B3B3E;margin-top:14px;max-width:36ch;font-size:17px}
 .ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 24px;border-radius:999px;font-weight:700;font-size:16px;white-space:nowrap;transition:transform .15s ease,opacity .15s}
 .btn:active{transform:scale(.97)}
@@ -89,9 +93,7 @@ p{margin:0}
 .proof b{display:block;font-family:var(--display);font-size:22px;letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
 .proof span{font-size:12.5px;color:var(--muted);line-height:1.3;display:block;margin-top:2px}
 .hero .proof{margin-top:22px}
-.hero .proof div{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1)}
-.hero .proof b{color:#fff}
-.hero .proof span{color:rgba(255,255,255,.6)}
+.hero .proof div{background:var(--bg);border-color:transparent}
 
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:34px 0 14px}
 .sec-head h2{font-size:26px}
@@ -109,6 +111,8 @@ p{margin:0}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{font-size:13px;font-weight:600;padding:7px 12px;border-radius:999px;background:var(--surface)}
 .chip.dark{background:var(--ink);color:#fff}
+.chip.free{background:#178A4A;color:#fff}
+.card .ico svg rect{fill:currentColor}
 .free-tag{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.14em;color:#fff;background:#178A4A;padding:6px 11px;border-radius:999px}
 .free-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--lime)}
 .chip.soon{background:transparent;border:1.5px dashed #9B95B5;color:#4A4466}
@@ -294,6 +298,30 @@ p{margin:0}
 .steps-list li{display:grid;grid-template-columns:62px 1fr;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:var(--bg)}
 .steps-list b{font-family:var(--mono);font-weight:500;font-size:13px;letter-spacing:.04em}
 .steps-list span{font-size:15px}
+.packs{display:grid;gap:8px;margin-top:10px}
+.pack{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;border:1.5px solid var(--line);background:#fff;cursor:pointer;transition:border-color .15s}
+.pack input{accent-color:var(--ink);width:18px;height:18px;margin:0;flex:none}
+.pack-t{flex:1;min-width:0}
+.pack-t b{display:block;font-size:16px}
+.pack-t em{display:block;font-style:normal;font-size:13px;color:var(--muted)}
+.pack-p{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-0.02em;white-space:nowrap}
+.pack:has(input:checked){border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
+.sumc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px}
+.sumc-who{display:flex;align-items:center;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.sumc-who .mark{width:44px;height:44px;font-size:18px}
+.sumc-who small{display:block;font-size:13px;color:var(--muted)}
+.sumc-who b{display:block;font-family:var(--display);font-size:22px;letter-spacing:-0.03em;line-height:1.15}
+.sumc-meta{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:10px}
+.sumc-meta li{display:flex;gap:10px;align-items:flex-start;font-size:15px;color:#3B3B3E}
+.sumc-meta svg{width:19px;height:19px;flex:none;margin-top:1px;color:var(--muted)}
+.sumc-meta li.on{font-weight:700;color:var(--ink)}
+.sumc-meta li.on svg{color:var(--ink)}
+.sumc-note{position:relative;margin-top:16px;padding:14px;border-radius:14px;background:var(--bg)}
+.sumc-note small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sumc-note p{margin:6px 0 0;font-size:14.5px;line-height:1.5}
+.sumc-edit{position:absolute;top:10px;right:10px;border:0;background:none;font:inherit;font-size:13px;font-weight:700;text-decoration:underline;cursor:pointer;color:var(--ink)}
+.dh-art{margin:-10px -6px 6px;line-height:0;max-width:360px}
+.dh-art svg{width:100%;height:auto}
 .paid-hint{font-size:13.5px;color:var(--muted);text-align:center;margin-top:12px}
 .paid-hint a{text-decoration:underline;color:inherit;font-weight:600}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-inline:-4px;padding-inline:4px;scrollbar-width:none}
@@ -308,7 +336,7 @@ p{margin:0}
 .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
 .slot{height:52px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums;display:grid;place-items:center}
 .slot:not(:disabled):hover{border-color:var(--ink)}
-.slot[aria-pressed="true"]{background:var(--lime);border-color:var(--ink);font-weight:500}
+.slot[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:500}
 .slot:disabled{background:var(--bg);color:#A8A8A4;text-decoration:line-through;border-style:dashed}
 .legend{display:flex;gap:14px;font-size:12.5px;color:var(--muted);margin-top:12px}
 .legend span{display:inline-flex;align-items:center;gap:6px}
@@ -420,8 +448,9 @@ p{margin:0}
 .btn-ink:hover{box-shadow:0 10px 24px -12px rgba(15,15,16,.55)}
 .btn:active{transform:scale(.97)}
 .seg button,.slot,.cd.open,.opt,.day{transition:background-color .2s,border-color .2s,color .2s,transform .2s var(--ease)}
-.seg button[aria-pressed="true"],.cd[aria-pressed="true"],.slot[aria-pressed="true"]{animation:pop .3s var(--ease)}
-.slots.enter .slot{animation:rise .4s var(--ease) both;animation-delay:calc(var(--i,0) * 22ms)}
+
+.slots.enter{animation:fadein .25s ease both}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
 .big{animation:pop .5s var(--ease) both}
 .draw{stroke-dasharray:30;animation:draw .5s .25s var(--ease) both}
 .shake{animation:shake .35s ease}
@@ -449,7 +478,7 @@ p{margin:0}
 .mini-label{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
 .slot:has(small){align-content:center;gap:1px}
 .slot small{display:block;font-family:var(--body);font-size:10.5px;line-height:1;color:var(--lime-ink)}
-.slot.mine-near:disabled{background:color-mix(in srgb,var(--lime) 28%,var(--surface));color:#7A8058;text-decoration:none;border-style:solid;border-color:transparent}
+.slot.mine-near:disabled{background:var(--bg);color:#B5B5B0;text-decoration:none;border-style:solid;border-color:transparent}
 .legend i.y{background:var(--lime);border-color:var(--ink)}
 .cd.has::after{background:var(--ink);width:6px;height:6px}
 .cd.has[aria-pressed="true"]::after{background:var(--lime)}
@@ -493,6 +522,8 @@ p{margin:0}
   .grid{grid-template-columns:1fr 1fr}
   .detail-hero{padding:36px}
   .slots{grid-template-columns:repeat(4,1fr)}
+  .hero.with-art{grid-template-columns:1.2fr .8fr;align-items:center}
+  .hero-art{display:block}
 }
 /* Side-by-side only when there's real room; tablets get one clean column. */
 @media (min-width:980px){
@@ -602,13 +633,13 @@ const B = { service:null, mode:"new", data:null, date:null, month:null, slot:nul
 /* ---------- Views ---------- */
 const views = {
 home(){ const h = lagosNow().getHours(); return `
-<section class="hero${CONFIG.photo?"":" solo"}">
+<section class="hero${CONFIG.photo?"":" with-art"}">
   <div>
     <h1>I'm Genie.</h1>
     <p class="lede">You already know what to do. I help you actually do it, and say it well when it counts.</p>
     <div class="ctas">
-      <a class="btn btn-lime" href="#services">See how I can help</a>
-      <a class="btn btn-ghost" href="#call">Talk to me free</a>
+      <a class="btn btn-ink" href="#services">See how I can help</a>
+      <a class="btn btn-line" href="#call">Talk to me free</a>
     </div>
     <div class="proof">
       <div><b>30K+</b><span>follow me on TikTok</span></div>
@@ -616,14 +647,14 @@ home(){ const h = lagosNow().getHours(); return `
       <div><b>Every</b><span>upload checked by me</span></div>
     </div>
   </div>
-  ${CONFIG.photo?`<div class="photo">${photoBox("Genie · Abuja")}</div>`:""}
+  ${CONFIG.photo?`<div class="photo">${photoBox("Genie · Abuja")}</div>`:`<div class="hero-art">${GA.S.G}</div>`}
 </section>
 <div class="sec-head" id="services"><h2>Pick where to start</h2></div>
 <div class="grid">
-  ${(()=>{ const st=intakeState(); return card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal and show proof every day. I check every upload, so quitting quietly stops being an option.",[["15 days to 3 months"],["First call in 48 hrs"]].concat(st.cap?[[`${st.cap} at a time`]]:[]).concat([["From ₦15,000","dark"]]),null,"ON IT APP",st.mode==="off"?null:st.ribbon); })()}
-  ${card("coaching","t-sky",I.people,"Coaching","One hour on the thing you can't shake. You leave with the real problem named and a plan to start the same day.",[["1 hour"],[naira(CONFIG.hourRate),"dark"],["","next",'data-next="mentorship"']])}
-  ${card("call","t-mint",I.video,"Clarity session","Ten minutes, free. You leave knowing what's really in the way and your first step.",[["10 min"],["Video call"],["","next",'data-next="free_call"']],"Free")}
-  ${card("communication","t-lilac",I.mic,"Communication","Find exactly where your speaking breaks down, then fix it. Start with a free 4-minute test.",[["Free test"],["Courses coming soon","soon"]])}
+  ${card("coaching","t-sky",I.people,"Coaching session","One hour on the thing you can't shake. You leave with the real problem named and a plan to start the same day.",[[naira(CONFIG.hourRate),"dark"],["1 hour"],["","next",'data-next="mentorship"']])}
+  ${card("call","t-mint",I.video,"Clarity session","Ten minutes, free. You leave knowing what's really in the way and your first step.",[["Free","free"],["10 min"],["","next",'data-next="free_call"']])}
+  ${(()=>{ const st=intakeState(); return card("/app","t-peach",ONIT_MARK,"Accountability coaching","Pick one goal and show proof every day. I check every upload, so quitting quietly stops being an option.",[["From ₦15,000","dark"],["15 days to 3 months"]].concat(st.cap?[[`${st.cap} at a time`]]:[]),null,null,st.mode==="off"?null:st.ribbon); })()}
+  ${card("communication","t-lilac",I.mic,"Communication","Find exactly where your speaking breaks down, then fix it. Start with a free 4-minute test.",[["Free test","free"],["Courses coming soon","soon"]])}
 </div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
 <a class="event" href="#event">
@@ -635,8 +666,9 @@ home(){ const h = lagosNow().getHours(); return `
 call(){ return `
 ${backLink()}
 <div class="detail">
-  <div>
+  <div id="lcol">
     <section class="detail-hero t-mint">
+      <div class="dh-art">${GA.S.what}</div>
       <span class="free-tag">FREE</span>
       <span class="eyebrow" style="display:block;margin-top:14px">Clarity session · 10 minutes · Video</span>
       <h1>Get unstuck in ten minutes, free.</h1>
@@ -658,9 +690,10 @@ ${backLink()}
 coaching(){ return `
 ${backLink()}
 <div class="detail">
-  <div>
+  <div id="lcol">
     <section class="detail-hero t-sky">
-      <span class="eyebrow">Coaching · ${naira(CONFIG.hourRate)} an hour</span>
+      <div class="dh-art">${GA.S.G}</div>
+      <span class="eyebrow">Coaching session · ${naira(CONFIG.hourRate)} an hour</span>
       <h1>One focused hour on the problem you can't shake.</h1>
       <p>We name what's really in the way, decide what to do about it, and you leave with steps you can start the same day.</p>
     </section>
@@ -998,16 +1031,17 @@ function stage(el, html){
 function renderBooker(){
   const el = $("#booker"); if(!el) return;
   if(B.mode==="plan") return renderPlanBooker(el);
+  syncLeft();
   if(B.step==="plan") return renderPlan(el);
   if(B.step==="details") return renderDetails(el);
   if(B.service==="mentorship") return renderSessions(el);
   stage(el, `${stepsBar()}<h3>Pick a day and time</h3>${pickerHTML()}
     <div style="height:16px"></div>
-    <button class="btn btn-ink btn-block" id="toDetails" ${B.slot?"":"disabled"}>${B.slot ? "Continue with " + B.slot.label : "Choose a time"}</button>
+    <button class="btn btn-ink btn-block" id="toDetails" ${B.slot?"":"disabled"}>${B.slot ? `Continue · ${dayParts(B.slot.date).wd} ${dayParts(B.slot.date).dd} ${dayParts(B.slot.date).mon}, ${B.slot.label}` : "Choose a time"}</button>
     <p class="paid-hint" id="paid-hint" hidden></p>`);
   fillPaidHint();
   wirePicker(el);
-  $("#toDetails").onclick = ()=>{ if(B.slot){ B.step="details"; renderBooker(); el.scrollIntoView({ behavior:"smooth", block:"start" }); } };
+  $("#toDetails").onclick = ()=>{ if(B.slot){ B.step="details"; renderBooker(); (window.innerWidth<980 ? $("#lcol") : el)?.scrollIntoView({ behavior:"smooth", block:"start" }); } };
 }
 
 /* ---------- Mentorship: pick several sessions ---------- */
@@ -1051,11 +1085,11 @@ function toggleSession(start, day){
     const last = B.basket.reduce((a,x)=>(x.seq||0) > (a.seq||0) ? x : a);
     B.basket = B.basket.filter(x=>x!==last); moved = moved || last;
   }
-  if(B.len > leftMins()){ toast(`You only have ${minsText(leftMins())} left. Pick a shorter length.`); return; }
+  if(B.len > leftMins()){ toast(`You have ${minsText(leftMins())} left on your plan.`); return; }
   B.seq = (B.seq||0) + 1;
   B.basket.push({ start:s.start, minutes:B.len, label:s.label, date:day.date, seq:B.seq }); sortBasket(); B.fresh=[s.start];
-  if(moved){ const d = dayParts(day.date); toast(`Moved to ${d.wd} ${d.dd} ${d.mon}, ${s.label}.${B.mode!=="plan" && B.hours<8 ? " Want both? Tap + for more hours." : ""}`); }
-  if(!fitLen()) renderBooker();
+  if(moved && (B.mode==="plan" || isPack())){ const d = dayParts(day.date); toast(`Moved to ${d.wd} ${d.dd} ${d.mon}, ${s.label}.`); }
+  renderBooker();
 }
 async function repeatWeekly(start){
   const it = inBasket(start); if(!it) return;
@@ -1084,14 +1118,11 @@ function basketHTML(){
   const cap = capMins(), used = pickedMins(), left = cap - used;
   if(!B.basket.length && B.mode==="plan") return `<div class="basket empty-b"><p>Tap a time to add it.</p></div>`;
   const fresh = B.fresh || []; B.fresh = null;
-  const rows = B.basket.map(x=>`<li class="sess${fresh.includes(x.start)?" fresh":""}"><div><b>${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}</b><span>${x.label} · ${lenLabel(x.minutes)}</span>${left>=x.minutes?`<button type="button" class="rep" data-rep="${x.start}">↻ Repeat weekly</button>`:""}</div>
+  const rows = B.basket.map(x=>`<li class="sess${fresh.includes(x.start)?" fresh":""}"><div><b>${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}</b><span>${x.label} · ${lenLabel(x.minutes)}</span>${left>=x.minutes?`<button type="button" class="rep" data-rep="${x.start}">↻ Same time every week</button>`:""}</div>
       <button type="button" class="x-btn" data-rm="${x.start}" aria-label="Remove ${x.label}">×</button></li>`).join("");
   return `<div class="basket">
-    <div class="basket-head"><b>Your sessions</b>${B.mode==="plan" ? `<span class="num">${minsText(used)} of ${minsText(cap)}</span>`
-      : `<span class="hstep"><button type="button" data-hs="-1" aria-label="Fewer hours" ${B.hours<=HOUR_TIERS[0]?"disabled":""}>−</button><b class="num">${B.hours} hour${B.hours>1?"s":""}</b><button type="button" data-hs="1" aria-label="More hours" ${B.hours>=HOUR_TIERS[HOUR_TIERS.length-1]?"disabled":""}>+</button></span>`}</div>
-    ${!rows && B.mode!=="plan" ? "" : `<div class="meter"><span style="width:${Math.round(100*used/cap)}%"></span></div>`}
-    ${B.mode==="plan" || !rows ? "" : `<p class="basket-sub">${minsText(used)} placed${left>0?`, ${minsText(left)} free`:""} · ${naira(B.hours*CONFIG.hourRate)}</p>`}
-    ${rows ? `<ul class="sess-list" style="margin-top:12px">${rows}</ul>` : `<p class="basket-sub" style="margin-top:10px">Tap a time above. Need more than an hour? Tap +.</p>`}
+    <div class="basket-head"><b>Your sessions</b><span class="num">${minsText(used)} of ${minsText(cap)}</span></div>
+    <ul class="sess-list" style="margin-top:12px">${rows}</ul>
   </div>`;
 }
 function wireBasket(el){
@@ -1105,33 +1136,50 @@ function wireBasket(el){
   el.querySelectorAll("[data-rep]").forEach(b=>b.onclick=()=>{ b.disabled=true; b.innerHTML='<span class="spin"></span>'; repeatWeekly(b.dataset.rep); });
 }
 function renderSessions(el){
-  const n = B.basket.length, left = leftMins();
+  const n = B.basket.length, left = leftMins(), pack = isPack();
+  const one = !pack && n ? B.basket[0] : null;
+  const btnLabel = pack ? (n ? `Continue with ${n} session${n>1?"s":""}` : "Pick a time")
+    : one ? `Continue · ${dayParts(one.date).wd} ${dayParts(one.date).dd} ${dayParts(one.date).mon}, ${one.label}` : "Pick a time";
   stage(el, `${stepsBar()}<button type="button" class="back" id="toPlan">${I.back} Back</button>
     <h3>Pick a time</h3>
-    ${B.hours>1 ? `<p class="mini-label">How long is each session?</p>${lenSeg()}<div style="height:14px"></div>` : `<div style="height:10px"></div>`}
+    ${pack ? `<p class="hint" style="margin:4px 0 0">Pick as many 1-hour sessions as you like now. The rest stay on your plan to book later.</p>` : ""}
+    <div style="height:12px"></div>
     ${pickerHTML()}
-    ${basketHTML()}
+    ${pack && n ? basketHTML() : ""}
     <div style="height:16px"></div>
-    <button class="btn btn-ink btn-block" id="toDetails" ${n?"":"disabled"}>${n ? `Continue with ${n} session${n>1?"s":""}` : "Pick a time"}</button>
-    ${n && left>0 ? `<p class="note">The other ${minsText(left)} stays on your plan. Book it whenever you like.</p>` : ""}`);
-  wirePicker(el); wireBasket(el);
-  $("#toDetails").onclick = ()=>{ if(B.basket.length){ B.step="details"; renderBooker(); el.scrollIntoView({ behavior:"smooth", block:"start" }); } };
+    <button class="btn btn-ink btn-block" id="toDetails" ${n?"":"disabled"}>${btnLabel}</button>
+    ${pack && n && left>0 ? `<p class="note">${minsText(left)} left to book whenever you like.</p>` : ""}`);
+  wirePicker(el); if(pack) wireBasket(el);
+  $("#toDetails").onclick = ()=>{ if(B.basket.length){ B.step="details"; renderBooker(); $("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }); } };
   $("#toPlan").onclick=()=>{ B.step="plan"; renderBooker(); };
 }
 function lagosDateStr(){ const n=lagosNow(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; }
 
 function renderPlan(el){
-  const total = B.hours*CONFIG.hourRate;
+  const cur = B.hours || 1;
   stage(el, `${stepsBar()}
     ${B.fromTest?`<span class="gt-from">From your test · ${esc(B.fromTest)}</span>`:""}
-    <h3>What's this session for?</h3>
-    <textarea class="gt-note" id="m-note" maxlength="600" placeholder="Tell me what you want to work on, so we start on the real thing.">${esc((B.form && B.form.note) || B.prefillNote || "")}</textarea>
-    <p class="hint" style="margin-top:6px">${B.fromTest?"Written from your result. Change anything you like.":"A line or two is enough. I read it before we meet."}</p>
+    <h3>What do you want help with?</h3>
+    <textarea class="gt-note" id="m-note" maxlength="600" placeholder="e.g. I freeze when I present at work and I have a big one next month.">${esc((B.form && B.form.note) || B.prefillNote || "")}</textarea>
+    <p class="hint" style="margin-top:6px">${B.fromTest?"Written from your result. Change anything.":"A line or two. I read it before we meet."}</p>
+    <div class="err" id="perr" hidden></div>
+    <h3 style="margin-top:22px">How much time?</h3>
+    <div class="packs" role="radiogroup" aria-label="How much time">
+      ${PACKS.map(p=>`<label class="pack"><input type="radio" name="pack" value="${p.h}" ${p.h===cur?"checked":""}><span class="pack-t"><b>${p.title}</b><em>${p.sub}</em></span><span class="pack-p">${naira(p.h*CONFIG.hourRate)}</span></label>`).join("")}
+    </div>
     <div style="height:16px"></div>
     <button class="btn btn-ink btn-block" id="toTime">Pick a time</button>`);
   const keepNote = ()=>{ const n=$("#m-note"); if(n){ B.form = Object.assign({}, B.form||{}, { note:n.value.trim() }); } };
   $("#m-note").addEventListener("input", keepNote);
-  $("#toTime").onclick=()=>{ keepNote(); B.step="time"; if(!fitLen()){ renderBooker(); loadSlots(); } };
+  $("#toTime").onclick=()=>{
+    keepNote();
+    if(!B.form || (B.form.note||"").length < 4){ const e=$("#perr"); e.textContent="Tell me in a line what this is about, so I come prepared."; e.hidden=false; $("#m-note").focus(); return; }
+    const h = +(document.querySelector("[name=pack]:checked")||{}).value || 1;
+    const p = PACKS.find(x=>x.h===h) || PACKS[0];
+    if(B.hours!==p.h || B.len!==p.len){ B.basket = []; B.data = null; }
+    B.hours = p.h; B.len = p.len; B.step="time"; renderBooker(); loadSlots();
+    $("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" });
+  };
 }
 const PAY_CHANNELS = { transfer:["bank_transfer"], card:["card"], other:["ussd","bank"] };
 function payMethodsHTML(){
@@ -1169,6 +1217,49 @@ async function fillPaidHint(){
   if(!el || !n) return;
   el.innerHTML = `Want a full hour instead? <a href="#coaching">Coaching</a> is open from ${whenText(n.s, n.date)}.`;
   el.hidden = false;
+}
+/* What you can book: one session, or a pack you book as you go. */
+const PACKS = [
+  { h:1, len:60,  title:"1 hour",  sub:"One session" },
+  { h:2, len:120, title:"2 hours", sub:"One longer session" },
+  { h:4, len:60,  title:"4 hours", sub:"Four 1-hour sessions. Book them as you go." },
+  { h:8, len:60,  title:"8 hours", sub:"Eight 1-hour sessions. Book them as you go." }
+];
+const isPack = () => B.hours > 2;
+const ICO = {
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg>',
+  cal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
+  cash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="12" rx="3"/><circle cx="12" cy="12" r="2.6"/></svg>'
+};
+/* Calendly-style summary that stays on screen while booking. */
+function sumHTML(){
+  const free = B.service==="free_call";
+  const title = free ? "Clarity session" : "Coaching session";
+  const len = free ? "10 minutes" : isPack() ? `${B.hours} hours · book as you go` : (B.hours===2 ? "2 hours" : "1 hour");
+  const price = free ? "Free" : naira(B.hours*CONFIG.hourRate);
+  const picks = free ? (B.slot ? [{ date:B.slot.date, label:B.slot.label }] : []) : (B.basket||[]);
+  const when = picks.length ? picks.map(x=>`${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}, ${x.label}`).join("<br>") : "";
+  const note = (B.form && B.form.note) || "";
+  return `<aside class="sumc">
+    <div class="sumc-who"><span class="mark">G</span><span><small>Genie</small><b>${title}</b></span></div>
+    <ul class="sumc-meta">
+      <li>${ICO.clock}<span>${len}</span></li>
+      <li>${ICO.cam}<span>Video call on Google Meet</span></li>
+      <li>${ICO.cash}<span>${price}</span></li>
+      ${when ? `<li class="on">${ICO.cal}<span>${when}</span></li>` : ""}
+    </ul>
+    ${note ? `<div class="sumc-note"><small>${free?"What you're stuck on":"What we'll work on"}</small><p>${esc(note)}</p>${free?"":`<button type="button" class="sumc-edit" data-edit>Edit</button>`}</div>` : ""}
+  </aside>`;
+}
+function syncLeft(){
+  const l = $("#lcol"); if(!l || B.mode==="plan") return;
+  const booking = B.service==="mentorship" ? B.step!=="plan" : B.step==="details";
+  if(booking){
+    if(!l.dataset.orig) l.dataset.orig = l.innerHTML;
+    l.innerHTML = sumHTML();
+    const e = l.querySelector("[data-edit]"); if(e) e.onclick = ()=>{ B.step="plan"; renderBooker(); $("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }); };
+  } else if(l.dataset.orig){ l.innerHTML = l.dataset.orig; delete l.dataset.orig; }
 }
 function bump(sel){ const n=$(sel); if(!n) return; n.classList.remove("bump"); void n.offsetWidth; n.classList.add("bump"); }
 
@@ -1595,9 +1686,10 @@ function renderDetails(el){
       <ul>${B.basket.map(x=>`<li>${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}, ${x.label} <em>${lenLabel(x.minutes)}</em></li>`).join("")}</ul>
       ${left>0?`<span>${minsText(left)} left to book later</span>`:""}${saved.note?`<span class="for-line">For: ${esc(saved.note.length>110?saved.note.slice(0,107)+"...":saved.note)}</span>`:""}</div><button type="button" id="chg">Change</button></div>`;
   }
-  stage(el, `${stepsBar()}
-    ${picked}
-    ${isFree?`<div class="callout">${I.video}<span><b>Video call on Google Meet.</b>This is your only free session, so set a reminder.</span></div>`:""}
+  stage(el, `${stepsBar()}<button type="button" class="back" id="chg">${I.back} Change time</button>
+    <h3>Your details</h3>
+    ${isFree?`<p class="hint" style="margin:4px 0 0">This is your only free session, so set a reminder once you book.</p>`:""}
+    <div style="height:10px"></div>
     <form id="bform" novalidate>
       <div class="field"><label for="f-name">Your name</label><input id="f-name" name="name" autocomplete="name" value="${esc(saved.name)}" required></div>
       <div class="field"><label for="f-email">Email <em>(your confirmation goes here)</em></label><input id="f-email" name="email" type="email" inputmode="email" autocomplete="email" value="${esc(saved.email)}" required></div>
@@ -1610,7 +1702,7 @@ function renderDetails(el){
       <button class="btn btn-ink btn-block" type="submit" id="fsub">${isFree?"Confirm my session":"Pay "+naira(B.hours*CONFIG.hourRate)}</button>
       ${isFree?"":`<p class="note pay-trust">${I.lock} Paid securely through Paystack</p>`}
     </form>`);
-  $("#chg").onclick=()=>{ B.form = readForm(); B.step="time"; renderBooker(); loadSlots(true); };
+  $("#chg").onclick=()=>{ B.form = Object.assign({}, B.form||{}, readForm(), isFree?{}:{ note:(B.form||{}).note||"" }); B.step="time"; renderBooker(); loadSlots(true); };
   el.querySelectorAll("[name=paym]").forEach(r=>r.onchange=()=>{ B.payMethod = r.value; });
   $("#bform").addEventListener("submit", e=>{ e.preventDefault(); submitBooking(); });
   if(isFree){
