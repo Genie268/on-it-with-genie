@@ -260,17 +260,29 @@ p{margin:0}
 .for-line{display:block;margin-top:6px;font-size:13px;color:var(--muted)}
 .chip.next{background:#fff;color:var(--ink)}
 .chip.next::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#178A4A;margin-right:6px;vertical-align:1px}
-.tx-card{border-radius:16px;background:#fff;border:1.5px solid var(--line);padding:4px 14px}
-.tx-row{display:grid;grid-template-columns:84px 1fr auto;gap:8px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
-.tx-row:last-child{border-bottom:0}
-.tx-row span{font-size:13px;color:var(--muted)}
-.tx-row b{font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.tx-row b.w{white-space:normal;font-size:14.5px}
-.tx-copy{border:0;background:var(--ink);color:#fff;font:inherit;font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:999px;cursor:pointer}
-.tx-wait{display:flex;gap:12px;align-items:flex-start;margin:14px 0 4px;padding:14px;border-radius:16px;background:var(--mint)}
-.tx-wait b{display:block;font-size:15px}
-.tx-wait span{font-size:13.5px;color:#2F2F33}
-.tx-wait em{font-style:normal;color:var(--muted)}
+.tx{padding-top:2px}
+.txc{position:relative;border-radius:24px;padding:20px 20px 16px;color:#F4F2EC;background:#0F0F10;background-image:radial-gradient(120% 90% at 100% 0%,rgba(200,239,98,.16),transparent 55%),radial-gradient(90% 70% at 0% 100%,rgba(141,184,224,.10),transparent 60%);box-shadow:0 24px 50px -28px rgba(15,15,16,.6);overflow:hidden}
+.txc-top{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(244,242,236,.6)}
+.txc-clock{display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.08);letter-spacing:.04em}
+.txc-clock i{width:7px;height:7px;border-radius:50%;background:var(--lime);animation:pulse 2s infinite}
+.txc-clock b{font-weight:500;color:#fff;font-variant-numeric:tabular-nums}
+.txc-amt{font-family:var(--display);font-weight:800;font-size:44px;letter-spacing:-0.04em;line-height:1;margin-top:18px}
+.txc-what{font-size:14px;color:rgba(244,242,236,.6);margin-top:6px}
+.txc-cut{height:1px;margin:18px -20px 14px;background-image:linear-gradient(90deg,rgba(255,255,255,.22) 50%,transparent 0);background-size:10px 1px}
+.txc-acct{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 10px 12px 14px;border:0;border-radius:16px;background:rgba(255,255,255,.07);color:inherit;font:inherit;text-align:left;cursor:pointer;transition:background .2s}
+.txc-acct:hover{background:rgba(255,255,255,.11)}
+.txc-acct small{display:block;font-size:11.5px;color:rgba(244,242,236,.55)}
+.txc-acct b{display:block;font-family:var(--mono);font-weight:500;font-size:clamp(20px,6vw,25px);letter-spacing:.03em;margin-top:2px;white-space:nowrap}
+.txc-acct>span{min-width:0}
+.txc-acct em{font-style:normal;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:var(--lime);color:var(--ink);flex:none;transition:transform .2s}
+.txc-acct.ok em{transform:scale(1.06)}
+.txc-bank{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:12.5px;color:rgba(244,242,236,.55)}
+.txw{display:flex;align-items:center;justify-content:center;gap:10px;margin:18px 0 4px;font-weight:600;font-size:15px}
+.txw-dot{width:10px;height:10px;border-radius:50%;background:#178A4A;box-shadow:0 0 0 0 rgba(23,138,74,.5);animation:txping 1.6s infinite}
+.txw.late{font-weight:500;font-size:14px;color:var(--muted);text-align:left}
+@keyframes txping{0%{box-shadow:0 0 0 0 rgba(23,138,74,.45)}70%{box-shadow:0 0 0 10px rgba(23,138,74,0)}100%{box-shadow:0 0 0 0 rgba(23,138,74,0)}}
+.txn{text-align:center;font-size:13px;color:var(--muted);margin:2px 0 14px}
+.txo{display:block;margin:0 auto;border:0;background:none;font:inherit;font-size:14px;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:8px}
 .spin.dark{color:var(--ink);flex:none;margin-top:2px}
 .paid-hint{font-size:13.5px;color:var(--muted);text-align:center;margin-top:12px}
 .paid-hint a{text-decoration:underline;color:inherit;font-weight:600}
@@ -1673,25 +1685,25 @@ function showTransfer(t, f, payLabel){
   clearInterval(B.tpoll); clearInterval(B.tclock);
   const end = Date.parse(t.expires_at) || Date.now()+30*60000;
   const amt = naira(Math.round(t.amount/100));
-  const row = (k,v,copy)=>`<div class="tx-row"><span>${k}</span><b class="${copy?"":"w"}">${esc(v)}</b>${copy?`<button type="button" class="tx-copy" data-copy="${esc(copy)}">Copy</button>`:""}</div>`;
+  const what = `Coaching · ${B.hours} hour${B.hours>1?"s":""}`;
+  const acct = String(t.account_number||""), grouped = acct.length===10 ? `${acct.slice(0,3)} ${acct.slice(3,6)} ${acct.slice(6)}` : acct;
+  const copyIco = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
   el.innerHTML = `<div class="stage-in tx">
-    <span class="eyebrow">Pay by transfer</span>
-    <h3 style="margin:6px 0 4px">Send exactly ${amt}</h3>
-    <p class="hint" style="margin:0 0 14px">From any bank app. This account is just for this payment.</p>
-    <div class="tx-card">
-      ${row("Amount", amt, String(Math.round(t.amount/100)))}
-      ${row("Account no.", t.account_number, t.account_number)}
-      ${row("Bank", t.bank)}
-      ${t.account_name ? row("Account name", t.account_name) : ""}
+    <div class="txc">
+      <div class="txc-top"><span>Bank transfer</span><span class="txc-clock"><i></i><b id="tx-clock">30:00</b></span></div>
+      <div class="txc-amt">${amt}</div>
+      <div class="txc-what">${esc(what)}</div>
+      <div class="txc-cut"></div>
+      <button type="button" class="txc-acct" data-copy="${esc(acct)}" aria-label="Copy account number"><span><small>Account number</small><b>${esc(grouped)}</b></span><em>${copyIco}</em></button>
+      <div class="txc-bank"><span>${esc(t.bank||"")}</span><span>${esc(t.account_name||"")}</span></div>
     </div>
-    <p class="hint" style="margin:8px 2px 0;font-size:12.5px">Your bank app will show the name as ${esc(t.account_name||"Paystack Checkout")}. That's Paystack, my payment partner, collecting for me.</p>
-    <div class="tx-wait" id="tx-wait"><span class="spin dark"></span><span><b>Waiting for your transfer</b>This page moves on by itself once it lands. <em id="tx-clock"></em></span></div>
-    <p class="note">Your time is held while you pay. Receipt goes to ${esc(f.email)}.</p>
-    <button type="button" class="btn btn-line btn-block" id="tx-other" style="margin-top:6px">Pay another way</button>
+    <div class="txw" id="tx-wait"><span class="txw-dot"></span><span>Waiting for your transfer</span></div>
+    <p class="txn">Send the exact amount. This page moves on by itself.</p>
+    <button type="button" class="txo" id="tx-other">Pay with card instead</button>
   </div>`;
-  el.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{ try{ await navigator.clipboard.writeText(b.dataset.copy); b.textContent="Copied"; setTimeout(()=>b.textContent="Copy",1500); }catch(e){ toast(b.dataset.copy); } });
+  el.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{ try{ await navigator.clipboard.writeText(b.dataset.copy); b.classList.add("ok"); toast("Account number copied"); setTimeout(()=>b.classList.remove("ok"),1600); }catch(e){ toast(b.dataset.copy); } });
   const clock = ()=>{ const left = Math.max(0, end-Date.now()), m = Math.floor(left/60000), sec = Math.floor(left/1000)%60;
-    const c = $("#tx-clock"); if(c) c.textContent = left ? `Account open for ${m}:${String(sec).padStart(2,"0")}.` : "This account has closed.";
+    const c = $("#tx-clock"); if(c) c.textContent = left ? `${m}:${String(sec).padStart(2,"0")}` : "Closed";
     if(!left){ clearInterval(B.tclock); } };
   clock(); B.tclock = setInterval(clock, 1000);
   let busy = false;
@@ -1700,7 +1712,7 @@ function showTransfer(t, f, payLabel){
     const c = await api("POST", { action:"confirm", reference:t.reference }).catch(()=>({}));
     busy = false;
     if(c && c.ok){ clearInterval(B.tpoll); clearInterval(B.tclock); trackSite("transfer_paid"); return coachingDone(c, f); }
-    if(Date.now() > end + 10*60000){ clearInterval(B.tpoll); const w=$("#tx-wait"); if(w) w.innerHTML = `<span><b>Still nothing from your bank.</b>If you've sent it, it will confirm by itself and you'll get an email. If not, tap "Pay another way".</span>`; }
+    if(Date.now() > end + 10*60000){ clearInterval(B.tpoll); const w=$("#tx-wait"); if(w){ w.classList.add("late"); w.innerHTML = `<span class="txw-dot"></span><span>Not here yet. If you've sent it, you'll get an email once it lands.</span>`; } }
   };
   B.tpoll = setInterval(check, 5000);
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") check(); });

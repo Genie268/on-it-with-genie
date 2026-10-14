@@ -323,25 +323,39 @@ function showAppTransfer(t,email,fk){
   const pm=document.querySelector(".paym");if(pm)pm.parentNode.style.display="none";
   const end=Date.parse(t.expires_at)||Date.now()+30*60000;
   const amt="₦"+Math.round(t.amount/100).toLocaleString("en-NG");
-  const row=(k,v,c)=>`<div style="display:grid;grid-template-columns:96px 1fr auto;gap:8px;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span style="font-size:11.5px;color:#8a8a8a">${k}</span><b style="font-size:14.5px;${c?"white-space:nowrap":""}">${v}</b>${c?`<button type="button" data-copy="${c}" style="border:0;background:#c49a1c;color:#0b0b0a;font:inherit;font-size:11px;font-weight:700;padding:6px 11px;border-radius:999px;cursor:pointer">Copy</button>`:""}</div>`;
-  box.innerHTML=`<div style="margin-bottom:14px">
-    <p style="font-size:11px;font-weight:700;color:#c49a1c;letter-spacing:.08em;margin-bottom:4px">PAY BY TRANSFER</p>
-    <p style="font-size:18px;font-weight:900;margin-bottom:4px">Send exactly ${amt}</p>
-    <p class="muted" style="font-size:12px;margin-bottom:10px">From any bank app. This account is just for this payment.</p>
-    <div style="border:1px solid rgba(196,154,28,.3);border-radius:12px;padding:2px 12px">
-      ${row("Amount",amt,String(Math.round(t.amount/100)))}${row("Account no.",t.account_number,t.account_number)}${row("Bank",t.bank)}${t.account_name?row("Account name",t.account_name):""}
-    </div>
-    <p class="muted" style="font-size:11px;margin-top:6px">Your bank app will show the name as ${t.account_name||"Paystack Checkout"}. That's Paystack, Genie's payment partner, collecting for him.</p>
-    <div id="tx-wait" style="display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:12px;border-radius:12px;background:rgba(77,201,138,.08)">
-      <span style="width:14px;height:14px;border-radius:50%;border:2px solid #4dc98a;border-right-color:transparent;animation:spin .8s linear infinite;flex:none;margin-top:2px"></span>
-      <span style="font-size:12px;color:#cfcfcf"><b style="display:block;font-size:13px;color:#fff">Waiting for your transfer</b>This moves on by itself once it lands. <span id="tx-clock" style="color:#8a8a8a"></span></span>
-    </div>
-    <p style="text-align:center;margin-top:12px"><a href="#" id="tx-other" style="font-size:12px;color:#8a8a8a;text-decoration:underline">Pay another way</a></p>
-    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-  </div>`;
-  box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);b.textContent="Copied";setTimeout(()=>b.textContent="Copy",1500);}catch(e){}});
+  const acct=String(t.account_number||""),grouped=acct.length===10?`${acct.slice(0,3)} ${acct.slice(3,6)} ${acct.slice(6)}`:acct;
+  const what=TIERS[S.user?.duration||15]?.name||"The Challenge";
+  box.innerHTML=`<style>
+    .atx{border-radius:20px;padding:18px 18px 14px;background:#0b0b0a;background-image:radial-gradient(120% 90% at 100% 0%,rgba(196,154,28,.22),transparent 55%);border:1px solid rgba(196,154,28,.28);margin-bottom:14px}
+    .atx-top{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;font-weight:700;letter-spacing:.14em;color:#8a8a8a}
+    .atx-clock{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.06);color:#fff;letter-spacing:.04em;font-variant-numeric:tabular-nums}
+    .atx-clock i{width:6px;height:6px;border-radius:50%;background:#c49a1c}
+    .atx-amt{font-size:38px;font-weight:900;letter-spacing:-.03em;line-height:1;margin-top:14px;color:#fff}
+    .atx-what{font-size:12.5px;color:#8a8a8a;margin-top:5px}
+    .atx-cut{height:1px;margin:16px -18px 12px;background-image:linear-gradient(90deg,rgba(255,255,255,.18) 50%,transparent 0);background-size:9px 1px}
+    .atx-acct{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 10px 11px 13px;border:0;border-radius:14px;background:rgba(255,255,255,.06);color:#fff;font:inherit;text-align:left;cursor:pointer}
+    .atx-acct small{display:block;font-size:10.5px;color:#8a8a8a}
+    .atx-acct b{display:block;font-family:ui-monospace,Menlo,monospace;font-weight:600;font-size:clamp(19px,5.6vw,23px);letter-spacing:.03em;margin-top:2px;white-space:nowrap}
+    .atx-acct em{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#c49a1c;color:#0b0b0a;flex:none}
+    .atx-bank{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:11.5px;color:#8a8a8a}
+    .atx-wait{display:flex;align-items:center;justify-content:center;gap:9px;font-size:14px;font-weight:700;color:#fff;margin-top:4px}
+    .atx-dot{width:9px;height:9px;border-radius:50%;background:#4dc98a;animation:atxp 1.6s infinite}
+    @keyframes atxp{0%{box-shadow:0 0 0 0 rgba(77,201,138,.45)}70%{box-shadow:0 0 0 9px rgba(77,201,138,0)}100%{box-shadow:0 0 0 0 rgba(77,201,138,0)}}
+  </style>
+  <div class="atx">
+    <div class="atx-top"><span>BANK TRANSFER</span><span class="atx-clock"><i></i><span id="tx-clock">30:00</span></span></div>
+    <div class="atx-amt">${amt}</div>
+    <div class="atx-what">${what} · ${S.user?.duration||15} days</div>
+    <div class="atx-cut"></div>
+    <button type="button" class="atx-acct" data-copy="${acct}"><span><small>Account number</small><b>${grouped}</b></span><em><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg></em></button>
+    <div class="atx-bank"><span>${t.bank||""}</span><span>${t.account_name||""}</span></div>
+  </div>
+  <div class="atx-wait" id="tx-wait"><span class="atx-dot"></span><span>Waiting for your transfer</span></div>
+  <p class="muted" style="font-size:11.5px;text-align:center;margin-top:6px">Send the exact amount. This page moves on by itself.</p>
+  <p style="text-align:center;margin:12px 0 4px"><a href="#" id="tx-other" style="font-size:12.5px;font-weight:700;color:#c49a1c;text-decoration:underline">Pay with card instead</a></p>`;
+  box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);const sm=b.querySelector("small");if(sm){sm.textContent="Copied";setTimeout(()=>sm.textContent="Account number",1500);}}catch(e){}});
   clearInterval(S._txClock);clearInterval(S._txPoll);
-  const clock=()=>{const left=Math.max(0,end-Date.now()),m=Math.floor(left/60000),sec=Math.floor(left/1000)%60;const c=el("tx-clock");if(c)c.textContent=left?`Account open for ${m}:${String(sec).padStart(2,"0")}.`:"This account has closed.";if(!left)clearInterval(S._txClock);};
+  const clock=()=>{const left=Math.max(0,end-Date.now()),m=Math.floor(left/60000),sec=Math.floor(left/1000)%60;const c=el("tx-clock");if(c)c.textContent=left?`${m}:${String(sec).padStart(2,"0")}`:"Closed";if(!left)clearInterval(S._txClock);};
   clock();S._txClock=setInterval(clock,1000);
   let busy=false;
   const check=async()=>{
