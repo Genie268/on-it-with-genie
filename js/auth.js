@@ -247,13 +247,22 @@ async function initiatePayment(){
 
   /* ── PAYSTACK PATH ─────────────────────────────────────────────── */
   const fk=S._accessDiscount>0?Math.round(PRICES[dur]*(1-S._accessDiscount/100)):PRICES[dur];
+  const payMethod=document.querySelector("[name=paym]:checked")?.value||"transfer";
+
+  /* Bank transfer: our own screen with a one-time account number. Falls
+     back to Paystack's popup if the account can't be created. */
+  if(payMethod==="transfer"){
+    el("pay-btn").textContent="Getting your account number...";
+    const t=await verifyPaymentServerside({method:"transfer_start",challenger_id:S.user.supabaseId,email,access_code:S._accessCode||undefined});
+    if(t.ok){ trackEvent("payment_opened",{duration:dur,method:"transfer_own"}); return showAppTransfer(t.data,email,fk); }
+  }
   el("pay-btn").textContent="Opening payment...";
   try{
     const h=PaystackPop.setup({
       key:PAYSTACK_PUBLIC_KEY,email,amount:fk,currency:"NGN",
       channels:({transfer:["bank_transfer"],card:["card"],other:["ussd","bank"]})[document.querySelector("[name=paym]:checked")?.value||"transfer"],
       ref:"OIWG_"+Date.now()+"_"+Math.random().toString(36).substr(2,6),
-      metadata:{custom_fields:[{display_name:"Challenger",variable_name:"name",value:S.user?.name||""},{display_name:"Tier",variable_name:"tier",value:TIERS[dur].name}]},
+      metadata:{challenger_id:S.user.supabaseId,access_code:S._accessCode||undefined,custom_fields:[{display_name:"Challenger",variable_name:"name",value:S.user?.name||""},{display_name:"Tier",variable_name:"tier",value:TIERS[dur].name}]},
       onClose:()=>{trackEvent("payment_closed",{duration:dur,method:document.querySelector("[name=paym]:checked")?.value||"transfer"});el("pay-btn").disabled=false;el("pay-btn").textContent="Pay & Start →";el("pay-status").textContent="Payment cancelled";el("pay-status").style.color="#d9503a";},
       callback:async(r)=>{
         el("pay-btn").textContent="Verifying payment...";
@@ -271,6 +280,21 @@ async function initiatePayment(){
           payError("Payment could not be verified ("+(result.data?.error||"error")+"). Contact support with ref "+r.reference+".");
           return;
         }
+        return finishPaystack(result,r.reference,email,fk);
+      }
+    });
+    h.openIframe();
+    trackEvent("payment_opened",{duration:dur,method:payMethod});
+  }catch(e){
+    trackEvent("payment_error",{duration:dur,msg:String(e&&e.message||e).slice(0,120)});
+    payError("Payment failed. Check connection.");
+  }
+}
+
+async function finishPaystack(result,reference,email,fk){
+  const dur=S.user?.duration||15;
+  {
+      {
         /* Best-effort welcome email */
         fetch('https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/send-welcome-email',{
           method:'POST',
@@ -286,16 +310,49 @@ async function initiatePayment(){
            records what actually landed in the DB. */
         const paidStatus=result.data?.status||"paid";
         const paidAmount=typeof result.data?.amount==="number"?result.data.amount:fk;
-        const paidRef=result.data?.ref||r.reference;
+        const paidRef=result.data?.ref||reference;
         await completePayment({status:paidStatus,reference:paidRef,amount:paidAmount,email});
       }
-    });
-    h.openIframe();
-    trackEvent("payment_opened",{duration:dur,method:document.querySelector("[name=paym]:checked")?.value||"transfer"});
-  }catch(e){
-    trackEvent("payment_error",{duration:dur,msg:String(e&&e.message||e).slice(0,120)});
-    payError("Payment failed. Check connection.");
   }
+}
+
+/* Our own "pay by transfer" panel, shown in place of the pay button. */
+function showAppTransfer(t,email,fk){
+  const box=el("pay-transfer")||(()=>{const d=document.createElement("div");d.id="pay-transfer";el("pay-btn").parentNode.insertBefore(d,el("pay-btn"));return d;})();
+  el("pay-btn").style.display="none";
+  const pm=document.querySelector(".paym");if(pm)pm.parentNode.style.display="none";
+  const end=Date.parse(t.expires_at)||Date.now()+30*60000;
+  const amt="₦"+Math.round(t.amount/100).toLocaleString("en-NG");
+  const row=(k,v,c)=>`<div style="display:grid;grid-template-columns:96px 1fr auto;gap:8px;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span style="font-size:11.5px;color:#8a8a8a">${k}</span><b style="font-size:14.5px;${c?"white-space:nowrap":""}">${v}</b>${c?`<button type="button" data-copy="${c}" style="border:0;background:#c49a1c;color:#0b0b0a;font:inherit;font-size:11px;font-weight:700;padding:6px 11px;border-radius:999px;cursor:pointer">Copy</button>`:""}</div>`;
+  box.innerHTML=`<div style="margin-bottom:14px">
+    <p style="font-size:11px;font-weight:700;color:#c49a1c;letter-spacing:.08em;margin-bottom:4px">PAY BY TRANSFER</p>
+    <p style="font-size:18px;font-weight:900;margin-bottom:4px">Send exactly ${amt}</p>
+    <p class="muted" style="font-size:12px;margin-bottom:10px">From any bank app. This account is just for this payment.</p>
+    <div style="border:1px solid rgba(196,154,28,.3);border-radius:12px;padding:2px 12px">
+      ${row("Amount",amt,String(Math.round(t.amount/100)))}${row("Account no.",t.account_number,t.account_number)}${row("Bank",t.bank)}${t.account_name?row("Account name",t.account_name):""}
+    </div>
+    <p class="muted" style="font-size:11px;margin-top:6px">Your bank app will show the name as ${t.account_name||"Paystack Checkout"}. That's Paystack, Genie's payment partner, collecting for him.</p>
+    <div id="tx-wait" style="display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:12px;border-radius:12px;background:rgba(77,201,138,.08)">
+      <span style="width:14px;height:14px;border-radius:50%;border:2px solid #4dc98a;border-right-color:transparent;animation:spin .8s linear infinite;flex:none;margin-top:2px"></span>
+      <span style="font-size:12px;color:#cfcfcf"><b style="display:block;font-size:13px;color:#fff">Waiting for your transfer</b>This moves on by itself once it lands. <span id="tx-clock" style="color:#8a8a8a"></span></span>
+    </div>
+    <p style="text-align:center;margin-top:12px"><a href="#" id="tx-other" style="font-size:12px;color:#8a8a8a;text-decoration:underline">Pay another way</a></p>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+  </div>`;
+  box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);b.textContent="Copied";setTimeout(()=>b.textContent="Copy",1500);}catch(e){}});
+  clearInterval(S._txClock);clearInterval(S._txPoll);
+  const clock=()=>{const left=Math.max(0,end-Date.now()),m=Math.floor(left/60000),sec=Math.floor(left/1000)%60;const c=el("tx-clock");if(c)c.textContent=left?`Account open for ${m}:${String(sec).padStart(2,"0")}.`:"This account has closed.";if(!left)clearInterval(S._txClock);};
+  clock();S._txClock=setInterval(clock,1000);
+  let busy=false;
+  const check=async()=>{
+    if(busy||!el("tx-wait"))return;busy=true;
+    const result=await verifyPaymentServerside({method:"paystack",challenger_id:S.user.supabaseId,reference:t.reference,access_code:S._accessCode||undefined});
+    busy=false;
+    if(result.ok){clearInterval(S._txPoll);clearInterval(S._txClock);box.innerHTML="";el("pay-btn").style.display="";el("pay-btn").disabled=true;el("pay-btn").textContent="Payment received...";return finishPaystack(result,t.reference,email,fk);}
+  };
+  S._txPoll=setInterval(check,5000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")check();});
+  el("tx-other").onclick=(e)=>{e.preventDefault();clearInterval(S._txPoll);clearInterval(S._txClock);box.innerHTML="";const pm2=document.querySelector(".paym");if(pm2)pm2.parentNode.style.display="";const c=document.querySelector("[name=paym][value=card]");if(c)c.checked=true;el("pay-btn").style.display="";el("pay-btn").disabled=false;el("pay-btn").textContent="Pay & Start →";};
 }
 
 async function completePayment(d){

@@ -1,5 +1,5 @@
 /*
- * booking-api: live booking for clarity calls and mentorship.
+ * booking-api: live booking for clarity sessions (free_call) and coaching (mentorship).
  *
  * GET  ?service=free_call|mentorship[&minutes=60]
  *      Open and taken start times. Built from availability_rules, minus booked slots, minus
@@ -21,6 +21,7 @@
  *        creates a pending plan and returns a Paystack reference.
  *   POST {action:"confirm", reference}            Verifies payment, marks the plan paid, confirms its sessions.
  *   POST {action:"release", reference}            Frees a hold when the payment window is closed.
+ *   POST {action:"transfer_start", reference}     Pay with Transfer: a temporary bank account (30 min). Holds stretch to match.
  *   POST {action:"plan", token}                   Hours left and upcoming sessions.
  *   POST {action:"book_sessions", token, sessions:[{start,minutes}]}   Book any number of sessions from what's left.
  *   POST {action:"cancel_session", token, id}     Allowed up to 24 hours before; the time goes back on the plan.
@@ -497,7 +498,13 @@ async function handleConfirm(p: Record<string, unknown>) {
   if ((tx.amount ?? 0) < (plan.amount_kobo ?? 0) || (tx.currency && tx.currency !== "NGN")) return json({ ok: false, error: "amount_mismatch" }, 400);
 
   // Paid. Mark the plan paid first so the hours are never lost, then confirm each held session.
-  await sb.from("mentorship_plans").update({ status: "paid", amount_kobo: tx.amount }).eq("id", plan.id);
+  // Only one caller wins this (the page and Paystack's webhook can both arrive at once).
+  const { data: flipped } = await sb.from("mentorship_plans").update({ status: "paid", amount_kobo: tx.amount })
+    .eq("id", plan.id).neq("status", "paid").select("id");
+  if (!flipped || !flipped.length) {
+    await new Promise((r) => setTimeout(r, 1500));
+    return json({ ok: true, already: true, plan_token: plan.token, plan: await planSummary(plan) });
+  }
   plan.status = "paid";
   const { data: holds } = await sb.from("slot_bookings").select("*").eq("plan_id", plan.id).in("status", ["held", "expired"]);
   const confirmed: any[] = [], lost: any[] = [];
@@ -518,6 +525,39 @@ async function handleConfirm(p: Record<string, unknown>) {
   }
   const s = await settings();
   return json({ ok: true, whatsapp: s.genie_whatsapp || null, plan_token: plan.token, plan: sum, lost: lost.length });
+}
+
+async function handleTransferStart(p: Record<string, unknown>) {
+  const reference = clean(p.reference, 60);
+  const { data: plan } = await sb.from("mentorship_plans").select("*").eq("payment_reference", reference).maybeSingle();
+  if (!plan) return json({ ok: false, error: "not_found" }, 404);
+  if (plan.status === "paid") return json({ ok: false, error: "already_paid" }, 409);
+  if (!PAYSTACK) return json({ ok: false, error: "server_misconfigured" }, 500);
+  const { data: held } = await sb.from("slot_bookings").select("id").eq("plan_id", plan.id).eq("status", "held");
+  if (!held || !held.length) return json({ ok: false, error: "hold_expired" }, 409);
+  const expires = new Date(Date.now() + 30 * 60_000).toISOString();
+  try {
+    const r = await fetch("https://api.paystack.co/charge", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${PAYSTACK}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: plan.email, amount: String(plan.amount_kobo), reference,
+        metadata: { kind: "coaching", plan_id: plan.id }, bank_transfer: { account_expires_at: expires } }),
+    });
+    const v = await r.json().catch(() => ({}));
+    const d = (v?.data ?? {}) as Record<string, any>;
+    if (!r.ok || v?.status !== true || !d.account_number) {
+      console.error("transfer_start failed", r.status, JSON.stringify(v).slice(0, 300));
+      return json({ ok: false, error: "transfer_unavailable" }, 502);
+    }
+    // Keep their times for as long as the account is open, plus a little slack for slow banks.
+    await sb.from("slot_bookings").update({ hold_expires_at: new Date(Date.now() + 35 * 60_000).toISOString() })
+      .eq("plan_id", plan.id).eq("status", "held");
+    return json({ ok: true, reference, amount: plan.amount_kobo, account_number: String(d.account_number),
+      account_name: String(d.account_name ?? ""), bank: String(d.bank?.name ?? d.bank_name ?? ""), expires_at: String(d.account_expires_at ?? expires) });
+  } catch (e) {
+    console.error("transfer_start error", e);
+    return json({ ok: false, error: "transfer_unavailable" }, 502);
+  }
 }
 
 async function handleRelease(p: Record<string, unknown>) {
@@ -778,6 +818,7 @@ Deno.serve(async (req) => {
       case "hold": return await handleHold(p);
       case "confirm": return await handleConfirm(p);
       case "release": return await handleRelease(p);
+      case "transfer_start": return await handleTransferStart(p);
       case "plan": return await handlePlan(p);
       case "book_session":
       case "book_sessions": return await handleBookSessions(p);

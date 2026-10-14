@@ -12,6 +12,11 @@
  *     discounted if a partial access_code is supplied and valid).
  *   - { method:"access_code", challenger_id, access_code }
  *     Only 100%-discount codes. Verified against public.access_codes.
+ *   - { method:"transfer_start", challenger_id, email, access_code? }
+ *     Creates a Paystack "Pay with Transfer" charge (a temporary bank account
+ *     that lasts 30 minutes) for the tier price. The client shows the account,
+ *     then polls method:"paystack" with the returned reference. The
+ *     paystack-webhook function also confirms it if the page is closed.
  *
  * Required env vars:
  *   - SUPABASE_URL
@@ -114,6 +119,29 @@ async function ensureWelcomeMessage(challengerId: string, name: string | null) {
   }
 }
 
+/* Paystack "Pay with Transfer": a temporary account number for one payment. */
+async function startTransfer(email: string, amount: number, reference: string, metadata: Record<string, unknown>) {
+  const expires = new Date(Date.now() + 30 * 60_000).toISOString();
+  try {
+    const r = await fetch("https://api.paystack.co/charge", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, amount: String(amount), reference, metadata, bank_transfer: { account_expires_at: expires } }),
+    });
+    const v = await r.json().catch(() => ({}));
+    const d = (v?.data ?? {}) as Record<string, any>;
+    if (!r.ok || v?.status !== true || !d.account_number) {
+      console.error("transfer_start failed", r.status, JSON.stringify(v).slice(0, 300));
+      return { ok: false as const, error: "transfer_unavailable" };
+    }
+    return { ok: true as const, reference, amount, account_number: String(d.account_number), account_name: String(d.account_name ?? ""),
+      bank: String(d.bank?.name ?? d.bank_name ?? ""), expires_at: String(d.account_expires_at ?? expires) };
+  } catch (e) {
+    console.error("transfer_start error", e);
+    return { ok: false as const, error: "transfer_unavailable" };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
@@ -193,6 +221,25 @@ Deno.serve(async (req) => {
     if (upErr) return json({ ok: false, error: "update_failed" }, 500);
     await ensureWelcomeMessage(challenger_id, (challenger as { name?: string }).name ?? null);
     return json({ ok: true, status: grantStatus, amount: grantAmount, ref: grantRef });
+  }
+
+  /* ─────────────────────── PAY WITH TRANSFER (start) ─────────────────────── */
+  if (method === "transfer_start") {
+    if (!PAYSTACK_SECRET_KEY) return json({ ok: false, error: "server_misconfigured" }, 500);
+    const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json({ ok: false, error: "bad_email" }, 400);
+    let amount = tierPrice;
+    if (accessCodeInput) {
+      const codeRes = await loadAccessCode(accessCodeInput);
+      if (!codeRes.ok) return json({ ok: false, error: codeRes.error }, 400);
+      const pct = codeRes.row.discount_percent ?? 0;
+      if (pct <= 0 || pct >= 100) return json({ ok: false, error: "invalid_code" }, 400);
+      amount = Math.round(tierPrice * (1 - pct / 100));
+    }
+    const ref = "OIWG_" + Date.now() + "_" + crypto.randomUUID().replace(/-/g, "").slice(0, 6);
+    const t = await startTransfer(email, amount, ref, { challenger_id, kind: "challenge", ...(accessCodeInput ? { access_code: accessCodeInput } : {}) });
+    if (!t.ok) return json(t, 502);
+    return json(t);
   }
 
   /* ───────────────────────────── PAYSTACK ─────────────────────────────── */

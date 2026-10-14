@@ -260,6 +260,18 @@ p{margin:0}
 .for-line{display:block;margin-top:6px;font-size:13px;color:var(--muted)}
 .chip.next{background:#fff;color:var(--ink)}
 .chip.next::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#178A4A;margin-right:6px;vertical-align:1px}
+.tx-card{border-radius:16px;background:#fff;border:1.5px solid var(--line);padding:4px 14px}
+.tx-row{display:grid;grid-template-columns:84px 1fr auto;gap:8px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.tx-row:last-child{border-bottom:0}
+.tx-row span{font-size:13px;color:var(--muted)}
+.tx-row b{font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tx-row b.w{white-space:normal;font-size:14.5px}
+.tx-copy{border:0;background:var(--ink);color:#fff;font:inherit;font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:999px;cursor:pointer}
+.tx-wait{display:flex;gap:12px;align-items:flex-start;margin:14px 0 4px;padding:14px;border-radius:16px;background:var(--mint)}
+.tx-wait b{display:block;font-size:15px}
+.tx-wait span{font-size:13.5px;color:#2F2F33}
+.tx-wait em{font-style:normal;color:var(--muted)}
+.spin.dark{color:var(--ink);flex:none;margin-top:2px}
 .paid-hint{font-size:13.5px;color:var(--muted);text-align:center;margin-top:12px}
 .paid-hint a{text-decoration:underline;color:inherit;font-weight:600}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-inline:-4px;padding-inline:4px;scrollbar-width:none}
@@ -1618,6 +1630,12 @@ async function submitBooking(){
   sortBasket();
   const h = await api("POST", { action:"hold", hours:B.hours, sessions:B.basket.map(x=>({ start:x.start, minutes:x.minutes })), ...base });
   if(!h.ok){ B.busy=false; setBusy(false, payLabel); return sessionsFailed(h); }
+  if((B.payMethod||"transfer")==="transfer"){
+    setBusy(true, "Getting your account number");
+    const t = await api("POST", { action:"transfer_start", reference:h.reference });
+    if(t.ok){ B.busy=false; return showTransfer(t, f, payLabel); }
+    // Couldn't make our own transfer account; fall back to Paystack's screen on bank transfer.
+  }
   if(typeof PaystackPop==="undefined"){ B.busy=false; setBusy(false, payLabel); return showErr("Payment couldn't load. Refresh the page and try again."); }
   setBusy(true, "Opening payment");
   const handler = PaystackPop.setup({
@@ -1629,7 +1647,14 @@ async function submitBooking(){
       setBusy(true, "Confirming payment");
       const c = await api("POST", { action:"confirm", reference: res.reference || h.reference });
       B.busy = false;
-      if(c.ok){
+      if(c.ok) return coachingDone(c, f);
+      setBusy(false, payLabel); showErr(errMsg(c.error) + " Reference: " + (res.reference||h.reference));
+    }
+  });
+  handler.openIframe();
+}
+function coachingDone(c, f){
+      {
         const wa = c.whatsapp ? `<div class="panel" style="text-align:left"><h3>You can reach me directly</h3><dl class="kv"><dt>WhatsApp</dt><dd>${esc(c.whatsapp)}</dd></dl></div>` : "";
         const plan = c.plan || { minutes_left:0, sessions:[] }, left = plan.minutes_left || 0;
         const upcoming = (plan.sessions||[]).filter(s=>!s.past);
@@ -1641,11 +1666,48 @@ async function submitBooking(){
           cal: upcoming.length ? upcoming.map(s=>({ start:s.start, mins:s.minutes, title:"Coaching session with Genie" })) : null,
           primary: left>=30 ? { href:`/book?plan=${c.plan_token}`, label:"Book the rest of my time" } : { href:`/book?plan=${c.plan_token}`, label:"See my plan" }, extra: wa });
       }
-      setBusy(false, payLabel); showErr(errMsg(c.error) + " Reference: " + (res.reference||h.reference));
-    }
-  });
-  handler.openIframe();
 }
+/* ---------- Pay with transfer: our own screen ---------- */
+function showTransfer(t, f, payLabel){
+  const el = $("#booker"); if(!el) return;
+  clearInterval(B.tpoll); clearInterval(B.tclock);
+  const end = Date.parse(t.expires_at) || Date.now()+30*60000;
+  const amt = naira(Math.round(t.amount/100));
+  const row = (k,v,copy)=>`<div class="tx-row"><span>${k}</span><b class="${copy?"":"w"}">${esc(v)}</b>${copy?`<button type="button" class="tx-copy" data-copy="${esc(copy)}">Copy</button>`:""}</div>`;
+  el.innerHTML = `<div class="stage-in tx">
+    <span class="eyebrow">Pay by transfer</span>
+    <h3 style="margin:6px 0 4px">Send exactly ${amt}</h3>
+    <p class="hint" style="margin:0 0 14px">From any bank app. This account is just for this payment.</p>
+    <div class="tx-card">
+      ${row("Amount", amt, String(Math.round(t.amount/100)))}
+      ${row("Account no.", t.account_number, t.account_number)}
+      ${row("Bank", t.bank)}
+      ${t.account_name ? row("Account name", t.account_name) : ""}
+    </div>
+    <p class="hint" style="margin:8px 2px 0;font-size:12.5px">Your bank app will show the name as ${esc(t.account_name||"Paystack Checkout")}. That's Paystack, my payment partner, collecting for me.</p>
+    <div class="tx-wait" id="tx-wait"><span class="spin dark"></span><span><b>Waiting for your transfer</b>This page moves on by itself once it lands. <em id="tx-clock"></em></span></div>
+    <p class="note">Your time is held while you pay. Receipt goes to ${esc(f.email)}.</p>
+    <button type="button" class="btn btn-line btn-block" id="tx-other" style="margin-top:6px">Pay another way</button>
+  </div>`;
+  el.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{ try{ await navigator.clipboard.writeText(b.dataset.copy); b.textContent="Copied"; setTimeout(()=>b.textContent="Copy",1500); }catch(e){ toast(b.dataset.copy); } });
+  const clock = ()=>{ const left = Math.max(0, end-Date.now()), m = Math.floor(left/60000), sec = Math.floor(left/1000)%60;
+    const c = $("#tx-clock"); if(c) c.textContent = left ? `Account open for ${m}:${String(sec).padStart(2,"0")}.` : "This account has closed.";
+    if(!left){ clearInterval(B.tclock); } };
+  clock(); B.tclock = setInterval(clock, 1000);
+  let busy = false;
+  const check = async ()=>{
+    if(busy || !$("#tx-wait")) return; busy = true;
+    const c = await api("POST", { action:"confirm", reference:t.reference }).catch(()=>({}));
+    busy = false;
+    if(c && c.ok){ clearInterval(B.tpoll); clearInterval(B.tclock); trackSite("transfer_paid"); return coachingDone(c, f); }
+    if(Date.now() > end + 10*60000){ clearInterval(B.tpoll); const w=$("#tx-wait"); if(w) w.innerHTML = `<span><b>Still nothing from your bank.</b>If you've sent it, it will confirm by itself and you'll get an email. If not, tap "Pay another way".</span>`; }
+  };
+  B.tpoll = setInterval(check, 5000);
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") check(); });
+  $("#tx-other").onclick = ()=>{ clearInterval(B.tpoll); clearInterval(B.tclock); api("POST",{ action:"release", reference:t.reference }); B.step="details"; renderBooker(); setTimeout(()=>{ const r=document.querySelector('[name=paym][value=card]'); if(r){ r.checked=true; B.payMethod="card"; } }, 30); };
+  el.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+function trackSite(){ /* placeholder for site analytics */ }
 function calLinks(cal, quiet){
   const list = Array.isArray(cal) ? cal : [cal];
   const f=d=>d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
