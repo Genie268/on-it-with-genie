@@ -88,6 +88,10 @@ p{margin:0}
 .proof div{background:var(--surface);border-radius:var(--r-sm);padding:14px 12px;border:1px solid var(--line)}
 .proof b{display:block;font-family:var(--display);font-size:22px;letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
 .proof span{font-size:12.5px;color:var(--muted);line-height:1.3;display:block;margin-top:2px}
+.hero .proof{margin-top:22px}
+.hero .proof div{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1)}
+.hero .proof b{color:#fff}
+.hero .proof span{color:rgba(255,255,255,.6)}
 
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:34px 0 14px}
 .sec-head h2{font-size:26px}
@@ -132,7 +136,9 @@ p{margin:0}
 .back{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:14px;color:var(--muted);padding:8px 0;margin-bottom:6px}
 .detail-hero{border-radius:var(--r-lg);padding:26px 22px}
 .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#4D4D50}
-.detail-hero h1{font-size:clamp(32px,8.5vw,52px);margin-top:10px}
+.detail-hero h1{font-size:clamp(30px,7vw,46px);margin-top:10px}
+.detail>*,.grid>*,.panel{min-width:0}
+.detail-hero p{max-width:46ch}
 .detail-hero p{margin-top:12px;font-size:17px;color:#2F2F33;max-width:42ch}
 .panel{background:var(--surface);border-radius:var(--r-lg);padding:22px;border:1px solid var(--line);margin-top:12px}
 .panel h3{font-size:20px;margin-bottom:12px}
@@ -284,6 +290,10 @@ p{margin:0}
 .txn{text-align:center;font-size:13px;color:var(--muted);margin:2px 0 14px}
 .txo{display:block;margin:0 auto;border:0;background:none;font:inherit;font-size:14px;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:8px}
 .spin.dark{color:var(--ink);flex:none;margin-top:2px}
+.steps-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.steps-list li{display:grid;grid-template-columns:62px 1fr;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:var(--bg)}
+.steps-list b{font-family:var(--mono);font-weight:500;font-size:13px;letter-spacing:.04em}
+.steps-list span{font-size:15px}
 .paid-hint{font-size:13.5px;color:var(--muted);text-align:center;margin-top:12px}
 .paid-hint a{text-decoration:underline;color:inherit;font-weight:600}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-inline:-4px;padding-inline:4px;scrollbar-width:none}
@@ -481,10 +491,15 @@ p{margin:0}
   .hero{grid-template-columns:1.25fr .9fr;padding:40px;align-items:stretch}
   .photo{min-height:340px}
   .grid{grid-template-columns:1fr 1fr}
-  .detail{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  .detail-hero{padding:36px}
+  .slots{grid-template-columns:repeat(4,1fr)}
+}
+/* Side-by-side only when there's real room; tablets get one clean column. */
+@media (min-width:980px){
+  .detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:14px;align-items:start}
   .detail>.panel,.detail>div>.panel:first-child{margin-top:0}
   .detail-hero{padding:40px}
-  .slots{grid-template-columns:repeat(4,1fr)}
+  .detail-hero h1{font-size:clamp(34px,3.6vw,48px)}
   .about{display:grid;grid-template-columns:.9fr 1.1fr;gap:28px;align-items:start}
   .toast{bottom:40px}
 }
@@ -590,20 +605,25 @@ home(){ const h = lagosNow().getHours(); return `
 <section class="hero${CONFIG.photo?"":" solo"}">
   <div>
     <h1>I'm Genie.</h1>
-    <p class="lede">I help people think straight, speak well and finish what they start.</p>
+    <p class="lede">You already know what to do. I help you actually do it, and say it well when it counts.</p>
     <div class="ctas">
-      <a class="btn btn-lime" href="#services">See how we can work</a>
-      <a class="btn btn-ghost" href="#call">Book a free session</a>
+      <a class="btn btn-lime" href="#services">See how I can help</a>
+      <a class="btn btn-ghost" href="#call">Talk to me free</a>
+    </div>
+    <div class="proof">
+      <div><b>30K+</b><span>follow me on TikTok</span></div>
+      <div><b>2021</b><span>coaching since</span></div>
+      <div><b>Every</b><span>upload checked by me</span></div>
     </div>
   </div>
   ${CONFIG.photo?`<div class="photo">${photoBox("Genie · Abuja")}</div>`:""}
 </section>
-<div class="sec-head" id="services"><h2>Ways to work with me</h2></div>
+<div class="sec-head" id="services"><h2>Pick where to start</h2></div>
 <div class="grid">
-  ${(()=>{ const st=intakeState(); return card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal. I check in on your daily proof, track your progress with you, and we plan your moves in strategy sessions.",[["15 days to 3 months"],["First call in 48 hrs"]].concat(st.cap?[[`${st.cap} at a time`]]:[]).concat([["From ₦15,000","dark"]]),null,"ON IT APP",st.mode==="off"?null:st.ribbon); })()}
-  ${card("coaching","t-sky",I.people,"Coaching","An hour with me on what you're stuck on. We find the real problem and work on it.",[["1 hour"],[naira(CONFIG.hourRate),"dark"],["","next",'data-next="mentorship"']])}
-  ${card("call","t-mint",I.video,"Clarity session","10 minutes with me. You'll leave knowing what's really in the way.",[["10 min"],["Video call"],["","next",'data-next="free_call"']],"Free")}
-  ${card("communication","t-lilac",I.mic,"Communication","Speak so people listen. Find where your communication breaks, then learn to fix it.",[["Free test"],["Courses coming soon","soon"]])}
+  ${(()=>{ const st=intakeState(); return card("/app","t-onit",ONIT_MARK,"Accountability coaching","Pick one goal and show proof every day. I check every upload, so quitting quietly stops being an option.",[["15 days to 3 months"],["First call in 48 hrs"]].concat(st.cap?[[`${st.cap} at a time`]]:[]).concat([["From ₦15,000","dark"]]),null,"ON IT APP",st.mode==="off"?null:st.ribbon); })()}
+  ${card("coaching","t-sky",I.people,"Coaching","One hour on the thing you can't shake. You leave with the real problem named and a plan to start the same day.",[["1 hour"],[naira(CONFIG.hourRate),"dark"],["","next",'data-next="mentorship"']])}
+  ${card("call","t-mint",I.video,"Clarity session","Ten minutes, free. You leave knowing what's really in the way and your first step.",[["10 min"],["Video call"],["","next",'data-next="free_call"']],"Free")}
+  ${card("communication","t-lilac",I.mic,"Communication","Find exactly where your speaking breaks down, then fix it. Start with a free 4-minute test.",[["Free test"],["Courses coming soon","soon"]])}
 </div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
 <a class="event" href="#event">
@@ -619,9 +639,17 @@ ${backLink()}
     <section class="detail-hero t-mint">
       <span class="free-tag">FREE</span>
       <span class="eyebrow" style="display:block;margin-top:14px">Clarity session · 10 minutes · Video</span>
-      <h1>Ten minutes with me, free.</h1>
-      <p>Bring one thing you're stuck on. I'll help you see what's really in the way, and your first step.</p>
+      <h1>Get unstuck in ten minutes, free.</h1>
+      <p>Bring the one thing you keep going round in circles on.</p>
     </section>
+    <div class="panel">
+      <h3>How the ten minutes go</h3>
+      <ul class="steps-list">
+        <li><b>2 min</b><span>You tell me what's stuck.</span></li>
+        <li><b>5 min</b><span>We find what's really blocking you.</span></li>
+        <li><b>3 min</b><span>You leave with one next step.</span></li>
+      </ul>
+    </div>
   </div>
   <div class="panel" id="booker"></div>
 </div>
@@ -633,16 +661,18 @@ ${backLink()}
   <div>
     <section class="detail-hero t-sky">
       <span class="eyebrow">Coaching · ${naira(CONFIG.hourRate)} an hour</span>
-      <h1>An hour with me, on the thing you're stuck on.</h1>
-      <p>We find what's really in the way and work on it together. Need more than an hour? Add it when you pick your time.</p>
+      <h1>One focused hour on the problem you can't shake.</h1>
+      <p>We name what's really in the way, decide what to do about it, and you leave with steps you can start the same day.</p>
     </section>
     <div class="panel">
-      <h3>What we can work on</h3>
+      <h3>People book me for</h3>
       <ul class="list">
-        <li>${I.tick}<span>Speaking with confidence.</span></li>
-        <li>${I.tick}<span>Finishing what you keep dropping.</span></li>
-        <li>${I.tick}<span>A decision you've been sitting on.</span></li>
+        <li>${I.tick}<span>Speaking without freezing or rambling.</span></li>
+        <li>${I.tick}<span>Finishing the thing they keep restarting.</span></li>
+        <li>${I.tick}<span>A decision they've sat on for months.</span></li>
+        <li>${I.tick}<span>A plan for a big goal that feels too big.</span></li>
       </ul>
+      <p class="hint" style="margin:12px 0 0">Plans change? Move your session up to 24 hours before. Your time stays yours.</p>
     </div>
   </div>
   <div class="panel" id="booker"></div>
@@ -654,15 +684,15 @@ ${backLink()}
   <div>
     <section class="detail-hero t-peach">
       <span class="eyebrow">Accountability coaching</span>
-      <h1>One goal. Proof every day. Checked by me.</h1>
-      <p>Upload proof of what you did each day. I review every one, and your first strategy session with me is within 48 hours of joining.</p>
+      <h1>Finish one goal in 15 days, with me checking your work.</h1>
+      <p>Every day you upload proof of what you did. I review it and reply. If you go quiet, I notice. Your first strategy call is within 48 hours.</p>
     </section>
     <div class="panel">
       <h3>What you get</h3>
       <ul class="list">
-        <li>${I.tick}<span><b>Check-ins.</b> I review every upload you send and reply.</span></li>
-        <li>${I.tick}<span><b>Progress tracking.</b> Your dashboard shows every day you showed up, and every day you didn't.</span></li>
-        <li>${I.tick}<span><b>Strategy sessions.</b> Calls with me to plan your next moves and fix what isn't working.</span></li>
+        <li>${I.tick}<span><b>Daily check-ins.</b> I read every upload and reply.</span></li>
+        <li>${I.tick}<span><b>A board that doesn't lie.</b> Every day you showed up, and every day you didn't.</span></li>
+        <li>${I.tick}<span><b>Strategy calls.</b> We fix what isn't working before it costs you the goal.</span></li>
       </ul>
     </div>
     <div class="panel">
@@ -673,7 +703,7 @@ ${backLink()}
         if(d===9) return `<div class="tile t-today"><small>${d}</small><span>+</span></div>`;
         return `<div class="tile"><small>${d}</small></div>`;}).join("")}</div>
       <div class="board-key"><span><i class="k k-up"></i>✓ Uploaded</span><span><i class="k k-done"></i>✓✓ Reviewed by me</span><span><i class="k k-today"></i>Today</span></div>
-      <p class="board-note">Every day you show up stays on the board. When I've reviewed your proof, you'll see it, and my reply is one tap away.</p>
+      <p class="board-note">Two ticks means I've seen it. My reply is one tap away.</p>
     </div>
   </div>
   <div class="panel">
@@ -683,9 +713,9 @@ ${backLink()}
       <div class="opt"><span><b>30 days · ₦50,000</b><span>Two goals, priority voice feedback, a strategy session every week</span></span></div>
       <div class="opt"><span><b>3 months · ₦150,000</b><span>Two goals, a strategy session every 2 weeks, a progress review every month</span></span></div>
     </div>
-    <p class="note" style="text-align:left">You pick your length after you set your goal. Need longer than 3 months? <a href="#call" style="text-decoration:underline">Book a call</a> and I'll set it up for you.</p>
+    <p class="note" style="text-align:left">First time? Start with 15 days. You pick after you set your goal. Need longer than 3 months? <a href="#call" style="text-decoration:underline">Talk to me</a>.</p>
     <div style="height:14px"></div>
-    <a class="btn btn-ink btn-block" href="${CONFIG.accountabilityUrl}">I'm ready to start</a>
+    <a class="btn btn-ink btn-block" href="${CONFIG.accountabilityUrl}">Set my goal</a>
     <p class="note">Not sure yet? <a href="#call" style="text-decoration:underline">Book a free clarity session first.</a></p>
   </div>
 </div>`;},
@@ -696,7 +726,7 @@ ${backLink()}
   <section class="detail-hero t-sand">
     <span class="eyebrow">In person · Monthly</span>
     <h1>${e.name}</h1>
-    <p>A small room and an honest conversation. Last Saturday of every month.</p>
+    <p>About ten people, one room in Abuja, and an honest conversation about where you're headed. Last Saturday of every month.</p>
   </section>
   <div class="panel">
     <h3>${e.when}</h3>
@@ -732,7 +762,7 @@ ${backLink()}
     <section class="detail-hero t-lilac">
       <span class="eyebrow">Communication</span>
       <h1>Speak so people listen.</h1>
-      <p>Most people don't struggle everywhere. They struggle in certain rooms. Start by finding yours.</p>
+      <p>Most people don't struggle everywhere, only in certain rooms. Find yours first, then we fix it.</p>
     </section>
   </div>
   <div class="grid" style="grid-template-columns:1fr;margin-top:12px">
@@ -740,10 +770,10 @@ ${backLink()}
       <div class="gt-art" style="margin:-8px -8px 0;background:rgba(255,255,255,.35)">${GA.S.intro}</div>
       <span class="free-tag">FREE</span>
       <h3>Where does your communication break?</h3>
-      <p>A 4-minute test. See what happens when you speak under pressure, and what to work on first.</p>
+      <p>Four minutes. See exactly where you break under pressure and what to work on first.</p>
       <div class="chips"><span class="chip">4 minutes</span><span class="chip">Instant result</span></div>
     </a>
-    ${card("courses","t-peach",I.mic,"Communication courses","Learn to speak so people listen. Built from the questions you keep sending me.",[["Coming soon","soon"]])}
+    ${card("courses","t-peach",I.mic,"Communication courses","Short lessons built from the questions you keep sending me. Join the list to hear first.",[["Coming soon","soon"]])}
   </div>
 </div>`;},
 
@@ -753,7 +783,7 @@ ${backLink("communication","Communication")}
   <section class="detail-hero t-lilac">
     <span class="eyebrow">Coming soon</span>
     <h1>Communication courses</h1>
-    <p>Speak with confidence and get your point across. Self-paced, built from your questions.</p>
+    <p>Get your point across the first time. Short, self-paced lessons built from the questions you send me.</p>
   </section>
   <div class="panel">
     <h3>Be first to know</h3>
