@@ -106,6 +106,103 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
         </div>
       </header>
 
+      <section class="oi-sec oi-push">
+        <div class="oi-push-art"><svg class="oi-boat-svg" viewBox="0 0 640 380" role="img" aria-label="A person pushing a sailboat off the shore into the sea at sunset" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bglow" cx="72%" cy="54%" r="45%">
+      <stop offset="0" stop-color="#c49a1c" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#c49a1c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bsea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#161410"/>
+      <stop offset="1" stop-color="#0a0a09"/>
+    </linearGradient>
+    <linearGradient id="bsand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b2f1f"/>
+      <stop offset="1" stop-color="#241c12"/>
+    </linearGradient>
+    <clipPath id="bsky"><rect x="0" y="0" width="640" height="206"/></clipPath>
+  </defs>
+
+  <!-- sky glow and stars -->
+  <rect width="640" height="380" fill="url(#bglow)"/>
+  <g fill="#e9dfc6" opacity=".55">
+    <circle cx="90" cy="48" r="1.4"/><circle cx="168" cy="92" r="1"/><circle cx="250" cy="36" r="1.2"/>
+    <circle cx="352" cy="70" r="1"/><circle cx="600" cy="40" r="1.3"/><circle cx="560" cy="96" r=".9"/><circle cx="40" cy="120" r="1"/>
+  </g>
+
+  <!-- sun sitting on the horizon -->
+  <circle cx="462" cy="206" r="78" fill="#c49a1c" clip-path="url(#bsky)"/>
+  <circle cx="462" cy="206" r="78" fill="none" stroke="#e8b830" stroke-opacity=".35" stroke-width="10" clip-path="url(#bsky)"/>
+
+  <!-- sea -->
+  <rect x="0" y="206" width="640" height="174" fill="url(#bsea)"/>
+  <line x1="0" y1="206" x2="640" y2="206" stroke="#c49a1c" stroke-opacity=".5" stroke-width="1.2"/>
+  <g class="oi-shimmer" stroke="#c49a1c" stroke-linecap="round">
+    <line x1="400" y1="222" x2="524" y2="222" stroke-width="4" opacity=".75"/>
+    <line x1="418" y1="238" x2="506" y2="238" stroke-width="4" opacity=".6"/>
+    <line x1="432" y1="254" x2="492" y2="254" stroke-width="3.5" opacity=".45"/>
+    <line x1="444" y1="270" x2="480" y2="270" stroke-width="3" opacity=".32"/>
+    <line x1="452" y1="286" x2="472" y2="286" stroke-width="3" opacity=".22"/>
+  </g>
+  <g stroke="#e9dfc6" stroke-opacity=".12" stroke-linecap="round" stroke-width="2" fill="none">
+    <path d="M560 300q14 -6 28 0t28 0"/><path d="M500 330q14 -6 28 0t28 0"/><path d="M590 248q12 -5 24 0"/>
+  </g>
+
+  <!-- shore -->
+  <path d="M0 236 C 90 232 170 252 250 284 C 320 312 380 346 430 380 L0 380 Z" fill="url(#bsand)"/>
+  <path d="M0 236 C 90 232 170 252 250 284 C 320 312 380 346 430 380" fill="none" stroke="#e9dfc6" stroke-opacity=".45" stroke-width="2.5" stroke-dasharray="26 10" stroke-linecap="round"/>
+  <path d="M60 247 C 140 250 210 270 280 302" fill="none" stroke="#5a4a32" stroke-opacity=".6" stroke-width="2" stroke-linecap="round"/>
+  <!-- footprints -->
+  <g fill="#1a140c" opacity=".7">
+    <ellipse cx="70" cy="312" rx="6" ry="3" transform="rotate(-14 70 312)"/>
+    <ellipse cx="96" cy="300" rx="6" ry="3" transform="rotate(-14 96 300)"/>
+    <ellipse cx="120" cy="316" rx="6" ry="3" transform="rotate(-14 120 316)"/>
+    <ellipse cx="146" cy="304" rx="6" ry="3" transform="rotate(-14 146 304)"/>
+  </g>
+
+  <!-- boat, nose already touching water -->
+  <g class="oi-boat" transform="rotate(-9 330 270)">
+    <line x1="318" y1="276" x2="318" y2="128" stroke="#e9dfc6" stroke-width="4" stroke-linecap="round"/>
+    <path d="M324 134 L324 262 L404 262 Z" fill="#e9dfc6"/>
+    <path d="M312 150 L312 262 L262 262 Z" fill="#c49a1c"/>
+    <path d="M232 264 L420 264 Q410 300 378 312 L270 312 Q246 296 232 264 Z" fill="#8a6a2c"/>
+    <path d="M232 264 L420 264 Q418 272 414 280 L238 280 Q234 272 232 264 Z" fill="#c49a1c"/>
+    <path d="M250 296 L404 296" stroke="#5e4720" stroke-width="2"/>
+  </g>
+  <!-- splash at the bow -->
+  <g stroke="#e9dfc6" stroke-opacity=".55" stroke-width="2.5" stroke-linecap="round" fill="none">
+    <path d="M420 296 q10 -10 22 -6"/><path d="M424 308 q12 -6 24 0"/>
+  </g>
+
+  <!-- person pushing from the stern -->
+  <g transform="translate(-24 24)"><g class="oi-pusher">
+    <!-- back leg, stretched -->
+    <path d="M196 262 L162 316" stroke="#2b2b2b" stroke-width="13" stroke-linecap="round"/>
+    <!-- front leg, bent -->
+    <path d="M200 262 L214 290 L206 318" stroke="#353535" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- body leaning in -->
+    <path d="M188 268 C 196 238 214 222 236 216 L244 232 C 226 240 212 254 208 272 Z" fill="#c49a1c"/>
+    <!-- arms on the boat -->
+    <path d="M232 224 L254 244" stroke="#c49a1c" stroke-width="10" stroke-linecap="round"/>
+    <path d="M226 230 L250 254" stroke="#a8831a" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="257" cy="246" r="5.5" fill="#6b4329"/>
+    <circle cx="253" cy="256" r="5.5" fill="#5e3a24"/>
+    <!-- head -->
+    <circle cx="244" cy="204" r="13" fill="#6b4329"/>
+    <path d="M231 202 a13 13 0 0 1 25 -6 c-7 -4 -19 -3 -25 6 z" fill="#111"/><circle cx="240" cy="206" r="2.6" fill="#5e3a24"/>
+  </g>
+  </g>
+</svg></div>
+        <div class="oi-push-text">
+          <p class="oi-label">Why you're stuck</p>
+          <h2 class="oi-push-h">A boat can cross an ocean. It still needs a push off the shore.</h2>
+          <p class="oi-push-p">When a goal has sat for a while, starting again is the heaviest part. It's the same reason you get more done at work than at home: someone is expecting to see it.</p>
+          <p class="oi-push-p">I give you that push, then I keep checking that you're still moving.</p>
+          <button class="bp kl-cta" onclick="startOB()">Start my challenge <span aria-hidden="true">&rarr;</span></button>
+        </div>
+      </section>
+
       <section class="oi-sec">
         <p class="oi-label">How it works</p>
         <div class="oi-steps">

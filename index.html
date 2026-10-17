@@ -1649,6 +1649,7 @@ function usedHTML(st){
       <button type="button" class="btn btn-ink btn-block" id="ap-send">Send to Genie</button>
       <span class="alt">Or <a href="#coaching">book a coaching session</a>. ${PAID_LINE}</span></div>`;
     case "appeal_pending": return `<div class="used"><b>Your request is with me.</b>I'll reply by email within a day.<span class="alt">Can't wait? <a href="#coaching">Book a coaching session</a>. ${PAID_LINE}</span></div>`;
+    case "appeal_used": return `<div class="used"><b>You've had your second chance.</b>You booked a free session for ${when} and it was your last one. To talk with me now, book a coaching session. ${PAID_LINE}${paidBtn}</div>`;
     case "appeal_declined": return `<div class="used"><b>We've been here before.</b>The free session is one per person. To keep going, book a coaching session. ${PAID_LINE}${paidBtn}</div>`;
     default: return `<div class="used"><b>We've spoken before.</b>The free session is one per person. To keep going, book a coaching session. ${PAID_LINE}${paidBtn}</div>`;
   }

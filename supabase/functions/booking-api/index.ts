@@ -122,6 +122,7 @@ function phoneKey(raw: string) {
  *   missed          it passed and Genie didn't mark them as showed up: they can appeal
  *   appeal_pending  they appealed and Genie hasn't decided yet
  *   appeal_declined Genie said no: paid sessions only
+ *   appeal_used     they already appealed once before (any outcome) and missed again: paid sessions only
  */
 type FreeStatus = { eligible: boolean; reason?: string; when?: string; name?: string; booking_id?: string };
 async function freeCallStatus(email: string, pk: string): Promise<FreeStatus> {
@@ -146,6 +147,14 @@ async function freeCallStatus(email: string, pk: string): Promise<FreeStatus> {
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (ap?.status === "pending") return { ...base, reason: "appeal_pending" };
   if (ap?.status === "declined") return { ...base, reason: "appeal_declined" };
+  // One appeal per person, ever. Already had a second chance? Paid coaching only.
+  const { count: byEmail2 } = await sb.from("free_call_appeals").select("id", { count: "exact", head: true }).eq("email", email);
+  let used = (byEmail2 ?? 0) > 0;
+  if (!used && pk) {
+    const { count: byPhone2 } = await sb.from("free_call_appeals").select("id", { count: "exact", head: true }).eq("phone_key", pk);
+    used = (byPhone2 ?? 0) > 0;
+  }
+  if (used) return { ...base, reason: "appeal_used" };
   return { ...base, reason: "missed" };
 }
 async function freeCallEligible(email: string, pk: string) {
