@@ -322,7 +322,7 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 .oi-cta-note{font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted,#8a8a8a)}
 .oi-cta-note i{font-style:normal;color:var(--accent,#c49a1c);margin:0 8px}
 @media(min-width:1000px){
-  .oi-hero{grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)}
+  .oi-hero{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)}
   .oi-hero .kl-h1{font-size:clamp(52px,5.2vw,76px)}
 }
 
@@ -348,6 +348,11 @@ body.light .mb{background:var(--s1);border-color:var(--bdm)}
 .oi-key .k-up{border:1.5px solid var(--accent,#c49a1c)}.oi-key .k-done{background:var(--accent,#c49a1c)}
 
 .oi-sec{margin-top:clamp(80px,11vw,136px)}
+.oi-hero-art{border-radius:22px;overflow:hidden;border:1px solid var(--gold-bd,rgba(196,154,28,.22));line-height:0;background:#060606}
+.oi-hero-art svg{display:block;width:100%;height:auto}
+.oi-how-grid{display:grid;gap:clamp(28px,4vw,56px);align-items:start}
+@media (min-width:900px){.oi-how-grid{grid-template-columns:minmax(0,1fr) minmax(0,.9fr)}.oi-how-grid .oi-steps{grid-template-columns:1fr!important}}
+@media (max-width:899px){.oi-hero .oi-hero-art{order:-1}}
 .oi-push{display:grid;gap:clamp(24px,4vw,56px);align-items:center}
 .oi-push-art{border-radius:22px;overflow:hidden;border:1px solid var(--gold-bd,rgba(196,154,28,.22));line-height:0;background:#060606}
 .oi-push-art svg{display:block;width:100%;height:auto}
