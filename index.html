@@ -1365,10 +1365,46 @@ function evPass(el, p, again){
       <p class="ev-pass-note">Show this at the door. Bring one goal.</p>
     </div>
     <p class="note" style="margin:12px 0 10px">${again ? "You already have a pass. " : ""}A copy is in your email.</p>
+    <button class="btn btn-ink btn-block" type="button" id="ev-save" style="margin-bottom:8px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg> Save pass to phone</button>
     <div class="ev-actions">
-      <a class="btn btn-ink" href="${evCal()}" target="_blank" rel="noopener">Add to calendar</a>
+      <a class="btn btn-line" href="${evCal()}" target="_blank" rel="noopener">Add to calendar</a>
       <a class="btn btn-line" href="${e.maps}" target="_blank" rel="noopener">Directions</a>
     </div>`;
+  $("#ev-save").addEventListener("click", ()=>evSavePng(p));
+}
+/* draws the pass as a 1080x1350 image so it can live in the phone gallery */
+async function evSavePng(p){
+  const e = CONFIG.event, btn = $("#ev-save"), label = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Saving';
+  try{ if(document.fonts){ await Promise.all([document.fonts.load('400 120px Anton'), document.fonts.load('500 40px "DM Mono"')]).catch(()=>{}); } }catch(_){}
+  const W=1080, H=1350, c=document.createElement("canvas"); c.width=W; c.height=H;
+  const x=c.getContext("2d"), BIG='"Anton", Impact, "Arial Black", sans-serif', MONO='"DM Mono", ui-monospace, Menlo, monospace', SANS='system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const fit=(t,font,size,max)=>{ let f=size; do{ x.font=font.replace("$",f); f-=2; }while(x.measureText(t).width>max && f>20); };
+  x.fillStyle="#E8E3DA"; x.fillRect(0,0,W,H);
+  const cx=70, cy=70, cw=W-140, ch=H-140, r=48;
+  x.save(); x.beginPath(); x.roundRect(cx,cy,cw,ch,r); x.clip();
+  x.fillStyle="#0F0F10"; x.fillRect(cx,cy,cw,ch); x.fillStyle="#D7401C"; x.fillRect(cx,cy,22,ch); x.restore();
+  const L=cx+80, R=cx+cw-60;
+  x.fillStyle="rgba(244,242,236,.6)"; x.font=`500 28px ${MONO}`; x.textBaseline="alphabetic";
+  x.fillText(e.name.toUpperCase(), L, cy+100); x.textAlign="right"; x.fillText("SESSION "+e.session, R, cy+100); x.textAlign="left";
+  x.fillStyle="#D7401C"; x.font=`400 150px ${BIG}`; fit("FORWARD", `400 $px ${BIG}`, 150, R-L); x.fillText("FORWARD", L, cy+270);
+  x.fillStyle="#F4F2EC"; const name=(p.name||"").toUpperCase(); fit(name, `400 $px ${BIG}`, 104, R-L); x.fillText(name, L, cy+420);
+  const cols=[["DATE",e.short],["TIME","11:00am"],["VENUE",e.place]], colW=(R-L)/3;
+  cols.forEach(([k,v],i)=>{ const X=L+i*colW; x.fillStyle="rgba(244,242,236,.55)"; x.font=`500 26px ${MONO}`; x.fillText(k,X,cy+520);
+    x.fillStyle="#fff"; fit(v, `700 $px ${SANS}`, 40, colW-20); x.fillText(v,X,cy+575); });
+  x.strokeStyle="rgba(255,255,255,.3)"; x.lineWidth=3; x.setLineDash([18,14]); x.beginPath(); x.moveTo(cx+22,cy+660); x.lineTo(cx+cw,cy+660); x.stroke(); x.setLineDash([]);
+  x.fillStyle="rgba(244,242,236,.55)"; x.font=`500 26px ${MONO}`; x.fillText("PASS CODE", L, cy+760);
+  x.fillStyle="#fff"; fit(p.code, `500 $px ${MONO}`, 100, R-L); x.fillText(p.code, L, cy+870);
+  x.fillStyle="rgba(244,242,236,.75)"; x.font=`400 34px ${SANS}`; x.fillText("Show this at the door. Bring one goal.", L, cy+970);
+  x.fillStyle="rgba(244,242,236,.5)"; x.font=`400 28px ${SANS}`; x.fillText(e.address, L, cy+1040); x.fillText(e.when+" · "+e.time, L, cy+1085);
+  x.fillStyle="rgba(244,242,236,.4)"; x.font=`500 26px ${MONO}`; x.fillText("EUGENEOBO.COM/EVENTS", L, cy+ch-60);
+  const blob = await new Promise(res=>c.toBlob(res,"image/png")), fname = p.code+".png";
+  try{
+    const f = new File([blob], fname, { type:"image/png" });
+    if(navigator.canShare && navigator.canShare({ files:[f] }) && /Android|iPhone|iPad/i.test(navigator.userAgent)){ await navigator.share({ files:[f], title:"My pass" }); }
+    else { const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500); }
+  }catch(_){}
+  btn.disabled=false; btn.innerHTML=label;
 }
 function bump(sel){ const n=$(sel); if(!n) return; n.classList.remove("bump"); void n.offsetWidth; n.classList.add("bump"); }
 
