@@ -320,6 +320,35 @@ p{margin:0}
 .sumc-edit{position:absolute;top:10px;right:10px;border:0;background:none;font:inherit;font-size:13px;font-weight:700;text-decoration:underline;cursor:pointer;color:var(--ink)}
 .dh-art{margin:-10px -6px 6px;line-height:0;max-width:360px}
 .dh-art svg{width:100%;height:auto}
+.ev-hero{background:#E8E3DA;color:#0F0F10;border-radius:var(--r-lg);padding:22px;overflow:hidden;container-type:inline-size}
+.ev-top{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;padding-bottom:10px;border-bottom:1.5px solid #0F0F10}
+.ev-word{font-family:"Anton",var(--display);font-weight:800;font-size:clamp(48px,27cqw,150px);line-height:.9;letter-spacing:-.01em;margin-top:12px;white-space:nowrap}
+.ev-word span{display:flex;align-items:center;gap:12px;font-size:clamp(20px,8.5cqw,46px);color:#D7401C;line-height:1;margin-top:4px}
+.ev-word i{flex:1;height:5px;background:#D7401C;border-radius:2px}
+.ev-body{display:grid;gap:18px;margin-top:20px}
+.ev-photo{width:100%;aspect-ratio:4/3;object-fit:cover;object-position:50% 30%;border-radius:14px;filter:grayscale(1)}
+.ev-h{font-family:"Anton",var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(30px,8vw,44px);line-height:1.02;letter-spacing:0;margin:0}
+.ev-h em{font-style:normal;color:#D7401C;display:block}
+.ev-p{font-size:16px;line-height:1.55;margin:12px 0 0;color:#2A2A2C}
+.ev-facts{list-style:none;margin:6px 0 16px;padding:0;display:grid;gap:10px}
+.ev-facts li{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:var(--bg)}
+.ev-facts svg{width:20px;height:20px;flex:none;margin-top:2px;color:#D7401C}
+.ev-facts b{display:block;font-size:15px}
+.ev-facts span{font-size:13.5px;color:var(--muted)}
+.ev-left{margin:-6px 0 12px;font-weight:700;color:#D7401C;font-size:14px}
+.ev-cta{color:#D7401C;font-weight:700}
+.ev-pass{border-radius:22px;background:#0F0F10;color:#F4F2EC;padding:20px;position:relative;overflow:hidden;box-shadow:0 24px 50px -28px rgba(15,15,16,.6)}
+.ev-pass::before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:#D7401C}
+.ev-pass-top{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(244,242,236,.6)}
+.ev-pass-name{font-family:"Anton",var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(30px,8vw,42px);line-height:1;margin:16px 0 14px}
+.ev-pass-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ev-pass-grid small,.ev-pass-code small{display:block;font-size:11px;color:rgba(244,242,236,.55);text-transform:uppercase;letter-spacing:.1em}
+.ev-pass-grid b{font-size:14.5px}
+.ev-pass-cut{height:1px;margin:16px -20px;background-image:linear-gradient(90deg,rgba(255,255,255,.25) 50%,transparent 0);background-size:10px 1px}
+.ev-pass-code b{font-family:var(--mono);font-weight:500;font-size:28px;letter-spacing:.08em;color:#fff}
+.ev-pass-note{margin:10px 0 0;font-size:13px;color:rgba(244,242,236,.6)}
+.ev-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ev-actions>*{min-width:0;padding-left:10px;padding-right:10px;justify-content:center;font-size:14.5px}
 .paid-hint{font-size:13.5px;color:var(--muted);text-align:center;margin-top:12px}
 .paid-hint a{text-decoration:underline;color:inherit;font-weight:600}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-inline:-4px;padding-inline:4px;scrollbar-width:none}
@@ -523,6 +552,8 @@ p{margin:0}
 }
 /* Side-by-side only when there's real room; tablets get one clean column. */
 @media (min-width:980px){
+  .ev-hero{padding:32px}
+  .ev-photo{aspect-ratio:16/10}
   .detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:14px;align-items:start}
   .detail>.panel,.detail>div>.panel:first-child{margin-top:0}
   .detail-hero{padding:40px}
@@ -531,6 +562,7 @@ p{margin:0}
   .toast{bottom:40px}
 }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="wrap">
@@ -572,7 +604,7 @@ const CONFIG = {
   aboutPhoto: "/img/genie-about-bw.jpg",
   meet: "https://meet.google.com/mmt-ahkf-zaz",
   accountabilityUrl: "/app?start",  // goes straight into the sign-up flow
-  event: { name:"Forward with Genie", mon:"OCT", day:"31", when:"Saturday, 31 October", place:"Jabi, Abuja", length:"90 minutes", seats:"About 10 seats" }
+  event: { code:"fwg-06", session:"06", name:"Forward with Genie", mon:"OCT", day:"31", when:"Saturday, 31 October", short:"Sat 31 Oct", time:"11:00am to 12:30pm", place:"Busy Mart, Jabi", address:"Suite TF2, 44 Ebitu Ukiwe, Jabi, Abuja", start:"2026-10-31T11:00:00+01:00", end:"2026-10-31T12:30:00+01:00", maps:"https://maps.google.com/?q=Busy+Mart+44+Ebitu+Ukiwe+Jabi+Abuja", photo:"/img/forward-teaching.jpg" }
 };
 /* ====================== */
 
@@ -655,7 +687,7 @@ home(){ const h = lagosNow().getHours(); return `
 <div class="sec-head"><h2>Upcoming event</h2></div>
 <a class="event" href="#event">
   <div class="date"><small>${CONFIG.event.mon}</small><b>${CONFIG.event.day}</b></div>
-  <div class="meta"><small>In person · Abuja</small><h3>${CONFIG.event.name}</h3><p>${CONFIG.event.place} · ${CONFIG.event.seats}</p></div>
+  <div class="meta"><small>Session ${CONFIG.event.session} · In person · Free</small><h3>${CONFIG.event.name}</h3><p>${CONFIG.event.place} · 11:00am · <b class="ev-cta">Get your free pass</b></p></div>
   <span class="arrow">${I.arrow}</span>
 </a>`;},
 
@@ -750,23 +782,19 @@ ${backLink()}
 
 event(){ const e=CONFIG.event; return `
 ${backLink()}
-<div class="detail">
-  <section class="detail-hero t-sand">
-    <span class="eyebrow">In person · Monthly</span>
-    <h1>${e.name}</h1>
-    <p>About ten people, one room in Abuja, and an honest conversation about where you're headed. Last Saturday of every month.</p>
+<div class="detail ev">
+  <section class="ev-hero">
+    <div class="ev-top"><span>Session ${e.session}</span><span>In person · Abuja</span></div>
+    <div class="ev-word">FORWARD<span><i></i>WITH GENIE</span></div>
+    <div class="ev-body">
+      <img class="ev-photo" src="${e.photo}" alt="Genie teaching at a whiteboard" loading="lazy">
+      <div>
+        <h1 class="ev-h">You know what to do. <em>So why haven't you?</em></h1>
+        <p class="ev-p">Bring the one goal you keep pushing to next week. Leave with your next step and a room of people who will ask you about it.</p>
+      </div>
+    </div>
   </section>
-  <div class="panel">
-    <h3>${e.when}</h3>
-    <dl class="kv">
-      <dt>Where</dt><dd>${e.place}</dd>
-      <dt>How long</dt><dd>${e.length}</dd>
-      <dt>Room</dt><dd>${e.seats}</dd>
-      <dt>Tickets</dt><dd>Opening soon</dd>
-    </dl>
-    <div style="height:18px"></div>
-    ${waitForm("event","Tell me when tickets open")}
-  </div>
+  <div class="panel" id="ev-panel"></div>
 </div>`;},
 
 test(){ return `
@@ -1255,6 +1283,92 @@ function syncLeft(){
     l.innerHTML = sumHTML();
     const e = l.querySelector("[data-edit]"); if(e) e.onclick = ()=>{ B.step="plan"; renderBooker(); $("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }); };
   } else if(l.dataset.orig){ l.innerHTML = l.dataset.orig; delete l.dataset.orig; }
+}
+/* ---------- Event pass ---------- */
+const EV_API = () => CONFIG.api.replace("booking-api","events-api");
+function evFacts(){
+  const e = CONFIG.event;
+  return `<ul class="ev-facts">
+    <li>${ICO.cal}<span><b>${e.when}</b>${e.time}</span></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span><b>${e.place}</b>${e.address}</span></li>
+    <li>${ICO.cash}<span><b>Free entry</b>Small group. A pass is required.</span></li>
+  </ul>`;
+}
+function evSaved(){ try{ return JSON.parse(localStorage.getItem("ev_"+CONFIG.event.code)||"null"); }catch(e){ return null; } }
+function evSave(p){ try{ localStorage.setItem("ev_"+CONFIG.event.code, JSON.stringify(p)); }catch(e){} }
+function evCal(){
+  const e = CONFIG.event, f = iso => new Date(iso).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+  const g = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(e.name+" (Session "+e.session+")")}&dates=${f(e.start)}/${f(e.end)}&location=${encodeURIComponent(e.place+", "+e.address)}&details=${encodeURIComponent("Bring one goal. Show your pass at the door.")}`;
+  return g;
+}
+function evFit(){
+  const w = $(".ev-word"); if(!w) return;
+  const fit = ()=>{ w.style.fontSize=""; let f=parseFloat(getComputedStyle(w).fontSize), box=w.parentElement.clientWidth-parseFloat(getComputedStyle(w.parentElement).paddingLeft)*2;
+    const t=document.createElement("span"); t.textContent="FORWARD"; t.style.cssText="position:absolute;visibility:hidden;white-space:nowrap;font:inherit"; w.appendChild(t);
+    if(t.offsetWidth>box) w.style.fontSize=(f*box/t.offsetWidth*.98)+"px"; t.remove(); };
+  fit(); if(document.fonts) document.fonts.ready.then(fit);
+  if(!window._evFitR){ window._evFitR=1; addEventListener("resize",()=>$(".ev-word")&&fit()); }
+}
+async function startEvent(){
+  evFit();
+  const el = $("#ev-panel"); if(!el) return;
+  const mine = evSaved();
+  if(mine) return evPass(el, mine, true);
+  el.innerHTML = `<h3>Get your free pass</h3>
+    ${evFacts()}
+    <p class="ev-left" id="ev-left" hidden></p>
+    <form id="ev-form" novalidate>
+      <div class="field"><label for="ev-name">Your name</label><input id="ev-name" autocomplete="name" required></div>
+      <div class="field"><label for="ev-email">Email <em>(your pass goes here)</em></label><input id="ev-email" type="email" inputmode="email" autocomplete="email" required></div>
+      <div class="field"><label for="ev-phone">WhatsApp number</label><input id="ev-phone" type="tel" inputmode="tel" autocomplete="tel" required></div>
+      <div class="field"><label for="ev-goal">The goal you're bringing <em>(optional)</em></label><input id="ev-goal" maxlength="300" placeholder="e.g. Finish my CV and apply to 5 jobs"></div>
+      <div class="err" id="ev-err" hidden></div>
+      <button class="btn btn-ink btn-block" type="submit" id="ev-sub">Get my free pass</button>
+    </form>`;
+  fetch(EV_API()+"?event="+CONFIG.event.code).then(r=>r.json()).then(r=>{
+    const l = $("#ev-left"); if(!l || !r || !r.ok) return;
+    if(r.full){ return evFull(el); }
+    if(r.left <= 5){ l.textContent = `Only ${r.left} seat${r.left>1?"s":""} left.`; l.hidden = false; }
+  }).catch(()=>{});
+  $("#ev-form").addEventListener("submit", async ev=>{
+    ev.preventDefault();
+    const v = id => $("#"+id).value.trim(), err = $("#ev-err"), btn = $("#ev-sub");
+    const body = { action:"register", event:CONFIG.event.code, name:v("ev-name"), email:v("ev-email"), phone:v("ev-phone"), goal:v("ev-goal") };
+    const show = m => { err.textContent = m; err.hidden = false; };
+    if(!body.name) return show("Add your name.");
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email)) return show("Check your email address.");
+    if(body.phone.replace(/\D/g,"").length < 7) return show("Add your WhatsApp number.");
+    err.hidden = true; btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Getting your pass';
+    const r = await fetch(EV_API(), { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(x=>x.json()).catch(()=>({ ok:false }));
+    if(r.ok){ const p = { code:r.pass.code, name:r.pass.name }; evSave(p); return evPass(el, p, !!r.already); }
+    btn.disabled = false; btn.textContent = "Get my free pass";
+    if(r.error==="full") return evFull(el);
+    show(r.error==="over" ? "This session has already happened." : "Something went wrong. Try again in a moment.");
+  });
+}
+function evFull(el){
+  el.innerHTML = `<h3>This session is full</h3>${evFacts()}<p class="hint" style="margin:0 0 12px">Next one is the last Saturday of next month. Leave your email and you'll hear first.</p>${waitForm("event","Tell me about the next one")}`;
+  wireWaitForms();
+}
+function evPass(el, p, again){
+  const e = CONFIG.event;
+  el.innerHTML = `<div class="ev-pass">
+      <div class="ev-pass-top"><span>${e.name}</span><span>Session ${e.session}</span></div>
+      <div class="ev-pass-name">${esc(p.name)}</div>
+      <div class="ev-pass-grid">
+        <div><small>Date</small><b>${e.short}</b></div>
+        <div><small>Time</small><b>11:00am</b></div>
+        <div><small>Venue</small><b>${e.place}</b></div>
+      </div>
+      <div class="ev-pass-cut"></div>
+      <div class="ev-pass-code"><small>Pass code</small><b>${esc(p.code)}</b></div>
+      <p class="ev-pass-note">Show this at the door. Bring one goal.</p>
+    </div>
+    <p class="note" style="margin:12px 0 10px">${again ? "You already have a pass. " : ""}A copy is in your email.</p>
+    <div class="ev-actions">
+      <a class="btn btn-ink" href="${evCal()}" target="_blank" rel="noopener">Add to calendar</a>
+      <a class="btn btn-line" href="${e.maps}" target="_blank" rel="noopener">Directions</a>
+    </div>`;
 }
 function bump(sel){ const n=$(sel); if(!n) return; n.classList.remove("bump"); void n.offsetWidth; n.classList.add("bump"); }
 
@@ -2012,7 +2126,7 @@ function reveal(){
   $("#app").querySelectorAll(".board .tile").forEach((t,i)=>t.style.setProperty("--i", i));
 }
 function route(){
-  let key = (location.hash || "#home").slice(1);
+  let key = (location.hash || (/^\/events\/?$/.test(location.pathname) ? "#event" : "#home")).slice(1);
   const scrollToServices = key === "services";
   if(scrollToServices) key = "home";
   if(key==="accountability"){ location.replace("/app"); return; }
@@ -2025,6 +2139,7 @@ function route(){
   if(key==="call") startBooker("free_call");
   if(key==="coaching"){ startBooker("mentorship"); if(B.fromTest) setTimeout(()=>$("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }), 120); }
   if(key==="test") startTest();
+  if(key==="event") startEvent();
   if(key==="home") fillNext();
   wireWaitForms();
   if(scrollToServices) setTimeout(()=>document.getElementById("services")?.scrollIntoView({ behavior:"smooth" }), 30);

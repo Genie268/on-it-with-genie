@@ -79,6 +79,10 @@
   ],
   "rewrites": [
     {
+      "source": "/events",
+      "destination": "/index.html"
+    },
+    {
       "source": "/book",
       "destination": "/index.html"
     },
