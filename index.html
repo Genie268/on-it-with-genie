@@ -686,8 +686,10 @@ home(){ const h = lagosNow().getHours(); return `
 </div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
 <a class="event" href="#event">
-  <div class="date"><small>${CONFIG.event.mon}</small><b>${CONFIG.event.day}</b></div>
-  <div class="meta"><small>Session ${CONFIG.event.session} · In person · Free</small><h3>${CONFIG.event.name}</h3><p>${CONFIG.event.place} · 11:00am · <b class="ev-cta">Get your free pass</b></p></div>
+  ${evOver() ? `<div class="date"><small>NEXT</small><b>${String(+CONFIG.event.session+1).padStart(2,"0")}</b></div>
+  <div class="meta"><small>Session ${String(+CONFIG.event.session+1).padStart(2,"0")} · In person · Free</small><h3>${CONFIG.event.name}</h3><p>Date coming soon · <b class="ev-cta">Get on the list</b></p></div>`
+  : `<div class="date"><small>${CONFIG.event.mon}</small><b>${CONFIG.event.day}</b></div>
+  <div class="meta"><small>Session ${CONFIG.event.session} · In person · Free</small><h3>${CONFIG.event.name}</h3><p>${CONFIG.event.place} · 11:00am · <b class="ev-cta">Get your free pass</b></p></div>`}
   <span class="arrow">${I.arrow}</span>
 </a>`;},
 
@@ -1294,6 +1296,7 @@ function evFacts(){
     <li>${ICO.cash}<span><b>Free entry</b>Small group. A pass is required.</span></li>
   </ul>`;
 }
+const evOver = () => Date.now() > Date.parse(CONFIG.event.end);
 function evSaved(){ try{ return JSON.parse(localStorage.getItem("ev_"+CONFIG.event.code)||"null"); }catch(e){ return null; } }
 function evSave(p){ try{ localStorage.setItem("ev_"+CONFIG.event.code, JSON.stringify(p)); }catch(e){} }
 function evCal(){
@@ -1312,6 +1315,9 @@ function evFit(){
 async function startEvent(){
   evFit();
   const el = $("#ev-panel"); if(!el) return;
+  const rel = new URLSearchParams(location.search).get("release");
+  if(rel) return evRelease(el, rel);
+  if(evOver()) return evDone(el);
   const mine = evSaved();
   if(mine) return evPass(el, mine, true);
   el.innerHTML = `<h3>Get your free pass</h3>
@@ -1347,8 +1353,50 @@ async function startEvent(){
   });
 }
 function evFull(el){
-  el.innerHTML = `<h3>This session is full</h3>${evFacts()}<p class="hint" style="margin:0 0 12px">Next one is the last Saturday of next month. Leave your email and you'll hear first.</p>${waitForm("event","Tell me about the next one")}`;
-  wireWaitForms();
+  el.innerHTML = `<h3>This session is full</h3>${evFacts()}<p class="hint" style="margin:0 0 12px">People drop out. Leave your email and you'll get one the moment a seat opens.</p>${evWaitHTML("Email me if a seat opens")}`;
+  evWireWait(el);
+}
+function evDone(el){
+  const next = String(+CONFIG.event.session+1).padStart(2,"0");
+  el.innerHTML = `<h3>Session ${CONFIG.event.session} is done</h3><p class="hint" style="margin:0 0 14px">Session ${next} is next. Passes go first to people on the list, and the room is small.</p>${evWaitHTML("Put me on the list")}`;
+  evWireWait(el);
+}
+function evWaitHTML(label){
+  return `<form id="ev-wait" novalidate>
+    <div class="field"><label for="evw-name">Name</label><input id="evw-name" autocomplete="name"></div>
+    <div class="field"><label for="evw-email">Email</label><input id="evw-email" type="email" inputmode="email" autocomplete="email" required></div>
+    <div class="err" id="evw-err" hidden></div>
+    <button class="btn btn-ink btn-block" type="submit" id="evw-sub">${label}</button></form>`;
+}
+function evWireWait(el){
+  $("#ev-wait").addEventListener("submit", async ev=>{
+    ev.preventDefault();
+    const name=$("#evw-name").value.trim(), email=$("#evw-email").value.trim(), err=$("#evw-err"), btn=$("#evw-sub");
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ err.textContent="Check your email address."; err.hidden=false; return; }
+    err.hidden=true; btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+    const r = await fetch(EV_API(),{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ action:"waitlist", event:CONFIG.event.code, name, email }) }).then(x=>x.json()).catch(()=>({ ok:false }));
+    if(r.ok){ $("#ev-wait").outerHTML = `<div class="empty" style="margin-top:0;color:var(--ink)"><b>${r.already?"You're already on the list.":"You're on the list."}</b><br>I'll email ${esc(email)} the moment there's a seat for you.</div>`; }
+    else { err.textContent="Something went wrong. Try again in a moment."; err.hidden=false; btn.disabled=false; btn.textContent="Try again"; }
+  });
+}
+function evRelease(el, token){
+  el.innerHTML = `<h3>Can't make it?</h3><p class="hint" style="margin:0 0 14px">Free your seat and someone on the waitlist gets it. Your pass will stop working.</p>
+    <div class="err" id="evr-err" hidden></div>
+    <button class="btn btn-ink btn-block" id="evr-yes" type="button">Free my seat</button>
+    <a class="btn btn-line btn-block" href="/events" style="margin-top:8px">Keep my seat</a>`;
+  $("#evr-yes").addEventListener("click", async ()=>{
+    const b=$("#evr-yes"), err=$("#evr-err"); b.disabled=true; b.innerHTML='<span class="spin"></span>';
+    const r = await fetch(EV_API(),{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ action:"release", token }) }).then(x=>x.json()).catch(()=>({ ok:false }));
+    if(r.ok){
+      try{ localStorage.removeItem("ev_"+CONFIG.event.code); }catch(_){}
+      history.replaceState(null,"","/events");
+      el.innerHTML = `<h3>Your seat is free</h3><p class="hint" style="margin:0 0 14px">Thanks for saying so${r.name?", "+esc(r.name.split(" ")[0]):""}. Someone on the waitlist will take it. Catch the next one.</p>${evWaitHTML("Tell me about the next one")}`;
+      return evWireWait(el);
+    }
+    b.disabled=false; b.textContent="Free my seat";
+    err.textContent = r.error==="over" ? "This session has already started." : r.error==="not_found" ? "That link doesn't match a pass. Use the link from your email." : "Something went wrong. Try again in a moment.";
+    err.hidden=false;
+  });
 }
 function evPass(el, p, again){
   const e = CONFIG.event;

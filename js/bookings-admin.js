@@ -58,6 +58,13 @@ function bkStyles(){
   .bk-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
   .bk-btn{padding:7px 12px;border-radius:9px;border:1px solid #2a2a2a;background:transparent;color:#cfcfcf;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
   .bk-btn.gold{background:#c49a1c;border-color:#c49a1c;color:#000}
+  .bk-evhead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:2px 0 12px;font-size:15px;color:#cfcfcf;font-weight:700}
+  .bk-evhead b{font-size:30px;font-weight:900;color:#ededed}.bk-evhead span{flex-basis:100%;font-size:12px;color:#777;font-weight:600}
+  .bk-evq{font-size:16px!important;padding:14px!important;margin-bottom:12px}
+  .bk-code{font-family:ui-monospace,Menlo,monospace;font-size:13px;color:#8a8a8a;letter-spacing:.06em;margin-top:3px}
+  .bk-evbtn{flex:none;min-width:104px;padding:11px 14px;border-radius:11px;border:1.5px solid #c49a1c;background:transparent;color:#c49a1c;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+  .bk-evbtn.on{background:#4dc98a;border-color:#4dc98a;color:#05140b}
+  .bk-evrow.in{border-color:rgba(77,201,138,.35)}
   .bk-btn.red{border-color:rgba(217,80,58,.35);color:#e0705c}
   .bk-btn.on{background:#1f1f1f;border-color:#c49a1c;color:#c49a1c}
   .bk-card{background:#0f0f0f;border:1px solid #1c1c1c;border-radius:14px;padding:16px;margin-bottom:12px}
@@ -103,8 +110,8 @@ function bkRender(){
   const d = BK.data, now = Date.parse(d.now);
   const upcoming = d.bookings.filter(b=>b.status==="confirmed" && Date.parse(b.ends_at) > now);
   const optedIn = d.contacts.filter(x=>x.opted_in).length;
-  const tabs = [["calls","Calls"],["mentorship","Mentorship"],["test","Comm test"],["lists","Waitlists & emails"],["hours","Hours & settings"]];
-  const body = { calls:bkCalls, mentorship:bkMentorship, test:bkTest, lists:bkLists, hours:bkHours }[BK.view](d, now);
+  const tabs = [["calls","Calls"],["event","Event"],["mentorship","Mentorship"],["test","Comm test"],["lists","Waitlists & emails"],["hours","Hours & settings"]];
+  const body = { calls:bkCalls, event:bkEvent, mentorship:bkMentorship, test:bkTest, lists:bkLists, hours:bkHours }[BK.view](d, now);
   c.innerHTML = `<div class="bk">
     <div class="bk-stats">
       <div class="bk-stat"><b>${upcoming.filter(b=>b.service==="free_call").length}</b><span>Clarity calls coming</span></div>
@@ -116,6 +123,47 @@ function bkRender(){
       <button onclick="bkRefresh()" title="Refresh">↻</button></div>
     ${body}
   </div>`;
+}
+
+/* ---------- Event: passes and door check-in ---------- */
+function bkEvRows(){
+  const all = (BK.data && BK.data.event_regs) || [];
+  const ev = all.length ? all[all.length-1].event : "";
+  return all.filter(r=>r.event===ev);
+}
+function bkEvent(d){
+  const rows = bkEvRows();
+  if(!rows.length) return `<div class="bk-empty">No passes yet. They show up here as people sign up at eugeneobo.com/events.</div>`;
+  const live = rows.filter(r=>!r.released_at), inn = live.filter(r=>r.checked_in).length, freed = rows.length-live.length;
+  return `<div class="bk-evhead"><b>${inn}</b> of ${live.length} arrived<span>${live.length} of ${d.event_capacity} passes taken${freed?` · ${freed} freed`:""}</span></div>
+    <input class="bk-in bk-evq" id="bk-evq" type="search" placeholder="Search name or pass code" value="${bkEsc(BK.evq||"")}" oninput="BK.evq=this.value;bkEvList()" autocomplete="off">
+    <div id="bk-evlist">${bkEvListHTML()}</div>
+    <div class="bk-card" style="margin-top:18px"><h4>How the emails go</h4>
+      <p class="h">6pm the evening before: reminder with their pass and a link to free their seat. Freed seats go to the waitlist by email. 4 hours after it ends: a follow-up to everyone marked <b>Arrived</b>, with their goal and the 15-day challenge. Tick people in at the door or they won't get it.</p></div>`;
+}
+function bkEvListHTML(){
+  const q = (BK.evq||"").trim().toLowerCase().replace(/\s+/g," ");
+  let rows = bkEvRows().filter(r=>!q || (r.name||"").toLowerCase().includes(q) || (r.pass_code||"").toLowerCase().includes(q) || (r.pass_code||"").toLowerCase().replace("-","").includes(q.replace("-","")));
+  rows = rows.slice().sort((a,b)=>(!!a.released_at-!!b.released_at) || (a.checked_in-b.checked_in) || (a.name||"").localeCompare(b.name||""));
+  if(!rows.length) return `<div class="bk-empty">No pass matches "${bkEsc(BK.evq)}".</div>`;
+  return rows.map(r=>{
+    const wa = bkWa(r.phone);
+    return `<div class="bk-row bk-evrow${r.released_at?" cx":""}${r.checked_in?" in":""}">
+      <div class="bk-top"><div><div class="bk-name" style="font-size:16px;margin:0">${bkEsc(r.name)}</div><div class="bk-code">${bkEsc(r.pass_code)}</div></div>
+        ${r.released_at?`<span class="bk-tag grey">Freed seat</span>`:`<button class="bk-evbtn${r.checked_in?" on":""}" onclick="bkCheckin('${r.id}',${!r.checked_in})">${r.checked_in?"✓ Arrived":"Arrived"}</button>`}</div>
+      ${r.goal?`<div class="bk-note">"${bkEsc(r.goal)}"</div>`:""}
+      <div class="bk-meta">${wa?`<a href="${wa}" target="_blank" rel="noopener">${bkEsc(r.phone)}</a>`:bkEsc(r.phone||"")}<span>${bkEsc(r.email)}</span></div>
+    </div>`;
+  }).join("");
+}
+function bkEvList(){ const n = document.getElementById("bk-evlist"); if(n) n.innerHTML = bkEvListHTML(); }
+async function bkCheckin(id, value){
+  const r = bkEvRows().find(x=>x.id===id); if(!r) return;
+  const before = r.checked_in; r.checked_in = value;
+  const head = document.querySelector(".bk-evhead b"); bkEvList();
+  if(head){ head.textContent = bkEvRows().filter(x=>!x.released_at && x.checked_in).length; }
+  try{ await bkFetch("checkin",{ id, value }); }
+  catch(e){ r.checked_in = before; bkEvList(); showToast("Couldn't save. Check your connection.","error"); }
 }
 
 /* ---------- Calls ---------- */

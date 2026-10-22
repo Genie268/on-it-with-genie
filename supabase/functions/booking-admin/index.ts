@@ -10,6 +10,7 @@
  *   new_plan      {name, email, phone?, hours, notify}   Mentorship hours for a client you already have
  *   save_settings {genie_whatsapp?, booking_window_days?, mentorship_window_days?}
  *   save_rule     {id, start_time, end_time, active}
+ *   checkin       {id, value}             Door check-in for an event pass (true/false)
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -90,9 +91,14 @@ async function list() {
   const norm = (n: string) => (n || "").toLowerCase().replace(/[^a-z]/g, "");
   const byName: Record<string, number> = {};
   (allFree ?? []).forEach((r: any) => { const k = norm(r.name); if (k) byName[k] = (byName[k] ?? 0) + 1; });
+  // event passes (latest event first)
+  const { data: evRows } = await sb.from("event_registrations").select("id,event,name,email,phone,goal,pass_code,checked_in,checked_in_at,released_at,reminded_at,created_at").order("created_at");
+  const { data: capRow } = await sb.from("private_settings").select("value").eq("key", "event_capacity").maybeSingle();
   return {
     ok: true,
     now: new Date().toISOString(),
+    event_regs: evRows ?? [],
+    event_capacity: Number(capRow?.value) || 15,
     bookings: (bookings ?? []).map((b: any) => {
       const t = Date.parse(b.starts_at);
       return { ...b, date: longDate(t), label: label(t), same_name: b.service === "free_call" && b.status === "confirmed" ? (byName[norm(b.name)] ?? 0) : 0 };
@@ -133,6 +139,12 @@ async function attend(p: P) {
   const id = clean(p.id, 60);
   const v = p.value === "showed" || p.value === "no_show" ? p.value : null;
   const { error } = await sb.from("slot_bookings").update({ attended: v }).eq("id", id);
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+async function checkin(p: P) {
+  const id = clean(p.id, 60), v = p.value === true;
+  const { error } = await sb.from("event_registrations").update({ checked_in: v, checked_in_at: v ? new Date().toISOString() : null }).eq("id", id);
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
@@ -201,7 +213,7 @@ async function addRule(p: P) {
 }
 
 const ACTIONS: Record<string, (p: P) => Promise<P>> = {
-  list, cancel, attend, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
+  list, cancel, attend, checkin, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
 };
 
 Deno.serve(async (req) => {
