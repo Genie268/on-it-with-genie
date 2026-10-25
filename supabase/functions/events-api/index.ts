@@ -2,7 +2,8 @@
  * events-api: free passes for in-person events (Forward with Genie).
  *
  * GET  ?event=fwg-06                 -> { ok, left, full }
- * POST { action:"register", event, name, email, phone, goal? }
+ * POST { action:"register", event, name, email, phone, goal?, ref?, invited_by? }
+ *      ref comes from an invite link (eugeneobo.com/events?ref=tobi); invited_by is typed on the form.
  *      -> { ok, pass:{ code, name }, already? }   or { ok:false, error:"full" }
  *      Same email twice returns the same pass. Emails the pass (PDF + .ics), tells Genie.
  * POST { action:"release", token }    Frees a seat (link in the reminder email), alerts the waitlist.
@@ -102,6 +103,12 @@ async function sendEmail(to: string, subject: string, text: string, attach?: str
   } catch (err) { console.error("resend failed", err); }
 }
 
+const refName = (r: string) => r.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+function waLink(phone: string) {
+  let d = String(phone || "").replace(/\D/g, ""); if (!d) return "";
+  if (d.startsWith("0")) d = "234" + d.slice(1); else if (d.length === 10) d = "234" + d;
+  return "https://wa.me/" + d;
+}
 const first = (n: string) => (n || "there").trim().split(" ")[0];
 const fmtWhen = (e: typeof EVENTS[string]) => `${e.when}\n${e.venue}, ${e.address}\nDirections: ${e.maps}`;
 async function notifyEmail() {
@@ -207,6 +214,7 @@ Deno.serve(async (req) => {
     if (!e) return json({ ok: false, error: "no_event" }, 404);
     if (Date.parse(e.end) < Date.now()) return json({ ok: false, error: "over" }, 409);
     const name = clean(p.name, 80), email = clean(p.email, 120).toLowerCase(), phone = clean(p.phone, 30), goal = clean(p.goal, 300);
+    const ref = clean(p.ref, 40).toLowerCase().replace(/[^a-z0-9_-]/g, ""), invitedBy = clean(p.invited_by, 80);
     if (!name) return json({ ok: false, error: "missing_name" }, 400);
     if (!validEmail(email)) return json({ ok: false, error: "bad_email" }, 400);
     if (phone.replace(/\D/g, "").length < 7) return json({ ok: false, error: "missing_phone" }, 400);
@@ -222,7 +230,7 @@ Deno.serve(async (req) => {
 
     let code = passCode(e.session), row = null;
     for (let i = 0; i < 4 && !row; i++) {
-      const { data, error } = await sb.from("event_registrations").insert({ event, name, email, phone, goal: goal || null, pass_code: code }).select().single();
+      const { data, error } = await sb.from("event_registrations").insert({ event, name, email, phone, goal: goal || null, pass_code: code, ref: ref || null, invited_by: invitedBy || null }).select().single();
       if (!error) row = data;
       else if (String(error.code) === "23505" && String(error.message).includes("event_email")) {
         const { data: again } = await sb.from("event_registrations").select("pass_code,name").eq("event", event).eq("email", email).maybeSingle();
@@ -241,10 +249,30 @@ Deno.serve(async (req) => {
     await sendEmail(email, `Your pass: ${e.title}, ${e.when.split(",")[0]}`,
       `Hi ${first(name)},\n\nYou're in. Here's your pass.\n\n${e.title} · Session ${e.session}\n${e.when}\n${e.venue}, ${e.address}\nDirections: ${e.maps}\n\nPass code: ${row.pass_code}\nYour pass is attached. Save it to your phone and show it at the door.\n\nBring the one goal you keep pushing to next week${goal ? ` (you said: "${goal}")` : ""}. Entry is free.\n\nCan't come any more? Free your seat so someone on the waitlist can come: ${SITE}/events?release=${row.release_token}\n\nGenie`,
       ics(e, row.pass_code), {}, pdf);
-    const { data: s } = await sb.from("private_settings").select("value").eq("key", "notify_email").maybeSingle();
-    const count = await taken(event);
-    if (s?.value) await sendEmail(s.value, `Seat ${count} of ${cap}: ${name}`,
-      `${name} got a pass for ${e.title} (Session ${e.session}).\n\nEmail: ${email}\nPhone: ${phone}\nGoal: ${goal || "-"}\nPass: ${row.pass_code}\n\n${count} of ${cap} seats taken.`, undefined, { reply_to: email });
+    const to = await notifyEmail(), count = await taken(event);
+    if (to) {
+      const via = ref ? refName(ref) + " (invite link)" : invitedBy ? invitedBy : "";
+      const wa = waLink(phone);
+      const h = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+      const rowH = (k: string, v: string) => `<tr><td style="padding:7px 0;color:#8a8a8a;font-size:13px;width:110px;vertical-align:top">${k}</td><td style="padding:7px 0;font-size:15px;color:#111">${v}</td></tr>`;
+      const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;padding:8px">
+        <div style="background:#0F0F10;color:#fff;border-radius:14px;padding:20px 22px;border-left:6px solid #D7401C">
+          <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9a9a9a">${h(e.title)} · Session ${e.session}</div>
+          <div style="font-size:24px;font-weight:800;margin:8px 0 4px">${h(name)}</div>
+          <div style="font-size:14px;color:#cfcfcf">just got a pass. <b style="color:#fff">${count} of ${cap}</b> seats taken.</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0 8px">
+          ${via ? rowH("Invited by", `<b>${h(via)}</b>`) : rowH("Invited by", `<span style="color:#8a8a8a">Not said</span>`)}
+          ${rowH("Goal", goal ? h(goal) : `<span style="color:#8a8a8a">Not given</span>`)}
+          ${rowH("Phone", wa ? `<a href="${wa}" style="color:#111">${h(phone)}</a>` : h(phone))}
+          ${rowH("Email", `<a href="mailto:${h(email)}" style="color:#111">${h(email)}</a>`)}
+          ${rowH("Pass", `<span style="font-family:Menlo,monospace">${h(row.pass_code)}</span>`)}
+        </table>
+        ${wa ? `<a href="${wa}" style="display:inline-block;background:#D7401C;color:#fff;text-decoration:none;font-weight:700;padding:11px 18px;border-radius:999px;font-size:14px">Message on WhatsApp</a>` : ""}
+      </div>`;
+      const text = `${name} got a pass for ${e.title} (Session ${e.session}). ${count} of ${cap} seats taken.\n\nInvited by: ${via || "not said"}\nGoal: ${goal || "-"}\nPhone: ${phone}\nEmail: ${email}\nPass: ${row.pass_code}`;
+      await sendEmail(to, `New pass: ${name}${via ? ` via ${via.replace(" (invite link)", "")}` : ""} (${count}/${cap})`, text, undefined, { reply_to: email, html });
+    }
 
     return json({ ok: true, pass: { code: row.pass_code, name } });
   } catch (err) {

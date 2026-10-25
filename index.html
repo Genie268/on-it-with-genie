@@ -330,12 +330,19 @@ p{margin:0}
 .ev-h{font-family:"Anton",var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(30px,8vw,44px);line-height:1.02;letter-spacing:0;margin:0}
 .ev-h em{font-style:normal;color:#D7401C;display:block}
 .ev-p{font-size:16px;line-height:1.55;margin:12px 0 0;color:#2A2A2C}
-.ev-q{margin:16px 0 0;padding:2px 0 2px 14px;border-left:4px solid #D7401C;font-size:18px;line-height:1.45;font-weight:700;color:#0F0F10;letter-spacing:-.005em}
+.ev-fig{position:relative;margin:0;border-radius:14px;overflow:hidden;background:#0F0F10}
+.ev-fig::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(10,10,10,.95) 0%,rgba(10,10,10,.88) 46%,rgba(10,10,10,.55) 60%,rgba(10,10,10,0) 78%);pointer-events:none}
+.ev-fig .ev-photo{display:block;aspect-ratio:4/5;object-position:50% 0;border-radius:0}
+.ev-say{position:absolute;left:0;right:0;bottom:0;z-index:1;padding:18px 18px 20px;color:#fff;font-weight:700;font-size:clamp(16px,4.7vw,19px);line-height:1.38;letter-spacing:-.005em}
+.ev-qm{display:block;font-family:"Anton",Impact,sans-serif;color:#D7401C;font-size:64px;line-height:.55;height:30px;margin-bottom:4px}
+.ev-say b{display:flex;align-items:center;gap:8px;margin-top:12px;font-family:var(--mono);font-weight:500;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.72)}
+.ev-say b::before{content:"";width:18px;height:2px;background:#D7401C}
 .ev-facts{list-style:none;margin:6px 0 16px;padding:0;display:grid;gap:10px}
 .ev-facts li{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:var(--bg)}
 .ev-facts svg{width:20px;height:20px;flex:none;margin-top:2px;color:#D7401C}
 .ev-facts b{display:block;font-size:15px}
 .ev-facts span{font-size:13.5px;color:var(--muted)}
+.ev-inv{margin:-2px 0 14px;font-size:14px;color:var(--muted)}.ev-inv b{color:var(--ink)}
 .ev-left{margin:-6px 0 12px;font-weight:700;color:#D7401C;font-size:14px}
 .ev-cta{color:#D7401C;font-weight:700}
 .ev-pass{border-radius:22px;background:#0F0F10;color:#F4F2EC;padding:20px;position:relative;overflow:hidden;box-shadow:0 24px 50px -28px rgba(15,15,16,.6)}
@@ -554,7 +561,7 @@ p{margin:0}
 /* Side-by-side only when there's real room; tablets get one clean column. */
 @media (min-width:980px){
   .ev-hero{padding:32px}
-  .ev-photo{aspect-ratio:16/10}
+
   .detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:14px;align-items:start}
   .detail>.panel,.detail>div>.panel:first-child{margin-top:0}
   .detail-hero{padding:40px}
@@ -790,10 +797,12 @@ ${backLink()}
     <div class="ev-top"><span>Session ${e.session}</span><span>In person · Abuja</span></div>
     <div class="ev-word">FORWARD<span><i></i>WITH GENIE</span></div>
     <div class="ev-body">
-      <img class="ev-photo" src="${e.photo}" alt="Genie teaching at a whiteboard" loading="lazy">
+      <figure class="ev-fig">
+        <img class="ev-photo" src="${e.photo}" alt="Genie teaching at a whiteboard">
+        <figcaption class="ev-say"><span class="ev-qm" aria-hidden="true">&ldquo;</span>You are living in a different world than you were born into. To succeed, you must become a different person than you were born to be.<b>Genie</b></figcaption>
+      </figure>
       <div>
         <h1 class="ev-h">You know what to do. <em>So why haven't you?</em></h1>
-        <blockquote class="ev-q">You are living in a different world than you were born into. To succeed, you must become a different person than you were born to be.</blockquote>
         <p class="ev-p">Bring the one goal you keep pushing to next week. Leave with your next step and a room of people who will ask you about it.</p>
       </div>
     </div>
@@ -1299,6 +1308,13 @@ function evFacts(){
   </ul>`;
 }
 const evOver = () => Date.now() > Date.parse(CONFIG.event.end);
+/* invite links: eugeneobo.com/events?ref=tobi  (first link someone came through is kept) */
+function evRef(){
+  let r = (new URLSearchParams(location.search).get("ref")||"").toLowerCase().replace(/[^a-z0-9_-]/g,"").slice(0,40);
+  try{ if(r){ if(!localStorage.getItem("ev_ref")) localStorage.setItem("ev_ref", r); } r = localStorage.getItem("ev_ref") || r; }catch(_){}
+  return r;
+}
+const evRefName = r => r.replace(/[-_]+/g," ").replace(/\b\w/g, c=>c.toUpperCase());
 function evSaved(){ try{ return JSON.parse(localStorage.getItem("ev_"+CONFIG.event.code)||"null"); }catch(e){ return null; } }
 function evSave(p){ try{ localStorage.setItem("ev_"+CONFIG.event.code, JSON.stringify(p)); }catch(e){} }
 function evCal(){
@@ -1330,6 +1346,7 @@ async function startEvent(){
       <div class="field"><label for="ev-email">Email <em>(your pass goes here)</em></label><input id="ev-email" type="email" inputmode="email" autocomplete="email" required></div>
       <div class="field"><label for="ev-phone">WhatsApp number</label><input id="ev-phone" type="tel" inputmode="tel" autocomplete="tel" required></div>
       <div class="field"><label for="ev-goal">The goal you're bringing <em>(optional)</em></label><input id="ev-goal" maxlength="300" placeholder="e.g. Finish my CV and apply to 5 jobs"></div>
+      ${evRef() ? `<p class="ev-inv">Invited by <b>${esc(evRefName(evRef()))}</b></p>` : `<div class="field"><label for="ev-by">Who invited you? <em>(optional)</em></label><input id="ev-by" maxlength="80" autocomplete="off" placeholder="A friend's name, or where you saw this"></div>`}
       <div class="err" id="ev-err" hidden></div>
       <button class="btn btn-ink btn-block" type="submit" id="ev-sub">Get my free pass</button>
     </form>`;
@@ -1341,7 +1358,7 @@ async function startEvent(){
   $("#ev-form").addEventListener("submit", async ev=>{
     ev.preventDefault();
     const v = id => $("#"+id).value.trim(), err = $("#ev-err"), btn = $("#ev-sub");
-    const body = { action:"register", event:CONFIG.event.code, name:v("ev-name"), email:v("ev-email"), phone:v("ev-phone"), goal:v("ev-goal") };
+    const body = { action:"register", event:CONFIG.event.code, name:v("ev-name"), email:v("ev-email"), phone:v("ev-phone"), goal:v("ev-goal"), ref:evRef(), invited_by:$("#ev-by") ? v("ev-by") : "" };
     const show = m => { err.textContent = m; err.hidden = false; };
     if(!body.name) return show("Add your name.");
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email)) return show("Check your email address.");

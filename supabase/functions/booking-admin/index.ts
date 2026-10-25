@@ -92,7 +92,7 @@ async function list() {
   const byName: Record<string, number> = {};
   (allFree ?? []).forEach((r: any) => { const k = norm(r.name); if (k) byName[k] = (byName[k] ?? 0) + 1; });
   // event passes (latest event first)
-  const { data: evRows } = await sb.from("event_registrations").select("id,event,name,email,phone,goal,pass_code,checked_in,checked_in_at,released_at,reminded_at,created_at").order("created_at");
+  const { data: evRows } = await sb.from("event_registrations").select("id,event,name,email,phone,goal,pass_code,checked_in,checked_in_at,released_at,reminded_at,created_at,ref,invited_by").order("created_at");
   const { data: capRow } = await sb.from("private_settings").select("value").eq("key", "event_capacity").maybeSingle();
   return {
     ok: true,

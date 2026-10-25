@@ -65,6 +65,11 @@ function bkStyles(){
   .bk-evbtn{flex:none;min-width:104px;padding:11px 14px;border-radius:11px;border:1.5px solid #c49a1c;background:transparent;color:#c49a1c;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
   .bk-evbtn.on{background:#4dc98a;border-color:#4dc98a;color:#05140b}
   .bk-evrow.in{border-color:rgba(77,201,138,.35)}
+  .bk-evby{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px}
+  .bk-evby span{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#777;margin-right:2px}
+  .bk-evby b{font-size:12.5px;font-weight:700;color:#ededed;background:#161616;border:1px solid #262626;border-radius:999px;padding:5px 10px}
+  .bk-evby b i{font-style:normal;color:#c49a1c;margin-left:4px}.bk-evby b.ns{color:#8a8a8a}
+  .bk-via{font-family:system-ui,sans-serif;letter-spacing:0;color:#c49a1c;font-weight:700;margin-left:6px}
   .bk-btn.red{border-color:rgba(217,80,58,.35);color:#e0705c}
   .bk-btn.on{background:#1f1f1f;border-color:#c49a1c;color:#c49a1c}
   .bk-card{background:#0f0f0f;border:1px solid #1c1c1c;border-radius:14px;padding:16px;margin-bottom:12px}
@@ -131,11 +136,15 @@ function bkEvRows(){
   const ev = all.length ? all[all.length-1].event : "";
   return all.filter(r=>r.event===ev);
 }
+const bkVia = r => r.ref ? r.ref.replace(/[-_]+/g," ").replace(/\b\w/g,c=>c.toUpperCase()) : (r.invited_by||"").trim();
 function bkEvent(d){
   const rows = bkEvRows();
   if(!rows.length) return `<div class="bk-empty">No passes yet. They show up here as people sign up at eugeneobo.com/events.</div>`;
   const live = rows.filter(r=>!r.released_at), inn = live.filter(r=>r.checked_in).length, freed = rows.length-live.length;
   return `<div class="bk-evhead"><b>${inn}</b> of ${live.length} arrived<span>${live.length} of ${d.event_capacity} passes taken${freed?` · ${freed} freed`:""}</span></div>
+    ${(()=>{ const by={}; live.forEach(r=>{ const k=bkVia(r)||"Not said"; by[k]=(by[k]||0)+1; });
+      const list=Object.entries(by).sort((a,b)=>(a[0]==="Not said")-(b[0]==="Not said")||b[1]-a[1]);
+      return `<div class="bk-evby"><span>Invited by</span>${list.map(([k,n])=>`<b class="${k==="Not said"?"ns":""}">${bkEsc(k)} <i>${n}</i></b>`).join("")}</div>`; })()}
     <input class="bk-in bk-evq" id="bk-evq" type="search" placeholder="Search name or pass code" value="${bkEsc(BK.evq||"")}" oninput="BK.evq=this.value;bkEvList()" autocomplete="off">
     <div id="bk-evlist">${bkEvListHTML()}</div>
     <div class="bk-card" style="margin-top:18px"><h4>How the emails go</h4>
@@ -149,7 +158,7 @@ function bkEvListHTML(){
   return rows.map(r=>{
     const wa = bkWa(r.phone);
     return `<div class="bk-row bk-evrow${r.released_at?" cx":""}${r.checked_in?" in":""}">
-      <div class="bk-top"><div><div class="bk-name" style="font-size:16px;margin:0">${bkEsc(r.name)}</div><div class="bk-code">${bkEsc(r.pass_code)}</div></div>
+      <div class="bk-top"><div><div class="bk-name" style="font-size:16px;margin:0">${bkEsc(r.name)}</div><div class="bk-code">${bkEsc(r.pass_code)}${bkVia(r)?` <span class="bk-via">via ${bkEsc(bkVia(r))}</span>`:""}</div></div>
         ${r.released_at?`<span class="bk-tag grey">Freed seat</span>`:`<button class="bk-evbtn${r.checked_in?" on":""}" onclick="bkCheckin('${r.id}',${!r.checked_in})">${r.checked_in?"✓ Arrived":"Arrived"}</button>`}</div>
       ${r.goal?`<div class="bk-note">"${bkEsc(r.goal)}"</div>`:""}
       <div class="bk-meta">${wa?`<a href="${wa}" target="_blank" rel="noopener">${bkEsc(r.phone)}</a>`:bkEsc(r.phone||"")}<span>${bkEsc(r.email)}</span></div>
