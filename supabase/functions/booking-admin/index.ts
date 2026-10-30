@@ -11,6 +11,8 @@
  *   save_settings {genie_whatsapp?, booking_window_days?, mentorship_window_days?}
  *   save_rule     {id, start_time, end_time, active}
  *   checkin       {id, value}             Door check-in for an event pass (true/false)
+ *   squad_create  {name, code, starts_on, weeks, event?}   New accountability squad
+ *   squad_toggle  {id, active}            Open/close a squad (closed = no new joins, no reminders)
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -94,7 +96,17 @@ async function list() {
   // event passes (latest event first)
   const { data: evRows } = await sb.from("event_registrations").select("id,event,name,email,phone,goal,pass_code,checked_in,checked_in_at,released_at,reminded_at,created_at,ref,invited_by").order("created_at");
   const { data: capRow } = await sb.from("private_settings").select("value").eq("key", "event_capacity").maybeSingle();
+  // squads with their members and check-ins
+  const [{ data: sqs }, { data: sqm }, { data: sqc }] = await Promise.all([
+    sb.from("squads").select("*").order("created_at", { ascending: false }),
+    sb.from("squad_members").select("id,squad_id,name,email,phone,goal,deadline,proof,first_step,started_at,started_note,created_at").order("created_at"),
+    sb.from("squad_checkins").select("member_id,squad_id,week,status,note"),
+  ]);
+  const squads = (sqs ?? []).map((q: any) => ({ ...q,
+    week: (() => { const d = Math.floor((Date.parse(new Date(Date.now() + 3600_000).toISOString().slice(0, 10)) - Date.parse(q.starts_on)) / 86400000); return d < 0 ? 0 : Math.floor(d / 7) + 1; })(),
+    members: (sqm ?? []).filter((m: any) => m.squad_id === q.id).map((m: any) => ({ ...m, checkins: Object.fromEntries((sqc ?? []).filter((c: any) => c.member_id === m.id).map((c: any) => [c.week, { status: c.status, note: c.note }])) })) }));
   return {
+    squads,
     ok: true,
     now: new Date().toISOString(),
     event_regs: evRows ?? [],
@@ -145,6 +157,21 @@ async function attend(p: P) {
 async function checkin(p: P) {
   const id = clean(p.id, 60), v = p.value === true;
   const { error } = await sb.from("event_registrations").update({ checked_in: v, checked_in_at: v ? new Date().toISOString() : null }).eq("id", id);
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+async function squadCreate(p: P) {
+  const name = clean(p.name, 60), code = clean(p.code, 20).toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  const starts = /^\d{4}-\d{2}-\d{2}$/.test(clean(p.starts_on, 10)) ? clean(p.starts_on, 10) : new Date(Date.now() + 3600_000).toISOString().slice(0, 10);
+  const weeks = Math.min(12, Math.max(1, Math.round(Number(p.weeks) || 4)));
+  if (name.length < 2) return { ok: false, error: "missing_name" };
+  if (code.length < 3) return { ok: false, error: "bad_code" };
+  const { data, error } = await sb.from("squads").insert({ name, code, starts_on: starts, weeks, event: clean(p.event, 20) || null }).select().single();
+  if (error) return { ok: false, error: String(error.code) === "23505" ? "code_taken" : error.message };
+  return { ok: true, squad: data };
+}
+async function squadToggle(p: P) {
+  const { error } = await sb.from("squads").update({ active: p.active === true }).eq("id", clean(p.id, 60));
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
@@ -213,7 +240,7 @@ async function addRule(p: P) {
 }
 
 const ACTIONS: Record<string, (p: P) => Promise<P>> = {
-  list, cancel, attend, checkin, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
+  list, cancel, attend, checkin, squad_create: squadCreate, squad_toggle: squadToggle, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
 };
 
 Deno.serve(async (req) => {

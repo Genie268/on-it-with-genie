@@ -65,6 +65,13 @@ function bkStyles(){
   .bk-evbtn{flex:none;min-width:104px;padding:11px 14px;border-radius:11px;border:1.5px solid #c49a1c;background:transparent;color:#c49a1c;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
   .bk-evbtn.on{background:#4dc98a;border-color:#4dc98a;color:#05140b}
   .bk-evrow.in{border-color:rgba(77,201,138,.35)}
+  .sq-off{opacity:.6}
+  .sq-stats{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 2px;font-size:12.5px;color:#8a8a8a}.sq-stats b{color:#ededed;font-size:16px;margin-right:3px}
+  .sq-mems{margin-top:12px;display:grid;gap:8px}
+  .sq-m{background:#080808;border:1px solid #1c1c1c;border-radius:12px;padding:12px}
+  .sq-m b{color:#ededed;font-size:14px}.sq-g{color:#d6d6d6;font-size:14px;margin-top:4px;line-height:1.4}
+  .sq-w{display:flex;gap:4px;margin-top:10px}.sq-w i{flex:1;height:22px;border-radius:6px;background:#161616;color:#666;font-style:normal;font-size:11px;font-weight:700;display:grid;place-items:center}
+  .sq-w i.done{background:#178A4A;color:#fff}.sq-w i.partly{background:#C98A0B;color:#fff}.sq-w i.missed{background:#D7401C;color:#fff}.sq-w i.now{outline:1.5px solid #c49a1c;outline-offset:-1.5px}
   .bk-evby{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px}
   .bk-evby span{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#777;margin-right:2px}
   .bk-evby b{font-size:12.5px;font-weight:700;color:#ededed;background:#161616;border:1px solid #262626;border-radius:999px;padding:5px 10px}
@@ -115,8 +122,8 @@ function bkRender(){
   const d = BK.data, now = Date.parse(d.now);
   const upcoming = d.bookings.filter(b=>b.status==="confirmed" && Date.parse(b.ends_at) > now);
   const optedIn = d.contacts.filter(x=>x.opted_in).length;
-  const tabs = [["calls","Calls"],["event","Event"],["mentorship","Mentorship"],["test","Comm test"],["lists","Waitlists & emails"],["hours","Hours & settings"]];
-  const body = { calls:bkCalls, event:bkEvent, mentorship:bkMentorship, test:bkTest, lists:bkLists, hours:bkHours }[BK.view](d, now);
+  const tabs = [["calls","Calls"],["event","Event"],["squads","Squads"],["mentorship","Mentorship"],["test","Comm test"],["lists","Waitlists & emails"],["hours","Hours & settings"]];
+  const body = { calls:bkCalls, event:bkEvent, squads:bkSquads, mentorship:bkMentorship, test:bkTest, lists:bkLists, hours:bkHours }[BK.view](d, now);
   c.innerHTML = `<div class="bk">
     <div class="bk-stats">
       <div class="bk-stat"><b>${upcoming.filter(b=>b.service==="free_call").length}</b><span>Clarity calls coming</span></div>
@@ -173,6 +180,51 @@ async function bkCheckin(id, value){
   if(head){ head.textContent = bkEvRows().filter(x=>!x.released_at && x.checked_in).length; }
   try{ await bkFetch("checkin",{ id, value }); }
   catch(e){ r.checked_in = before; bkEvList(); showToast("Couldn't save. Check your connection.","error"); }
+}
+
+/* ---------- Squads: groups who declare a goal together ---------- */
+const SQ_SITE = "https://eugeneobo.com";
+function bkSquads(d){
+  const sq = d.squads || [];
+  const today = new Date(Date.now()+3600000).toISOString().slice(0,10);
+  const next = (()=>{ const n = sq.length ? sq.length+1 : 1; return n; })();
+  const list = sq.map(q=>{
+    const link = `${SQ_SITE}/squad/${q.code}`, wk = Math.min(q.week, q.weeks);
+    const started = q.members.filter(m=>m.started_at).length;
+    const inWk = wk>=1 ? q.members.filter(m=>m.checkins[wk]).length : 0;
+    return `<div class="bk-card${q.active?"":" sq-off"}">
+      <div class="bk-top"><div><h4>${bkEsc(q.name)} <span class="bk-tag ${q.active?"free":"grey"}">${q.active?"Open":"Closed"}</span></h4>
+        <div class="bk-code">${bkEsc(q.code)} · starts ${bkEsc(q.starts_on)} · ${q.weeks} weeks${q.week>=1&&q.week<=q.weeks?` · now week ${q.week}`:q.week>q.weeks?" · finished":""}</div></div></div>
+      <div class="sq-stats"><span><b>${q.members.length}</b> declared</span><span><b>${started}</b> started</span>${wk>=1?`<span><b>${inWk}</b> checked in week ${wk}</span>`:""}</div>
+      <div class="bk-acts">
+        <a class="bk-btn gold" href="${link}?wall=1" target="_blank" rel="noopener">Open wall</a>
+        <button class="bk-btn" onclick="bkCopy('${link}','Join link copied')">Copy join link</button>
+        <button class="bk-btn" onclick="bkSquadToggle('${q.id}',${!q.active})">${q.active?"Close squad":"Reopen"}</button>
+      </div>
+      ${q.members.length ? `<div class="sq-mems">${q.members.map(m=>{ const wa = bkWa(m.phone); let wks=""; for(let w=1; w<=q.weeks; w++){ const c=m.checkins[w]; wks+=`<i class="${c?c.status:""}${w===q.week?" now":""}" title="Week ${w}${c&&c.note?": "+bkEsc(c.note):""}">${c?(c.status==="done"?"✓":c.status==="partly"?"½":"✕"):w}</i>`; }
+        return `<div class="sq-m"><div class="bk-top"><b>${bkEsc(m.name)}</b>${m.started_at?`<span class="bk-tag free">Started</span>`:""}</div>
+          <div class="sq-g">${bkEsc(m.goal)}</div>
+          <div class="bk-meta">${m.deadline?`<span>By ${bkEsc(m.deadline)}</span>`:""}${m.proof?`<span>Proof: ${bkEsc(m.proof)}</span>`:""}${wa?`<a href="${wa}" target="_blank" rel="noopener">${bkEsc(m.phone)}</a>`:""}<span>${bkEsc(m.email)}</span></div>
+          <div class="sq-w">${wks}</div></div>`; }).join("")}</div>` : `<p class="h" style="margin:10px 0 0">Nobody yet. Put the wall on screen and have them scan the code.</p>`}
+    </div>`;
+  }).join("");
+  return `${list || `<div class="bk-empty">No squads yet. Make one below for your next event.</div>`}
+    <div class="bk-card" style="margin-top:18px"><h4>New squad</h4>
+      <p class="h">People join at eugeneobo.com/squad/CODE, declare one goal, and check in every week. They get a reminder Friday 6pm. You get a summary Saturday 9am.</p>
+      <input class="bk-in" id="sq-name" placeholder="Name, e.g. Forward Squad 07" value="Forward Squad ${String(next+5).padStart(2,"0")}">
+      <input class="bk-in" id="sq-code" placeholder="Code, e.g. FWG07" value="FWG${String(next+5).padStart(2,"0")}" style="text-transform:uppercase;font-family:ui-monospace,Menlo,monospace">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="bk-in" id="sq-start" type="date" value="${today}" title="Week 1 starts"><input class="bk-in" id="sq-weeks" type="number" min="1" max="12" value="4" title="Weeks"></div>
+      <button class="bk-btn gold" onclick="bkSquadCreate(this)">Create squad</button></div>`;
+}
+async function bkSquadCreate(btn){
+  const v = id => (document.getElementById(id).value||"").trim();
+  btn.disabled = true;
+  try{ await bkFetch("squad_create",{ name:v("sq-name"), code:v("sq-code"), starts_on:v("sq-start"), weeks:+v("sq-weeks") }); showToast("Squad created","success"); await bkRefresh(); }
+  catch(e){ showToast(e.message==="code_taken"?"That code is taken":e.message==="bad_code"?"Code needs 3+ letters or numbers":"Couldn't create: "+e.message,"error"); btn.disabled=false; }
+}
+async function bkSquadToggle(id, active){
+  try{ await bkFetch("squad_toggle",{ id, active }); showToast(active?"Squad reopened":"Squad closed","success"); await bkRefresh(); }
+  catch(e){ showToast("Couldn't update","error"); }
 }
 
 /* ---------- Calls ---------- */

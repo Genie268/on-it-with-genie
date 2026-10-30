@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Squad · with Genie</title>
+<meta name="description" content="Declare your goal in front of your squad. Check in every week.">
+<meta name="theme-color" content="#EAE6DD">
+<meta property="og:title" content="Join the squad">
+<meta property="og:description" content="Declare your goal in front of your squad. Check in every week.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%230F0F10'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Arial' font-weight='800' font-size='17' fill='%23C8EF62'%3EG%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#EAE6DD;--cream:#E8E3DA;--surface:#FAF8F3;--ink:#0F0F10;--muted:#6C6C70;--line:#DCD6CA;
+  --red:#D7401C;--done:#178A4A;--part:#C98A0B;--miss:#D7401C;
+  --body:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --big:"Anton",Impact,"Arial Narrow Bold",sans-serif;
+  --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:var(--body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:disabled{cursor:not-allowed;opacity:.6}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px;border-radius:12px}
+p{margin:0}
+.wrap{max-width:640px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px 64px}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:16px;text-decoration:none}
+.mark{width:38px;height:38px;border-radius:50%;background:var(--ink);color:#C8EF62;display:grid;place-items:center;font-weight:800;font-size:16px}
+.brand b{font-size:16px;letter-spacing:-.02em}
+
+.hero{background:var(--cream);border-radius:28px;padding:22px;container-type:inline-size;overflow:hidden}
+.top{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;padding-bottom:10px;border-bottom:1.5px solid var(--ink)}
+.title{overflow-wrap:normal;padding-bottom:.04em;font-family:var(--big);font-weight:400;text-transform:uppercase;font-size:clamp(40px,15cqw,84px);line-height:.92;margin:14px 0 0;letter-spacing:0}
+.title em{font-style:normal;color:var(--red)}
+.lede{margin-top:12px;font-size:16px;color:#2A2A2C;max-width:44ch}
+.faces{display:flex;align-items:center;gap:10px;margin-top:16px}
+.faces .st{display:flex}
+.faces i{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:800;font-size:13px;color:#fff;border:2.5px solid var(--cream);margin-left:-8px}
+.faces i:first-child{margin-left:0}
+.faces span{font-size:14px;font-weight:600;color:var(--muted)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px;margin-top:12px}
+.card h2{font-size:20px;letter-spacing:-.03em;margin:0 0 4px;line-height:1.15}
+.card .sub{color:var(--muted);font-size:14px;margin-bottom:16px}
+.field{display:grid;gap:6px;margin-bottom:14px}
+.field label{font-size:14px;font-weight:700}
+.field label em{font-style:normal;font-weight:500;color:var(--muted)}
+.field input,.field textarea{border-radius:14px;border:1.5px solid var(--line);padding:0 14px;height:52px;font:inherit;font-size:16px;background:var(--bg);width:100%;color:var(--ink)}
+.field textarea{height:auto;min-height:84px;padding:13px 14px;resize:vertical}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--ink);background:#fff}
+.field.will input{font-weight:700;font-size:17px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
+.row2>*{min-width:0}
+.err{color:#B3261E;font-size:14px;font-weight:600;margin:-4px 0 12px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;padding:0 22px;border-radius:999px;font-weight:800;font-size:16px;background:var(--ink);color:#fff}
+.btn.red{background:var(--red)}
+.btn.line{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
+.link{font-weight:700;text-decoration:underline;text-underline-offset:3px;font-size:14px;color:var(--muted)}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid currentColor;border-right-color:transparent;animation:rot .7s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.note{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
+
+/* declaration ticket */
+.dec{background:var(--ink);color:#F4F2EC;border-radius:24px;padding:22px 22px 20px 30px;position:relative;overflow:hidden;margin-top:12px}
+.dec::before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--red)}
+.dec .k{padding-right:104px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(244,242,236,.55)}
+.dec .who{font-family:var(--big);text-transform:uppercase;font-size:clamp(30px,9vw,44px);line-height:1;margin:10px 0 6px}
+.dec .who em{font-style:normal;color:var(--red)}
+.dec .goal{font-size:20px;font-weight:800;line-height:1.3;letter-spacing:-.01em}
+.dec .meta{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:14px;color:rgba(244,242,236,.75)}
+.dec .meta b{color:#fff}
+.weeks{display:flex;gap:6px;margin-top:16px}
+.weeks span{flex:1;height:30px;border-radius:9px;background:rgba(255,255,255,.08);display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.5)}
+.weeks span.done{background:var(--done);color:#fff}.weeks span.partly{background:var(--part);color:#fff}.weeks span.missed{background:var(--miss);color:#fff}
+.weeks span.now{outline:2px solid rgba(255,255,255,.7);outline-offset:-2px}
+.stamp{position:absolute;right:16px;top:16px;font-family:var(--big);font-size:15px;letter-spacing:.06em;color:#C8EF62;border:2px solid #C8EF62;border-radius:8px;padding:2px 8px;transform:rotate(6deg)}
+
+/* check-in */
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.pick button{min-height:64px;border-radius:16px;border:1.5px solid var(--line);background:var(--bg);font-weight:800;font-size:15px;display:grid;place-items:center;gap:2px;padding:8px 4px}
+.pick button small{font-weight:500;font-size:11.5px;color:var(--muted)}
+.pick button.on.done{background:var(--done);border-color:var(--done);color:#fff}
+.pick button.on.partly{background:var(--part);border-color:var(--part);color:#fff}
+.pick button.on.missed{background:var(--miss);border-color:var(--miss);color:#fff}
+.pick button.on small{color:rgba(255,255,255,.85)}
+.got{display:flex;gap:12px;align-items:center;padding:14px;border-radius:16px;background:var(--bg)}
+.got i{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-style:normal;font-weight:800}
+
+/* squad list */
+.sq-h{display:flex;justify-content:space-between;align-items:baseline;margin:26px 4px 6px}
+.sq-h h3{margin:0;font-size:18px;letter-spacing:-.02em}
+.sq-h span{font-size:13px;color:var(--muted);font-weight:600}
+.mem{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-top:8px}
+.mem .n{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.mem .n b{font-size:16px}
+.mem .n small{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--done);font-weight:500;text-transform:uppercase}
+.mem .g{margin-top:4px;font-size:15px;line-height:1.4}
+.mem .d{font-size:13px;color:var(--muted);margin-top:4px}
+.mem .weeks span{background:var(--bg);color:var(--muted);height:24px}
+.mem .weeks span.done{background:var(--done);color:#fff}.mem .weeks span.partly{background:var(--part);color:#fff}.mem .weeks span.missed{background:var(--miss);color:#fff}
+.mem .weeks span.now{outline-color:var(--ink)}
+.mem.you{border-color:var(--ink)}
+
+/* wall (projector) */
+body.wall{background:var(--cream)}
+.wl{min-height:100vh;display:grid;grid-template-columns:minmax(300px,30%) 1fr;gap:3vw;padding:3.2vw}
+.wl-side{display:flex;flex-direction:column;gap:2vw}
+.wl-side .top{font-size:max(12px,.9vw)}
+.wl-side .title{font-size:clamp(48px,6.4vw,140px)}
+.wl-count{font-family:var(--big);font-size:clamp(56px,7vw,150px);line-height:.9}
+.wl-count small{display:block;font-family:var(--body);font-weight:700;font-size:max(14px,1.1vw);color:var(--muted);margin-top:.4vw}
+.wl-qr{background:#fff;border-radius:22px;padding:1.4vw;display:flex;gap:1.2vw;align-items:center;margin-top:auto}
+.wl-qr #qr{width:clamp(110px,10vw,220px);height:clamp(110px,10vw,220px);flex:none}
+.wl-qr #qr svg{width:100%;height:100%;display:block}
+.wl-qr b{display:block;font-size:max(15px,1.25vw);line-height:1.25}
+.wl-qr span{display:block;font-family:var(--mono);font-size:max(12px,.95vw);color:var(--muted);margin-top:.4vw;word-break:break-all}
+.wl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,max(300px,26vw)),1fr));gap:1.4vw;align-content:start}
+.wc{background:var(--ink);color:#F4F2EC;border-radius:22px;padding:1.6vw 1.6vw 1.4vw 2.1vw;position:relative;overflow:hidden;animation:pop .6s cubic-bezier(.2,.9,.3,1.3) both}
+.wc::before{content:"";position:absolute;left:0;top:0;bottom:0;width:.55vw;min-width:6px;background:var(--red)}
+.wc .who{font-family:var(--big);text-transform:uppercase;font-size:clamp(26px,2.4vw,52px);line-height:1}
+.wc .who em{font-style:normal;color:var(--red)}
+.wc .goal{font-weight:800;font-size:clamp(17px,1.45vw,32px);line-height:1.28;margin-top:.6vw}
+.wc .by{margin-top:.9vw;font-family:var(--mono);font-size:max(12px,.95vw);letter-spacing:.06em;color:rgba(244,242,236,.7);text-transform:uppercase}
+.wc .stamp{font-size:max(13px,1vw)}
+.wc .weeks{margin-top:1vw}
+.wc .weeks span{height:max(20px,1.6vw)}
+.wl-empty{border:2px dashed rgba(15,15,16,.25);border-radius:22px;display:grid;place-items:center;min-height:30vh;font-size:max(18px,1.6vw);font-weight:700;color:var(--muted);text-align:center;padding:2vw}
+@keyframes pop{from{opacity:0;transform:translateY(24px) scale(.94)}to{opacity:1;transform:none}}
+@media (max-width:900px){.wl{grid-template-columns:1fr}.wl-qr{margin-top:0}}
+@media (prefers-reduced-motion:reduce){.wc{animation:none}}
+</style>
+</head>
+<body>
+<div id="root"><div class="wrap"><p style="padding:40px 0;text-align:center;color:var(--muted)">Loading your squad…</p></div></div>
+<script>
+const API = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/squads-api";
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const firstName = n => String(n||"").trim().split(/\s+/)[0] || "";
+const COLORS = ["#D7401C","#0F0F10","#178A4A","#3B5BDB","#C98A0B","#7A4A2E","#8E44AD","#1E7F8C"];
+const color = s => COLORS[[...String(s)].reduce((a,c)=>a+c.charCodeAt(0),0) % COLORS.length];
+const initials = n => String(n||"?").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+const niceDate = iso => iso ? new Date(iso+"T12:00:00Z").toLocaleDateString("en-GB",{ weekday:"short", day:"numeric", month:"short", timeZone:"UTC" }) : "";
+const addDays = (iso, n) => new Date(Date.parse(iso+"T12:00:00Z") + n*86400000).toISOString().slice(0,10);
+const ERR = { missing_name:"Add your name.", bad_email:"Check your email address.", missing_goal:"Write the goal you're declaring.", closed:"This squad is closed.", not_found:"That squad doesn't exist. Check the code.", bad_token:"That link has expired. Use the link in your email.", over:"This squad has finished." };
+
+const parts = location.pathname.split("/").filter(Boolean);
+const qs = new URLSearchParams(location.search);
+const CODE = (parts[1] || qs.get("code") || "").toUpperCase().replace(/[^A-Z0-9-]/g,"");
+const WALL = qs.has("wall");
+const KEY = "squad_" + CODE;
+let ME = qs.get("me") || "";
+try{ if(ME) localStorage.setItem(KEY, ME); else ME = localStorage.getItem(KEY) || ""; }catch(_){}
+if(qs.get("me")){ qs.delete("me"); history.replaceState(null, "", location.pathname + (qs.toString()?"?"+qs:"")); }
+let D = null, editing = false, pick = "";
+
+async function load(){
+  if(!CODE) return codeScreen();
+  const r = await fetch(`${API}?code=${encodeURIComponent(CODE)}${ME?`&me=${ME}`:""}`).then(x=>x.json()).catch(()=>({ ok:false, error:"network" }));
+  if(!r.ok){ if(r.error==="not_found") return codeScreen("That squad code doesn't exist."); return fail(); }
+  if(ME && !r.me){ try{ localStorage.removeItem(KEY); }catch(_){} ME = ""; }
+  D = r; render();
+}
+function fail(){ $("#root").innerHTML = `<div class="wrap"><div class="card"><h2>Couldn't load the squad</h2><p class="sub">Check your connection and try again.</p><button class="btn" onclick="load()">Try again</button></div></div>`; }
+function render(){ if(WALL) wall(); else if(D.me && !editing) home(); else joinScreen(); fitTitles(); }
+/* shrink the big title until its longest word fits, whatever font has loaded */
+function fitTitles(){
+  document.querySelectorAll(".title").forEach(t=>{ t.style.fontSize=""; let f=parseFloat(getComputedStyle(t).fontSize), n=0;
+    while(t.scrollWidth > t.clientWidth + 1 && f > 24 && n++ < 60){ f -= 2; t.style.fontSize = f+"px"; } });
+}
+if(document.fonts) document.fonts.ready.then(()=>{ if(D) fitTitles(); });
+addEventListener("resize", ()=>{ if(D) fitTitles(); });
+
+const brand = `<a class="brand" href="/"><span class="mark">G</span><b>with Genie</b></a>`;
+function titleHTML(name){
+  const w = String(name).trim().split(/\s+/);
+  return w.length > 1 ? `${esc(w.slice(0,-1).join(" "))} <em>${esc(w[w.length-1])}</em>` : esc(name);
+}
+function faces(members){
+  const shown = members.slice(-6);
+  return `<div class="faces"><div class="st">${shown.map(m=>`<i style="background:${color(m.name)}">${esc(initials(m.name))}</i>`).join("")}</div>
+    <span>${members.length ? `${members.length} declared` : "Be the first to declare"}</span></div>`;
+}
+function weeksHTML(m, s){
+  let h = "";
+  for(let w=1; w<=s.weeks; w++){ const c = m.checkins && m.checkins[w]; h += `<span class="${c?c.status:""}${w===s.week?" now":""}" title="Week ${w}">${c ? (c.status==="done"?"✓":c.status==="partly"?"½":"✕") : "W"+w}</span>`; }
+  return `<div class="weeks">${h}</div>`;
+}
+
+/* ---------- no code ---------- */
+function codeScreen(msg){
+  $("#root").innerHTML = `<div class="wrap">${brand}<div class="card"><h2>Join a squad</h2><p class="sub">${esc(msg||"Type the code you were given.")}</p>
+    <form id="cf"><div class="field"><label for="c">Squad code</label><input id="c" autocomplete="off" autocapitalize="characters" placeholder="e.g. FWG06" style="text-transform:uppercase;font-family:var(--mono);letter-spacing:.08em"></div>
+    <button class="btn" type="submit">Open squad</button></form></div></div>`;
+  $("#cf").addEventListener("submit", e=>{ e.preventDefault(); const c = $("#c").value.trim().toUpperCase().replace(/[^A-Z0-9-]/g,""); if(c) location.href = "/squad/" + c; });
+}
+
+/* ---------- join + declare ---------- */
+function joinScreen(){
+  const s = D.squad, me = D.me || {};
+  let pre = {}; try{ const p = JSON.parse(localStorage.getItem("ev_fwg-06")||"null"); if(p && p.name) pre.name = p.name; }catch(_){}
+  const by = me.deadline || s.ends_on;
+  $("#root").innerHTML = `<div class="wrap">${brand}
+    <section class="hero">
+      <div class="top"><span>Squad · ${esc(s.code)}</span><span>${s.weeks} weeks</span></div>
+      <h1 class="title">${titleHTML(s.name)}</h1>
+      <p class="lede">Say what you'll get done, out loud, in front of people who will ask you about it every week.</p>
+      ${faces(D.members)}
+    </section>
+    <form class="card" id="jf" novalidate>
+      <h2>${editing ? "Change your declaration" : "Declare it"}</h2>
+      <p class="sub">${editing ? "Your squad sees the new version straight away." : "One goal. Be specific enough that anyone could check it."}</p>
+      <div class="field will"><label for="goal">I will…</label><input id="goal" maxlength="200" value="${esc(me.goal||"")}" placeholder="Post 30 TikToks" required></div>
+      <div class="row2">
+        <div class="field"><label for="dl">By</label><input id="dl" type="date" value="${esc(by)}" min="${esc(s.starts_on)}"></div>
+        <div class="field"><label for="proof">Proof</label><input id="proof" maxlength="200" value="${esc(me.proof||"")}" placeholder="How we'll know"></div>
+      </div>
+      <div class="field"><label for="fs">First step <em>(in the next 48 hours)</em></label><input id="fs" maxlength="200" value="${esc(me.first_step||"")}" placeholder="Write 5 video ideas tonight"></div>
+      ${editing ? "" : `<div class="field"><label for="nm">Your name</label><input id="nm" autocomplete="name" value="${esc(pre.name||"")}" required></div>
+      <div class="field"><label for="em">Email <em>(your squad link goes here)</em></label><input id="em" type="email" inputmode="email" autocomplete="email" required></div>
+      <div class="field"><label for="ph">WhatsApp <em>(optional)</em></label><input id="ph" type="tel" inputmode="tel" autocomplete="tel"></div>`}
+      <div class="err" id="jerr" hidden></div>
+      <button class="btn red" id="jb" type="submit">${editing ? "Save my declaration" : "Declare it"}</button>
+      ${editing ? `<p class="note"><a class="link" href="#" id="cancel">Cancel</a></p>` : `<p class="note">Your squad sees your name and goal. Your email and number stay private.</p>`}
+    </form>
+    ${D.members.length ? `<div class="sq-h"><h3>Already declared</h3><span>${D.members.length}</span></div>${D.members.slice().reverse().map(m=>memHTML(m, s)).join("")}` : ""}
+  </div>`;
+  if(editing) $("#cancel").addEventListener("click", e=>{ e.preventDefault(); editing=false; render(); });
+  $("#jf").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const v = id => ($("#"+id)?.value || "").trim(), err = $("#jerr"), b = $("#jb");
+    const body = { action:"join", code:s.code, goal:v("goal"), deadline:v("dl"), proof:v("proof"), first_step:v("fs"),
+      name: editing ? D.me.name : v("nm"), email: editing ? D.me.email : v("em"), phone: editing ? "" : v("ph") };
+    const show = m => { err.textContent = m; err.hidden = false; };
+    if(body.goal.length < 3) return show(ERR.missing_goal);
+    if(!body.name) return show(ERR.missing_name);
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email)) return show(ERR.bad_email);
+    err.hidden = true; b.disabled = true; const label = b.textContent; b.innerHTML = '<span class="spin"></span>';
+    const r = await fetch(API, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(x=>x.json()).catch(()=>({ ok:false }));
+    if(r.ok){ ME = r.token; try{ localStorage.setItem(KEY, ME); }catch(_){} editing = false; await load(); window.scrollTo(0,0); return; }
+    b.disabled = false; b.textContent = label; show(ERR[r.error] || "Something went wrong. Try again in a moment.");
+  });
+}
+
+/* ---------- member home ---------- */
+function home(){
+  const s = D.squad, me = D.members.find(m=>m.id===D.me.id) || {}, my = D.me;
+  const inWeek = s.week >= 1 && s.week <= s.weeks, before = s.week < 1, over = s.week > s.weeks;
+  const cur = me.checkins && me.checkins[Math.max(1, s.week)];
+  const closes = niceDate(addDays(s.starts_on, Math.max(1, s.week) * 7 - 1));
+  let action = "";
+  if(!my.started && !over){
+    action = `<div class="card" id="startc"><h2>Your first 5 minutes</h2><p class="sub">Do your first step right now, before you put the phone down. Then tell the squad what you did.</p>
+      <div class="field"><label for="sn">What did you just do?</label><input id="sn" maxlength="200" placeholder="${esc(my.first_step || "Wrote 5 video ideas")}"></div>
+      <div class="err" id="serr" hidden></div><button class="btn" id="sb">I started</button></div>`;
+  }
+  const today = new Date(Date.now()+3600000).toISOString().slice(0,10);
+  const dayIn = before ? -1 : Math.round((Date.parse(today) - Date.parse(s.starts_on)) / 86400000) % 7;
+  const opensOn = addDays(s.starts_on, Math.max(1, s.week) * 7 - 3);
+  if((inWeek || before) && my.started && !cur && dayIn < 4){
+    action = `<div class="card"><h2>You're in. Now go.</h2><p class="sub">Week ${Math.max(1, s.week)} check-in opens ${esc(niceDate(opensOn))} and closes ${esc(closes)}. You'll get an email when it's time.</p>
+      <div class="got"><i style="background:var(--ink)">${Math.max(1, s.week)}</i><div><b>Your first step</b><br><span style="color:var(--muted);font-size:14px">${esc(my.first_step || "Do the smallest thing that moves it today.")}</span></div></div></div>`;
+  } else if((inWeek || before) && my.started){
+    const wk = Math.max(1, s.week);
+    if(cur && !pick){
+      const lab = { done:["Done","✓",""], partly:["Partly","½",""], missed:["Missed","✕",""] }[cur.status];
+      action = `<div class="card"><h2>Week ${wk} check-in</h2><p class="sub">Closes ${esc(closes)}. You can change it until then.</p>
+        <div class="got"><i style="background:var(--${cur.status==="done"?"done":cur.status==="partly"?"part":"miss"})">${lab[1]}</i><div><b>${lab[0]}</b>${cur.note?`<br><span style="color:var(--muted);font-size:14px">"${esc(cur.note)}"</span>`:""}</div></div>
+        <p class="note"><a class="link" href="#" id="chg">Change my check-in</a></p></div>`;
+    } else {
+      action = `<div class="card"><h2>Week ${wk} check-in</h2><p class="sub">Closes ${esc(closes)}. Be honest. Your squad sees it.</p>
+        <div class="pick">${[["done","Done","did what I said"],["partly","Partly","moved, not enough"],["missed","Missed","didn't move"]].map(([k,l,sm])=>`<button type="button" data-k="${k}" class="${k}${pick===k?" on":""}">${l}<small>${sm}</small></button>`).join("")}</div>
+        <div class="field"><label for="cn">What happened? <em>(optional)</em></label><input id="cn" maxlength="300" value="${esc(cur&&cur.note||"")}" placeholder="Posted 6 videos this week"></div>
+        <div class="err" id="cerr" hidden></div><button class="btn" id="cb">Check in</button></div>`;
+    }
+  }
+  if(over) action = `<div class="card"><h2>The squad has finished</h2><p class="sub">${s.weeks} weeks done. If you want someone checking your proof every day, that's the 15-day challenge.</p><a class="btn" href="/app">See the challenge</a></div>`;
+  $("#root").innerHTML = `<div class="wrap">${brand}
+    <div class="dec">${my.started?`<span class="stamp">STARTED</span>`:""}
+      <div class="k">${esc(s.name)} · ${before ? "Starts " + esc(niceDate(s.starts_on)) : over ? "Finished" : "Week " + s.week + " of " + s.weeks}</div>
+      <div class="who">${esc(firstName(my.name))} <em>will</em></div>
+      <div class="goal">${esc(my.goal)}</div>
+      <div class="meta">${my.deadline?`<span>By <b>${esc(niceDate(my.deadline))}</b></span>`:""}${my.proof?`<span>Proof: <b>${esc(my.proof)}</b></span>`:""}</div>
+      ${weeksHTML(me, s)}
+    </div>
+    ${action}
+    <p class="note" style="margin-top:12px"><a class="link" href="#" id="edit">Change my declaration</a></p>
+    <div class="sq-h"><h3>Your squad</h3><span>${D.members.length} declared</span></div>
+    ${D.members.map(m=>memHTML(m, s, m.id===my.id)).join("")}
+  </div>`;
+  $("#edit").addEventListener("click", e=>{ e.preventDefault(); editing = true; render(); window.scrollTo(0,0); });
+  const chg = $("#chg"); if(chg) chg.addEventListener("click", e=>{ e.preventDefault(); pick = cur.status; home(); });
+  document.querySelectorAll(".pick button").forEach(b=>b.addEventListener("click", ()=>{ pick = b.dataset.k; document.querySelectorAll(".pick button").forEach(x=>x.classList.toggle("on", x===b)); }));
+  const sb = $("#sb"); if(sb) sb.addEventListener("click", async ()=>{
+    sb.disabled = true; sb.innerHTML = '<span class="spin"></span>';
+    const r = await post({ action:"start", token:ME, note:$("#sn").value.trim() });
+    if(r.ok) return load();
+    sb.disabled = false; sb.textContent = "I started"; const e = $("#serr"); e.textContent = ERR[r.error] || "Something went wrong. Try again."; e.hidden = false;
+  });
+  const cb = $("#cb"); if(cb) cb.addEventListener("click", async ()=>{
+    const e = $("#cerr");
+    if(!pick){ e.textContent = "Pick Done, Partly or Missed."; e.hidden = false; return; }
+    cb.disabled = true; cb.innerHTML = '<span class="spin"></span>';
+    const r = await post({ action:"checkin", token:ME, status:pick, note:$("#cn").value.trim() });
+    if(r.ok){ pick = ""; return load(); }
+    cb.disabled = false; cb.textContent = "Check in"; e.textContent = ERR[r.error] || "Something went wrong. Try again."; e.hidden = false;
+  });
+}
+function memHTML(m, s, you){
+  return `<div class="mem${you?" you":""}"><div class="n"><b>${esc(m.name)}${you?" (you)":""}</b>${m.started?`<small>Started</small>`:""}</div>
+    <div class="g">${esc(m.goal)}</div>${m.deadline?`<div class="d">By ${esc(niceDate(m.deadline))}${m.proof?` · Proof: ${esc(m.proof)}`:""}</div>`:""}
+    ${s.week>=1 ? weeksHTML(m, s) : ""}</div>`;
+}
+const post = body => fetch(API, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(x=>x.json()).catch(()=>({ ok:false }));
+
+/* ---------- projector wall ---------- */
+let seen = new Set(), qrDone = false;
+function wall(){
+  document.body.classList.add("wall");
+  const s = D.squad, url = `${location.host}/squad/${s.code}`;
+  if(!$(".wl")){
+    $("#root").innerHTML = `<div class="wl"><aside class="wl-side">
+        <div class="top"><span>Squad · ${esc(s.code)}</span><span>${s.weeks} weeks</span></div>
+        <h1 class="title">${titleHTML(s.name)}</h1>
+        <div class="wl-count" id="wcount"></div>
+        <div class="wl-qr"><div id="qr"></div><div><b>Scan to declare</b><span>${esc(url)}</span></div></div>
+      </aside><main class="wl-grid" id="wgrid"></main></div>`;
+  }
+  $("#wcount").innerHTML = `${D.members.length}<small>${D.members.length===1?"person has":"people have"} declared${D.members.filter(m=>m.started).length?` · ${D.members.filter(m=>m.started).length} started`:""}</small>`;
+  const grid = $("#wgrid");
+  if(!D.members.length){ grid.innerHTML = `<div class="wl-empty">Scan the code and declare your goal.<br>It shows up here.</div>`; }
+  else {
+    grid.innerHTML = D.members.map(m=>`<article class="wc" style="${seen.has(m.id)?"animation:none":""}">${m.started?`<span class="stamp">STARTED</span>`:""}
+      <div class="who">${esc(firstName(m.name))} <em>will</em></div><div class="goal">${esc(m.goal)}</div>
+      ${m.deadline?`<div class="by">By ${esc(niceDate(m.deadline))}</div>`:""}${s.week>=1?weeksHTML(m, s):""}</article>`).join("");
+    D.members.forEach(m=>seen.add(m.id));
+  }
+  if(!qrDone && window.qrcode){ qrDone = true; const q = qrcode(0, "M"); q.addData(`https://${url}`); q.make(); $("#qr").innerHTML = q.createSvgTag({ cellSize:8, margin:0, scalable:true }); }
+}
+if(WALL){
+  const sc = document.createElement("script"); sc.src = "/js/qrcode.js";
+  sc.onload = ()=>{ if(D) wall(); }; document.head.appendChild(sc);
+  setInterval(async ()=>{ const r = await fetch(`${API}?code=${encodeURIComponent(CODE)}`).then(x=>x.json()).catch(()=>null); if(r && r.ok){ D = r; wall(); } }, 4000);
+}
+load();
+</script>
+</body>
+</html>

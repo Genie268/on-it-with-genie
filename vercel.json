@@ -75,9 +75,35 @@
           "value": "no-cache, no-store, must-revalidate"
         }
       ]
+    },
+    {
+      "source": "/squad/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/squad.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
     }
   ],
   "rewrites": [
+    {
+      "source": "/squad",
+      "destination": "/squad.html"
+    },
+    {
+      "source": "/squad/(.*)",
+      "destination": "/squad.html"
+    },
     {
       "source": "/events",
       "destination": "/index.html"
