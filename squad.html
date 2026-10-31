@@ -54,7 +54,7 @@ p{margin:0}
 .field input,.field textarea{border-radius:14px;border:1.5px solid var(--line);padding:0 14px;height:52px;font:inherit;font-size:16px;background:var(--bg);width:100%;color:var(--ink)}
 .field textarea{height:auto;min-height:84px;padding:13px 14px;resize:vertical}
 .field input:focus,.field textarea:focus{outline:none;border-color:var(--ink);background:#fff}
-.field.will input{font-weight:700;font-size:17px}
+.field.will input,.field.will textarea{font-weight:700;font-size:17px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
 .row2>*{min-width:0}
 .err{color:#B3261E;font-size:14px;font-weight:600;margin:-4px 0 12px}
@@ -66,6 +66,13 @@ p{margin:0}
 @keyframes rot{to{transform:rotate(360deg)}}
 .note{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
 
+.price{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-top:14px;padding:10px 14px;border-radius:14px;background:var(--ink);color:#F4F2EC}
+.price s{font-family:var(--mono);font-size:14px;color:rgba(244,242,236,.55)}
+.price b{font-family:var(--big);font-weight:400;font-size:20px;letter-spacing:.02em;text-transform:uppercase;color:#C8EF62}
+.price span{flex-basis:100%;font-size:12.5px;color:rgba(244,242,236,.7)}
+.who{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.who button{min-height:52px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);font-weight:800;font-size:15px;padding:8px 10px;text-align:left}
+.who button.on{background:var(--ink);border-color:var(--ink);color:#fff}
 /* declaration ticket */
 .dec{background:var(--ink);color:#F4F2EC;border-radius:24px;padding:22px 22px 20px 30px;position:relative;overflow:hidden;margin-top:12px}
 .dec::before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--red)}
@@ -158,7 +165,7 @@ const KEY = "squad_" + CODE;
 let ME = qs.get("me") || "";
 try{ if(ME) localStorage.setItem(KEY, ME); else ME = localStorage.getItem(KEY) || ""; }catch(_){}
 if(qs.get("me")){ qs.delete("me"); history.replaceState(null, "", location.pathname + (qs.toString()?"?"+qs:"")); }
-let D = null, editing = false, pick = "";
+let D = null, editing = false, pick = "", SEL = null, NEWP = false;
 
 async function load(){
   if(!CODE) return codeScreen();
@@ -201,6 +208,15 @@ function codeScreen(msg){
   $("#cf").addEventListener("submit", e=>{ e.preventDefault(); const c = $("#c").value.trim().toUpperCase().replace(/[^A-Z0-9-]/g,""); if(c) location.href = "/squad/" + c; });
 }
 
+/* ---------- pick your name (registered attendees) ---------- */
+const showPicker = () => !editing && !SEL && !NEWP && (D.attendees||[]).length > 0;
+function pickHTML(){
+  if(!showPicker()) return "";
+  return `<div class="card"><h2>Find your name</h2><p class="sub">You registered for the session. Tap your name to start.</p>
+    <div class="who">${D.attendees.map(a=>`<button type="button" data-id="${esc(a.id)}">${esc(a.label)}</button>`).join("")}</div>
+    <button type="button" class="btn line" id="newp" style="margin-top:14px">I'm not on the list</button></div>`;
+}
+
 /* ---------- join + declare ---------- */
 function joinScreen(){
   const s = D.squad, me = D.me || {};
@@ -211,18 +227,20 @@ function joinScreen(){
       <div class="top"><span>Squad · ${esc(s.code)}</span><span>${s.weeks} weeks</span></div>
       <h1 class="title">${titleHTML(s.name)}</h1>
       <p class="lede">Say what you'll get done, out loud, in front of people who will ask you about it every week.</p>
+      ${s.price ? `<div class="price"><s>&#8358;${Number(s.price).toLocaleString("en-NG")}</s><b>Free for Session ${esc(s.code.replace(/\D/g,"").slice(-2) || "")}</b><span>${s.weeks} weeks of check-ins with your squad</span></div>` : ""}
       ${faces(D.members)}
     </section>
-    <form class="card" id="jf" novalidate>
-      <h2>${editing ? "Change your declaration" : "Declare it"}</h2>
-      <p class="sub">${editing ? "Your squad sees the new version straight away." : "One goal. Be specific enough that anyone could check it."}</p>
-      <div class="field will"><label for="goal">I will…</label><input id="goal" maxlength="200" value="${esc(me.goal||"")}" placeholder="Post 30 TikToks" required></div>
+    ${pickHTML()}
+    <form class="card" id="jf" novalidate ${showPicker() ? "hidden" : ""}>
+      <h2>${editing ? "Change your declaration" : SEL ? `${esc(SEL.first)}, declare it` : "Declare it"}</h2>
+      <p class="sub">${editing ? "Your squad sees the new version straight away." : SEL ? `${SEL.goal ? "This is the goal you registered with. Sharpen it if you need to." : "One goal. Be specific enough that anyone could check it."} <a class="link" href="#" id="notme">Not you?</a>` : "One goal. Be specific enough that anyone could check it."}</p>
+      <div class="field will"><label for="goal">I will…</label><textarea id="goal" maxlength="200" rows="2" placeholder="Post 30 TikToks" required style="min-height:64px">${esc(me.goal||(SEL&&SEL.goal)||"")}</textarea></div>
       <div class="row2">
         <div class="field"><label for="dl">By</label><input id="dl" type="date" value="${esc(by)}" min="${esc(s.starts_on)}"></div>
         <div class="field"><label for="proof">Proof</label><input id="proof" maxlength="200" value="${esc(me.proof||"")}" placeholder="How we'll know"></div>
       </div>
       <div class="field"><label for="fs">First step <em>(in the next 48 hours)</em></label><input id="fs" maxlength="200" value="${esc(me.first_step||"")}" placeholder="Write 5 video ideas tonight"></div>
-      ${editing ? "" : `<div class="field"><label for="nm">Your name</label><input id="nm" autocomplete="name" value="${esc(pre.name||"")}" required></div>
+      ${editing || SEL ? "" : `<div class="field"><label for="nm">Your name</label><input id="nm" autocomplete="name" value="${esc(pre.name||"")}" required></div>
       <div class="field"><label for="em">Email <em>(your squad link goes here)</em></label><input id="em" type="email" inputmode="email" autocomplete="email" required></div>
       <div class="field"><label for="ph">WhatsApp <em>(optional)</em></label><input id="ph" type="tel" inputmode="tel" autocomplete="tel"></div>`}
       <div class="err" id="jerr" hidden></div>
@@ -232,18 +250,27 @@ function joinScreen(){
     ${D.members.length ? `<div class="sq-h"><h3>Already declared</h3><span>${D.members.length}</span></div>${D.members.slice().reverse().map(m=>memHTML(m, s)).join("")}` : ""}
   </div>`;
   if(editing) $("#cancel").addEventListener("click", e=>{ e.preventDefault(); editing=false; render(); });
+  document.querySelectorAll(".who button[data-id]").forEach(b=>b.addEventListener("click", async ()=>{
+    b.classList.add("on"); b.disabled = true;
+    const r = await post({ action:"who", code:s.code, reg_id:b.dataset.id });
+    if(!r.ok){ b.classList.remove("on"); b.disabled = false; return; }
+    SEL = { id:b.dataset.id, first:r.first, goal:r.goal }; render(); window.scrollTo(0, $("#jf").offsetTop - 12);
+  }));
+  const np = $("#newp"); if(np) np.addEventListener("click", ()=>{ NEWP = true; render(); window.scrollTo(0, $("#jf").offsetTop - 12); });
+  const nm = $("#notme"); if(nm) nm.addEventListener("click", e=>{ e.preventDefault(); SEL = null; NEWP = false; render(); });
   $("#jf").addEventListener("submit", async e=>{
     e.preventDefault();
     const v = id => ($("#"+id)?.value || "").trim(), err = $("#jerr"), b = $("#jb");
     const body = { action:"join", code:s.code, goal:v("goal"), deadline:v("dl"), proof:v("proof"), first_step:v("fs"),
-      name: editing ? D.me.name : v("nm"), email: editing ? D.me.email : v("em"), phone: editing ? "" : v("ph") };
+      name: editing ? D.me.name : SEL ? "-" : v("nm"), email: editing ? D.me.email : SEL ? "x@x.xx" : v("em"), phone: editing || SEL ? "" : v("ph") };
+    if(SEL && !editing){ body.reg_id = SEL.id; }
     const show = m => { err.textContent = m; err.hidden = false; };
     if(body.goal.length < 3) return show(ERR.missing_goal);
     if(!body.name) return show(ERR.missing_name);
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email)) return show(ERR.bad_email);
     err.hidden = true; b.disabled = true; const label = b.textContent; b.innerHTML = '<span class="spin"></span>';
     const r = await fetch(API, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(x=>x.json()).catch(()=>({ ok:false }));
-    if(r.ok){ ME = r.token; try{ localStorage.setItem(KEY, ME); }catch(_){} editing = false; await load(); window.scrollTo(0,0); return; }
+    if(r.ok){ ME = r.token; try{ localStorage.setItem(KEY, ME); }catch(_){} editing = false; SEL = null; await load(); window.scrollTo(0,0); return; }
     b.disabled = false; b.textContent = label; show(ERR[r.error] || "Something went wrong. Try again in a moment.");
   });
 }

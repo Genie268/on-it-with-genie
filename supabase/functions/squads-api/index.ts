@@ -5,6 +5,8 @@
  *                                      With a valid token, also "me" (their own row).
  * POST {action:"join", code, name, email, phone, goal, deadline?, proof?, first_step?}
  *                                      Declare (same email again updates the declaration). Returns token.
+ * POST {action:"who", code, reg_id}   Registered attendee picks their name: returns first name + registered goal.
+ *      join also accepts reg_id instead of name/email/phone (taken from their event registration, and marks them Arrived).
  * POST {action:"start", token, note}   "First 5 minutes" proof at the event.
  * POST {action:"checkin", token, status:"done"|"partly"|"missed", note?}   This week's check-in.
  * POST {action:"cron", kind:"remind"|"summary"} + x-cron-key
@@ -25,6 +27,7 @@ const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: 
 const clean = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const validEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 const first = (n: string) => (n || "there").trim().split(" ")[0];
+const shortName = (n: string) => { const w = String(n || "").trim().split(/\s+/).map((x) => x[0].toUpperCase() + x.slice(1).toLowerCase()); return w.length > 1 ? `${w[0]} ${w[w.length - 1][0]}.` : (w[0] || ""); };
 const isToken = (t: string) => /^[0-9a-f-]{36}$/i.test(t);
 
 /* Lagos is UTC+1 all year */
@@ -72,21 +75,36 @@ async function view(code: string, me: string) {
     if (me && m.token === me) mine = { id: m.id, name: m.name, email: m.email, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at };
     return { id: m.id, name: m.name, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, started_note: m.started_note, checkins: byMember[m.id] ?? {} };
   });
-  return json({ ok: true, squad: { code: s.code, name: s.name, starts_on: s.starts_on, weeks: s.weeks, week, active: s.active, ends_on: new Date(Date.parse(s.starts_on) + s.weeks * 7 * DAY - DAY).toISOString().slice(0, 10) }, members, me: mine });
+  // registered attendees of the linked event who haven't joined yet (first name + initial only)
+  let attendees: { id: string; label: string }[] = [];
+  if (s.event) {
+    const joined = new Set((mem ?? []).map((m: any) => String(m.email).toLowerCase()));
+    const { data: regs } = await sb.from("event_registrations").select("id,name,email").eq("event", s.event).is("released_at", null).order("name");
+    attendees = (regs ?? []).filter((r: any) => !joined.has(String(r.email).toLowerCase())).map((r: any) => ({ id: r.id, label: shortName(r.name) }));
+  }
+  return json({ ok: true, attendees, squad: { code: s.code, name: s.name, starts_on: s.starts_on, weeks: s.weeks, week, active: s.active, price: s.price, ends_on: new Date(Date.parse(s.starts_on) + s.weeks * 7 * DAY - DAY).toISOString().slice(0, 10) }, members, me: mine });
 }
 
 async function join(p: Record<string, unknown>) {
   const s = await squadBy(clean(p.code, 20));
   if (!s) return json({ ok: false, error: "not_found" }, 404);
   if (!s.active) return json({ ok: false, error: "closed" }, 409);
-  const name = clean(p.name, 80), email = clean(p.email, 120).toLowerCase(), phone = clean(p.phone, 30);
+  let name = clean(p.name, 80), email = clean(p.email, 120).toLowerCase(), phone = clean(p.phone, 30);
+  const regId = isToken(clean(p.reg_id, 60)) ? clean(p.reg_id, 60) : "";
+  if (regId && s.event) {
+    const { data: r } = await sb.from("event_registrations").select("id,name,email,phone").eq("id", regId).eq("event", s.event).maybeSingle();
+    if (!r) return json({ ok: false, error: "not_found" }, 404);
+    name = r.name.trim().replace(/\s+/g, " "); email = String(r.email).toLowerCase(); phone = r.phone || "";
+    await sb.from("event_registrations").update({ checked_in: true, checked_in_at: new Date().toISOString() }).eq("id", r.id).eq("checked_in", false);
+  }
   const goal = clean(p.goal, 200), proof = clean(p.proof, 200), firstStep = clean(p.first_step, 200);
   const deadline = /^\d{4}-\d{2}-\d{2}$/.test(clean(p.deadline, 10)) ? clean(p.deadline, 10) : null;
   if (!name) return json({ ok: false, error: "missing_name" }, 400);
   if (!validEmail(email)) return json({ ok: false, error: "bad_email" }, 400);
   if (goal.length < 3) return json({ ok: false, error: "missing_goal" }, 400);
   const { data: had } = await sb.from("squad_members").select("id,token").eq("squad_id", s.id).eq("email", email).maybeSingle();
-  const row = { squad_id: s.id, name, email, phone: phone || null, goal, deadline, proof: proof || null, first_step: firstStep || null, updated_at: new Date().toISOString() };
+  const row: Record<string, unknown> = { squad_id: s.id, name, email, phone: phone || null, goal, deadline, proof: proof || null, first_step: firstStep || null, updated_at: new Date().toISOString() };
+  if (regId) row.reg_id = regId;
   let token: string;
   if (had) {
     await sb.from("squad_members").update(row).eq("id", had.id);
@@ -101,6 +119,15 @@ async function join(p: Record<string, unknown>) {
       `Hi ${first(name)},\n\nYou declared it in front of your squad:\n\n"${goal}"${deadline ? `\nBy ${niceDate(deadline)}` : ""}${proof ? `\nProof it's done: ${proof}` : ""}${firstStep ? `\nFirst step: ${firstStep}` : ""}\n\nYour squad page (keep this link, it's how you check in every week):\n${squadLink(s.code, token)}\n\nEvery Friday you'll get a nudge to check in. Your squad sees who did and who didn't.\n\nGenie`);
   }
   return json({ ok: true, token, updated: !!had });
+}
+
+async function who(p: Record<string, unknown>) {
+  const s = await squadBy(clean(p.code, 20));
+  const regId = clean(p.reg_id, 60);
+  if (!s || !s.event || !isToken(regId)) return json({ ok: false, error: "not_found" }, 404);
+  const { data: r } = await sb.from("event_registrations").select("name,goal").eq("id", regId).eq("event", s.event).maybeSingle();
+  if (!r) return json({ ok: false, error: "not_found" }, 404);
+  return json({ ok: true, first: first(shortName(r.name)), goal: r.goal || "" });
 }
 
 async function start(p: Record<string, unknown>) {
@@ -168,6 +195,7 @@ Deno.serve(async (req) => {
     const p = await req.json().catch(() => ({}));
     switch (p.action) {
       case "join": return await join(p);
+      case "who": return await who(p);
       case "start": return await start(p);
       case "checkin": return await checkin(p);
       case "cron": return await cron(req, String(p.kind));
