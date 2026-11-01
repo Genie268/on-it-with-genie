@@ -9,6 +9,12 @@
  *      join also accepts reg_id instead of name/email/phone (taken from their event registration, and marks them Arrived).
  * POST {action:"start", token, note}   "First 5 minutes" proof at the event.
  * POST {action:"checkin", token, status:"done"|"partly"|"missed", note?}   This week's check-in.
+ * POST {action:"upload_url", token, kind:"photo"|"post", type}   Signed upload URL into squad-media/<code>/<member>/...
+ * POST {action:"set_photo", token, path}            Profile photo.
+ * POST {action:"post", token, text?, photo_path?}   Progress post (text and/or photo). Max 12 a day.
+ * POST {action:"cheer", post_id}                    +1 on a post.
+ * POST {action:"unpost", token, post_id}            Hide your own post.
+ * POST {action:"show_video", token, show}           Show/hide your declaration video on your profile.
  * POST {action:"cron", kind:"remind"|"summary"} + x-cron-key
  *      remind  (Fri 6pm Lagos): members who haven't checked in this week
  *      summary (Sat 9am Lagos): Genie gets who checked in and who didn't
@@ -21,6 +27,8 @@ const RESEND = Deno.env.get("RESEND_API_KEY") ?? "";
 const FROM = "Genie <genie@eugeneobo.com>";
 const SITE = "https://eugeneobo.com";
 const DAY = 86400_000;
+const MEDIA = Deno.env.get("SUPABASE_URL") + "/storage/v1/object/public/squad-media/";
+const media = (p: string | null) => (p ? MEDIA + p : null);
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info, x-cron-key", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...CORS } });
@@ -64,16 +72,17 @@ async function view(code: string, me: string) {
   const s = await squadBy(code);
   if (!s) return json({ ok: false, error: "not_found" }, 404);
   const [{ data: mem }, { data: chk }] = await Promise.all([
-    sb.from("squad_members").select("id,created_at,name,goal,deadline,proof,first_step,started_at,started_note,token,email").eq("squad_id", s.id).order("created_at"),
+    sb.from("squad_members").select("id,created_at,name,goal,deadline,proof,first_step,started_at,started_note,token,email,photo_path,video_path,show_video").eq("squad_id", s.id).order("created_at"),
     sb.from("squad_checkins").select("member_id,week,status,note,created_at").eq("squad_id", s.id),
   ]);
+  const { data: posts } = await sb.from("squad_posts").select("id,created_at,member_id,text,photo_path,cheers").eq("squad_id", s.id).eq("hidden", false).order("created_at", { ascending: false }).limit(80);
   const byMember: Record<string, Record<number, { status: string; note: string | null }>> = {};
   (chk ?? []).forEach((c: any) => ((byMember[c.member_id] ??= {})[c.week] = { status: c.status, note: c.note }));
   const week = weekOf(s.starts_on);
   let mine = null;
   const members = (mem ?? []).map((m: any) => {
-    if (me && m.token === me) mine = { id: m.id, name: m.name, email: m.email, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at };
-    return { id: m.id, name: m.name, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, started_note: m.started_note, checkins: byMember[m.id] ?? {} };
+    if (me && m.token === me) mine = { id: m.id, name: m.name, email: m.email, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, photo: media(m.photo_path), has_video: !!m.video_path, show_video: m.show_video };
+    return { id: m.id, name: m.name, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, started_note: m.started_note, checkins: byMember[m.id] ?? {}, photo: media(m.photo_path), video: m.show_video ? media(m.video_path) : null };
   });
   // registered attendees of the linked event who haven't joined yet (first name + initial only)
   let attendees: { id: string; label: string }[] = [];
@@ -82,7 +91,7 @@ async function view(code: string, me: string) {
     const { data: regs } = await sb.from("event_registrations").select("id,name,email").eq("event", s.event).is("released_at", null).order("name");
     attendees = (regs ?? []).filter((r: any) => !joined.has(String(r.email).toLowerCase())).map((r: any) => ({ id: r.id, label: shortName(r.name) }));
   }
-  return json({ ok: true, attendees, squad: { code: s.code, name: s.name, starts_on: s.starts_on, weeks: s.weeks, week, active: s.active, price: s.price, ends_on: new Date(Date.parse(s.starts_on) + s.weeks * 7 * DAY - DAY).toISOString().slice(0, 10) }, members, me: mine });
+  return json({ ok: true, attendees, posts: (posts ?? []).map((x: any) => ({ id: x.id, at: x.created_at, member_id: x.member_id, text: x.text, photo: media(x.photo_path), cheers: x.cheers })), squad: { code: s.code, name: s.name, starts_on: s.starts_on, weeks: s.weeks, week, active: s.active, price: s.price, ends_on: new Date(Date.parse(s.starts_on) + s.weeks * 7 * DAY - DAY).toISOString().slice(0, 10) }, members, me: mine });
 }
 
 async function join(p: Record<string, unknown>) {
@@ -134,6 +143,63 @@ async function start(p: Record<string, unknown>) {
   const m = await memberBy(clean(p.token, 60));
   if (!m) return json({ ok: false, error: "bad_token" }, 401);
   await sb.from("squad_members").update({ started_at: new Date().toISOString(), started_note: clean(p.note, 200) || null }).eq("id", m.id);
+  return json({ ok: true });
+}
+
+async function uploadUrl(p: Record<string, unknown>) {
+  const m = await memberBy(clean(p.token, 60));
+  if (!m) return json({ ok: false, error: "bad_token" }, 401);
+  const kind = p.kind === "post" ? "post" : "photo";
+  const type = clean(p.type, 40);
+  const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
+  const path = `${m.squads.code}/${m.id}/${kind}-${Date.now()}.${ext}`;
+  const { data, error } = await sb.storage.from("squad-media").createSignedUploadUrl(path);
+  if (error || !data) { console.error(error); return json({ ok: false, error: "upload_failed" }, 500); }
+  return json({ ok: true, url: data.signedUrl, path });
+}
+const ownsPath = (m: any, path: string, kind: string) => path.startsWith(`${m.squads.code}/${m.id}/${kind}-`) && !path.includes("..");
+
+async function setPhoto(p: Record<string, unknown>) {
+  const m = await memberBy(clean(p.token, 60));
+  if (!m) return json({ ok: false, error: "bad_token" }, 401);
+  const path = clean(p.path, 200);
+  if (!ownsPath(m, path, "photo")) return json({ ok: false, error: "bad_path" }, 400);
+  await sb.from("squad_members").update({ photo_path: path }).eq("id", m.id);
+  return json({ ok: true, photo: media(path) });
+}
+
+async function post(p: Record<string, unknown>) {
+  const m = await memberBy(clean(p.token, 60));
+  if (!m) return json({ ok: false, error: "bad_token" }, 401);
+  const text = clean(p.text, 500), path = clean(p.photo_path, 200);
+  if (!text && !path) return json({ ok: false, error: "empty" }, 400);
+  if (path && !ownsPath(m, path, "post")) return json({ ok: false, error: "bad_path" }, 400);
+  const { count } = await sb.from("squad_posts").select("id", { count: "exact", head: true }).eq("member_id", m.id).gte("created_at", new Date(Date.now() - DAY).toISOString());
+  if ((count ?? 0) >= 12) return json({ ok: false, error: "too_many" }, 429);
+  const { data, error } = await sb.from("squad_posts").insert({ squad_id: m.squad_id, member_id: m.id, text: text || null, photo_path: path || null }).select("id").single();
+  if (error) { console.error(error); return json({ ok: false, error: "save_failed" }, 500); }
+  return json({ ok: true, id: data.id });
+}
+
+async function cheer(p: Record<string, unknown>) {
+  const id = clean(p.post_id, 60);
+  if (!isToken(id)) return json({ ok: false, error: "bad_post" }, 400);
+  const { data, error } = await sb.rpc("squad_cheer", { pid: id });
+  if (error) { console.error(error); return json({ ok: false, error: "failed" }, 500); }
+  return json({ ok: true, cheers: data });
+}
+
+async function unpost(p: Record<string, unknown>) {
+  const m = await memberBy(clean(p.token, 60));
+  if (!m) return json({ ok: false, error: "bad_token" }, 401);
+  await sb.from("squad_posts").update({ hidden: true }).eq("id", clean(p.post_id, 60)).eq("member_id", m.id);
+  return json({ ok: true });
+}
+
+async function showVideo(p: Record<string, unknown>) {
+  const m = await memberBy(clean(p.token, 60));
+  if (!m) return json({ ok: false, error: "bad_token" }, 401);
+  await sb.from("squad_members").update({ show_video: p.show === true }).eq("id", m.id);
   return json({ ok: true });
 }
 
@@ -198,6 +264,12 @@ Deno.serve(async (req) => {
       case "who": return await who(p);
       case "start": return await start(p);
       case "checkin": return await checkin(p);
+      case "upload_url": return await uploadUrl(p);
+      case "set_photo": return await setPhoto(p);
+      case "post": return await post(p);
+      case "cheer": return await cheer(p);
+      case "unpost": return await unpost(p);
+      case "show_video": return await showVideo(p);
       case "cron": return await cron(req, String(p.kind));
       default: return json({ ok: false, error: "unknown_action" }, 400);
     }

@@ -13,6 +13,8 @@
  *   checkin       {id, value}             Door check-in for an event pass (true/false)
  *   squad_create  {name, code, starts_on, weeks, event?}   New accountability squad
  *   squad_toggle  {id, active}            Open/close a squad (closed = no new joins, no reminders)
+ *   squad_media_url {member_id, kind:"video"|"photo", type}   Signed upload URL for a member's declaration video/photo
+ *   squad_set_media {member_id, kind, path}                   Attach the uploaded file (path "" removes it)
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -99,12 +101,12 @@ async function list() {
   // squads with their members and check-ins
   const [{ data: sqs }, { data: sqm }, { data: sqc }] = await Promise.all([
     sb.from("squads").select("*").order("created_at", { ascending: false }),
-    sb.from("squad_members").select("id,squad_id,name,email,phone,goal,deadline,proof,first_step,started_at,started_note,created_at").order("created_at"),
+    sb.from("squad_members").select("id,squad_id,name,email,phone,goal,deadline,proof,first_step,started_at,started_note,created_at,photo_path,video_path,show_video").order("created_at"),
     sb.from("squad_checkins").select("member_id,squad_id,week,status,note"),
   ]);
   const squads = (sqs ?? []).map((q: any) => ({ ...q,
     week: (() => { const d = Math.floor((Date.parse(new Date(Date.now() + 3600_000).toISOString().slice(0, 10)) - Date.parse(q.starts_on)) / 86400000); return d < 0 ? 0 : Math.floor(d / 7) + 1; })(),
-    members: (sqm ?? []).filter((m: any) => m.squad_id === q.id).map((m: any) => ({ ...m, checkins: Object.fromEntries((sqc ?? []).filter((c: any) => c.member_id === m.id).map((c: any) => [c.week, { status: c.status, note: c.note }])) })) }));
+    members: (sqm ?? []).filter((m: any) => m.squad_id === q.id).map((m: any) => ({ ...m, photo: m.photo_path ? URL_ + "/storage/v1/object/public/squad-media/" + m.photo_path : null, video: m.video_path ? URL_ + "/storage/v1/object/public/squad-media/" + m.video_path : null, checkins: Object.fromEntries((sqc ?? []).filter((c: any) => c.member_id === m.id).map((c: any) => [c.week, { status: c.status, note: c.note }])) })) }));
   return {
     squads,
     ok: true,
@@ -169,6 +171,23 @@ async function squadCreate(p: P) {
   const { data, error } = await sb.from("squads").insert({ name, code, starts_on: starts, weeks, event: clean(p.event, 20) || null }).select().single();
   if (error) return { ok: false, error: String(error.code) === "23505" ? "code_taken" : error.message };
   return { ok: true, squad: data };
+}
+const MEDIA = URL_ + "/storage/v1/object/public/squad-media/";
+async function squadMediaUrl(p: P) {
+  const id = clean(p.member_id, 60), kind = p.kind === "photo" ? "photo" : "video", type = clean(p.type, 40);
+  const { data: m } = await sb.from("squad_members").select("id, squads(code)").eq("id", id).maybeSingle();
+  if (!m) return { ok: false, error: "not_found" };
+  const ext = kind === "photo" ? (type === "image/png" ? "png" : "jpg") : (type === "video/quicktime" ? "mov" : type === "video/webm" ? "webm" : "mp4");
+  const path = `${(m as any).squads.code}/${m.id}/${kind === "photo" ? "photo" : "declaration"}-${Date.now()}.${ext}`;
+  const { data, error } = await sb.storage.from("squad-media").createSignedUploadUrl(path);
+  if (error || !data) return { ok: false, error: "upload_failed" };
+  return { ok: true, url: data.signedUrl, path };
+}
+async function squadSetMedia(p: P) {
+  const id = clean(p.member_id, 60), kind = p.kind === "photo" ? "photo_path" : "video_path", path = clean(p.path, 200);
+  if (path && (!path.includes(`/${id}/`) || path.includes(".."))) return { ok: false, error: "bad_path" };
+  const { error } = await sb.from("squad_members").update({ [kind]: path || null }).eq("id", id);
+  return error ? { ok: false, error: error.message } : { ok: true, url: path ? MEDIA + path : null };
 }
 async function squadToggle(p: P) {
   const { error } = await sb.from("squads").update({ active: p.active === true }).eq("id", clean(p.id, 60));
@@ -240,7 +259,7 @@ async function addRule(p: P) {
 }
 
 const ACTIONS: Record<string, (p: P) => Promise<P>> = {
-  list, cancel, attend, checkin, squad_create: squadCreate, squad_toggle: squadToggle, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
+  list, cancel, attend, checkin, squad_create: squadCreate, squad_toggle: squadToggle, squad_media_url: squadMediaUrl, squad_set_media: squadSetMedia, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
 };
 
 Deno.serve(async (req) => {

@@ -114,6 +114,40 @@ p{margin:0}
 .mem .weeks span.now{outline-color:var(--ink)}
 .mem.you{border-color:var(--ink)}
 
+/* avatars, profile, feed */
+a.btn{text-decoration:none;white-space:nowrap}
+.dec .who,.wc .who{display:flex;flex-wrap:wrap;column-gap:.28em}
+.av{display:inline-grid;place-items:center;border-radius:50%;overflow:hidden;color:#fff;font-weight:800;flex:none}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+a.mem{display:block;text-decoration:none;color:inherit}
+.mem .nm{display:flex;align-items:center;gap:10px;min-width:0}
+.mem .n small.vtag{color:var(--red)}
+.dec-av{display:inline-flex;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer}
+.dec-av i{font-style:normal;font-size:12px;font-weight:700;color:rgba(244,242,236,.75);border:1px solid rgba(244,242,236,.3);border-radius:999px;padding:4px 10px}
+.row-links{display:flex;justify-content:center;gap:22px;margin-top:14px}
+.btn.sm{min-height:44px;width:auto;padding:0 18px;font-size:14px}
+.vcard{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.vcard b{display:block;font-size:15px}.vcard span{font-size:13px;color:var(--muted)}
+.pf-row{display:flex;align-items:center;gap:10px}.pf-row #pb{margin-left:auto}
+.pf-prev{display:flex;align-items:center;gap:8px}.pf-prev img{width:44px;height:44px;border-radius:10px;object-fit:cover}
+.pst{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:14px 16px;margin-top:8px}
+.pst .h{display:flex;gap:10px;align-items:center}.pst .h a{text-decoration:none;color:inherit}
+.pst .h b{display:block;font-size:15px;line-height:1.2}.pst .h small{font-size:12px;color:var(--muted)}
+.pst p{margin-top:10px;font-size:15px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.pst .ph{display:block;width:100%;max-height:440px;object-fit:cover;border-radius:14px;margin-top:10px}
+.pst-a{display:flex;align-items:center;gap:14px;margin-top:10px}
+.cheer{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);font-weight:800;font-size:13px;background:var(--bg)}
+.cheer span:empty{display:none}.cheer.on{background:var(--red);border-color:var(--red);color:#fff}
+.empty-f{border:1.5px dashed var(--line);border-radius:20px;padding:18px;text-align:center;color:var(--muted);font-size:14px;margin-top:8px}
+.back{display:inline-block;margin:0 0 8px;font-weight:700;font-size:14px;color:var(--muted);text-decoration:none}
+.vid{border-radius:24px;overflow:hidden;background:#000;margin-top:4px}.vid video{display:block;width:100%;max-height:72vh;background:#000}
+.prof-h{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.share{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.share .btn{min-height:50px;font-size:14.5px;padding:0 12px}
+.cta{margin-top:24px;background:var(--ink);color:#F4F2EC;border-radius:24px;padding:20px}
+.cta small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--red)}
+.cta b{display:block;font-family:var(--big);font-weight:400;font-size:28px;margin:6px 0 4px}.cta p{color:rgba(244,242,236,.75);font-size:14px;margin-bottom:14px}
+.wc-h{display:flex;align-items:center;gap:1vw}
+
 /* wall (projector) */
 body.wall{background:var(--cream)}
 .wl{min-height:100vh;display:grid;grid-template-columns:minmax(300px,30%) 1fr;gap:3vw;padding:3.2vw}
@@ -161,10 +195,13 @@ const parts = location.pathname.split("/").filter(Boolean);
 const qs = new URLSearchParams(location.search);
 const CODE = (parts[1] || qs.get("code") || "").toUpperCase().replace(/[^A-Z0-9-]/g,"");
 const WALL = qs.has("wall");
+const PID = parts[2]==="m" ? (parts[3]||"").replace(/[^0-9a-f-]/gi,"") : "";
 const KEY = "squad_" + CODE;
 let ME = qs.get("me") || "";
 try{ if(ME) localStorage.setItem(KEY, ME); else ME = localStorage.getItem(KEY) || ""; }catch(_){}
 if(qs.get("me")){ qs.delete("me"); history.replaceState(null, "", location.pathname + (qs.toString()?"?"+qs:"")); }
+const SQ = () => `/squad/${CODE}`;
+const profLink = id => `/squad/${CODE}/m/${id}`;
 let D = null, editing = false, pick = "", SEL = null, NEWP = false;
 
 async function load(){
@@ -175,7 +212,7 @@ async function load(){
   D = r; render();
 }
 function fail(){ $("#root").innerHTML = `<div class="wrap"><div class="card"><h2>Couldn't load the squad</h2><p class="sub">Check your connection and try again.</p><button class="btn" onclick="load()">Try again</button></div></div>`; }
-function render(){ if(WALL) wall(); else if(D.me && !editing) home(); else joinScreen(); fitTitles(); }
+function render(){ if(WALL) wall(); else if(PID) profile(); else if(D.me && !editing) home(); else joinScreen(); fitTitles(); wireFeed(); }
 /* shrink the big title until its longest word fits, whatever font has loaded */
 function fitTitles(){
   document.querySelectorAll(".title").forEach(t=>{ t.style.fontSize=""; let f=parseFloat(getComputedStyle(t).fontSize), n=0;
@@ -193,6 +230,53 @@ function faces(members){
   const shown = members.slice(-6);
   return `<div class="faces"><div class="st">${shown.map(m=>`<i style="background:${color(m.name)}">${esc(initials(m.name))}</i>`).join("")}</div>
     <span>${members.length ? `${members.length} declared` : "Be the first to declare"}</span></div>`;
+}
+function av(m, size){
+  const sz = size || 40;
+  return `<span class="av" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.36)}px;background:${m.photo?"#ddd":color(m.name)}">${m.photo?`<img src="${esc(m.photo)}" alt="" loading="lazy">`:esc(initials(m.name))}</span>`;
+}
+function ago(iso){
+  const s = (Date.now() - Date.parse(iso)) / 1000;
+  if(s < 60) return "just now"; if(s < 3600) return Math.floor(s/60) + "m ago"; if(s < 86400) return Math.floor(s/3600) + "h ago";
+  if(s < 7*86400) return Math.floor(s/86400) + "d ago"; return new Date(iso).toLocaleDateString("en-GB",{ day:"numeric", month:"short" });
+}
+let CHEERED = {}; try{ CHEERED = JSON.parse(localStorage.getItem("squad_cheers")||"{}"); }catch(_){}
+function feedHTML(posts, empty){
+  if(!posts.length) return empty ? `<div class="empty-f">${empty}</div>` : "";
+  const byId = Object.fromEntries(D.members.map(m=>[m.id,m]));
+  return posts.map(x=>{ const m = byId[x.member_id] || { name:"Member" }; const mine = D.me && x.member_id===D.me.id;
+    return `<article class="pst"><div class="h"><a href="${profLink(x.member_id)}">${av(m, 38)}</a><div><a href="${profLink(x.member_id)}"><b>${esc(m.name)}</b></a><small>${esc(ago(x.at))}</small></div></div>
+      ${x.text?`<p>${esc(x.text)}</p>`:""}${x.photo?`<img class="ph" src="${esc(x.photo)}" alt="" loading="lazy">`:""}
+      <div class="pst-a"><button type="button" class="cheer${CHEERED[x.id]?" on":""}" data-id="${esc(x.id)}">Keep going<span>${x.cheers||""}</span></button>${mine?`<button type="button" class="unpost link" data-id="${esc(x.id)}">Remove</button>`:""}</div></article>`; }).join("");
+}
+function wireFeed(){
+  document.querySelectorAll(".cheer").forEach(b=>b.addEventListener("click", async ()=>{
+    const id = b.dataset.id; if(CHEERED[id]) return;
+    CHEERED[id] = 1; try{ localStorage.setItem("squad_cheers", JSON.stringify(CHEERED)); }catch(_){}
+    b.classList.add("on"); const n = b.querySelector("span"); n.textContent = (+n.textContent||0) + 1;
+    post({ action:"cheer", post_id:id });
+  }));
+  document.querySelectorAll(".unpost").forEach(b=>b.addEventListener("click", async ()=>{
+    if(!confirm("Remove this update?")) return;
+    await post({ action:"unpost", token:ME, post_id:b.dataset.id }); load();
+  }));
+}
+/* shrink photos on the phone before upload: max 1280px JPEG */
+async function shrink(file){
+  try{
+    const img = await createImageBitmap(file); const k = Math.min(1, 1280/Math.max(img.width, img.height));
+    const c = document.createElement("canvas"); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise(r=>c.toBlob(b=>r(b||file), "image/jpeg", .85));
+  }catch(_){ return file; }
+}
+async function uploadImage(file, kind){
+  const blob = await shrink(file), type = blob.type || "image/jpeg";
+  const u = await post({ action:"upload_url", token:ME, kind, type });
+  if(!u.ok) throw new Error(u.error||"upload");
+  const r = await fetch(u.url, { method:"PUT", headers:{ "content-type":type, "x-upsert":"true" }, body:blob });
+  if(!r.ok) throw new Error("upload " + r.status);
+  return u.path;
 }
 function weeksHTML(m, s){
   let h = "";
@@ -248,6 +332,7 @@ function joinScreen(){
       ${editing ? `<p class="note"><a class="link" href="#" id="cancel">Cancel</a></p>` : `<p class="note">Your squad sees your name and goal. Your email and number stay private.</p>`}
     </form>
     ${D.members.length ? `<div class="sq-h"><h3>Already declared</h3><span>${D.members.length}</span></div>${D.members.slice().reverse().map(m=>memHTML(m, s)).join("")}` : ""}
+    ${(D.posts||[]).length ? `<div class="sq-h"><h3>Squad updates</h3><span>${D.posts.length}</span></div>${feedHTML(D.posts.slice(0,20))}` : ""}
   </div>`;
   if(editing) $("#cancel").addEventListener("click", e=>{ e.preventDefault(); editing=false; render(); });
   document.querySelectorAll(".who button[data-id]").forEach(b=>b.addEventListener("click", async ()=>{
@@ -310,17 +395,46 @@ function home(){
   if(over) action = `<div class="card"><h2>The squad has finished</h2><p class="sub">${s.weeks} weeks done. If you want someone checking your proof every day, that's the 15-day challenge.</p><a class="btn" href="/app">See the challenge</a></div>`;
   $("#root").innerHTML = `<div class="wrap">${brand}
     <div class="dec">${my.started?`<span class="stamp">STARTED</span>`:""}
+      <label class="dec-av" title="Change photo">${av({ name:my.name, photo:my.photo }, 56)}<input type="file" accept="image/*" hidden id="ph-in"><i>${my.photo?"Change":"Add photo"}</i></label>
       <div class="k">${esc(s.name)} · ${before ? "Starts " + esc(niceDate(s.starts_on)) : over ? "Finished" : "Week " + s.week + " of " + s.weeks}</div>
       <div class="who">${esc(firstName(my.name))} <em>will</em></div>
       <div class="goal">${esc(my.goal)}</div>
       <div class="meta">${my.deadline?`<span>By <b>${esc(niceDate(my.deadline))}</b></span>`:""}${my.proof?`<span>Proof: <b>${esc(my.proof)}</b></span>`:""}</div>
       ${weeksHTML(me, s)}
     </div>
+    <div class="err" id="pherr" hidden style="margin-top:10px"></div>
     ${action}
-    <p class="note" style="margin-top:12px"><a class="link" href="#" id="edit">Change my declaration</a></p>
+    <div class="row-links"><a class="link" href="${profLink(my.id)}">View my profile</a><a class="link" href="#" id="edit">Change my declaration</a></div>
+    ${my.has_video ? `<div class="card vcard"><div><b>Your declaration video</b><span>${my.show_video ? "Showing on your profile" : "Hidden from your profile"}</span></div><button type="button" class="btn line sm" id="vtog">${my.show_video ? "Hide it" : "Show it"}</button></div>` : ""}
+    ${over ? "" : `<form class="card" id="pf"><h2>Post progress</h2><p class="sub">What did you do towards it? A line or a photo. Your squad sees it.</p>
+      <div class="field"><textarea id="pt" maxlength="500" rows="3" placeholder="Wrote 2 pages today"></textarea></div>
+      <div class="pf-row"><label class="btn line sm" id="pa">Add photo<input type="file" accept="image/*" hidden id="pi"></label><span class="pf-prev" id="pp"></span><button class="btn sm" id="pb" type="submit">Post</button></div>
+      <div class="err" id="perr" hidden style="margin:10px 0 0"></div></form>`}
+    <div class="sq-h"><h3>Squad updates</h3><span>${(D.posts||[]).length || ""}</span></div>
+    ${feedHTML((D.posts||[]).slice(0,30), "No updates yet. Post the first one.")}
     <div class="sq-h"><h3>Your squad</h3><span>${D.members.length} declared</span></div>
     ${D.members.map(m=>memHTML(m, s, m.id===my.id)).join("")}
   </div>`;
+  const phin = $("#ph-in"); phin.addEventListener("change", async ()=>{
+    const f = phin.files[0]; if(!f) return; const e = $("#pherr"); e.hidden = true;
+    const lab = $(".dec-av i"); lab.textContent = "Uploading…";
+    try{ const path = await uploadImage(f, "photo"); const r = await post({ action:"set_photo", token:ME, path }); if(!r.ok) throw new Error(r.error); load(); }
+    catch(err){ lab.textContent = "Try again"; e.textContent = "Couldn't upload that photo. Check your connection and try again."; e.hidden = false; }
+  });
+  const vt = $("#vtog"); if(vt) vt.addEventListener("click", async ()=>{ vt.disabled = true; await post({ action:"show_video", token:ME, show:!my.show_video }); load(); });
+  let pfile = null; const pi = $("#pi");
+  if(pi) pi.addEventListener("change", ()=>{ pfile = pi.files[0] || null; $("#pp").innerHTML = pfile ? `<img src="${URL.createObjectURL(pfile)}" alt=""><button type="button" class="link" id="px">Remove</button>` : ""; const px = $("#px"); if(px) px.addEventListener("click", ()=>{ pfile = null; pi.value = ""; $("#pp").innerHTML = ""; }); });
+  const pf = $("#pf"); if(pf) pf.addEventListener("submit", async ev=>{
+    ev.preventDefault(); const t = $("#pt").value.trim(), e = $("#perr"), b = $("#pb");
+    if(!t && !pfile){ e.textContent = "Write something or add a photo."; e.hidden = false; return; }
+    e.hidden = true; b.disabled = true; b.innerHTML = '<span class="spin"></span>';
+    try{
+      const photo_path = pfile ? await uploadImage(pfile, "post") : "";
+      const r = await post({ action:"post", token:ME, text:t, photo_path });
+      if(!r.ok) throw new Error(r.error==="too_many" ? "That's a lot of posts for one day. Try again tomorrow." : "Couldn't post. Try again.");
+      load();
+    }catch(err){ b.disabled = false; b.textContent = "Post"; e.textContent = err.message.startsWith("upload") ? "Couldn't upload the photo. Try again." : err.message; e.hidden = false; }
+  });
   $("#edit").addEventListener("click", e=>{ e.preventDefault(); editing = true; render(); window.scrollTo(0,0); });
   const chg = $("#chg"); if(chg) chg.addEventListener("click", e=>{ e.preventDefault(); pick = cur.status; home(); });
   document.querySelectorAll(".pick button").forEach(b=>b.addEventListener("click", ()=>{ pick = b.dataset.k; document.querySelectorAll(".pick button").forEach(x=>x.classList.toggle("on", x===b)); }));
@@ -340,10 +454,38 @@ function home(){
   });
 }
 function memHTML(m, s, you){
-  return `<div class="mem${you?" you":""}"><div class="n"><b>${esc(m.name)}${you?" (you)":""}</b>${m.started?`<small>Started</small>`:""}</div>
+  return `<a class="mem${you?" you":""}" href="${profLink(m.id)}"><div class="n"><span class="nm">${av(m, 36)}<b>${esc(m.name)}${you?" (you)":""}</b></span>${m.video?`<small class="vtag">Video</small>`:""}${m.started?`<small>Started</small>`:""}</div>
     <div class="g">${esc(m.goal)}</div>${m.deadline?`<div class="d">By ${esc(niceDate(m.deadline))}${m.proof?` · Proof: ${esc(m.proof)}`:""}</div>`:""}
-    ${s.week>=1 ? weeksHTML(m, s) : ""}</div>`;
+    ${s.week>=1 ? weeksHTML(m, s) : ""}</a>`;
 }
+/* ---------- public profile ---------- */
+function profile(){
+  const s = D.squad, m = D.members.find(x=>x.id===PID);
+  if(!m){ $("#root").innerHTML = `<div class="wrap">${brand}<div class="card"><h2>Profile not found</h2><p class="sub">This person may have left the squad.</p><a class="btn" href="${SQ()}">See the squad</a></div></div>`; return; }
+  const mine = D.me && D.me.id === m.id;
+  const url = location.origin + profLink(m.id);
+  const shareText = `${firstName(m.name)} declared: "${m.goal}"${m.deadline?` by ${niceDate(m.deadline)}`:""}. Hold them to it.`;
+  const posts = (D.posts||[]).filter(x=>x.member_id===m.id);
+  const ref = firstName(m.name).toLowerCase().replace(/[^a-z]/g,"");
+  $("#root").innerHTML = `<div class="wrap">${brand}
+    <a class="back" href="${SQ()}">&larr; ${esc(s.name)}</a>
+    ${m.video ? `<div class="vid"><video src="${esc(m.video)}" controls playsinline preload="metadata"></video></div>` : ""}
+    <div class="dec prof">${m.started?`<span class="stamp">STARTED</span>`:""}
+      <div class="prof-h">${av(m, 64)}<div class="k" style="padding-right:0">${esc(s.name)}</div></div>
+      <div class="who">${esc(firstName(m.name))} <em>will</em></div>
+      <div class="goal">${esc(m.goal)}</div>
+      <div class="meta">${m.deadline?`<span>By <b>${esc(niceDate(m.deadline))}</b></span>`:""}${m.proof?`<span>Proof: <b>${esc(m.proof)}</b></span>`:""}</div>
+      ${s.week>=1 ? weeksHTML(m, s) : ""}
+    </div>
+    <div class="share"><a class="btn red" href="https://wa.me/?text=${encodeURIComponent(shareText + " " + url)}" target="_blank" rel="noopener">Share on WhatsApp</a><button type="button" class="btn line" id="cp">Copy link</button></div>
+    ${mine ? `<p class="note"><a class="link" href="${SQ()}">Go to my squad page</a> to post progress or check in.</p>` : ""}
+    <div class="sq-h"><h3>Progress</h3><span>${posts.length || ""}</span></div>
+    ${feedHTML(posts, mine ? "Nothing yet. Post your first update from your squad page." : `${esc(firstName(m.name))} hasn't posted an update yet.`)}
+    ${D.me ? "" : `<div class="cta"><small>Forward with Genie · Session 07</small><b>SAT 28 NOV · ABUJA</b><p>${esc(firstName(m.name))} is in. Get your own free pass and declare yours in the room.</p><a class="btn red" href="/events?ref=${esc(ref)}">Get your free pass</a></div>`}
+  </div>`;
+  $("#cp").addEventListener("click", ()=>{ (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(()=>{ $("#cp").textContent = "Copied"; }).catch(()=>prompt("Copy this link:", url)); });
+}
+
 const post = body => fetch(API, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(x=>x.json()).catch(()=>({ ok:false }));
 
 /* ---------- projector wall ---------- */
@@ -364,7 +506,7 @@ function wall(){
   if(!D.members.length){ grid.innerHTML = `<div class="wl-empty">Scan the code and declare your goal.<br>It shows up here.</div>`; }
   else {
     grid.innerHTML = D.members.map(m=>`<article class="wc" style="${seen.has(m.id)?"animation:none":""}">${m.started?`<span class="stamp">STARTED</span>`:""}
-      <div class="who">${esc(firstName(m.name))} <em>will</em></div><div class="goal">${esc(m.goal)}</div>
+      <div class="wc-h">${m.photo?av(m, 56):""}<div class="who">${esc(firstName(m.name))} <em>will</em></div></div><div class="goal">${esc(m.goal)}</div>
       ${m.deadline?`<div class="by">By ${esc(niceDate(m.deadline))}</div>`:""}${s.week>=1?weeksHTML(m, s):""}</article>`).join("");
     D.members.forEach(m=>seen.add(m.id));
   }

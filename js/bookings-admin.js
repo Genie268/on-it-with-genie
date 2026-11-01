@@ -70,6 +70,10 @@ function bkStyles(){
   .sq-mems{margin-top:12px;display:grid;gap:8px}
   .sq-m{background:#080808;border:1px solid #1c1c1c;border-radius:12px;padding:12px}
   .sq-m b{color:#ededed;font-size:14px}.sq-g{color:#d6d6d6;font-size:14px;margin-top:4px;line-height:1.4}
+  .sq-who{display:flex;align-items:center;gap:8px}.sq-who img,.sq-who i{width:28px;height:28px;border-radius:50%;object-fit:cover;flex:none}.sq-who i{display:grid;place-items:center;background:#222;color:#c49a1c;font-style:normal;font-weight:800;font-size:12px}
+  .sq-media video{width:100%;max-height:260px;border-radius:10px;background:#000;margin-top:10px}
+  .sq-media label{cursor:pointer}
+  .sq-up{margin-top:8px;font-size:12px;color:#9a9a9a}.sq-up i{display:block;height:6px;border-radius:3px;background:#1c1c1c;margin-top:6px;overflow:hidden}.sq-up b{display:block;height:100%;width:0;background:#c49a1c;transition:width .2s}
   .sq-w{display:flex;gap:4px;margin-top:10px}.sq-w i{flex:1;height:22px;border-radius:6px;background:#161616;color:#666;font-style:normal;font-size:11px;font-weight:700;display:grid;place-items:center}
   .sq-w i.done{background:#178A4A;color:#fff}.sq-w i.partly{background:#C98A0B;color:#fff}.sq-w i.missed{background:#D7401C;color:#fff}.sq-w i.now{outline:1.5px solid #c49a1c;outline-offset:-1.5px}
   .bk-evby{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px}
@@ -202,10 +206,16 @@ function bkSquads(d){
         <button class="bk-btn" onclick="bkSquadToggle('${q.id}',${!q.active})">${q.active?"Close squad":"Reopen"}</button>
       </div>
       ${q.members.length ? `<div class="sq-mems">${q.members.map(m=>{ const wa = bkWa(m.phone); let wks=""; for(let w=1; w<=q.weeks; w++){ const c=m.checkins[w]; wks+=`<i class="${c?c.status:""}${w===q.week?" now":""}" title="Week ${w}${c&&c.note?": "+bkEsc(c.note):""}">${c?(c.status==="done"?"✓":c.status==="partly"?"½":"✕"):w}</i>`; }
-        return `<div class="sq-m"><div class="bk-top"><b>${bkEsc(m.name)}</b>${m.started_at?`<span class="bk-tag free">Started</span>`:""}</div>
+        return `<div class="sq-m"><div class="bk-top"><div class="sq-who">${m.photo?`<img src="${bkEsc(m.photo)}" alt="">`:`<i>${bkEsc((m.name||"?").trim()[0].toUpperCase())}</i>`}<b>${bkEsc(m.name)}</b></div>${m.started_at?`<span class="bk-tag free">Started</span>`:""}</div>
           <div class="sq-g">${bkEsc(m.goal)}</div>
           <div class="bk-meta">${m.deadline?`<span>By ${bkEsc(m.deadline)}</span>`:""}${m.proof?`<span>Proof: ${bkEsc(m.proof)}</span>`:""}${wa?`<a href="${wa}" target="_blank" rel="noopener">${bkEsc(m.phone)}</a>`:""}<span>${bkEsc(m.email)}</span></div>
-          <div class="sq-w">${wks}</div></div>`; }).join("")}</div>` : `<p class="h" style="margin:10px 0 0">Nobody yet. Put the wall on screen and have them scan the code.</p>`}
+          <div class="sq-w">${wks}</div>
+          <div class="sq-media">${m.video?`<video src="${bkEsc(m.video)}" controls playsinline preload="metadata"></video>`:""}
+            <div class="bk-acts" style="margin-top:8px">
+              <label class="bk-btn gold">${m.video?"Replace video":"Upload declaration video"}<input type="file" accept="video/*" hidden onchange="bkSqUpload(this,'${m.id}','video')"></label>
+              <label class="bk-btn">${m.photo?"Change photo":"Add photo"}<input type="file" accept="image/*" hidden onchange="bkSqUpload(this,'${m.id}','photo')"></label>
+              <a class="bk-btn" href="${SQ_SITE}/squad/${q.code}/m/${m.id}" target="_blank" rel="noopener">Profile</a>
+            </div><div class="sq-up" id="sq-up-${m.id}" hidden><span></span><i><b></b></i></div></div></div>`; }).join("")}</div>` : `<p class="h" style="margin:10px 0 0">Nobody yet. Put the wall on screen and have them scan the code.</p>`}
     </div>`;
   }).join("");
   return `${list || `<div class="bk-empty">No squads yet. Make one below for your next event.</div>`}
@@ -215,6 +225,24 @@ function bkSquads(d){
       <input class="bk-in" id="sq-code" placeholder="Code, e.g. FWG07" value="FWG${String(next+5).padStart(2,"0")}" style="text-transform:uppercase;font-family:ui-monospace,Menlo,monospace">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="bk-in" id="sq-start" type="date" value="${today}" title="Week 1 starts"><input class="bk-in" id="sq-weeks" type="number" min="1" max="12" value="4" title="Weeks"></div>
       <button class="bk-btn gold" onclick="bkSquadCreate(this)">Create squad</button></div>`;
+}
+/* upload straight to storage with a signed URL, showing progress (videos can be big on mobile data) */
+async function bkSqUpload(input, memberId, kind){
+  const f = input.files && input.files[0]; input.value = ""; if(!f) return;
+  const box = document.getElementById("sq-up-"+memberId), label = box.querySelector("span"), bar = box.querySelector("b");
+  box.hidden = false; bar.style.width = "0%";
+  const MB = f.size/1048576;
+  if(MB > 49){ label.textContent = `This video is ${MB.toFixed(0)}MB. The limit is 50MB. Send it to yourself on WhatsApp, save that copy, and upload it instead.`; return; }
+  try{
+    label.textContent = "Preparing…";
+    const { url, path } = await bkFetch("squad_media_url",{ member_id:memberId, kind, type:f.type });
+    await new Promise((ok, no)=>{ const x = new XMLHttpRequest(); x.open("PUT", url); x.setRequestHeader("content-type", f.type || (kind==="photo"?"image/jpeg":"video/mp4")); x.setRequestHeader("x-upsert","true");
+      x.upload.onprogress = e=>{ if(e.lengthComputable){ const pc = Math.round(e.loaded/e.total*100); bar.style.width = pc+"%"; label.textContent = `Uploading ${pc}% of ${MB.toFixed(1)}MB`; } };
+      x.onload = ()=> x.status < 300 ? ok() : no(new Error("upload "+x.status)); x.onerror = ()=>no(new Error("network")); x.send(f); });
+    label.textContent = "Saving…";
+    await bkFetch("squad_set_media",{ member_id:memberId, kind, path });
+    showToast(kind==="video"?"Video added":"Photo added","success"); await bkRefresh();
+  }catch(e){ label.textContent = "Upload failed: " + e.message + ". Check your connection and try again."; }
 }
 async function bkSquadCreate(btn){
   const v = id => (document.getElementById(id).value||"").trim();
