@@ -187,8 +187,16 @@ async function cron(req: Request) {
       for (const r of rows ?? []) {
         await sb.from("event_registrations").update({ followed_at: new Date().toISOString() }).eq("id", r.id);
         const goal = r.goal ? `You came in with this: "${r.goal}".` : "You came in with a goal.";
+        // send them to their squad (personal link if they've declared, the squad page if not)
+        const { data: sq } = await sb.from("squads").select("id,code").eq("event", code).eq("active", true).maybeSingle();
+        let next = "";
+        if (sq) {
+          const { data: mem } = await sb.from("squad_members").select("token").eq("squad_id", sq.id).eq("email", String(r.email).toLowerCase()).maybeSingle();
+          if (mem) continue; // already declared: they got the squad welcome email with their link
+          next = `You haven't put it in front of your squad yet. It takes a minute. Tap your name and declare it:\n${SITE}/squad/${sq.code}`;
+        }
         await sendEmail(r.email, "The goal you brought",
-          `Hi ${first(r.name)},\n\nThanks for coming to ${e.title}.\n\n${goal}\n\nMost people leave a room like that fired up and have done nothing by Tuesday. Make sure you're not one of them.\n\nIf you want someone checking on you every day until it's done, that's what the 15-day challenge is for. One goal, proof every day, and I review it myself.\n\nStart here: ${SITE}/app\n\nGenie`);
+          `Hi ${first(r.name)},\n\nThanks for coming to ${e.title}.\n\n${goal}\n\nMost people leave a room like that fired up and have done nothing by Tuesday. Make sure you're not one of them.\n\n${next ? next + "\n\n" : ""}See you on Saturday 28 November with proof.\n\nGenie`);
         done.followed++;
       }
     }
