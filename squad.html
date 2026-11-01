@@ -70,9 +70,9 @@ p{margin:0}
 .price s{font-family:var(--mono);font-size:14px;color:rgba(244,242,236,.55)}
 .price b{font-family:var(--big);font-weight:400;font-size:20px;letter-spacing:.02em;text-transform:uppercase;color:#C8EF62}
 .price span{flex-basis:100%;font-size:12.5px;color:rgba(244,242,236,.7)}
-.who{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.who button{min-height:52px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);font-weight:800;font-size:15px;padding:8px 10px;text-align:left}
-.who button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.namegrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.namegrid button{min-height:52px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);font-weight:800;font-size:15px;padding:8px 10px;text-align:left}
+.namegrid button.on{background:var(--ink);border-color:var(--ink);color:#fff}
 /* declaration ticket */
 .dec{background:var(--ink);color:#F4F2EC;border-radius:24px;padding:22px 22px 20px 30px;position:relative;overflow:hidden;margin-top:12px}
 .dec::before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--red)}
@@ -184,7 +184,7 @@ const API = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/squads-api";
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const firstName = n => String(n||"").trim().split(/\s+/)[0] || "";
-const COLORS = ["#D7401C","#0F0F10","#178A4A","#3B5BDB","#C98A0B","#7A4A2E","#8E44AD","#1E7F8C"];
+const COLORS = ["#D7401C","#2F6F5E","#178A4A","#3B5BDB","#C98A0B","#7A4A2E","#8E44AD","#1E7F8C"];
 const color = s => COLORS[[...String(s)].reduce((a,c)=>a+c.charCodeAt(0),0) % COLORS.length];
 const initials = n => String(n||"?").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
 const niceDate = iso => iso ? new Date(iso+"T12:00:00Z").toLocaleDateString("en-GB",{ weekday:"short", day:"numeric", month:"short", timeZone:"UTC" }) : "";
@@ -297,7 +297,7 @@ const showPicker = () => !editing && !SEL && !NEWP && (D.attendees||[]).length >
 function pickHTML(){
   if(!showPicker()) return "";
   return `<div class="card"><h2>Find your name</h2><p class="sub">You registered for the session. Tap your name to start.</p>
-    <div class="who">${D.attendees.map(a=>`<button type="button" data-id="${esc(a.id)}">${esc(a.label)}</button>`).join("")}</div>
+    <div class="namegrid">${D.attendees.map(a=>`<button type="button" data-id="${esc(a.id)}">${esc(a.label)}</button>`).join("")}</div>
     <button type="button" class="btn line" id="newp" style="margin-top:14px">I'm not on the list</button></div>`;
 }
 
@@ -335,7 +335,7 @@ function joinScreen(){
     ${(D.posts||[]).length ? `<div class="sq-h"><h3>Squad updates</h3><span>${D.posts.length}</span></div>${feedHTML(D.posts.slice(0,20))}` : ""}
   </div>`;
   if(editing) $("#cancel").addEventListener("click", e=>{ e.preventDefault(); editing=false; render(); });
-  document.querySelectorAll(".who button[data-id]").forEach(b=>b.addEventListener("click", async ()=>{
+  document.querySelectorAll(".namegrid button[data-id]").forEach(b=>b.addEventListener("click", async ()=>{
     b.classList.add("on"); b.disabled = true;
     const r = await post({ action:"who", code:s.code, reg_id:b.dataset.id });
     if(!r.ok){ b.classList.remove("on"); b.disabled = false; return; }
@@ -368,9 +368,9 @@ function home(){
   const closes = niceDate(addDays(s.starts_on, Math.max(1, s.week) * 7 - 1));
   let action = "";
   if(!my.started && !over){
-    action = `<div class="card" id="startc"><h2>Your first 5 minutes</h2><p class="sub">Do your first step right now, before you put the phone down. Then tell the squad what you did.</p>
-      <div class="field"><label for="sn">What did you just do?</label><input id="sn" maxlength="200" placeholder="${esc(my.first_step || "Wrote 5 video ideas")}"></div>
-      <div class="err" id="serr" hidden></div><button class="btn" id="sb">I started</button></div>`;
+    action = `<div class="card" id="startc"><h2>Take your first step</h2><p class="sub">${my.first_step ? `You said your first step is: <b>${esc(my.first_step)}</b>. Do it, then tell your squad.` : "Do one small thing towards your goal today, then tell your squad."}</p>
+      <div class="field"><label for="sn">What did you do? <em>(optional)</em></label><input id="sn" maxlength="200" placeholder="e.g. Listed all my chapter titles"></div>
+      <div class="err" id="serr" hidden></div><button class="btn" id="sb">I've done it</button></div>`;
   }
   const today = new Date(Date.now()+3600000).toISOString().slice(0,10);
   const dayIn = before ? -1 : Math.round((Date.parse(today) - Date.parse(s.starts_on)) / 86400000) % 7;
@@ -442,7 +442,7 @@ function home(){
     sb.disabled = true; sb.innerHTML = '<span class="spin"></span>';
     const r = await post({ action:"start", token:ME, note:$("#sn").value.trim() });
     if(r.ok) return load();
-    sb.disabled = false; sb.textContent = "I started"; const e = $("#serr"); e.textContent = ERR[r.error] || "Something went wrong. Try again."; e.hidden = false;
+    sb.disabled = false; sb.textContent = "I've done it"; const e = $("#serr"); e.textContent = ERR[r.error] || "Something went wrong. Try again."; e.hidden = false;
   });
   const cb = $("#cb"); if(cb) cb.addEventListener("click", async ()=>{
     const e = $("#cerr");
