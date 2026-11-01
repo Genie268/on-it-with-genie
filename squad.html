@@ -147,6 +147,24 @@ a.mem{display:block;text-decoration:none;color:inherit}
 .cta small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--red)}
 .cta b{display:block;font-family:var(--big);font-weight:400;font-size:28px;margin:6px 0 4px}.cta p{color:rgba(244,242,236,.75);font-size:14px;margin-bottom:14px}
 .wc-h{display:flex;align-items:center;gap:1vw}
+.coach{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;border-radius:16px;border:1.5px solid var(--ink);background:var(--bg)}
+.coach.open{background:var(--ink);color:#F4F2EC}.coach.open .cb-t span{color:rgba(244,242,236,.7)}
+.cb-t{flex:1;min-width:0}.cb-t b{display:flex;align-items:center;gap:8px;font-size:16px}.cb-t>span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.tick{font-size:11px;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--done);border-radius:999px;padding:3px 8px}
+.chev{font-size:26px;line-height:1;color:var(--muted);transition:transform .2s}.coach.open .chev{transform:rotate(90deg);color:#F4F2EC}
+.coach-more{margin-top:10px;padding:14px;border-radius:16px;background:var(--bg)}
+.coach-more ul{margin:0 0 12px;padding-left:18px;font-size:14px;line-height:1.5}.coach-more li{margin:4px 0}
+.cprice{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}.cprice b{font-family:var(--big);font-weight:400;font-size:22px;text-transform:uppercase}.cprice span{font-weight:800;font-size:18px}
+.or{display:flex;align-items:center;gap:10px;margin:16px 0 10px;color:var(--muted);font-size:13px}.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.peers{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
+.peer{display:grid;justify-items:center;gap:6px;padding:10px 4px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);font-weight:700;font-size:13px}
+.peer span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc-set{display:flex;align-items:center;gap:12px}.acc-set>div{flex:1}.acc-set small{display:block;font-size:12px;color:var(--muted)}.acc-set b{font-size:16px}
+.link.up{display:block;margin-top:12px;font-size:13px;text-align:left}
+.hold{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}.hold:first-of-type{border-top:0}
+.h-t{flex:1;min-width:0}.h-t a{text-decoration:none;color:inherit}.h-t b{font-size:15px}.h-t span{display:block;font-size:13px;color:#2A2A2C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.h-t small{display:block;font-size:12px;color:var(--muted);margin-top:2px}.h-t small.done{color:var(--done)}.h-t small.partly{color:var(--part)}.h-t small.missed{color:var(--miss)}
+.btn.sm.nudge{flex:none}
 
 /* wall (projector) */
 body.wall{background:var(--cream)}
@@ -404,6 +422,8 @@ function home(){
     </div>
     <div class="err" id="pherr" hidden style="margin-top:10px"></div>
     ${action}
+    ${accHTML(my, s)}
+    ${holdingHTML(my, s)}
     <div class="row-links"><a class="link" href="${profLink(my.id)}">View my profile</a><a class="link" href="#" id="edit">Change my declaration</a></div>
     ${my.has_video ? `<div class="card vcard"><div><b>Your declaration video</b><span>${my.show_video ? "Showing on your profile" : "Hidden from your profile"}</span></div><button type="button" class="btn line sm" id="vtog">${my.show_video ? "Hide it" : "Show it"}</button></div>` : ""}
     ${over ? "" : `<form class="card" id="pf"><h2>Post progress</h2><p class="sub">What did you do towards it? A line or a photo. Your squad sees it.</p>
@@ -415,6 +435,7 @@ function home(){
     <div class="sq-h"><h3>Your squad</h3><span>${D.members.length} declared</span></div>
     ${D.members.map(m=>memHTML(m, s, m.id===my.id)).join("")}
   </div>`;
+  wireAcc(my);
   const phin = $("#ph-in"); phin.addEventListener("change", async ()=>{
     const f = phin.files[0]; if(!f) return; const e = $("#pherr"); e.hidden = true;
     const lab = $(".dec-av i"); lab.textContent = "Uploading…";
@@ -458,6 +479,59 @@ function memHTML(m, s, you){
     <div class="g">${esc(m.goal)}</div>${m.deadline?`<div class="d">By ${esc(niceDate(m.deadline))}${m.proof?` · Proof: ${esc(m.proof)}`:""}</div>`:""}
     ${s.week>=1 ? weeksHTML(m, s) : ""}</a>`;
 }
+/* ---------- who holds you accountable ---------- */
+let SHOWCOACH = false;
+const coachOf = () => D.squad.coach || { name:"Genie", photo:null, member_id:null };
+function coachPanel(){
+  return `<div class="coach-more" id="cm" ${SHOWCOACH?"":"hidden"}>
+    <ul><li>You upload proof every day. I review every one and reply.</li><li>Two strategy calls with me, the first within 48 hours.</li><li>Your progress tracked on your own dashboard.</li></ul>
+    <div class="cprice"><b>15 days</b><span>&#8358;15,000</span></div>
+    <button type="button" class="btn red" id="gocoach">Start with Genie</button></div>`;
+}
+function coachBtn(){
+  const c = coachOf();
+  return `<button type="button" class="coach${SHOWCOACH?" open":""}" id="coachbtn">${av({ name:"Genie", photo:c.photo }, 44)}<span class="cb-t"><b>Genie <span class="tick">&#10003; Coach</span></b><span>I check your proof every day</span></span><span class="chev">&rsaquo;</span></button>`;
+}
+function accHTML(my, s){
+  if(s.week > s.weeks) return "";
+  const byId = Object.fromEntries(D.members.map(m=>[m.id,m]));
+  const partner = my.partner_id && byId[my.partner_id];
+  if(partner) return `<div class="card acc"><div class="acc-set">${av(partner, 44)}<div><small>Holding you accountable</small><b>${esc(partner.name)}</b></div><button type="button" class="link" id="chgp">Change</button></div>
+    <button type="button" class="link up" id="upc">Want me checking your proof every day instead?</button>${coachPanel()}</div>`;
+  const peers = D.members.filter(m=>m.id!==my.id && !m.coach);
+  return `<div class="card acc"><h2>Who's holding you accountable?</h2><p class="sub">Pick one person. They see your check-ins and can nudge you when you go quiet.</p>
+    ${coachBtn()}${coachPanel()}
+    ${peers.length ? `<div class="or"><span>or someone from your squad</span></div><div class="peers">${peers.map(m=>`<button type="button" class="peer" data-id="${esc(m.id)}">${av(m, 44)}<span>${esc(firstName(m.name))}</span></button>`).join("")}</div>` : ""}
+    <div class="err" id="accerr" hidden style="margin:10px 0 0"></div></div>`;
+}
+function holdingHTML(my, s){
+  const mine = D.members.filter(m=>m.partner_id===my.id);
+  if(!mine.length) return "";
+  const wk = Math.max(1, Math.min(s.week, s.weeks));
+  return `<div class="card"><h2>You're holding ${mine.length===1?esc(firstName(mine[0].name)):mine.length+" people"} accountable</h2><p class="sub">Check on them. If they've gone quiet, send a nudge.</p>
+    ${mine.map(m=>{ const c = m.checkins && m.checkins[wk]; const st = c ? ({ done:"Done this week", partly:"Partly this week", missed:"Missed this week" })[c.status] : "No check-in yet this week";
+      return `<div class="hold">${av(m, 40)}<div class="h-t"><a href="${profLink(m.id)}"><b>${esc(m.name)}</b></a><span>${esc(m.goal)}</span><small class="${c?c.status:""}">${st}</small></div>
+        <button type="button" class="btn line sm nudge" data-id="${esc(m.id)}" ${m.nudged_recently?"disabled":""}>${m.nudged_recently?"Nudged":"Nudge"}</button></div>`; }).join("")}</div>`;
+}
+function wireAcc(my){
+  const cb = $("#coachbtn"); if(cb) cb.addEventListener("click", ()=>{ SHOWCOACH = !SHOWCOACH; $("#cm").hidden = !SHOWCOACH; cb.classList.toggle("open", SHOWCOACH); });
+  const up = $("#upc"); if(up) up.addEventListener("click", ()=>{ SHOWCOACH = !SHOWCOACH; $("#cm").hidden = !SHOWCOACH; });
+  const go = $("#gocoach"); if(go) go.addEventListener("click", async ()=>{ go.disabled = true; go.innerHTML = '<span class="spin"></span>'; await post({ action:"want_coach", token:ME }); location.href = "/app"; });
+  const ch = $("#chgp"); if(ch) ch.addEventListener("click", async ()=>{ ch.disabled = true; await post({ action:"set_partner", token:ME, partner_id:"" }); load(); });
+  document.querySelectorAll(".peer").forEach(b=>b.addEventListener("click", async ()=>{
+    const m = D.members.find(x=>x.id===b.dataset.id); if(!m) return;
+    if(!confirm(`Ask ${firstName(m.name)} to hold you accountable? They'll get an email.`)) return;
+    b.disabled = true; const r = await post({ action:"set_partner", token:ME, partner_id:m.id });
+    if(r.ok) return load();
+    b.disabled = false; const e = $("#accerr"); e.textContent = "Couldn't save that. Try again."; e.hidden = false;
+  }));
+  document.querySelectorAll(".nudge").forEach(b=>b.addEventListener("click", async ()=>{
+    b.disabled = true; b.textContent = "Sending…";
+    const r = await post({ action:"nudge", token:ME, member_id:b.dataset.id });
+    b.textContent = r.ok ? "Nudged" : r.error==="too_soon" ? "Nudged" : "Try again"; if(!r.ok && r.error!=="too_soon") b.disabled = false;
+  }));
+}
+
 /* ---------- public profile ---------- */
 function profile(){
   const s = D.squad, m = D.members.find(x=>x.id===PID);
@@ -474,7 +548,7 @@ function profile(){
       <div class="prof-h">${av(m, 64)}<div class="k" style="padding-right:0">${esc(s.name)}</div></div>
       <div class="who">${esc(firstName(m.name))} <em>will</em></div>
       <div class="goal">${esc(m.goal)}</div>
-      <div class="meta">${m.deadline?`<span>By <b>${esc(niceDate(m.deadline))}</b></span>`:""}${m.proof?`<span>Proof: <b>${esc(m.proof)}</b></span>`:""}</div>
+      <div class="meta">${m.deadline?`<span>By <b>${esc(niceDate(m.deadline))}</b></span>`:""}${m.proof?`<span>Proof: <b>${esc(m.proof)}</b></span>`:""}${(()=>{ const p = m.partner_id && D.members.find(x=>x.id===m.partner_id); return p ? `<span>Held accountable by <b>${esc(firstName(p.name))}</b></span>` : ""; })()}</div>
       ${s.week>=1 ? weeksHTML(m, s) : ""}
     </div>
     <div class="share"><a class="btn red" href="https://wa.me/?text=${encodeURIComponent(shareText + " " + url)}" target="_blank" rel="noopener">Share on WhatsApp</a><button type="button" class="btn line" id="cp">Copy link</button></div>

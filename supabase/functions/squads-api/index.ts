@@ -15,6 +15,9 @@
  * POST {action:"cheer", post_id}                    +1 on a post.
  * POST {action:"unpost", token, post_id}            Hide your own post.
  * POST {action:"show_video", token, show}           Show/hide your declaration video on your profile.
+ * POST {action:"set_partner", token, partner_id}    Pick a squad member to hold you accountable (they get an email). "" clears it.
+ * POST {action:"want_coach", token}                Wants Genie as their coach: tells Genie, client sends them to /app.
+ * POST {action:"nudge", token, member_id}          Partner nudges the person they hold accountable (email, max once per 12h).
  * POST {action:"cron", kind:"remind"|"summary"} + x-cron-key
  *      remind  (Fri 6pm Lagos): members who haven't checked in this week
  *      summary (Sat 9am Lagos): Genie gets who checked in and who didn't
@@ -72,17 +75,19 @@ async function view(code: string, me: string) {
   const s = await squadBy(code);
   if (!s) return json({ ok: false, error: "not_found" }, 404);
   const [{ data: mem }, { data: chk }] = await Promise.all([
-    sb.from("squad_members").select("id,created_at,name,goal,deadline,proof,first_step,started_at,started_note,token,email,photo_path,video_path,show_video").eq("squad_id", s.id).order("created_at"),
+    sb.from("squad_members").select("id,created_at,name,goal,deadline,proof,first_step,started_at,started_note,token,email,photo_path,video_path,show_video,partner_id,nudged_at").eq("squad_id", s.id).order("created_at"),
     sb.from("squad_checkins").select("member_id,week,status,note,created_at").eq("squad_id", s.id),
   ]);
   const { data: posts } = await sb.from("squad_posts").select("id,created_at,member_id,text,photo_path,cheers").eq("squad_id", s.id).eq("hidden", false).order("created_at", { ascending: false }).limit(80);
   const byMember: Record<string, Record<number, { status: string; note: string | null }>> = {};
   (chk ?? []).forEach((c: any) => ((byMember[c.member_id] ??= {})[c.week] = { status: c.status, note: c.note }));
   const week = weekOf(s.starts_on);
+  const genieEmail = String(await setting("notify_email")).toLowerCase();
+  const coach = (mem ?? []).find((m: any) => String(m.email).toLowerCase() === genieEmail);
   let mine = null;
   const members = (mem ?? []).map((m: any) => {
-    if (me && m.token === me) mine = { id: m.id, name: m.name, email: m.email, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, photo: media(m.photo_path), has_video: !!m.video_path, show_video: m.show_video };
-    return { id: m.id, name: m.name, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, started_note: m.started_note, checkins: byMember[m.id] ?? {}, photo: media(m.photo_path), video: m.show_video ? media(m.video_path) : null };
+    if (me && m.token === me) mine = { id: m.id, name: m.name, email: m.email, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, photo: media(m.photo_path), has_video: !!m.video_path, show_video: m.show_video, partner_id: m.partner_id };
+    return { id: m.id, name: m.name, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, started_note: m.started_note, checkins: byMember[m.id] ?? {}, photo: media(m.photo_path), video: m.show_video ? media(m.video_path) : null, partner_id: m.partner_id, coach: !!coach && m.id === coach.id, nudged_recently: !!m.nudged_at && Date.parse(m.nudged_at) > Date.now() - 12 * 3600_000 };
   });
   // registered attendees of the linked event who haven't joined yet (first name + initial only)
   let attendees: { id: string; label: string }[] = [];
@@ -91,7 +96,7 @@ async function view(code: string, me: string) {
     const { data: regs } = await sb.from("event_registrations").select("id,name,email").eq("event", s.event).is("released_at", null).order("name");
     attendees = (regs ?? []).filter((r: any) => !joined.has(String(r.email).toLowerCase())).map((r: any) => ({ id: r.id, label: shortName(r.name) }));
   }
-  return json({ ok: true, attendees, posts: (posts ?? []).map((x: any) => ({ id: x.id, at: x.created_at, member_id: x.member_id, text: x.text, photo: media(x.photo_path), cheers: x.cheers })), squad: { code: s.code, name: s.name, starts_on: s.starts_on, weeks: s.weeks, week, active: s.active, price: s.price, ends_on: new Date(Date.parse(s.starts_on) + s.weeks * 7 * DAY - DAY).toISOString().slice(0, 10) }, members, me: mine });
+  return json({ ok: true, attendees, posts: (posts ?? []).map((x: any) => ({ id: x.id, at: x.created_at, member_id: x.member_id, text: x.text, photo: media(x.photo_path), cheers: x.cheers })), squad: { code: s.code, name: s.name, starts_on: s.starts_on, weeks: s.weeks, week, active: s.active, price: s.price, ends_on: new Date(Date.parse(s.starts_on) + s.weeks * 7 * DAY - DAY).toISOString().slice(0, 10), coach: { name: "Genie", photo: coach ? media(coach.photo_path) : null, member_id: coach ? coach.id : null } }, members, me: mine });
 }
 
 async function join(p: Record<string, unknown>) {
@@ -203,6 +208,44 @@ async function showVideo(p: Record<string, unknown>) {
   return json({ ok: true });
 }
 
+async function setPartner(p: Record<string, unknown>) {
+  const m = await memberBy(clean(p.token, 60));
+  if (!m) return json({ ok: false, error: "bad_token" }, 401);
+  const pid = clean(p.partner_id, 60);
+  if (!pid) { await sb.from("squad_members").update({ partner_id: null, partner_set_at: null }).eq("id", m.id); return json({ ok: true }); }
+  if (!isToken(pid) || pid === m.id) return json({ ok: false, error: "bad_partner" }, 400);
+  const { data: partner } = await sb.from("squad_members").select("id,name,email,token,squad_id").eq("id", pid).maybeSingle();
+  if (!partner || partner.squad_id !== m.squad_id) return json({ ok: false, error: "bad_partner" }, 400);
+  if (m.partner_id === pid) return json({ ok: true, already: true });
+  await sb.from("squad_members").update({ partner_id: pid, partner_set_at: new Date().toISOString() }).eq("id", m.id);
+  await sendEmail(partner.email, `${first(m.name)} wants you to hold them accountable`,
+    `Hi ${first(partner.name)},\n\n${m.name} in ${m.squads.name} picked you to hold them accountable.\n\nTheir goal: "${m.goal}"${m.deadline ? `\nBy ${niceDate(m.deadline)}` : ""}\n\nYou'll see their check-ins on your squad page, and you can send them a nudge when they go quiet:\n${squadLink(m.squads.code, partner.token)}\n\nGenie`);
+  return json({ ok: true });
+}
+
+async function wantCoach(p: Record<string, unknown>) {
+  const m = await memberBy(clean(p.token, 60));
+  if (!m) return json({ ok: false, error: "bad_token" }, 401);
+  const firstTime = !m.wants_coach_at;
+  await sb.from("squad_members").update({ wants_coach_at: new Date().toISOString() }).eq("id", m.id);
+  const to = await setting("notify_email");
+  if (to && firstTime) await sendEmail(to, `${m.name} wants you to hold them accountable`,
+    `${m.name} (${m.squads.name}) tapped "Genie holds me accountable" and was sent to the challenge.\n\nGoal: "${m.goal}"${m.deadline ? ` by ${niceDate(m.deadline)}` : ""}\nEmail: ${m.email}\nPhone: ${m.phone || "-"}\n\nIf they don't pay in a day or two, reach out.`, { reply_to: m.email });
+  return json({ ok: true });
+}
+
+async function nudge(p: Record<string, unknown>) {
+  const me = await memberBy(clean(p.token, 60));
+  if (!me) return json({ ok: false, error: "bad_token" }, 401);
+  const { data: t } = await sb.from("squad_members").select("id,name,email,goal,token,partner_id,nudged_at,squad_id").eq("id", clean(p.member_id, 60)).maybeSingle();
+  if (!t || t.partner_id !== me.id) return json({ ok: false, error: "not_your_person" }, 403);
+  if (t.nudged_at && Date.parse(t.nudged_at) > Date.now() - 12 * 3600_000) return json({ ok: false, error: "too_soon" }, 429);
+  await sb.from("squad_members").update({ nudged_at: new Date().toISOString() }).eq("id", t.id);
+  await sendEmail(t.email, `${first(me.name)} is checking on you`,
+    `Hi ${first(t.name)},\n\n${first(me.name)} is holding you accountable and wants to know: how is this going?\n\n"${t.goal}"\n\nPost what you've done (a line or a photo) so they can see it:\n${squadLink(me.squads.code, t.token)}\n\nGenie`, { reply_to: me.email });
+  return json({ ok: true });
+}
+
 async function checkin(p: Record<string, unknown>) {
   const m = await memberBy(clean(p.token, 60));
   if (!m) return json({ ok: false, error: "bad_token" }, 401);
@@ -270,6 +313,9 @@ Deno.serve(async (req) => {
       case "cheer": return await cheer(p);
       case "unpost": return await unpost(p);
       case "show_video": return await showVideo(p);
+      case "set_partner": return await setPartner(p);
+      case "want_coach": return await wantCoach(p);
+      case "nudge": return await nudge(p);
       case "cron": return await cron(req, String(p.kind));
       default: return json({ ok: false, error: "unknown_action" }, 400);
     }
