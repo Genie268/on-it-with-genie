@@ -266,13 +266,13 @@ body.wall{font-family:var(--body)}
 .vthumb{position:relative;display:block;width:100%;aspect-ratio:4/5;max-height:70vh;border-radius:14px;overflow:hidden;background:#000;text-align:left}
 .vthumb video{width:100%;height:100%;object-fit:cover;opacity:.85;display:block}
 .vthumb img,.vthumb video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-.ppl{display:flex;gap:6px;overflow-x:auto;padding:10px 16px 8px;scrollbar-width:none;border-bottom:1px solid var(--line2)}.ppl::-webkit-scrollbar{display:none}
+.ppl{display:flex;gap:6px;overflow-x:auto;padding:8px 16px 4px;scrollbar-width:none}.ppl::-webkit-scrollbar{display:none}
 .pp{flex:none;display:flex;align-items:center;gap:7px;padding:4px 12px 4px 4px;border-radius:999px;background:var(--bg);font-size:13.5px;font-weight:600;color:var(--muted);border:1px solid transparent}
 .pp.on{background:var(--card);color:var(--text);border-color:var(--text)}
 .pager{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;align-items:flex-start;overscroll-behavior-x:contain;transition:height .25s}
 .pager::-webkit-scrollbar{display:none}
 .pg{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always;padding-bottom:4px}
-.swipe-hint{text-align:center;font-size:12.5px;color:var(--muted);padding:12px 0 0;transition:opacity .4s}.swipe-hint.gone{opacity:0}
+.swipe-hint{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:20px 16px 2px;border-top:1px solid var(--line2);margin-top:14px}
 .dd .post{border:1px solid var(--line2);border-radius:14px;margin:0 16px;overflow:hidden;padding-bottom:6px}
 .dd .post+.post{margin-top:10px}
 .dd .post-img{max-height:320px;width:100%;object-fit:cover}
@@ -731,15 +731,15 @@ function profBtns(m){
     : `<a class="b blue" href="https://wa.me/?text=${encodeURIComponent(shareText + " " + url)}" target="_blank" rel="noopener">${I.share}Share ${esc(firstName(m.name))}</a><button type="button" class="b" id="cp" data-url="${esc(url)}">Copy link</button>`;
 }
 function profile(){
-  const s = D.squad, list = D.members;
+  const s = D.squad, list = [...D.members.filter(x=>x.video), ...D.members.filter(x=>!x.video)];  // people with a video first
   if(!PCUR) PCUR = PID;
   let m = list.find(x=>x.id===PCUR);
   if(!m){ $("#root").innerHTML = `<div class="wrap">${bar("Profile", SQ())}<div class="empty"><b>Profile not found</b>This person may have left the squad.<div style="margin-top:16px"><a class="b blue" href="${SQ()}">See the squad</a></div></div></div>`; return; }
   const ref = firstName(m.name).toLowerCase().replace(/[^a-z]/g,"");
   $("#root").innerHTML = `<div class="wrap">${bar(nm(m), SQ())}
-    <div class="ppl" role="tablist">${list.map(x=>`<button type="button" class="pp${x.id===m.id?" on":""}" data-go="${esc(x.id)}">${ringAv(x, 28, !!x.video)}<span>${esc(x.coach ? "Genie" : firstName(x.name))}</span></button>`).join("")}</div>
     <div class="pager" id="pager">${list.map(profPanel).join("")}</div>
-    <div class="swipe-hint" id="sh">← Swipe to see the others →</div>
+    <div class="swipe-hint" id="sh">Swipe, or tap a name to see the others</div>
+    <div class="ppl" role="tablist">${list.map(x=>`<button type="button" class="pp${x.id===m.id?" on":""}" data-go="${esc(x.id)}">${ringAv(x, 28, !!x.video)}<span>${esc(x.coach ? "Genie" : firstName(x.name))}</span></button>`).join("")}</div>
     <div class="ph-btns" id="pbtns" style="padding:16px">${profBtns(m)}</div>
     ${D.me ? "" : `<div class="cta"><small>Forward with Genie · Session 07</small><b>SAT 28 NOV · ABUJA</b><p>This squad declared it in a room in Abuja. Get your own free pass and declare yours.</p><a class="b red full" href="/events?ref=${esc(ref)}">Get your free pass</a></div>`}
   </div>`;
@@ -750,7 +750,7 @@ function profile(){
     PCUR = id; const mm = list.find(x=>x.id===id); if(!mm) return;
     const t = $(".bar h1, .bar .t, .bar b"); if(t) t.innerHTML = nm(mm);
     $$(".pp").forEach(b=>b.classList.toggle("on", b.dataset.go===id));
-    const on = $(`.pp[data-go="${id}"]`); if(on) on.scrollIntoView({ block:"nearest", inline:"center", behavior:"smooth" });
+    const on = $(`.pp[data-go="${id}"]`), row = $(".ppl"); if(on && row) row.scrollTo({ left:on.offsetLeft - (row.clientWidth - on.offsetWidth)/2, behavior:"smooth" });
     $("#pbtns").innerHTML = profBtns(mm); wireCp();
     try{ history.replaceState(null, "", profLink(id) + location.search); }catch(_){}
     fit();
@@ -763,9 +763,8 @@ function profile(){
   if(i0 < 0) select(list[0].id);
   let tm; pager.addEventListener("scroll", ()=>{ clearTimeout(tm); tm = setTimeout(()=>{ const i = Math.round(pager.scrollLeft / pager.clientWidth); if(panels[i]) select(panels[i].dataset.id); }, 80);
   }, { passive:true });
-  ["touchstart","pointerdown"].forEach(ev=>pager.addEventListener(ev, ()=>{ const sh = $("#sh"); if(sh) sh.classList.add("gone"); }, { once:true, passive:true }));
   { const on = $(".pp.on"), row = $(".ppl"); if(on && row) row.scrollLeft = on.offsetLeft - (row.clientWidth - on.offsetWidth)/2; }
-  $$(".pp").forEach(b=>b.addEventListener("click", ()=>{ const i = panels.findIndex(x=>x.dataset.id===b.dataset.go); pager.scrollTo({ left:i*pager.clientWidth, behavior:"smooth" }); }));
+  $$(".pp").forEach(b=>b.addEventListener("click", ()=>{ const i = panels.findIndex(x=>x.dataset.id===b.dataset.go); pager.scrollTo({ left:i*pager.clientWidth, behavior:"smooth" }); scrollTo({ top:0, behavior:"smooth" }); }));
   addEventListener("resize", ()=>{ const i = panels.findIndex(x=>x.dataset.id===PCUR); pager.scrollLeft = i*pager.clientWidth; fit(); });
   // per-panel: week/all days, tap a day, play video
   panels.forEach(pg=>{
