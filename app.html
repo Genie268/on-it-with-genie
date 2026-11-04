@@ -225,7 +225,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
         <div>
           <blockquote data-dz-id="quote">I look at every upload myself, and I call to hear how it's really going. You're not shouting into an app.</blockquote>
           <p class="oi-cite" data-dz-id="coachline">Genie</p>
-          <p class="oi-small" style="margin-top:18px">Not sure yet? <a href="/book#call">Book a free 10-minute call with me first.</a></p>
+          <p class="oi-small" style="margin-top:18px">Not sure yet? <a href="/book#coaching">Book one session with me first.</a></p>
         </div>
       </section>
 
@@ -715,7 +715,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
 <script src="js/intake.js?v=20261010c"></script>
-<script src="js/config.js?v=20261010"></script>
+<script src="js/config.js?v=20261104f"></script>
 <script src="js/theme.js?v=20260926bulk"></script>
 <script src="js/lil.js?v=20260926bulk"></script>
 <script src="js/auth.js?v=20261104bank"></script>
@@ -784,7 +784,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
   } else if(st.mode==="off" && st.cap){
     el.innerHTML="Only "+st.cap+" people at a time"; el.hidden=false;
   } else if(st.mode==="closed"){
-    el.innerHTML='<span class="oi-dot"></span>This intake is closed'+(st.nextOpens?". The next one opens "+st.nextOpens:"")+'. <a href="/book#call">Book a free call</a> and I\'ll let you know when it opens.';
+    el.innerHTML='<span class="oi-dot"></span>This intake is closed'+(st.nextOpens?". The next one opens "+st.nextOpens:"")+'. <a href="/book#coaching">Book a session with me</a> in the meantime.';
     el.hidden=false; el.classList.add("closed");
     if(cta){ cta.disabled=true; cta.removeAttribute("onclick"); cta.innerHTML=st.nextOpens?"Opens "+st.nextOpens:"Intake closed"; }
   }
@@ -813,7 +813,7 @@ window.addEventListener("load", function(){
       '<b class="oi-price">'+t.price+'</b><ul>'+t.perks.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>'+
       '<button class="oi-plan-btn" onclick="startOB();S.ans.duration='+d+'">Start '+lab+'</button></div>';
   }).join("");
-  box.insertAdjacentHTML("afterend",'<p style="text-align:center;margin-top:18px;font-size:13px;opacity:.7">Need longer than 3 months? <a href="https://eugeneobo.com/#call" style="color:#c49a1c;text-decoration:underline">Talk to me</a> and I\'ll set it up for you.</p>');
+  box.insertAdjacentHTML("afterend",'<p style="text-align:center;margin-top:18px;font-size:13px;opacity:.7">Need longer than 3 months? <a href="mailto:genie@eugeneobo.com?subject=Longer%20accountability" style="color:#c49a1c;text-decoration:underline">Email me</a> and I\'ll set it up for you.</p>');
 })();
 </script>
 </body>

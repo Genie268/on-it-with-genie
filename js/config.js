@@ -280,7 +280,7 @@ function renderTierCard(days){
     ${callDaysForTier.length>0?`<div style="margin-top:10px;padding:8px 10px;background:rgba(196,154,28,.04);border:1px solid rgba(196,154,28,.1);border-radius:8px;font-size:11px;color:#888">📞 Strategy sessions: Day ${callDaysForTier.join(", ")}</div>`:""}
     <button class="bp" style="width:100%;margin-top:14px;font-size:15px;padding:13px" onclick="confirmDuration()">Continue to Commitment →</button>
     ${days>15?`<p style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Not sure you can go this long? Start with 15 days. If you're ready, we're ready.</p>`:""}
-    <p style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Need longer than 3 months? <a href="https://eugeneobo.com/#call" style="color:#c49a1c;text-decoration:underline">Talk to me first</a> and I'll set it up for you.</p>
+    <p style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Need longer than 3 months? <a href="mailto:genie@eugeneobo.com?subject=Longer%20accountability" style="color:#c49a1c;text-decoration:underline">Email me first</a> and I'll set it up for you.</p>
   </div>`;
 }
 
