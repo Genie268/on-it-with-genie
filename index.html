@@ -94,6 +94,25 @@ p{margin:0}
 .hero .proof span{color:rgba(255,255,255,.6)}
 
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:34px 0 14px}
+.hero .live{margin-bottom:2px}
+.goals{display:grid;grid-template-columns:1fr;gap:10px}
+.goal{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:var(--r-md,18px);background:var(--surface);border:1px solid var(--line);transition:transform .2s ease}
+.goal:hover{transform:translateY(-2px)}
+.g-av{width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-weight:800;overflow:hidden}
+.g-av img{width:100%;height:100%;object-fit:cover}
+.g-t{min-width:0;display:grid;gap:2px}.g-t b{font-size:15px}.g-t>span{font-size:14.5px;line-height:1.35;color:#2A2A2E}.g-t em{font-style:normal;font-weight:800;color:#D7401C;text-transform:uppercase;font-size:12px;letter-spacing:.04em;margin-right:2px}
+.g-t small{font-size:12.5px;color:var(--muted);font-weight:600}.g-t small.on{color:#178A4A}
+.g-tick{display:inline-block;width:14px;height:14px;vertical-align:-2px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%230095F6'/%3E%3Cpath d='M7.6 12.4l3 2.9 5.8-6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat}
+.quotes{display:grid;gap:12px}
+.quote{margin:0;padding:20px;border-radius:var(--r-lg);background:var(--surface);border:1px solid var(--line)}
+.quote blockquote{margin:0;font-size:17px;line-height:1.5;font-weight:500}.quote figcaption{margin-top:12px;font-size:13.5px;color:var(--muted)}.quote figcaption b{color:var(--ink)}
+.who-card{display:flex;gap:16px;align-items:center}
+.who-card img{width:84px;height:84px;border-radius:20px;object-fit:cover;flex:none}
+.who-card b{display:block;font-size:19px;margin-top:2px}.who-card p{font-size:14.5px;color:var(--muted);margin-top:4px;line-height:1.45}
+.next-steps{margin:0;padding:0;list-style:none;display:grid;gap:14px;counter-reset:ns}
+.next-steps li{counter-increment:ns;display:grid;grid-template-columns:30px 1fr;column-gap:12px}
+.next-steps li::before{content:counter(ns);grid-row:span 2;width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--lime);display:grid;place-items:center;font-weight:800;font-size:14px}
+.next-steps b{font-size:15.5px}.next-steps span{font-size:14px;color:var(--muted)}
 .sec-head h2{font-size:26px}
 
 .grid{display:grid;grid-template-columns:1fr;gap:12px}
@@ -309,7 +328,10 @@ p{margin:0}
 .pack-t{flex:1;min-width:0}
 .pack-t b{display:block;font-size:16px}
 .pack-t em{display:block;font-style:normal;font-size:13px;color:var(--muted)}
-.pack-p{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-0.02em;white-space:nowrap}
+.pack-p{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-0.02em;white-space:nowrap;text-align:right}
+.pack-p s{display:block;font-size:12.5px;font-weight:600;color:var(--muted)}
+.pack-p small{display:block;font-family:var(--body);font-size:11.5px;font-weight:700;color:#178A4A;letter-spacing:0;margin-top:1px}
+.pack-tag{font-style:normal;display:inline-block;vertical-align:2px;margin-left:8px;padding:2px 8px;border-radius:999px;background:var(--lime);color:var(--ink);font-size:11px;font-weight:700;letter-spacing:0}
 .pack:has(input:checked){border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
 .sumc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px}
 .sumc-who{display:flex;align-items:center;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line)}
@@ -558,7 +580,11 @@ p{margin:0}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 .hero.solo h1{max-width:14ch}
+@media (max-width:759px){ .hero .photo{order:-1;min-height:280px;margin:-12px -12px 0} .hero .photo img{object-position:50% 25%} }
+@media (min-width:980px){ #booker{position:sticky;top:20px;align-self:start} }
 @media (min-width:760px){
+  .goals{grid-template-columns:1fr 1fr 1fr}
+  .quotes{grid-template-columns:repeat(3,1fr)}
   .hero.solo{grid-template-columns:1fr}
   .wrap{padding-block:26px 60px}
   .topnav{display:flex}
@@ -620,7 +646,11 @@ const CONFIG = {
   intlCards: true,
   paystackKey: "pk_live_e68832aeb38271278b021a3bcfbf5aa2e4c579a9",
   hourRate: 25000,
-  photo: "",                       // homepage photo, e.g. "/img/genie.jpg"
+  prices: { 1:25000, 2:50000, 4:90000, 8:170000 },   // must match PACK_PRICE_NAIRA in booking-api
+  photo: "/img/forward-session06.jpg",   // homepage photo
+  nextEvent: { session:"07", when:"Sat 28 Nov" },
+  squad: "FWG06",                  // live goals shown on the homepage
+  quotes: [],                      // real client words only: { text, name, detail }
   aboutPhoto: "/img/genie-about-bw.jpg",
   meet: "https://meet.google.com/mmt-ahkf-zaz",
   accountabilityUrl: "/app?start",  // goes straight into the sign-up flow
@@ -630,6 +660,7 @@ const CONFIG = {
 
 const $ = s => document.querySelector(s);
 const naira = n => "₦" + n.toLocaleString("en-NG");
+const price = h => (CONFIG.prices && CONFIG.prices[h]) || h*CONFIG.hourRate;
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const I = {
   arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>',
@@ -683,19 +714,20 @@ const views = {
 home(){ const h = lagosNow().getHours(); return `
 <section class="hero${CONFIG.photo?"":" solo"}">
   <div>
+    <span class="live" id="hero-live" hidden><span class="dot"></span><span></span></span>
     <h1>I'm Genie.</h1>
     <p class="lede">I help people think straight, speak well and finish what they start.</p>
     <div class="ctas">
-      <a class="btn btn-lime" href="#services">See how I can help</a>
-      <a class="btn btn-ghost" href="#call" data-free data-closed-href="#coaching" data-closed-text="Book a session">Talk to me free</a>
+      <a class="btn btn-lime" href="#coaching">Book a session</a>
+      <a class="btn btn-ghost" href="#services">See how I can help</a>
     </div>
     <div class="proof">
+      <div><b>300+</b><span>people coached one-on-one</span></div>
       <div><b>30K+</b><span>follow me on TikTok</span></div>
       <div><b>2021</b><span>coaching since</span></div>
-      <div><b>Every</b><span>upload checked by me</span></div>
     </div>
   </div>
-  ${CONFIG.photo?`<div class="photo">${photoBox("Genie · Abuja")}</div>`:""}
+  ${CONFIG.photo?`<div class="photo">${photoBox("Genie · Forward with Genie, Abuja")}</div>`:""}
 </section>
 <div class="sec-head" id="services"><h2>Pick where to start</h2></div>
 <div class="grid">
@@ -704,10 +736,13 @@ home(){ const h = lagosNow().getHours(); return `
   ${card("call","t-mint",I.video,"Clarity session","Ten minutes, free. You leave knowing what's really in the way and your first step.",[["Free","free"],["10 min"],["","next",'data-next="free_call"']])}
   ${card("communication","t-lilac",I.mic,"Communication","Find exactly where your speaking breaks down, then fix it. Start with a free 4-minute test.",[["Free test","free"],["Courses coming soon","soon"]])}
 </div>
+${quotesHTML()}
+<div class="sec-head" id="sq-head" hidden><h2>People finishing things right now</h2><a class="link" href="/squad/${CONFIG.squad}">See all</a></div>
+<div class="goals" id="sq-goals"></div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
 <a class="event" href="#event">
   ${evOver() ? `<div class="date"><small>NEXT</small><b>${String(+CONFIG.event.session+1).padStart(2,"0")}</b></div>
-  <div class="meta"><small>Session ${String(+CONFIG.event.session+1).padStart(2,"0")} · In person · Free</small><h3>${CONFIG.event.name}</h3><p>Date coming soon · <b class="ev-cta">Get on the list</b></p></div>`
+  <div class="meta"><small>Session ${String(+CONFIG.event.session+1).padStart(2,"0")} · In person · Free</small><h3>${CONFIG.event.name}</h3><p>${CONFIG.nextEvent ? esc(CONFIG.nextEvent.when) : "Date coming soon"} · <b class="ev-cta">Get on the list</b></p></div>`
   : `<div class="date"><small>${CONFIG.event.mon}</small><b>${CONFIG.event.day}</b></div>
   <div class="meta"><small>Session ${CONFIG.event.session} · In person · Free</small><h3>${CONFIG.event.name}</h3><p>${CONFIG.event.place} · 11:00am · <b class="ev-cta">Get your free pass</b></p></div>`}
   <span class="arrow">${I.arrow}</span>
@@ -756,6 +791,18 @@ ${backLink()}
         <li>${I.tick}<span>A plan for a big goal that feels too big.</span></li>
       </ul>
       <p class="hint" style="margin:12px 0 0">Plans change? Move your session up to 24 hours before. Your time stays yours.</p>
+    </div>
+    <div class="panel who-card">
+      <img src="${CONFIG.aboutPhoto}" alt="Genie" loading="lazy">
+      <div><span class="eyebrow">Who you'll talk to</span><b>Genie</b><p>Coaching people one-on-one since 2021. I read your note before we meet, so we skip the small talk and start on the real problem.</p></div>
+    </div>
+    <div class="panel">
+      <h3>After you pay</h3>
+      <ol class="next-steps">
+        <li><b>You get an email straight away</b><span>Your time, the Google Meet link and a calendar invite.</span></li>
+        <li><b>We meet on video</b><span>Join from your phone or laptop. Camera on, somewhere you can talk.</span></li>
+        <li><b>You leave with your next steps</b><span>Clear enough to start the same day.</span></li>
+      </ol>
     </div>
   </div>
   <div class="panel" id="booker"></div>
@@ -882,7 +929,7 @@ about(){ return `
     <span class="eyebrow">About</span>
     <h1 class="about-name">I'm Eugene.</h1>
     <p class="about-tag">Most people call me Genie.</p>
-    <div class="prose hand">
+    <div class="prose">
       <p>I'm a personal development coach. I work on three things: how you think, how you speak, and whether you actually follow through.</p>
       <p>I don't think most people lack motivation. They're up against resistance, and resistance doesn't leave because you watched one more video.</p>
       <p>I trust proof more than promises. That's why my accountability runs on daily uploads.</p>
@@ -1198,7 +1245,7 @@ async function releaseHold(){
 }
 async function resumeHold(h){
   B.basket = h.basket.map(x=>Object.assign({}, x)); B.hours = h.hours; B.form = h.f; B.step = "details";
-  if(h.t && Date.parse(h.t.expires_at) > Date.now()){ renderBooker(); return showTransfer(h.t, h.f, "Pay "+naira(h.hours*CONFIG.hourRate)); }
+  if(h.t && Date.parse(h.t.expires_at) > Date.now()){ renderBooker(); return showTransfer(h.t, h.f, "Pay "+naira(price(h.hours))); }
   await releaseHold(); renderBooker();   // card checkout can't be reopened: free it and hold again when they tap Pay
 }
 function holdBannerHTML(){
@@ -1254,7 +1301,7 @@ function renderPlan(el){
     <div class="err" id="perr" hidden></div>
     <h3 style="margin-top:22px">How much time?</h3>
     <div class="packs" role="radiogroup" aria-label="How much time">
-      ${PACKS.map(p=>`<label class="pack"><input type="radio" name="pack" value="${p.h}" ${p.h===cur?"checked":""}><span class="pack-t"><b>${p.title}</b><em>${p.sub}</em></span><span class="pack-p">${naira(p.h*CONFIG.hourRate)}</span></label>`).join("")}
+      ${PACKS.map(p=>`<label class="pack"><input type="radio" name="pack" value="${p.h}" ${p.h===cur?"checked":""}><span class="pack-t"><b>${p.title}${p.tag?`<i class="pack-tag">${p.tag}</i>`:""}</b><em>${p.sub}</em></span><span class="pack-p">${p.h*CONFIG.hourRate>price(p.h)?`<s>${naira(p.h*CONFIG.hourRate)}</s>`:""}${naira(price(p.h))}${p.h*CONFIG.hourRate>price(p.h)?`<small>You save ${naira(p.h*CONFIG.hourRate-price(p.h))}</small>`:""}</span></label>`).join("")}
     </div>
     <div style="height:16px"></div>
     <button class="btn btn-ink btn-block" id="toTime">Pick a time</button>`);
@@ -1304,6 +1351,27 @@ async function freeOpen(){
   catch(_){ FREE_OPEN = true; }
   return FREE_OPEN;
 }
+/* Real client words only. Add them to CONFIG.quotes; the section stays hidden while it's empty. */
+function quotesHTML(){
+  const q = CONFIG.quotes || []; if(!q.length) return "";
+  return `<div class="sec-head"><h2>What people say</h2></div><div class="quotes">${q.map(x=>`<figure class="quote"><blockquote>${esc(x.text)}</blockquote><figcaption><b>${esc(x.name)}</b>${x.detail?` · ${esc(x.detail)}`:""}</figcaption></figure>`).join("")}</div>`;
+}
+/* Live goals from the current squad: real people, real declarations. */
+const AV_COL = ["#D7401C","#2F6F5E","#178A4A","#3B5BDB","#C98A0B","#7A4A2E","#8E44AD","#1E7F8C"];
+async function fillGoals(){
+  const box = $("#sq-goals"); if(!box || !CONFIG.squad) return;
+  try{
+    const r = await fetch(`${SB}/functions/v1/squads-api?code=${CONFIG.squad}`).then(x=>x.json());
+    if(!r.ok || !(r.members||[]).length) return;
+    const posts = r.posts || [];
+    const list = r.members.filter(m=>m.goal).sort((a,b)=>(b.started?1:0)-(a.started?1:0)).slice(0,6);
+    box.innerHTML = list.map(m=>{ const first = m.coach ? "Genie" : String(m.name||"").trim().split(/\s+/)[0]; const n = posts.filter(p=>p.member_id===m.id).length;
+      const col = AV_COL[[...String(m.name)].reduce((a,c)=>a+c.charCodeAt(0),0) % AV_COL.length];
+      return `<a class="goal" href="/squad/${CONFIG.squad}/m/${esc(m.id)}"><span class="g-av" style="background:${m.photo?"#ddd":col}">${m.photo?`<img src="${esc(m.photo)}" alt="" loading="lazy">`:esc(first.slice(0,1).toUpperCase())}</span>
+        <span class="g-t"><b>${esc(first)}${m.coach?' <i class="g-tick" aria-label="Coach"></i>':""}</b><span><em>will</em> ${esc(m.goal)}</span><small class="${m.started?"on":""}">${m.started ? (n ? `Started · ${n} update${n>1?"s":""}` : "Started") : "Declared"}</small></span></a>`; }).join("");
+    $("#sq-head").hidden = false;
+  }catch(_){}
+}
 /* When free sessions are closed, every "free" link points to paid coaching instead, and free-only lines disappear. */
 function freeGate(){
   freeOpen().then(o=>{ if(o) return;
@@ -1314,7 +1382,7 @@ function freeGate(){
 freeGate();
 function markFreeClosed(){
   document.querySelectorAll('a.card[href="#call"]').forEach(c=>{
-    c.classList.add("closed");
+    c.classList.add("closed"); c.parentNode.appendChild(c);   // closed option goes last, out of the way
     c.querySelector(".free-tag")?.remove();
     const chips = c.querySelector(".chips"); if(chips) chips.innerHTML = `<span class="chip">Closed for now</span>`;
   });
@@ -1330,6 +1398,8 @@ function callClosed(){
 }
 async function fillNext(){
   freeOpen().then(o=>{ if(!o) markFreeClosed(); });
+  fillGoals();
+  nextOpen("mentorship").then(n=>{ const l = $("#hero-live"); if(l && n){ l.querySelector("span:last-child").textContent = "Next open session: " + whenText(n.s, n.date); l.hidden = false; } });
   for(const svc of ["free_call","mentorship"]){
     const n = await nextOpen(svc);
     document.querySelectorAll(`[data-next="${svc}"]`).forEach(c=>{ if(n){ c.textContent = "Next: " + whenText(n.s, n.date); c.hidden = false; } });
@@ -1346,7 +1416,7 @@ const PACKS = [
   { h:1, len:60,  title:"1 hour",  sub:"One session" },
   { h:2, len:120, title:"2 hours", sub:"One longer session" },
   { h:4, len:60,  title:"4 hours", sub:"Four 1-hour sessions. Book them as you go." },
-  { h:8, len:60,  title:"8 hours", sub:"Eight 1-hour sessions. Book them as you go." }
+  { h:8, len:60,  title:"8 hours", sub:"Eight 1-hour sessions. Book them as you go.", tag:"Best value" }
 ];
 const isPack = () => B.hours > 2;
 const ICO = {
@@ -1360,7 +1430,7 @@ function sumHTML(){
   const free = B.service==="free_call";
   const title = free ? "Clarity session" : "Coaching session";
   const len = free ? "10 minutes" : isPack() ? `${B.hours} hours · book as you go` : (B.hours===2 ? "2 hours" : "1 hour");
-  const price = free ? "Free" : naira(B.hours*CONFIG.hourRate);
+  const price = free ? "Free" : naira(price(B.hours));
   const picks = free ? (B.slot ? [{ date:B.slot.date, label:B.slot.label }] : []) : (B.basket||[]);
   const when = picks.length ? picks.map(x=>`${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}, ${x.label}`).join("<br>") : "";
   const note = (B.form && B.form.note) || "";
@@ -1982,7 +2052,7 @@ function renderDetails(el){
   if(isFree){ const p = dayParts(B.slot.date); picked = `<div class="picked"><div><b>${p.long}, ${B.slot.label}</b><span>Free clarity session · 10 minutes · Video</span></div><button type="button" id="chg">Change</button></div>`; }
   else {
     const left = leftMins();
-    picked = `<div class="picked picked-multi"><div><b>Coaching · ${B.hours} hour${B.hours>1?"s":""} · ${naira(B.hours*CONFIG.hourRate)}</b>
+    picked = `<div class="picked picked-multi"><div><b>Coaching · ${B.hours} hour${B.hours>1?"s":""} · ${naira(price(B.hours))}</b>
       <ul>${B.basket.map(x=>`<li>${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}, ${x.label} <em>${lenLabel(x.minutes)}</em></li>`).join("")}</ul>
       ${left>0?`<span>${minsText(left)} left to book later</span>`:""}${saved.note?`<span class="for-line">For: ${esc(saved.note.length>110?saved.note.slice(0,107)+"...":saved.note)}</span>`:""}</div><button type="button" id="chg">Change</button></div>`;
   }
@@ -1999,7 +2069,7 @@ function renderDetails(el){
       <div id="fused" hidden></div>
       <div class="err" id="ferr" hidden></div>
       ${isFree?"":payMethodsHTML()}
-      <button class="btn btn-ink btn-block" type="submit" id="fsub">${isFree?"Confirm my session":"Pay "+naira(B.hours*CONFIG.hourRate)}</button>
+      <button class="btn btn-ink btn-block" type="submit" id="fsub">${isFree?"Confirm my session":"Pay "+naira(price(B.hours))}</button>
       ${isFree?"":`<p class="note pay-trust">${I.lock} Paid securely through Paystack</p>`}
     </form>`);
   $("#chg").onclick=()=>{ B.form = Object.assign({}, B.form||{}, readForm(), isFree?{}:{ note:(B.form||{}).note||"" }); B.step="time"; renderBooker(); loadSlots(true); };
@@ -2059,7 +2129,7 @@ async function submitBooking(){
     return;
   }
 
-  const payLabel = "Pay "+naira(B.hours*CONFIG.hourRate);
+  const payLabel = "Pay "+naira(price(B.hours));
   setBusy(true, B.basket.length>1 ? "Holding your times" : "Holding your time");
   sortBasket();
   const h = await api("POST", { action:"hold", hours:B.hours, sessions:B.basket.map(x=>({ start:x.start, minutes:x.minutes })), ...base });

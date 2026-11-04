@@ -46,6 +46,8 @@ const PAYSTACK = Deno.env.get("PAYSTACK_SECRET_KEY") ?? "";
 const TZ_OFFSET = "+01:00"; // Africa/Lagos, no daylight saving
 const OFFSET_MS = 60 * 60 * 1000;
 const HOUR_RATE_NAIRA = 25000;
+/* Bigger packs cost less per hour. Keep in step with CONFIG.prices on the site. */
+const PACK_PRICE_NAIRA: Record<number, number> = { 1: 25000, 2: 50000, 4: 90000, 8: 170000 };
 const HOLD_MINUTES = 15;
 /* Paid sessions need a day's notice so Genie can prepare; free calls can be booked up to 10 minutes before. */
 const LEAD_MINUTES: Record<string, number> = { free_call: 10, mentorship: 24 * 60 };
@@ -466,7 +468,7 @@ async function handleHold(p: Record<string, unknown>) {
   if (totalMinutes(r.list) > hours * 60) return json({ ok: false, error: "not_enough_time" }, 409);
 
   const reference = "MNT_" + crypto.randomUUID().replace(/-/g, "").slice(0, 20);
-  const amount_kobo = hours * HOUR_RATE_NAIRA * 100;
+  const amount_kobo = (PACK_PRICE_NAIRA[hours] ?? hours * HOUR_RATE_NAIRA) * 100;
   const { data: plan, error: pe } = await sb.from("mentorship_plans").insert({
     name: person.name, email: person.email, phone: person.phone || null, hours, minutes_total: hours * 60,
     amount_kobo, payment_reference: reference, status: "pending",
