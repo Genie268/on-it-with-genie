@@ -17,7 +17,8 @@
  * POST {action:"show_video", token, show}           Show/hide your declaration video on your profile.
  * POST {action:"set_partner", token, partner_id}    Pick a squad member to hold you accountable (they get an email). "" clears it.
  * POST {action:"want_coach", token}                Wants Genie as their coach: tells Genie, client sends them to /app.
- * POST {action:"nudge", token, member_id}          Partner nudges the person they hold accountable (email, max once per 12h).
+ * POST {action:"nudge", token, member_id}          Any squad member nudges another who's gone quiet (email, max once per 12h per person).
+ * Declarations lock 24 hours after they're made (EDIT_HOURS): after that "join" with the same email returns "locked".
  * POST {action:"cron", kind:"remind"|"summary"} + x-cron-key
  *      remind  (Fri 6pm Lagos): members who haven't checked in this week
  *      summary (Sat 9am Lagos): Genie gets who checked in and who didn't
@@ -30,6 +31,8 @@ const RESEND = Deno.env.get("RESEND_API_KEY") ?? "";
 const FROM = "Genie <genie@eugeneobo.com>";
 const SITE = "https://eugeneobo.com";
 const DAY = 86400_000;
+const EDIT_HOURS = 24;   // a declaration can be changed for this long, then it's locked
+const canEdit = (createdAt: string) => Date.parse(createdAt) > Date.now() - EDIT_HOURS * 3600_000;
 const MEDIA = Deno.env.get("SUPABASE_URL") + "/storage/v1/object/public/squad-media/";
 const media = (p: string | null) => (p ? MEDIA + p : null);
 
@@ -78,7 +81,7 @@ async function view(code: string, me: string) {
     sb.from("squad_members").select("id,created_at,name,goal,deadline,proof,first_step,started_at,started_note,token,email,photo_path,video_path,show_video,partner_id,nudged_at").eq("squad_id", s.id).order("created_at"),
     sb.from("squad_checkins").select("member_id,week,status,note,created_at").eq("squad_id", s.id),
   ]);
-  const { data: posts } = await sb.from("squad_posts").select("id,created_at,member_id,text,photo_path,cheers").eq("squad_id", s.id).eq("hidden", false).order("created_at", { ascending: false }).limit(80);
+  const { data: posts } = await sb.from("squad_posts").select("id,created_at,member_id,text,photo_path,cheers").eq("squad_id", s.id).eq("hidden", false).order("created_at", { ascending: false }).limit(400);
   const byMember: Record<string, Record<number, { status: string; note: string | null }>> = {};
   (chk ?? []).forEach((c: any) => ((byMember[c.member_id] ??= {})[c.week] = { status: c.status, note: c.note }));
   const week = weekOf(s.starts_on);
@@ -86,7 +89,7 @@ async function view(code: string, me: string) {
   const coach = (mem ?? []).find((m: any) => String(m.email).toLowerCase() === genieEmail);
   let mine = null;
   const members = (mem ?? []).map((m: any) => {
-    if (me && m.token === me) mine = { id: m.id, name: m.name, email: m.email, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, photo: media(m.photo_path), has_video: !!m.video_path, show_video: m.show_video, partner_id: m.partner_id };
+    if (me && m.token === me) mine = { id: m.id, can_edit: canEdit(m.created_at), name: m.name, email: m.email, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, photo: media(m.photo_path), has_video: !!m.video_path, show_video: m.show_video, partner_id: m.partner_id };
     return { id: m.id, name: m.name, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, started_note: m.started_note, checkins: byMember[m.id] ?? {}, photo: media(m.photo_path), video: m.show_video ? media(m.video_path) : null, partner_id: m.partner_id, coach: !!coach && m.id === coach.id, nudged_recently: !!m.nudged_at && Date.parse(m.nudged_at) > Date.now() - 12 * 3600_000 };
   });
   // registered attendees of the linked event who haven't joined yet (first name + initial only)
@@ -116,7 +119,8 @@ async function join(p: Record<string, unknown>) {
   if (!name) return json({ ok: false, error: "missing_name" }, 400);
   if (!validEmail(email)) return json({ ok: false, error: "bad_email" }, 400);
   if (goal.length < 3) return json({ ok: false, error: "missing_goal" }, 400);
-  const { data: had } = await sb.from("squad_members").select("id,token").eq("squad_id", s.id).eq("email", email).maybeSingle();
+  const { data: had } = await sb.from("squad_members").select("id,token,created_at").eq("squad_id", s.id).eq("email", email).maybeSingle();
+  if (had && !canEdit(had.created_at)) return json({ ok: false, error: "locked" }, 409);
   const row: Record<string, unknown> = { squad_id: s.id, name, email, phone: phone || null, goal, deadline, proof: proof || null, first_step: firstStep || null, updated_at: new Date().toISOString() };
   if (regId) row.reg_id = regId;
   let token: string;
@@ -238,11 +242,11 @@ async function nudge(p: Record<string, unknown>) {
   const me = await memberBy(clean(p.token, 60));
   if (!me) return json({ ok: false, error: "bad_token" }, 401);
   const { data: t } = await sb.from("squad_members").select("id,name,email,goal,token,partner_id,nudged_at,squad_id").eq("id", clean(p.member_id, 60)).maybeSingle();
-  if (!t || t.partner_id !== me.id) return json({ ok: false, error: "not_your_person" }, 403);
+  if (!t || t.squad_id !== me.squad_id || t.id === me.id) return json({ ok: false, error: "not_in_squad" }, 403);
   if (t.nudged_at && Date.parse(t.nudged_at) > Date.now() - 12 * 3600_000) return json({ ok: false, error: "too_soon" }, 429);
   await sb.from("squad_members").update({ nudged_at: new Date().toISOString() }).eq("id", t.id);
   await sendEmail(t.email, `${first(me.name)} is checking on you`,
-    `Hi ${first(t.name)},\n\n${first(me.name)} is holding you accountable and wants to know: how is this going?\n\n"${t.goal}"\n\nPost what you've done (a line or a photo) so they can see it:\n${squadLink(me.squads.code, t.token)}\n\nGenie`, { reply_to: me.email });
+    `Hi ${first(t.name)},\n\n${first(me.name)} from ${me.squads.name} is checking on you. How is this going?\n\n"${t.goal}"\n\nPost what you did today (a line or a photo) so your squad can see it:\n${squadLink(me.squads.code, t.token)}\n\nGenie`, { reply_to: me.email });
   return json({ ok: true });
 }
 

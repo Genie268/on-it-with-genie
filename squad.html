@@ -218,6 +218,60 @@ p{margin:0}h1,h2,h3{margin:0}
 .wall .av{color:#fff}
 .wc-h{display:flex;align-items:center;gap:1vw}
 body.wall{font-family:var(--body)}
+
+/* today card, squad board, calendar */
+.photo-ask{display:flex;align-items:center;gap:12px;margin:12px 16px 0;padding:12px 14px;border-radius:14px;background:#F0F8FF;border:1px solid #CFE6FB;cursor:pointer}
+.photo-ask>span:nth-child(2){flex:1;min-width:0}.photo-ask b{display:block;font-size:15px}.photo-ask small{font-size:13px;color:var(--muted)}
+.pa-av{position:relative;flex:none}.pa-av i{position:absolute;right:-2px;bottom:-2px;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;border:2px solid #fff;display:grid;place-items:center;font-style:normal;font-weight:700}
+.me-card{display:flex;align-items:center;gap:12px;margin:12px 16px 0;padding:12px 14px;border-radius:14px;border:1px solid var(--line)}
+.me-card>span:nth-child(2){flex:1;min-width:0}.me-card small{display:block;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.me-card b{display:block;font-size:15px;font-weight:600;margin:2px 0}.me-card b em{font-style:normal;font-family:var(--big);font-weight:400;color:var(--red);margin-right:4px}
+.me-card>span:nth-child(2)>span{font-size:13px;color:var(--muted)}
+.me-card .chev,.coach-line .chev{font-size:24px;color:var(--muted)}
+.today{border-color:var(--ink);border-width:1.5px}.today.done{border-color:var(--done);background:#F3FBF5}
+.today-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.day-pill{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;background:var(--ink);color:#fff;padding:4px 9px;border-radius:999px}
+.today-h .ok{font-size:13px;font-weight:700;color:var(--done)}.today-h .due{font-size:13px;font-weight:700;color:var(--red)}
+.today textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;font-size:15px;resize:vertical;min-height:64px;background:#fff}
+.today textarea:focus{outline:none;border-color:#A8A8A8}
+.pf-row{display:flex;align-items:center;gap:10px;margin-top:10px}.pf-row label{cursor:pointer}.pf-row .ico{width:18px;height:18px}
+.pf-row .prev{display:flex;align-items:center;gap:8px;min-width:0}.pf-row .prev img{width:36px;height:36px;border-radius:6px;object-fit:cover}.pf-row #pb{margin-left:auto;min-width:84px}
+.lab-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:0 16px 8px;padding:3px;border-radius:10px;background:var(--soft)}
+.seg button{height:34px;border-radius:8px;font-size:13.5px;font-weight:600;color:var(--muted)}.seg button.on{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.seg.mini{display:inline-grid;grid-template-columns:repeat(2,auto);margin:0;text-transform:none;letter-spacing:0}.seg.mini button{height:28px;padding:0 10px;font-size:12.5px}
+.board{padding:0 16px}
+.srow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line2)}.srow.col{flex-direction:column;align-items:stretch;gap:8px}
+.sr-who{display:flex;align-items:center;gap:10px;flex:1;min-width:0}.sr-who>span{min-width:0}.sr-who b{display:flex;align-items:center;gap:4px;font-size:14px;font-weight:600}
+.sr-who small{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag-ok{font-size:12.5px;font-weight:700;color:var(--done);background:#E8F7EE;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.tag-no{font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.b.sm{height:30px;padding:0 12px;font-size:13px}
+.strip{display:grid;gap:3px}.strip.week{grid-template-columns:repeat(7,1fr)}.strip.month{grid-template-columns:repeat(28,1fr);gap:2px}
+.strip span{height:22px;border-radius:5px;background:var(--soft)}.strip.month span{height:16px;border-radius:3px}
+.strip span.on{background:var(--done)}.strip span.fut{background:transparent;border:1px dashed var(--line)}.strip span.now{outline:2px solid var(--text);outline-offset:1px}
+.strip-key{display:grid;grid-template-columns:repeat(7,1fr);font-size:11px;color:var(--muted);text-align:center;padding:2px 0 0}
+.strip-key:has(span:nth-child(2):last-child){display:flex;justify-content:space-between}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-wk{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;font-size:11px;color:var(--muted);text-align:center;margin-bottom:4px}
+.cd{position:relative;border-radius:10px;background:var(--soft);display:grid;place-items:center;padding:6px 0;min-height:52px;color:var(--text)}
+.cal.month .cd{min-height:40px;padding:4px 0}
+.cd small{font-size:11px;color:var(--muted);font-weight:600}.cd b{font-size:16px;font-weight:700}
+.cd i{font-style:normal;font-size:12px;font-weight:800;height:14px;line-height:14px}
+.cd.on{background:var(--done);color:#fff}.cd.on small{color:rgba(255,255,255,.85)}
+.cd.fut{background:transparent;border:1px dashed var(--line);opacity:.6}
+.cd.now{box-shadow:inset 0 0 0 2px var(--text)}.cd.sel{box-shadow:0 0 0 2px var(--blue)}
+.dd-h{padding:16px 16px 4px;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.dd-empty{margin:14px 16px 0;padding:14px;border-radius:12px;background:var(--bg);font-size:14px;color:var(--muted);text-align:center}
+.vthumb{position:relative;display:block;width:100%;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:#000;text-align:left}
+.vthumb video{width:100%;height:100%;object-fit:cover;opacity:.85;display:block}
+.vplay{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.22);backdrop-filter:blur(6px);display:grid;place-items:center;border:1.5px solid rgba(255,255,255,.6)}
+.vcap{position:absolute;left:0;right:0;bottom:0;padding:30px 14px 12px;background:linear-gradient(to top,rgba(0,0,0,.75),transparent);color:#fff}.vcap b{display:block;font-size:15px}.vcap small{font-size:13px;opacity:.85}
+.vnone{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px dashed var(--line);color:var(--muted);font-size:14px}
+.coach-line{display:flex;align-items:center;gap:12px;margin:20px 16px 0;padding:12px 14px;border-radius:14px;background:var(--bg);border:1px solid var(--line2)}
+.coach-line>span:nth-child(2){flex:1;min-width:0}.coach-line b{display:flex;align-items:center;gap:4px;font-size:14px;font-weight:600}.coach-line small{font-size:12.5px;color:var(--muted)}
+.tst{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:.25s;z-index:60;pointer-events:none;white-space:nowrap}
+.tst.on{opacity:1;transform:translate(-50%,0)}
 /* wall (projector) */
 body.wall{background:var(--cream)}
 .wl{min-height:100vh;display:grid;grid-template-columns:minmax(300px,30%) 1fr;gap:3vw;padding:3.2vw}
@@ -260,7 +314,7 @@ const color = s => COLORS[[...String(s)].reduce((a,c)=>a+c.charCodeAt(0),0) % CO
 const initials = n => String(n||"?").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
 const niceDate = iso => iso ? new Date(iso+"T12:00:00Z").toLocaleDateString("en-GB",{ weekday:"short", day:"numeric", month:"short", timeZone:"UTC" }) : "";
 const addDays = (iso, n) => new Date(Date.parse(iso+"T12:00:00Z") + n*86400000).toISOString().slice(0,10);
-const ERR = { missing_name:"Add your name.", bad_email:"Check your email address.", missing_goal:"Write the goal you're declaring.", closed:"This squad is closed.", not_found:"That squad doesn't exist. Check the code.", bad_token:"That link has expired. Use the link in your email.", over:"This squad has finished." };
+const ERR = { missing_name:"Add your name.", bad_email:"Check your email address.", missing_goal:"Write the goal you're declaring.", closed:"This squad is closed.", not_found:"That squad doesn't exist. Check the code.", bad_token:"That link has expired. Use the link in your email.", over:"This squad has finished.", locked:"Your declaration is locked now. That's the point of declaring it." };
 
 const parts = location.pathname.split("/").filter(Boolean);
 const qs = new URLSearchParams(location.search);
@@ -391,40 +445,6 @@ function wirePhoto(){
   });
 }
 
-/* ---------- profile header (shared by home + profile) ---------- */
-function statsOf(m){
-  const ps = (D.posts||[]).filter(p=>p.member_id===m.id);
-  const cheers = ps.reduce((a,p)=>a+(p.cheers||0),0);
-  const done = Object.values(m.checkins||{}).filter(c=>c.status==="done").length;
-  return { posts:ps.length, cheers, done };
-}
-function phHTML(m, opts){
-  const s = D.squad, st = statsOf(m), mine = opts.mine;
-  const partner = m.partner_id && D.members.find(x=>x.id===m.partner_id);
-  const avInner = ringAv(m, 80, !!m.video);
-  return `<section class="ph">
-    <div class="ph-top">
-      ${mine ? `<label class="ph-av" title="${m.photo?"Change photo":"Add a photo"}">${avInner}<span class="plus">${m.photo?"":"+"}</span><input type="file" accept="image/*" hidden id="ph-in"></label>`
-             : m.video ? `<button type="button" class="ph-av" id="openreel" aria-label="Watch declaration">${avInner}</button>` : `<span class="ph-av">${avInner}</span>`}
-      <div class="stats"><div><b>${st.posts}</b><span>${st.posts===1?"post":"posts"}</span></div><div><b>${st.cheers}</b><span>cheers</span></div><div><b>${st.done}/${s.weeks}</b><span>weeks done</span></div></div>
-    </div>
-    <div class="ph-name">${nm(m)}${m.started?`<span class="started">● Started</span>`:""}</div>
-    <div class="ph-role">${m.coach ? "Coach · On It With Genie" : esc(s.name)}</div>
-    <p class="will"><b>WILL</b>${esc(m.goal)}</p>
-    <div class="ph-meta">${[m.deadline?`By ${esc(niceDate(m.deadline))}`:"", m.proof?`Proof: ${esc(m.proof)}`:"", partner?`Held accountable by ${fnm(partner)}`:""].filter(Boolean).join(" · ")}</div>
-    ${mine && !m.photo ? `<p class="ph-meta" style="color:var(--blue);font-weight:600">Tap your circle to add a photo</p>` : ""}
-    <div class="err" id="pherr" hidden></div>
-    <div class="ph-btns">${opts.btns}</div>
-  </section>
-  ${s.week>=1 || s.weeks ? hlHTML(m, s) : ""}`;
-}
-function hlHTML(m, s){
-  let h = "";
-  for(let w=1; w<=s.weeks; w++){ const c = m.checkins && m.checkins[w];
-    h += `<div class="hl-i"><div class="hl-c ${c?c.status:""}${w===s.week?" now":""}">${c ? (c.status==="done"?"✓":c.status==="partly"?"½":"✕") : w}</div><span>Week ${w}</span></div>`; }
-  return `<div class="hl">${h}</div>`;
-}
-
 function weeksHTML(m, s){
   let h = "";
   for(let w=1; w<=s.weeks; w++){ const c = m.checkins && m.checkins[w]; h += `<span class="${c?c.status:""}${w===s.week?" now":""}" title="Week ${w}">${c ? (c.status==="done"?"✓":c.status==="partly"?"½":"✕") : "W"+w}</span>`; }
@@ -518,78 +538,136 @@ function joinScreen(){
   });
 }
 
+/* ---------- days: the squad runs day by day ---------- */
+const lagosDay = iso => new Date(Date.parse(iso) + 3600000).toISOString().slice(0,10);
+const todayISO = () => new Date(Date.now() + 3600000).toISOString().slice(0,10);
+function squadDays(){ const s = D.squad, out = []; for(let i=0;i<s.weeks*7;i++) out.push(addDays(s.starts_on, i)); return out; }
+function postsByDay(memberId){
+  const map = {};
+  (D.posts||[]).forEach(p=>{ if(memberId && p.member_id!==memberId) return; (map[lagosDay(p.at)] ||= []).push(p); });
+  return map;
+}
+const dayNo = iso => Math.round((Date.parse(iso) - Date.parse(D.squad.starts_on)) / 86400000) + 1;
+const wkLetter = iso => new Date(iso+"T12:00:00Z").toLocaleDateString("en-GB",{ weekday:"narrow", timeZone:"UTC" });
+const dNum = iso => new Date(iso+"T12:00:00Z").getUTCDate();
+function curWeekDays(){
+  const s = D.squad, w = Math.min(Math.max(1, s.week), s.weeks), start = addDays(s.starts_on, (w-1)*7);
+  return Array.from({length:7}, (_,i)=>addDays(start, i));
+}
+function stat(m){
+  const byDay = postsByDay(m.id), days = Object.keys(byDay).length, ups = (D.posts||[]).filter(p=>p.member_id===m.id).length;
+  return { days, ups, today: !!byDay[todayISO()], byDay };
+}
+
+/* one person's calendar: week strip or whole-squad month grid; tap a day to see what they did */
+function calHTML(m, mode, sel){
+  const byDay = postsByDay(m.id), t = todayISO();
+  const days = mode==="month" ? squadDays() : curWeekDays();
+  const cell = d => { const has = !!byDay[d], fut = d > t, isT = d === t;
+    return `<button type="button" class="cd${has?" on":""}${fut?" fut":""}${isT?" now":""}${sel===d?" sel":""}" data-d="${d}" ${fut?"disabled":""} aria-label="${niceDate(d)}${has?", posted":""}"><small>${mode==="month" ? dNum(d) : wkLetter(d)}</small>${mode==="month" ? "" : `<b>${dNum(d)}</b>`}<i>${has?"✓":""}</i></button>`; };
+  const head = mode==="month" ? `<div class="cal-wk">${["M","T","W","T","F","S","S"].map((_,i)=>`<span>${wkLetter(addDays(D.squad.starts_on,i))}</span>`).join("")}</div>` : "";
+  return `${head}<div class="cal ${mode}">${days.map(cell).join("")}</div>`;
+}
+function dayDetail(m, d){
+  const list = postsByDay(m.id)[d] || [];
+  const when = d === todayISO() ? "Today" : niceDate(d);
+  if(!list.length) return `<div class="dd-empty">${esc(when)}: nothing posted.</div>`;
+  return `<div class="dd-h">${esc(when)} · Day ${dayNo(d)}</div>${list.map(postHTML).join("")}`;
+}
+
 /* ---------- member home ---------- */
+let VIEW = "day", FEEDALL = false;
 function home(){
   const s = D.squad, me = D.members.find(m=>m.id===D.me.id) || {}, my = D.me;
-  const inWeek = s.week >= 1 && s.week <= s.weeks, before = s.week < 1, over = s.week > s.weeks;
+  const t = todayISO(), before = s.week < 1, over = s.week > s.weeks;
+  const meFull = Object.assign({}, me, { name:my.name, photo:my.photo, goal:my.goal, deadline:my.deadline, proof:my.proof, started:my.started });
+  const st = stat(meFull), todays = st.byDay[t] || [];
+  const dno = Math.min(Math.max(dayNo(t),1), s.weeks*7);
   const cur = me.checkins && me.checkins[Math.max(1, s.week)];
-  const closes = niceDate(addDays(s.starts_on, Math.max(1, s.week) * 7 - 1));
-  const meFull = Object.assign({}, me, { name:my.name, photo:my.photo, goal:my.goal, deadline:my.deadline, proof:my.proof, started:my.started, partner_id:my.partner_id });
-  let action = "";
-  if(!my.started && !over){
-    action = `<div class="blk" id="startc"><h2>Take your first step</h2><p class="sub">${my.first_step ? `You said your first step is <b style="color:var(--text)">${esc(my.first_step)}</b>. Do it, then tell your squad.` : "Do one small thing towards your goal today, then tell your squad."}</p>
-      <div class="f"><label for="sn">What did you do? <em>(optional)</em></label><input id="sn" maxlength="200" placeholder="e.g. Listed all my chapter titles"></div>
-      <div class="err" id="serr" hidden></div><button class="b blue full" id="sb">I've done it</button></div>`;
-  }
-  const today = new Date(Date.now()+3600000).toISOString().slice(0,10);
-  const dayIn = before ? -1 : Math.round((Date.parse(today) - Date.parse(s.starts_on)) / 86400000) % 7;
-  const opensOn = addDays(s.starts_on, Math.max(1, s.week) * 7 - 3);
-  const wk = Math.max(1, s.week);
-  if((inWeek || before) && my.started && !cur && dayIn < 4){
-    action = `<div class="blk"><h2>You're in. Now go.</h2><p class="sub">Week ${wk} check-in opens ${esc(niceDate(opensOn))} and closes ${esc(closes)}. We'll email you when it's time.</p>
-      <div class="got"><i style="background:var(--ink)">${wk}</i><div><b style="font-size:14px">Your next move</b><br><span style="color:var(--muted);font-size:14px">${esc(my.first_step || "Do the smallest thing that moves it today.")}</span></div></div></div>`;
-  } else if((inWeek || before) && my.started){
+  const dayIn = before ? -1 : Math.round((Date.parse(t) - Date.parse(s.starts_on)) / 86400000) % 7;
+  const showCheck = !before && !over && (dayIn >= 4 || cur);
+
+  /* 1. the one thing to do today */
+  const todayCard = over ? `<div class="blk"><h2>${esc(s.name)} has finished</h2><p class="sub">${s.weeks} weeks done. If you want someone checking your proof every day, that's the 15-day challenge.</p><a class="b blue full" href="/app">See the challenge</a></div>`
+    : before ? `<div class="blk"><h2>Day 1 is ${esc(niceDate(s.starts_on))}</h2><p class="sub">From then, post one thing you did towards your goal every day.</p></div>`
+    : `<div class="blk today ${todays.length?"done":""}">
+      <div class="today-h"><span class="day-pill">Day ${dno} of ${s.weeks*7}</span>${todays.length?`<span class="ok">✓ You showed up today</span>`:`<span class="due">Not posted yet today</span>`}</div>
+      <h2>${todays.length ? "Done for today. Want to add more?" : "What did you do towards your goal today?"}</h2>
+      <p class="sub">${todays.length ? "Your squad can see it on your profile." : "One line or one photo is enough. Your squad sees it."}</p>
+      <form id="pf"><textarea id="pt" maxlength="500" rows="2" placeholder="e.g. Wrote 2 pages of chapter 3" aria-label="What you did today"></textarea>
+        <div class="pf-row"><label class="b">${I.img}<span>Add photo</span><input type="file" accept="image/*" hidden id="pi"></label><span class="prev" id="pp"></span><button class="b blue" id="pb" type="submit">Post</button></div>
+        <div class="err" id="perr" hidden></div></form>
+    </div>`;
+
+  /* weekly check-in, only while it's open */
+  let check = "";
+  if(showCheck){
+    const wk = Math.max(1, s.week), closes = niceDate(addDays(s.starts_on, wk*7-1));
     if(cur && !pick){
       const lab = { done:["Done","✓"], partly:["Partly","½"], missed:["Missed","✕"] }[cur.status];
-      action = `<div class="blk"><h2>Week ${wk} check-in</h2><p class="sub">Closes ${esc(closes)}. You can change it until then.</p>
-        <div class="got"><i style="background:var(--${cur.status==="done"?"done":cur.status==="partly"?"part":"miss"})">${lab[1]}</i><div><b style="font-size:14px">${lab[0]}</b>${cur.note?`<br><span style="color:var(--muted);font-size:14px">"${esc(cur.note)}"</span>`:""}</div></div>
-        <p class="note"><button type="button" class="tl" id="chg">Change my check-in</button></p></div>`;
+      check = `<div class="blk"><h2>Week ${wk} check-in</h2><div class="got"><i style="background:var(--${cur.status==="done"?"done":cur.status==="partly"?"part":"miss"})">${lab[1]}</i><div><b style="font-size:14px">${lab[0]}</b>${cur.note?`<br><span style="color:var(--muted);font-size:14px">"${esc(cur.note)}"</span>`:""}</div></div>
+        <p class="note"><button type="button" class="tl" id="chg">Change it</button> · closes ${esc(closes)}</p></div>`;
     } else {
-      action = `<div class="blk"><h2>Week ${wk} check-in</h2><p class="sub">Closes ${esc(closes)}. Be honest. Your squad sees it.</p>
+      check = `<div class="blk"><h2>Week ${wk} check-in</h2><p class="sub">Did you do what you said this week? Be honest. Closes ${esc(closes)}.</p>
         <div class="pick">${[["done","Done","did what I said"],["partly","Partly","moved, not enough"],["missed","Missed","didn't move"]].map(([k,l,sm])=>`<button type="button" data-k="${k}" class="${k}${pick===k?" on":""}">${l}<small>${sm}</small></button>`).join("")}</div>
-        <div class="f"><label for="cn">What happened? <em>(optional)</em></label><input id="cn" maxlength="300" value="${esc(cur&&cur.note||"")}" placeholder="Posted 6 videos this week"></div>
+        <div class="f"><input id="cn" maxlength="300" value="${esc(cur&&cur.note||"")}" placeholder="What happened? (optional)" aria-label="What happened"></div>
         <div class="err" id="cerr" hidden></div><button class="b blue full" id="cb">Check in</button></div>`;
     }
   }
-  if(over) action = `<div class="blk"><h2>The squad has finished</h2><p class="sub">${s.weeks} weeks done. If you want someone checking your proof every day, that's the 15-day challenge.</p><a class="b blue full" href="/app">See the challenge</a></div>`;
+
+  /* 2. who showed up: day / week / month */
+  const ordered = D.members.slice().sort((a,b)=> (b.id===my.id)-(a.id===my.id) || (b.coach?1:0)-(a.coach?1:0) || stat(b).days - stat(a).days);
+  const rowHead = m => `<a class="sr-who" href="${profLink(m.id)}">${av(m, 40)}<span><b>${m.id===my.id?"You":nm(m)}</b><small>${esc(m.goal)}</small></span></a>`;
+  let board = "";
+  if(VIEW==="day"){
+    board = ordered.map(m=>{ const x = stat(m), you = m.id===my.id;
+      return `<div class="srow">${rowHead(m)}${x.today ? `<span class="tag-ok">✓ Today</span>` : you ? `<span class="tag-no">Not yet</span>` : before||over ? "" :
+        `<button type="button" class="b sm nudge" data-id="${esc(m.id)}" ${m.nudged_recently?"disabled":""}>${m.nudged_recently?"Nudged":"Nudge"}</button>`}</div>`; }).join("");
+  } else {
+    board = ordered.map(m=>`<div class="srow col">${rowHead(m)}<div class="strip ${VIEW}">${(VIEW==="week"?curWeekDays():squadDays()).map(d=>{ const has = !!postsByDay(m.id)[d]; return `<span class="${has?"on":""}${d>t?" fut":""}${d===t?" now":""}" title="${niceDate(d)}"></span>`; }).join("")}</div></div>`).join("");
+    board = `<div class="strip-key">${VIEW==="week" ? curWeekDays().map(d=>`<span>${wkLetter(d)}</span>`).join("") : `<span>Day 1</span><span>Day ${s.weeks*7}</span>`}</div>` + board;
+  }
+  const counts = ordered.filter(m=>stat(m).today).length;
+
   $("#root").innerHTML = `<div class="wrap">${bar(esc(s.name))}
-    ${storiesHTML(my.id)}
-    ${phHTML(meFull, { mine:true, btns:`<button type="button" class="b" id="edit">Edit declaration</button><a class="b" href="${profLink(my.id)}">View profile</a>` })}
-    <div style="border-top:1px solid var(--line2);padding-top:2px">${action}</div>
-    ${accHTML(my, s)}
-    ${holdingHTML(my, s)}
-    ${my.has_video ? `<div class="blk" style="display:flex;align-items:center;gap:12px"><span style="color:var(--text)">${I.reel}</span><div style="flex:1"><b style="font-size:14px">Your declaration video</b><div style="font-size:13px;color:var(--muted)">${my.show_video ? "Showing on your profile" : "Hidden from your profile"}</div></div><button type="button" class="b" id="vtog">${my.show_video ? "Hide" : "Show"}</button></div>` : ""}
-    <div class="label">Squad updates</div>
-    ${over ? "" : `<form id="pf"><div class="cmp">${av({ name:my.name, photo:my.photo }, 36)}<textarea id="pt" maxlength="500" rows="1" placeholder="What did you do towards it today?" aria-label="Post progress"></textarea></div>
-      <div class="cmp-tools"><label>${I.img}<span>Photo</span><input type="file" accept="image/*" hidden id="pi"></label><span class="prev" id="pp"></span><button class="b blue" id="pb" type="submit" style="margin-left:auto">Post</button></div>
-      <div class="err" id="perr" hidden style="margin:8px 16px"></div></form>`}
-    ${feedHTML((D.posts||[]).slice(0,30), "<b>No updates yet</b>Post the first one. A line or a photo is enough.")}
+    ${my.photo ? "" : `<label class="photo-ask"><span class="pa-av">${av({ name:my.name }, 52)}<i>+</i></span><span><b>Add your photo</b><small>So your squad knows who you are.</small></span><span class="b blue">Add</span><input type="file" accept="image/*" hidden id="ph-in"></label><div class="err" id="pherr" hidden style="margin:0 16px"></div>`}
+    <a class="me-card" href="${profLink(my.id)}">${ringAv(meFull, 56, !!me.video)}<span><small>Your declaration</small><b><em>WILL</em> ${esc(my.goal)}</b><span>${my.deadline?`By ${esc(niceDate(my.deadline))} · `:""}${st.days} day${st.days===1?"":"s"} shown up</span></span><span class="chev">›</span></a>
+    ${todayCard}
+    ${check}
+    <div class="label lab-row"><span>Your squad${!before&&!over?` · ${counts} of ${ordered.length} posted today`:""}</span></div>
+    <div class="seg" role="tablist">${[["day","Today"],["week","This week"],["month","All days"]].map(([k,l])=>`<button type="button" role="tab" class="${VIEW===k?"on":""}" data-v="${k}">${l}</button>`).join("")}</div>
+    <div class="board">${board}</div>
+    <div class="label">Latest updates</div>
+    ${feedHTML((D.posts||[]).slice(0, FEEDALL ? 60 : 6), "<b>No updates yet</b>Post the first one.")}
+    ${!FEEDALL && (D.posts||[]).length > 6 ? `<p class="note" style="margin:12px 0"><button type="button" class="tl" id="more">See all ${(D.posts||[]).length} updates</button></p>` : ""}
+    ${over ? "" : `<a class="coach-line" href="/app">${ringAv({ name:"Genie", photo:coachOf().photo }, 36, true)}<span><b>Want me checking your proof every day? ${tick(13)}</b><small>The 15-day challenge · ₦15,000</small></span><span class="chev">›</span></a>`}
+    ${my.can_edit ? `<p class="note" style="margin:18px 0 6px"><button type="button" class="tl" id="edit">Edit my declaration</button> · locks 24 hours after you declare</p>` : ""}
   </div>`;
-  wireAcc(my); wirePhoto();
-  const pt = $("#pt"); if(pt) pt.addEventListener("input", ()=>{ pt.style.height = "auto"; pt.style.height = pt.scrollHeight + "px"; });
-  const vt = $("#vtog"); if(vt) vt.addEventListener("click", async ()=>{ vt.disabled = true; await post({ action:"show_video", token:ME, show:!my.show_video }); load(); });
+  wirePhoto();
+  const mo = $("#more"); if(mo) mo.addEventListener("click", ()=>{ FEEDALL = true; home(); wireFeed(); });
+  $$(".seg button").forEach(b=>b.addEventListener("click", ()=>{ VIEW = b.dataset.v; home(); wireFeed(); }));
+  $$(".nudge").forEach(b=>b.addEventListener("click", async ()=>{
+    b.disabled = true; b.textContent = "Sending…";
+    const r = await post({ action:"nudge", token:ME, member_id:b.dataset.id });
+    b.textContent = r.ok || r.error==="too_soon" ? "Nudged" : "Try again"; if(!r.ok && r.error!=="too_soon") b.disabled = false;
+    if(r.ok) toastMsg("Nudge sent. They'll get an email.");
+  }));
+  const ed = $("#edit"); if(ed) ed.addEventListener("click", ()=>{ editing = true; render(); window.scrollTo(0,0); });
   let pfile = null; const pi = $("#pi");
   if(pi) pi.addEventListener("change", ()=>{ pfile = pi.files[0] || null; $("#pp").innerHTML = pfile ? `<img src="${URL.createObjectURL(pfile)}" alt=""><button type="button" class="tl" id="px">Remove</button>` : ""; const px = $("#px"); if(px) px.addEventListener("click", ()=>{ pfile = null; pi.value = ""; $("#pp").innerHTML = ""; }); });
   const pf = $("#pf"); if(pf) pf.addEventListener("submit", async ev=>{
-    ev.preventDefault(); const t = $("#pt").value.trim(), e = $("#perr"), b = $("#pb");
-    if(!t && !pfile){ e.textContent = "Write something or add a photo."; e.hidden = false; return; }
+    ev.preventDefault(); const tx = $("#pt").value.trim(), e = $("#perr"), b = $("#pb");
+    if(!tx && !pfile){ e.textContent = "Write a line or add a photo."; e.hidden = false; return; }
     e.hidden = true; b.disabled = true; b.innerHTML = '<span class="spin"></span>';
     try{
       const photo_path = pfile ? await uploadImage(pfile, "post") : "";
-      const r = await post({ action:"post", token:ME, text:t, photo_path });
+      const r = await post({ action:"post", token:ME, text:tx, photo_path });
       if(!r.ok) throw new Error(r.error==="too_many" ? "That's a lot of posts for one day. Try again tomorrow." : "Couldn't post. Try again.");
-      load();
+      toastMsg("Posted. Day " + dno + " done."); load();
     }catch(err){ b.disabled = false; b.textContent = "Post"; e.textContent = err.message.startsWith("upload") ? "Couldn't upload the photo. Try again." : err.message; e.hidden = false; }
   });
-  $("#edit").addEventListener("click", ()=>{ editing = true; render(); window.scrollTo(0,0); });
   const chg = $("#chg"); if(chg) chg.addEventListener("click", ()=>{ pick = cur.status; home(); });
   $$(".pick button").forEach(b=>b.addEventListener("click", ()=>{ pick = b.dataset.k; $$(".pick button").forEach(x=>x.classList.toggle("on", x===b)); }));
-  const sb = $("#sb"); if(sb) sb.addEventListener("click", async ()=>{
-    sb.disabled = true; sb.innerHTML = '<span class="spin"></span>';
-    const r = await post({ action:"start", token:ME, note:$("#sn").value.trim() });
-    if(r.ok) return load();
-    sb.disabled = false; sb.textContent = "I've done it"; const e = $("#serr"); e.textContent = ERR[r.error] || "Something went wrong. Try again."; e.hidden = false;
-  });
   const cb = $("#cb"); if(cb) cb.addEventListener("click", async ()=>{
     const e = $("#cerr");
     if(!pick){ e.textContent = "Pick Done, Partly or Missed."; e.hidden = false; return; }
@@ -599,88 +677,47 @@ function home(){
     cb.disabled = false; cb.textContent = "Check in"; e.textContent = ERR[r.error] || "Something went wrong. Try again."; e.hidden = false;
   });
 }
-
-/* ---------- who holds you accountable ---------- */
-let SHOWCOACH = false;
 const coachOf = () => D.squad.coach || { name:"Genie", photo:null, member_id:null };
-function coachPanel(){
-  return `<div class="coach-more" id="cm" ${SHOWCOACH?"":"hidden"}>
-    <ul><li>You upload proof every day. I review every one and reply.</li><li>Two strategy calls with me, the first within 48 hours.</li><li>Your progress tracked on your own dashboard.</li></ul>
-    <div class="cprice"><b>15 days</b><span>&#8358;15,000</span></div>
-    <button type="button" class="b blue full" id="gocoach">Start with Genie</button></div>`;
-}
-function coachBtn(){
-  const c = coachOf();
-  return `<button type="button" class="coach${SHOWCOACH?" open":""}" id="coachbtn">${ringAv({ name:"Genie", photo:c.photo }, 44, true)}<span class="cb-t"><b>Genie ${tick(15)}</b><span>Coach · checks your proof every day</span></span><span class="chev">&rsaquo;</span></button>`;
-}
-function accHTML(my, s){
-  if(s.week > s.weeks) return "";
-  const byId = Object.fromEntries(D.members.map(m=>[m.id,m]));
-  const partner = my.partner_id && byId[my.partner_id];
-  if(partner) return `<div class="blk"><div class="acc-set">${av(partner, 44)}<div><small>Holding you accountable</small><b>${nm(partner)}</b></div><button type="button" class="b" id="chgp">Change</button></div>
-    ${partner.coach ? "" : `<p style="margin-top:12px"><button type="button" class="tl" id="upc">Want Genie checking your proof every day instead?</button></p>`}${coachPanel()}</div>`;
-  const peers = D.members.filter(m=>m.id!==my.id && !m.coach);
-  return `<div class="blk"><h2>Who's holding you accountable?</h2><p class="sub">Pick one person. They see your check-ins and can nudge you when you go quiet.</p>
-    ${coachBtn()}${coachPanel()}
-    ${peers.length ? `<div class="or">or someone from your squad</div><div class="peers">${peers.map(m=>`<button type="button" class="peer" data-id="${esc(m.id)}">${ringAv(m, 52, false)}<span>${esc(firstName(m.name))}</span></button>`).join("")}</div>` : ""}
-    <div class="err" id="accerr" hidden></div></div>`;
-}
-function holdingHTML(my, s){
-  const mine = D.members.filter(m=>m.partner_id===my.id);
-  if(!mine.length) return "";
-  const wk = Math.max(1, Math.min(s.week, s.weeks));
-  return `<div class="blk"><h2>You're holding ${mine.length===1?esc(firstName(mine[0].name)):mine.length+" people"} accountable</h2><p class="sub" style="margin-bottom:6px">Check on them. If they've gone quiet, send a nudge.</p>
-    ${mine.map(m=>{ const c = m.checkins && m.checkins[wk]; const st = c ? ({ done:"Done this week", partly:"Partly this week", missed:"Missed this week" })[c.status] : "No check-in yet this week";
-      return `<div class="hold"><a href="${profLink(m.id)}">${av(m, 40)}</a><div class="h-t"><a href="${profLink(m.id)}"><b>${nm(m)}</b></a><span>${esc(m.goal)}</span><small class="${c?c.status:""}">${st}</small></div>
-        <button type="button" class="b ${m.nudged_recently?"":"blue"} nudge" data-id="${esc(m.id)}" ${m.nudged_recently?"disabled":""}>${m.nudged_recently?"Nudged":"Nudge"}</button></div>`; }).join("")}</div>`;
-}
-function wireAcc(my){
-  const tog = ()=>{ SHOWCOACH = !SHOWCOACH; $("#cm").hidden = !SHOWCOACH; const cb = $("#coachbtn"); if(cb) cb.classList.toggle("open", SHOWCOACH); };
-  const cb = $("#coachbtn"); if(cb) cb.addEventListener("click", tog);
-  const up = $("#upc"); if(up) up.addEventListener("click", tog);
-  const go = $("#gocoach"); if(go) go.addEventListener("click", async ()=>{ go.disabled = true; go.innerHTML = '<span class="spin"></span>'; await post({ action:"want_coach", token:ME }); location.href = "/app"; });
-  const ch = $("#chgp"); if(ch) ch.addEventListener("click", async ()=>{ ch.disabled = true; await post({ action:"set_partner", token:ME, partner_id:"" }); load(); });
-  $$(".peer").forEach(b=>b.addEventListener("click", async ()=>{
-    const m = D.members.find(x=>x.id===b.dataset.id); if(!m) return;
-    if(!confirm(`Ask ${firstName(m.name)} to hold you accountable? They'll get an email.`)) return;
-    b.disabled = true; const r = await post({ action:"set_partner", token:ME, partner_id:m.id });
-    if(r.ok) return load();
-    b.disabled = false; const e = $("#accerr"); e.textContent = "Couldn't save that. Try again."; e.hidden = false;
-  }));
-  $$(".nudge").forEach(b=>b.addEventListener("click", async ()=>{
-    b.disabled = true; b.textContent = "Sending…";
-    const r = await post({ action:"nudge", token:ME, member_id:b.dataset.id });
-    b.classList.remove("blue"); b.textContent = r.ok || r.error==="too_soon" ? "Nudged" : "Try again"; if(!r.ok && r.error!=="too_soon"){ b.disabled = false; b.classList.add("blue"); }
-  }));
-}
+function toastMsg(m){ let t = $("#tst"); if(!t){ t = document.createElement("div"); t.id = "tst"; t.className = "tst"; document.body.appendChild(t); } t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("on"), 2600); }
 
 /* ---------- public profile ---------- */
+let PCAL = "week", PSEL = "";
 function profile(){
   const s = D.squad, m = D.members.find(x=>x.id===PID);
   if(!m){ $("#root").innerHTML = `<div class="wrap">${bar("Profile", SQ())}<div class="empty"><b>Profile not found</b>This person may have left the squad.<div style="margin-top:16px"><a class="b blue" href="${SQ()}">See the squad</a></div></div></div>`; return; }
-  const mine = D.me && D.me.id === m.id;
+  const mine = D.me && D.me.id === m.id, x = stat(m), t = todayISO();
   const url = location.origin + profLink(m.id);
   const shareText = `${firstName(m.name)} declared: "${m.goal}"${m.deadline?` by ${niceDate(m.deadline)}`:""}. Hold them to it.`;
-  const posts = (D.posts||[]).filter(x=>x.member_id===m.id);
   const ref = firstName(m.name).toLowerCase().replace(/[^a-z]/g,"");
-  if(TAB==="reel" && !m.video) TAB = "posts";
-  const grid = posts.length ? `<div class="grid">${posts.map(x=>x.photo
-      ? `<button type="button" class="tile" data-p="${esc(x.id)}"><img src="${esc(x.photo)}" alt="" loading="lazy"></button>`
-      : `<button type="button" class="tile txt" data-p="${esc(x.id)}" style="background:${color(m.name)}"><span>${esc(x.text)}</span></button>`).join("")}</div>`
-    : `<div class="empty"><b>No posts yet</b>${mine ? "Post your first update from your squad page." : `${esc(firstName(m.name))} hasn't posted an update yet.`}</div>`;
-  const reel = m.video ? `<div class="reel"><video src="${esc(m.video)}" controls playsinline preload="metadata"></video></div>` : "";
+  const posts = (D.posts||[]).filter(p=>p.member_id===m.id);
+  if(!PSEL){ const ds = Object.keys(x.byDay).sort(); PSEL = x.byDay[t] ? t : (ds[ds.length-1] || t); }
+  const video = m.video ? `<button type="button" class="vthumb" id="openreel" aria-label="Watch ${esc(firstName(m.name))}'s declaration">
+      <video src="${esc(m.video)}#t=0.5" preload="metadata" muted playsinline></video><span class="vplay">${I.play}</span>
+      <span class="vcap"><b>Declaration video</b><small>Watch ${esc(firstName(m.name))} say it out loud</small></span></button>`
+    : mine ? `<div class="vnone">${I.reel}<span>Genie adds your declaration video here.</span></div>` : "";
   $("#root").innerHTML = `<div class="wrap">${bar(nm(m), SQ())}
-    ${phHTML(m, { mine:false, btns: mine
-      ? `<a class="b" href="${SQ()}">Go to my squad</a><button type="button" class="b" id="cp">Copy link</button>`
-      : `<a class="b blue" href="https://wa.me/?text=${encodeURIComponent(shareText + " " + url)}" target="_blank" rel="noopener">${I.share}Share</a><button type="button" class="b" id="cp">Copy link</button>` })}
-    <div class="tabs" style="--n:${m.video?2:1}"><button type="button" class="${TAB==="posts"?"on":""}" data-t="posts" aria-label="Posts">${I.grid}</button>${m.video?`<button type="button" class="${TAB==="reel"?"on":""}" data-t="reel" aria-label="Declaration video">${I.reel}</button>`:""}</div>
-    ${TAB==="reel" ? reel : grid}
+    <section class="ph">
+      <div class="ph-top">${ringAv(m, 84, !!m.video)}
+        <div class="stats"><div><b>${x.days}</b><span>days shown up</span></div><div><b>${x.ups}</b><span>updates</span></div><div><b>${s.week>=1 ? Math.min(dayNo(t), s.weeks*7) : 0}</b><span>days in</span></div></div></div>
+      <div class="ph-name">${nm(m)}${x.today?`<span class="started">● Posted today</span>`:""}</div>
+      <div class="ph-role">${m.coach ? "Coach · On It With Genie" : esc(s.name)}</div>
+      <p class="will"><b>WILL</b>${esc(m.goal)}</p>
+      <div class="ph-meta">${[m.deadline?`By ${esc(niceDate(m.deadline))}`:"", m.proof?`Proof: ${esc(m.proof)}`:""].filter(Boolean).join(" · ")}</div>
+    </section>
+    ${video ? `<div style="padding:4px 16px 0">${video}</div>` : ""}
+    <div class="label lab-row"><span>Progress</span><span class="seg mini">${[["week","Week"],["month","All days"]].map(([k,l])=>`<button type="button" class="${PCAL===k?"on":""}" data-c="${k}">${l}</button>`).join("")}</span></div>
+    <div style="padding:0 16px">${calHTML(m, PCAL, PSEL)}</div>
+    <div id="dd">${dayDetail(m, PSEL)}</div>
+    <div class="ph-btns" style="padding:16px">${mine
+      ? `<a class="b" href="${SQ()}">Post today's progress</a><button type="button" class="b" id="cp">Copy link</button>`
+      : `<a class="b blue" href="https://wa.me/?text=${encodeURIComponent(shareText + " " + url)}" target="_blank" rel="noopener">${I.share}Share</a><button type="button" class="b" id="cp">Copy link</button>`}</div>
+    ${(()=>{ const rest = posts.filter(p=>lagosDay(p.at)!==PSEL); return rest.length ? `<div class="label">Other days</div>${rest.map(postHTML).join("")}` : ""; })()}
     ${D.me ? "" : `<div class="cta"><small>Forward with Genie · Session 07</small><b>SAT 28 NOV · ABUJA</b><p>${esc(firstName(m.name))} is in. Get your own free pass and declare yours in the room.</p><a class="b red full" href="/events?ref=${esc(ref)}">Get your free pass</a></div>`}
   </div>`;
   $("#cp").addEventListener("click", ()=>{ (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(()=>{ $("#cp").textContent = "Copied"; }).catch(()=>prompt("Copy this link:", url)); });
-  $$(".tabs button").forEach(b=>b.addEventListener("click", ()=>{ TAB = b.dataset.t; profile(); }));
+  $$("[data-c]").forEach(b=>b.addEventListener("click", ()=>{ PCAL = b.dataset.c; profile(); wireFeed(); }));
+  $$(".cal .cd").forEach(b=>b.addEventListener("click", ()=>{ PSEL = b.dataset.d; const y = scrollY; profile(); wireFeed(); scrollTo(0, y); }));
   const orl = $("#openreel"); if(orl) orl.addEventListener("click", ()=>openReel(m));
-  $$(".tile").forEach(t=>t.addEventListener("click", ()=>{ const x = posts.find(p=>p.id===t.dataset.p); if(x) openOv(`<div class="card">${postHTML(x)}</div>`); }));
 }
 
 /* ---------- projector wall ---------- */
