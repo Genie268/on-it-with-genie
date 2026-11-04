@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Squad · with Genie</title>
 <meta name="description" content="Declare your goal in front of your squad. Check in every week.">
-<meta name="theme-color" content="#EAE6DD">
+<meta name="theme-color" content="#ffffff">
 <meta property="og:title" content="Join the squad">
 <meta property="og:description" content="Declare your goal in front of your squad. Check in every week.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%230F0F10'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Arial' font-weight='800' font-size='17' fill='%23C8EF62'%3EG%3C/text%3E%3C/svg%3E">
@@ -14,158 +14,210 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
 <style>
 :root{
-  --bg:#EAE6DD;--cream:#E8E3DA;--surface:#FAF8F3;--ink:#0F0F10;--muted:#6C6C70;--line:#DCD6CA;
-  --red:#D7401C;--done:#178A4A;--part:#C98A0B;--miss:#D7401C;
-  --body:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --bg:#FAFAFA;--card:#FFFFFF;--line:#DBDBDB;--line2:#EFEFEF;--ink:#0F0F10;--text:#262626;--muted:#737373;--soft:#F2F2F2;
+  --blue:#0095F6;--blue-d:#1877F2;--red:#D7401C;--done:#17A34A;--part:#E0A100;--miss:#D7401C;
+  --ring:linear-gradient(45deg,#F2A23A 0%,#D7401C 55%,#A3123A 100%);
+  --sys:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --big:"Anton",Impact,"Arial Narrow Bold",sans-serif;
   --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --cream:#E8E3DA;--body:"Plus Jakarta Sans",var(--sys);
   color-scheme:light;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink)}
-body{font-family:var(--body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-a{color:inherit}
-button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
-button:disabled{cursor:not-allowed;opacity:.6}
-:focus-visible{outline:3px solid var(--ink);outline-offset:3px;border-radius:12px}
-p{margin:0}
-.wrap{max-width:640px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px 64px}
-.brand{display:flex;align-items:center;gap:10px;margin-bottom:16px;text-decoration:none}
-.mark{width:38px;height:38px;border-radius:50%;background:var(--ink);color:#C8EF62;display:grid;place-items:center;font-weight:800;font-size:16px}
-.brand b{font-size:16px;letter-spacing:-.02em}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font-family:var(--sys);font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+button:disabled{cursor:not-allowed;opacity:.55}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:8px}
+p{margin:0}h1,h2,h3{margin:0}
+.wrap{max-width:470px;margin:0 auto;padding:0 0 72px;min-height:100vh;background:var(--card)}
+@media (min-width:500px){body{background:var(--bg)}.wrap{border-left:1px solid var(--line2);border-right:1px solid var(--line2)}}
 
-.hero{background:var(--cream);border-radius:28px;padding:22px;container-type:inline-size;overflow:hidden}
-.top{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;padding-bottom:10px;border-bottom:1.5px solid var(--ink)}
-.title{overflow-wrap:normal;padding-bottom:.04em;font-family:var(--big);font-weight:400;text-transform:uppercase;font-size:clamp(40px,15cqw,84px);line-height:.92;margin:14px 0 0;letter-spacing:0}
-.title em{font-style:normal;color:var(--red)}
-.lede{margin-top:12px;font-size:16px;color:#2A2A2C;max-width:44ch}
-.faces{display:flex;align-items:center;gap:10px;margin-top:16px}
-.faces .st{display:flex}
-.faces i{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:800;font-size:13px;color:#fff;border:2.5px solid var(--cream);margin-left:-8px}
-.faces i:first-child{margin-left:0}
-.faces span{font-size:14px;font-weight:600;color:var(--muted)}
+/* top bar */
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--line2)}
+.bar h1{font-size:19px;font-weight:700;letter-spacing:-.01em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+.bar .back{width:32px;height:32px;display:grid;place-items:center;margin-left:-6px}
+.bar .mark{width:30px;height:30px;border-radius:50%;background:var(--ink);color:#C8EF62;display:grid;place-items:center;font-weight:800;font-size:13px;font-family:var(--body)}
+.ico{width:24px;height:24px;display:block}
 
-.card{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px;margin-top:12px}
-.card h2{font-size:20px;letter-spacing:-.03em;margin:0 0 4px;line-height:1.15}
-.card .sub{color:var(--muted);font-size:14px;margin-bottom:16px}
-.field{display:grid;gap:6px;margin-bottom:14px}
-.field label{font-size:14px;font-weight:700}
-.field label em{font-style:normal;font-weight:500;color:var(--muted)}
-.field input,.field textarea{border-radius:14px;border:1.5px solid var(--line);padding:0 14px;height:52px;font:inherit;font-size:16px;background:var(--bg);width:100%;color:var(--ink)}
-.field textarea{height:auto;min-height:84px;padding:13px 14px;resize:vertical}
-.field input:focus,.field textarea:focus{outline:none;border-color:var(--ink);background:#fff}
-.field.will input,.field.will textarea{font-weight:700;font-size:17px}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
-.row2>*{min-width:0}
-.err{color:#B3261E;font-size:14px;font-weight:600;margin:-4px 0 12px}
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;padding:0 22px;border-radius:999px;font-weight:800;font-size:16px;background:var(--ink);color:#fff}
-.btn.red{background:var(--red)}
-.btn.line{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
-.link{font-weight:700;text-decoration:underline;text-underline-offset:3px;font-size:14px;color:var(--muted)}
-.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid currentColor;border-right-color:transparent;animation:rot .7s linear infinite}
+/* avatars, rings, tick */
+.av{display:inline-grid;place-items:center;border-radius:50%;overflow:hidden;color:#fff;font-weight:700;flex:none;font-family:var(--body)}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.ring{display:inline-grid;place-items:center;border-radius:50%;padding:2.5px;background:var(--line);flex:none}
+.ring.on{background:var(--ring)}
+.ring>.av{border:2.5px solid #fff}
+.vt{display:inline-block;vertical-align:-2px;flex:none}
+
+/* stories row */
+.stories{display:flex;gap:14px;overflow-x:auto;padding:12px 16px 14px;border-bottom:1px solid var(--line2);scrollbar-width:none}
+.stories::-webkit-scrollbar{display:none}
+.story{display:grid;justify-items:center;gap:5px;width:70px;flex:none}
+.story>span:last-child{font-size:12px;color:var(--text);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:3px}
+.story.me>span:last-child{color:var(--muted)}
+
+/* buttons */
+.b{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 16px;border-radius:8px;font-weight:600;font-size:14px;background:var(--soft);color:var(--text);white-space:nowrap}
+.b.blue{background:var(--blue);color:#fff}.b.red{background:var(--red);color:#fff}
+.b.full{width:100%;height:44px;font-size:15px}
+.b:active{opacity:.75}
+.tl{color:var(--blue);font-weight:600;font-size:14px}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:rot .7s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
-.note{font-size:13px;color:var(--muted);text-align:center;margin-top:10px}
 
-.price{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-top:14px;padding:10px 14px;border-radius:14px;background:var(--ink);color:#F4F2EC}
-.price s{font-family:var(--mono);font-size:14px;color:rgba(244,242,236,.55)}
-.price b{font-family:var(--big);font-weight:400;font-size:20px;letter-spacing:.02em;text-transform:uppercase;color:#C8EF62}
-.price span{flex-basis:100%;font-size:12.5px;color:rgba(244,242,236,.7)}
-.namegrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.namegrid button{min-height:52px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);font-weight:800;font-size:15px;padding:8px 10px;text-align:left}
-.namegrid button.on{background:var(--ink);border-color:var(--ink);color:#fff}
-/* declaration ticket */
-.dec{background:var(--ink);color:#F4F2EC;border-radius:24px;padding:22px 22px 20px 30px;position:relative;overflow:hidden;margin-top:12px}
-.dec::before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--red)}
-.dec .k{padding-right:104px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(244,242,236,.55)}
-.dec .who{font-family:var(--big);text-transform:uppercase;font-size:clamp(30px,9vw,44px);line-height:1;margin:10px 0 6px}
-.dec .who em{font-style:normal;color:var(--red)}
-.dec .goal{font-size:20px;font-weight:800;line-height:1.3;letter-spacing:-.01em}
-.dec .meta{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;font-size:14px;color:rgba(244,242,236,.75)}
-.dec .meta b{color:#fff}
-.weeks{display:flex;gap:6px;margin-top:16px}
-.weeks span{flex:1;height:30px;border-radius:9px;background:rgba(255,255,255,.08);display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.5)}
-.weeks span.done{background:var(--done);color:#fff}.weeks span.partly{background:var(--part);color:#fff}.weeks span.missed{background:var(--miss);color:#fff}
-.weeks span.now{outline:2px solid rgba(255,255,255,.7);outline-offset:-2px}
-.stamp{position:absolute;right:16px;top:16px;font-family:var(--big);font-size:15px;letter-spacing:.06em;color:#C8EF62;border:2px solid #C8EF62;border-radius:8px;padding:2px 8px;transform:rotate(6deg)}
+/* blocks */
+.sec{padding:16px}
+.sec+.sec{border-top:1px solid var(--line2)}
+.blk{margin:12px 16px;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:16px}
+.blk h2{font-size:16px;font-weight:700;margin-bottom:4px}
+.blk .sub{font-size:14px;color:var(--muted);margin-bottom:14px}
+.label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:18px 16px 8px}
+.err{color:#ED4956;font-size:13px;font-weight:500;margin-top:10px}
+.note{font-size:12px;color:var(--muted);text-align:center;margin-top:12px}
 
-/* check-in */
-.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
-.pick button{min-height:64px;border-radius:16px;border:1.5px solid var(--line);background:var(--bg);font-weight:800;font-size:15px;display:grid;place-items:center;gap:2px;padding:8px 4px}
-.pick button small{font-weight:500;font-size:11.5px;color:var(--muted)}
+/* form fields */
+.f{display:grid;gap:6px;margin-bottom:12px}
+.f label{font-size:13px;font-weight:600;color:var(--text)}
+.f label em{font-style:normal;font-weight:400;color:var(--muted)}
+.f input,.f textarea{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:0 12px;height:44px;font:inherit;font-size:15px;color:var(--text)}
+.f textarea{height:auto;min-height:70px;padding:11px 12px;resize:vertical}
+.f input:focus,.f textarea:focus{outline:none;border-color:#A8A8A8;background:#fff}
+.f.big textarea{font-size:17px;font-weight:600}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}.row2>*{min-width:0}
+
+/* squad header (join screen) */
+.sq-hd{padding:20px 16px 16px;text-align:center;border-bottom:1px solid var(--line2)}
+.sq-hd .mono{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.sq-hd h2{font-family:var(--big);font-weight:400;font-size:40px;line-height:1;text-transform:uppercase;margin:8px 0 6px;color:var(--ink)}
+.sq-hd h2 em{font-style:normal;color:var(--red)}
+.sq-hd p{color:var(--muted);font-size:14px;max-width:34ch;margin:0 auto}
+.stack{display:flex;justify-content:center;margin:14px 0 4px}.stack .av{border:2px solid #fff;margin-left:-8px}.stack .av:first-child{margin-left:0}
+.free{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:6px 12px;border-radius:999px;background:#FFF4EF;color:var(--red);font-size:13px;font-weight:600}
+.free s{color:var(--muted);font-weight:500}
+
+/* name picker (follow-list style) */
+.ppl{list-style:none;margin:0;padding:0}
+.ppl li{display:flex;align-items:center;gap:12px;padding:8px 16px}
+.ppl .nm{flex:1;min-width:0}.ppl .nm b{display:flex;align-items:center;gap:4px;font-size:14px;font-weight:600}.ppl .nm span{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* profile header */
+.ph{padding:16px 16px 4px}
+.ph-top{display:flex;align-items:center;gap:22px}
+.ph-av{position:relative;cursor:pointer}
+.ph-av .plus{position:absolute;right:0;bottom:2px;width:24px;height:24px;border-radius:50%;background:var(--blue);color:#fff;border:2.5px solid #fff;display:grid;place-items:center;font-weight:700;font-size:16px;line-height:1}
+.stats{flex:1;display:grid;grid-template-columns:repeat(3,1fr);text-align:center}
+.stats b{display:block;font-size:17px;font-weight:700;color:var(--text)}.stats span{font-size:13px;color:var(--text)}
+.ph-name{margin-top:12px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px}
+.ph-role{font-size:13px;color:var(--muted);margin-top:1px}
+.will{margin-top:6px;font-size:14px;line-height:1.4;color:var(--text)}
+.will b{font-family:var(--big);font-weight:400;color:var(--red);letter-spacing:.02em;margin-right:5px;font-size:15px}
+.ph-meta{font-size:13px;color:var(--muted);margin-top:4px}
+.ph-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.started{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--done);margin-left:4px}
+
+/* week highlights */
+.hl{display:flex;gap:16px;overflow-x:auto;padding:14px 16px 16px;scrollbar-width:none}
+.hl::-webkit-scrollbar{display:none}
+.hl-i{display:grid;justify-items:center;gap:5px;flex:none}
+.hl-c{width:60px;height:60px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;background:var(--soft);font-weight:700;font-size:15px;color:var(--muted);position:relative}
+.hl-c::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1.5px solid transparent}
+.hl-c.now::after{border-color:var(--text)}
+.hl-c.done{background:var(--done);border-color:var(--done);color:#fff}.hl-c.partly{background:var(--part);border-color:var(--part);color:#fff}.hl-c.missed{background:var(--miss);border-color:var(--miss);color:#fff}
+.hl-i span{font-size:12px;color:var(--text)}
+
+/* tabs + grid */
+.tabs{display:grid;grid-template-columns:repeat(var(--n,2),1fr);border-top:1px solid var(--line2)}
+.tabs button{height:46px;display:grid;place-items:center;color:var(--muted);border-top:1px solid transparent;margin-top:-1px}
+.tabs button.on{color:var(--text);border-top-color:var(--text)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.tile{aspect-ratio:1;position:relative;overflow:hidden;background:var(--soft);display:block}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile.txt{display:flex;align-items:center;justify-content:center;padding:10px;text-align:center;font-size:12.5px;font-weight:600;line-height:1.3;color:#fff}
+.tile.txt span{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.empty{padding:40px 24px;text-align:center;color:var(--muted);font-size:14px}
+.empty b{display:block;color:var(--text);font-size:20px;font-weight:800;margin-bottom:6px}
+.reel{position:relative;background:#000;aspect-ratio:9/16;max-height:78vh;margin:0 auto;width:100%}
+.reel video{width:100%;height:100%;object-fit:contain;display:block;background:#000}
+
+/* posts (feed) */
+.post{border-bottom:1px solid var(--line2);padding-bottom:10px}
+.post-h{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.post-h .who{flex:1;min-width:0;font-size:14px}
+.post-h .who b{font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.post-h .who span{color:var(--muted);font-weight:400}
+.post-h .more{color:var(--muted);font-size:13px}
+.post-img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--soft)}
+.post-txt{margin:0 14px;padding:22px 18px;border-radius:12px;font-size:17px;font-weight:600;line-height:1.35;color:#fff}
+.post-a{display:flex;align-items:center;gap:14px;padding:10px 14px 2px}
+.cheer{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:14px;color:var(--text)}
+.cheer svg{width:24px;height:24px}
+.cheer.on svg path{fill:var(--red);stroke:var(--red)}
+.post-c{padding:4px 14px 0;font-size:14px;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere}
+.post-c b{font-weight:600;margin-right:4px}
+.post-t{padding:4px 14px 0;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.02em}
+
+/* composer */
+.cmp{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line2)}
+.cmp textarea{flex:1;border:0;resize:none;font:inherit;font-size:15px;padding:8px 0;min-height:38px;max-height:160px;background:transparent;color:var(--text)}
+.cmp textarea:focus{outline:none}
+.cmp-tools{display:flex;align-items:center;gap:12px;padding:0 16px 12px 58px;border-bottom:1px solid var(--line2)}
+.cmp-tools label{cursor:pointer;color:var(--text);display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.cmp-tools .prev{display:flex;align-items:center;gap:8px}.cmp-tools .prev img{width:40px;height:40px;border-radius:6px;object-fit:cover}
+.cmp-tools .tl{margin-left:auto}
+
+/* action cards */
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.pick button{min-height:62px;border-radius:10px;border:1px solid var(--line);background:#fff;font-weight:700;font-size:14px;display:grid;place-items:center;gap:2px;padding:8px 4px}
+.pick button small{font-weight:400;font-size:11.5px;color:var(--muted)}
 .pick button.on.done{background:var(--done);border-color:var(--done);color:#fff}
 .pick button.on.partly{background:var(--part);border-color:var(--part);color:#fff}
 .pick button.on.missed{background:var(--miss);border-color:var(--miss);color:#fff}
-.pick button.on small{color:rgba(255,255,255,.85)}
-.got{display:flex;gap:12px;align-items:center;padding:14px;border-radius:16px;background:var(--bg)}
-.got i{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-style:normal;font-weight:800}
+.pick button.on small{color:rgba(255,255,255,.9)}
+.got{display:flex;gap:12px;align-items:center;padding:12px;border-radius:10px;background:var(--bg)}
+.got i{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font-style:normal;font-weight:700}
 
-/* squad list */
-.sq-h{display:flex;justify-content:space-between;align-items:baseline;margin:26px 4px 6px}
-.sq-h h3{margin:0;font-size:18px;letter-spacing:-.02em}
-.sq-h span{font-size:13px;color:var(--muted);font-weight:600}
-.mem{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;margin-top:8px}
-.mem .n{display:flex;justify-content:space-between;gap:8px;align-items:center}
-.mem .n b{font-size:16px}
-.mem .n small{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--done);font-weight:500;text-transform:uppercase}
-.mem .g{margin-top:4px;font-size:15px;line-height:1.4}
-.mem .d{font-size:13px;color:var(--muted);margin-top:4px}
-.mem .weeks span{background:var(--bg);color:var(--muted);height:24px}
-.mem .weeks span.done{background:var(--done);color:#fff}.mem .weeks span.partly{background:var(--part);color:#fff}.mem .weeks span.missed{background:var(--miss);color:#fff}
-.mem .weeks span.now{outline-color:var(--ink)}
-.mem.you{border-color:var(--ink)}
+/* accountability */
+.coach{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#fff}
+.coach.open{border-color:var(--blue);background:#F0F8FF}
+.cb-t{flex:1;min-width:0}.cb-t b{display:flex;align-items:center;gap:4px;font-size:15px;font-weight:600}.cb-t>span{display:block;font-size:13px;color:var(--muted);margin-top:1px}
+.chev{font-size:22px;line-height:1;color:var(--muted);transition:transform .2s}.coach.open .chev{transform:rotate(90deg)}
+.coach-more{margin-top:10px;padding:14px;border-radius:12px;background:var(--bg)}
+.coach-more ul{margin:0 0 12px;padding-left:18px;font-size:14px;line-height:1.5}
+.cprice{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;font-weight:700}.cprice b{font-size:15px}.cprice span{font-size:17px}
+.or{display:flex;align-items:center;gap:10px;margin:16px 0 10px;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.peers{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.peers::-webkit-scrollbar{display:none}
+.peer{display:grid;justify-items:center;gap:5px;width:64px;flex:none;font-size:12px}
+.peer>span:last-child{max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc-set{display:flex;align-items:center;gap:12px}.acc-set>div{flex:1}.acc-set small{display:block;font-size:12px;color:var(--muted)}.acc-set b{font-size:15px;font-weight:600}
+.hold{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line2)}.hold:first-of-type{border-top:0}
+.h-t{flex:1;min-width:0}.h-t b{font-size:14px;font-weight:600}.h-t span{display:block;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.h-t small{display:block;font-size:12px;color:var(--muted);margin-top:1px}.h-t small.done{color:var(--done)}.h-t small.partly{color:var(--part)}.h-t small.missed{color:var(--miss)}
 
-/* avatars, profile, feed */
-a.btn{text-decoration:none;white-space:nowrap}
-.dec .who,.wc .who{display:flex;flex-wrap:wrap;column-gap:.28em}
-.av{display:inline-grid;place-items:center;border-radius:50%;overflow:hidden;color:#fff;font-weight:800;flex:none}
-.av img{width:100%;height:100%;object-fit:cover;display:block}
-a.mem{display:block;text-decoration:none;color:inherit}
-.mem .nm{display:flex;align-items:center;gap:10px;min-width:0}
-.mem .n small.vtag{color:var(--red)}
-.dec-av{display:inline-flex;align-items:center;gap:10px;margin-bottom:12px;cursor:pointer}
-.dec-av i{font-style:normal;font-size:12px;font-weight:700;color:rgba(244,242,236,.75);border:1px solid rgba(244,242,236,.3);border-radius:999px;padding:4px 10px}
-.row-links{display:flex;justify-content:center;gap:22px;margin-top:14px}
-.btn.sm{min-height:44px;width:auto;padding:0 18px;font-size:14px}
-.vcard{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.vcard b{display:block;font-size:15px}.vcard span{font-size:13px;color:var(--muted)}
-.pf-row{display:flex;align-items:center;gap:10px}.pf-row #pb{margin-left:auto}
-.pf-prev{display:flex;align-items:center;gap:8px}.pf-prev img{width:44px;height:44px;border-radius:10px;object-fit:cover}
-.pst{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:14px 16px;margin-top:8px}
-.pst .h{display:flex;gap:10px;align-items:center}.pst .h a{text-decoration:none;color:inherit}
-.pst .h b{display:block;font-size:15px;line-height:1.2}.pst .h small{font-size:12px;color:var(--muted)}
-.pst p{margin-top:10px;font-size:15px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
-.pst .ph{display:block;width:100%;max-height:440px;object-fit:cover;border-radius:14px;margin-top:10px}
-.pst-a{display:flex;align-items:center;gap:14px;margin-top:10px}
-.cheer{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);font-weight:800;font-size:13px;background:var(--bg)}
-.cheer span:empty{display:none}.cheer.on{background:var(--red);border-color:var(--red);color:#fff}
-.empty-f{border:1.5px dashed var(--line);border-radius:20px;padding:18px;text-align:center;color:var(--muted);font-size:14px;margin-top:8px}
-.back{display:inline-block;margin:0 0 8px;font-weight:700;font-size:14px;color:var(--muted);text-decoration:none}
-.vid{border-radius:24px;overflow:hidden;background:#000;margin-top:4px}.vid video{display:block;width:100%;max-height:72vh;background:#000}
-.prof-h{display:flex;align-items:center;gap:12px;margin-bottom:6px}
-.share{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.share .btn{min-height:50px;font-size:14.5px;padding:0 12px}
-.cta{margin-top:24px;background:var(--ink);color:#F4F2EC;border-radius:24px;padding:20px}
-.cta small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--red)}
-.cta b{display:block;font-family:var(--big);font-weight:400;font-size:28px;margin:6px 0 4px}.cta p{color:rgba(244,242,236,.75);font-size:14px;margin-bottom:14px}
+/* visitor CTA */
+.cta{margin:20px 16px;border-radius:14px;background:var(--ink);color:#F4F2EC;padding:18px}
+.cta small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#FF7A57}
+.cta b{display:block;font-family:var(--big);font-weight:400;font-size:26px;margin:6px 0 4px}.cta p{color:rgba(244,242,236,.75);font-size:14px;margin-bottom:14px}
+
+/* overlays: reel + single post */
+.ov{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center}
+.ov .x{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:24px;display:grid;place-items:center;z-index:2}
+.ov video{max-width:100%;max-height:100%;width:auto;height:100%;object-fit:contain}
+.ov .cap{position:absolute;left:0;right:0;bottom:0;padding:60px 18px calc(22px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,rgba(0,0,0,.75),transparent);color:#fff}
+.ov .cap .n{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+.ov .cap .w{margin-top:6px;font-size:15px}.ov .cap .w b{font-family:var(--big);font-weight:400;color:#FF7A57;margin-right:6px}
+.ov .card{background:#fff;border-radius:12px;max-width:470px;width:calc(100% - 24px);max-height:90vh;overflow:auto}
+
+/* projector wall (unchanged look) */
+.wall .top{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;padding-bottom:10px;border-bottom:1.5px solid var(--ink);color:var(--ink)}
+.wall .title{font-family:var(--big);font-weight:400;text-transform:uppercase;line-height:.92;margin:14px 0 0;color:var(--ink)}
+.wall .title em{font-style:normal;color:var(--red)}
+.wc .stamp{position:absolute;right:16px;top:16px;font-family:var(--big);letter-spacing:.06em;color:#C8EF62;border:2px solid #C8EF62;border-radius:8px;padding:2px 8px;transform:rotate(6deg)}
+.wc .weeks{display:flex;gap:6px}.wc .weeks span{flex:1;border-radius:9px;background:rgba(255,255,255,.08);display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.5)}
+.wc .weeks span.done{background:var(--done);color:#fff}.wc .weeks span.partly{background:var(--part);color:#fff}.wc .weeks span.missed{background:var(--miss);color:#fff}
+.wc .who{display:flex;flex-wrap:wrap;column-gap:.28em}
+.wall .av{color:#fff}
 .wc-h{display:flex;align-items:center;gap:1vw}
-.coach{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;border-radius:16px;border:1.5px solid var(--ink);background:var(--bg)}
-.coach.open{background:var(--ink);color:#F4F2EC}.coach.open .cb-t span{color:rgba(244,242,236,.7)}
-.cb-t{flex:1;min-width:0}.cb-t b{display:flex;align-items:center;gap:8px;font-size:16px}.cb-t>span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
-.tick{font-size:11px;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--done);border-radius:999px;padding:3px 8px}
-.chev{font-size:26px;line-height:1;color:var(--muted);transition:transform .2s}.coach.open .chev{transform:rotate(90deg);color:#F4F2EC}
-.coach-more{margin-top:10px;padding:14px;border-radius:16px;background:var(--bg)}
-.coach-more ul{margin:0 0 12px;padding-left:18px;font-size:14px;line-height:1.5}.coach-more li{margin:4px 0}
-.cprice{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}.cprice b{font-family:var(--big);font-weight:400;font-size:22px;text-transform:uppercase}.cprice span{font-weight:800;font-size:18px}
-.or{display:flex;align-items:center;gap:10px;margin:16px 0 10px;color:var(--muted);font-size:13px}.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
-.peers{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
-.peer{display:grid;justify-items:center;gap:6px;padding:10px 4px;border-radius:14px;border:1.5px solid var(--line);background:var(--bg);font-weight:700;font-size:13px}
-.peer span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.acc-set{display:flex;align-items:center;gap:12px}.acc-set>div{flex:1}.acc-set small{display:block;font-size:12px;color:var(--muted)}.acc-set b{font-size:16px}
-.link.up{display:block;margin-top:12px;font-size:13px;text-align:left}
-.hold{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}.hold:first-of-type{border-top:0}
-.h-t{flex:1;min-width:0}.h-t a{text-decoration:none;color:inherit}.h-t b{font-size:15px}.h-t span{display:block;font-size:13px;color:#2A2A2C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.h-t small{display:block;font-size:12px;color:var(--muted);margin-top:2px}.h-t small.done{color:var(--done)}.h-t small.partly{color:var(--part)}.h-t small.missed{color:var(--miss)}
-.btn.sm.nudge{flex:none}
-
+body.wall{font-family:var(--body)}
 /* wall (projector) */
 body.wall{background:var(--cream)}
 .wl{min-height:100vh;display:grid;grid-template-columns:minmax(300px,30%) 1fr;gap:3vw;padding:3.2vw}
@@ -196,10 +248,11 @@ body.wall{background:var(--cream)}
 </style>
 </head>
 <body>
-<div id="root"><div class="wrap"><p style="padding:40px 0;text-align:center;color:var(--muted)">Loading your squad…</p></div></div>
+<div id="root"><div class="wrap"><p style="padding:60px 0;text-align:center;color:var(--muted)">Loading your squad…</p></div></div>
 <script>
 const API = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/squads-api";
 const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const firstName = n => String(n||"").trim().split(/\s+/)[0] || "";
 const COLORS = ["#D7401C","#2F6F5E","#178A4A","#3B5BDB","#C98A0B","#7A4A2E","#8E44AD","#1E7F8C"];
@@ -220,7 +273,7 @@ try{ if(ME) localStorage.setItem(KEY, ME); else ME = localStorage.getItem(KEY) |
 if(qs.get("me")){ qs.delete("me"); history.replaceState(null, "", location.pathname + (qs.toString()?"?"+qs:"")); }
 const SQ = () => `/squad/${CODE}`;
 const profLink = id => `/squad/${CODE}/m/${id}`;
-let D = null, editing = false, pick = "", SEL = null, NEWP = false;
+let D = null, editing = false, pick = "", SEL = null, NEWP = false, TAB = "posts";
 
 async function load(){
   if(!CODE) return codeScreen();
@@ -229,57 +282,89 @@ async function load(){
   if(ME && !r.me){ try{ localStorage.removeItem(KEY); }catch(_){} ME = ""; }
   D = r; render();
 }
-function fail(){ $("#root").innerHTML = `<div class="wrap"><div class="card"><h2>Couldn't load the squad</h2><p class="sub">Check your connection and try again.</p><button class="btn" onclick="load()">Try again</button></div></div>`; }
+function fail(){ $("#root").innerHTML = `<div class="wrap">${bar("Squad")}<div class="blk"><h2>Couldn't load the squad</h2><p class="sub">Check your connection and try again.</p><button class="b blue full" onclick="load()">Try again</button></div></div>`; }
 function render(){ if(WALL) wall(); else if(PID) profile(); else if(D.me && !editing) home(); else joinScreen(); fitTitles(); wireFeed(); }
-/* shrink the big title until its longest word fits, whatever font has loaded */
 function fitTitles(){
-  document.querySelectorAll(".title").forEach(t=>{ t.style.fontSize=""; let f=parseFloat(getComputedStyle(t).fontSize), n=0;
+  $$(".title").forEach(t=>{ t.style.fontSize=""; let f=parseFloat(getComputedStyle(t).fontSize), n=0;
     while(t.scrollWidth > t.clientWidth + 1 && f > 24 && n++ < 60){ f -= 2; t.style.fontSize = f+"px"; } });
 }
 if(document.fonts) document.fonts.ready.then(()=>{ if(D) fitTitles(); });
 addEventListener("resize", ()=>{ if(D) fitTitles(); });
+const post = body => fetch(API, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(x=>x.json()).catch(()=>({ ok:false }));
 
-const brand = `<a class="brand" href="/"><span class="mark">G</span><b>with Genie</b></a>`;
+/* ---------- icons ---------- */
+const BADGE = (()=>{ let d = ""; const P = (r,a)=>[(12+r*Math.cos(a)).toFixed(2),(12+r*Math.sin(a)).toFixed(2)];
+  for(let k=0;k<8;k++){ const a0=k*Math.PI/4-Math.PI/2, am=a0+Math.PI/8, a1=a0+Math.PI/4; const p0=P(9.7,a0), c=P(13.4,am), p1=P(9.7,a1);
+    d += (k? "" : `M${p0[0]} ${p0[1]}`) + `Q${c[0]} ${c[1]} ${p1[0]} ${p1[1]}`; } return d + "Z"; })();
+const tick = (sz=14) => `<svg class="vt" width="${sz}" height="${sz}" viewBox="0 0 24 24" role="img" aria-label="Verified coach"><path d="${BADGE}" fill="#0095F6"/><path d="M7.6 12.4l3 2.9 5.8-6" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const I = {
+  back:`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>`,
+  grid:`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>`,
+  reel:`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 8h18M8 3l3 5M14 3l3 5"/><path d="M10 11.5v5l4.5-2.5z" fill="currentColor"/></svg>`,
+  img:`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>`,
+  fire:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 22c4 0 7-2.7 7-7 0-3.6-2.4-5.6-3.6-8.6-.4 2-1.4 3.2-2.6 3.8C13 6.6 11.4 4 8.6 2.5 9 6.5 5 8.8 5 15c0 4.3 3 7 7 7z"/></svg>`,
+  play:`<svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>`,
+  share:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M22 3L11 13M22 3l-7 19-4-9-9-4z"/></svg>`
+};
+
+/* ---------- people bits ---------- */
+const nm = m => `${esc(m.name)}${m.coach?tick(14):""}`;
+const fnm = m => `${esc(firstName(m.name))}${m.coach?tick(12):""}`;
+function av(m, size){
+  const sz = size || 40;
+  return `<span class="av" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.36)}px;background:${m.photo?"#EFEFEF":color(m.name)}">${m.photo?`<img src="${esc(m.photo)}" alt="" loading="lazy">`:esc(initials(m.name))}</span>`;
+}
+const fresh = m => !!m.video || (D.posts||[]).some(p=>p.member_id===m.id && Date.now()-Date.parse(p.at) < 3*86400000);
+const ringAv = (m, size, on) => `<span class="ring${on?" on":""}">${av(m, size)}</span>`;
+function ago(iso){
+  const s = (Date.now() - Date.parse(iso)) / 1000;
+  if(s < 60) return "now"; if(s < 3600) return Math.floor(s/60) + "m"; if(s < 86400) return Math.floor(s/3600) + "h";
+  if(s < 7*86400) return Math.floor(s/86400) + "d"; return new Date(iso).toLocaleDateString("en-GB",{ day:"numeric", month:"short" });
+}
+const bar = (title, back) => `<header class="bar">${back?`<a class="back" href="${back}" aria-label="Back">${I.back}</a>`:`<a href="/" class="mark" aria-label="with Genie">G</a>`}<h1>${title}</h1></header>`;
 function titleHTML(name){
   const w = String(name).trim().split(/\s+/);
   return w.length > 1 ? `${esc(w.slice(0,-1).join(" "))} <em>${esc(w[w.length-1])}</em>` : esc(name);
 }
-function faces(members){
-  const shown = members.slice(-6);
-  return `<div class="faces"><div class="st">${shown.map(m=>`<i style="background:${color(m.name)}">${esc(initials(m.name))}</i>`).join("")}</div>
-    <span>${members.length ? `${members.length} declared` : "Be the first to declare"}</span></div>`;
+function storiesHTML(meId){
+  const list = D.members.slice().sort((a,b)=> (b.id===meId) - (a.id===meId) || (b.coach?1:0) - (a.coach?1:0) || fresh(b) - fresh(a));
+  if(!list.length) return "";
+  return `<nav class="stories" aria-label="Squad members">${list.map(m=>`<a class="story${m.id===meId?" me":""}" href="${profLink(m.id)}">${ringAv(m, 58, fresh(m))}<span>${m.id===meId?"Your profile":fnm(m)}</span></a>`).join("")}</nav>`;
 }
-function av(m, size){
-  const sz = size || 40;
-  return `<span class="av" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*.36)}px;background:${m.photo?"#ddd":color(m.name)}">${m.photo?`<img src="${esc(m.photo)}" alt="" loading="lazy">`:esc(initials(m.name))}</span>`;
-}
-function ago(iso){
-  const s = (Date.now() - Date.parse(iso)) / 1000;
-  if(s < 60) return "just now"; if(s < 3600) return Math.floor(s/60) + "m ago"; if(s < 86400) return Math.floor(s/3600) + "h ago";
-  if(s < 7*86400) return Math.floor(s/86400) + "d ago"; return new Date(iso).toLocaleDateString("en-GB",{ day:"numeric", month:"short" });
-}
+
+/* ---------- feed ---------- */
 let CHEERED = {}; try{ CHEERED = JSON.parse(localStorage.getItem("squad_cheers")||"{}"); }catch(_){}
-function feedHTML(posts, empty){
-  if(!posts.length) return empty ? `<div class="empty-f">${empty}</div>` : "";
+function postHTML(x){
   const byId = Object.fromEntries(D.members.map(m=>[m.id,m]));
-  return posts.map(x=>{ const m = byId[x.member_id] || { name:"Member" }; const mine = D.me && x.member_id===D.me.id;
-    return `<article class="pst"><div class="h"><a href="${profLink(x.member_id)}">${av(m, 38)}</a><div><a href="${profLink(x.member_id)}"><b>${esc(m.name)}</b></a><small>${esc(ago(x.at))}</small></div></div>
-      ${x.text?`<p>${esc(x.text)}</p>`:""}${x.photo?`<img class="ph" src="${esc(x.photo)}" alt="" loading="lazy">`:""}
-      <div class="pst-a"><button type="button" class="cheer${CHEERED[x.id]?" on":""}" data-id="${esc(x.id)}">Keep going<span>${x.cheers||""}</span></button>${mine?`<button type="button" class="unpost link" data-id="${esc(x.id)}">Remove</button>`:""}</div></article>`; }).join("");
+  const m = byId[x.member_id] || { name:"Member" }, mine = D.me && x.member_id===D.me.id, n = x.cheers||0;
+  return `<article class="post">
+    <div class="post-h"><a href="${profLink(x.member_id)}">${ringAv(m, 32, false)}</a><div class="who"><a href="${profLink(x.member_id)}"><b>${nm(m)}</b></a> <span>· ${esc(ago(x.at))}</span></div>${mine?`<button type="button" class="more unpost" data-id="${esc(x.id)}">Remove</button>`:""}</div>
+    ${x.photo?`<img class="post-img" src="${esc(x.photo)}" alt="" loading="lazy">`:""}
+    ${!x.photo && x.text ? `<div class="post-c" style="font-size:16px;padding-top:0">${esc(x.text)}</div>` : ""}
+    <div class="post-a"><button type="button" class="cheer${CHEERED[x.id]?" on":""}" data-id="${esc(x.id)}" aria-label="Keep going">${I.fire}<span>Keep going</span></button></div>
+    <div class="post-c cheers" data-n="${n}"${n?"":" hidden"}><b>${n} ${n===1?"cheer":"cheers"}</b></div>
+    ${x.photo && x.text ? `<div class="post-c"><b>${esc(firstName(m.name))}</b>${esc(x.text)}</div>` : ""}
+  </article>`;
+}
+function feedHTML(posts, empty){
+  if(!posts.length) return empty ? `<div class="empty">${empty}</div>` : "";
+  return posts.map(postHTML).join("");
 }
 function wireFeed(){
-  document.querySelectorAll(".cheer").forEach(b=>b.addEventListener("click", async ()=>{
+  $$(".cheer").forEach(b=>{ if(b.dataset.w) return; b.dataset.w = 1; b.addEventListener("click", ()=>{
     const id = b.dataset.id; if(CHEERED[id]) return;
     CHEERED[id] = 1; try{ localStorage.setItem("squad_cheers", JSON.stringify(CHEERED)); }catch(_){}
-    b.classList.add("on"); const n = b.querySelector("span"); n.textContent = (+n.textContent||0) + 1;
+    $$(`.cheer[data-id="${id}"]`).forEach(x=>{ x.classList.add("on"); const c = x.closest(".post").querySelector(".cheers"); const n = (+c.dataset.n||0)+1; c.dataset.n = n; c.hidden = false; c.innerHTML = `<b>${n} ${n===1?"cheer":"cheers"}</b>`; });
+    const p = (D.posts||[]).find(p=>p.id===id); if(p) p.cheers = (p.cheers||0)+1;
     post({ action:"cheer", post_id:id });
-  }));
-  document.querySelectorAll(".unpost").forEach(b=>b.addEventListener("click", async ()=>{
+  }); });
+  $$(".unpost").forEach(b=>{ if(b.dataset.w) return; b.dataset.w = 1; b.addEventListener("click", async ()=>{
     if(!confirm("Remove this update?")) return;
-    await post({ action:"unpost", token:ME, post_id:b.dataset.id }); load();
-  }));
+    await post({ action:"unpost", token:ME, post_id:b.dataset.id }); closeOv(); load();
+  }); });
 }
-/* shrink photos on the phone before upload: max 1280px JPEG */
+
+/* ---------- uploads ---------- */
 async function shrink(file){
   try{
     const img = await createImageBitmap(file); const k = Math.min(1, 1280/Math.max(img.width, img.height));
@@ -296,71 +381,126 @@ async function uploadImage(file, kind){
   if(!r.ok) throw new Error("upload " + r.status);
   return u.path;
 }
+function wirePhoto(){
+  const inp = $("#ph-in"); if(!inp) return;
+  inp.addEventListener("change", async ()=>{
+    const f = inp.files[0]; if(!f) return; const e = $("#pherr"), plus = $(".ph-av .plus"); e.hidden = true;
+    if(plus) plus.innerHTML = '<span class="spin" style="width:12px;height:12px"></span>';
+    try{ const path = await uploadImage(f, "photo"); const r = await post({ action:"set_photo", token:ME, path }); if(!r.ok) throw new Error(r.error); load(); }
+    catch(err){ if(plus) plus.textContent = "+"; e.textContent = "Couldn't upload that photo. Check your connection and try again."; e.hidden = false; }
+  });
+}
+
+/* ---------- profile header (shared by home + profile) ---------- */
+function statsOf(m){
+  const ps = (D.posts||[]).filter(p=>p.member_id===m.id);
+  const cheers = ps.reduce((a,p)=>a+(p.cheers||0),0);
+  const done = Object.values(m.checkins||{}).filter(c=>c.status==="done").length;
+  return { posts:ps.length, cheers, done };
+}
+function phHTML(m, opts){
+  const s = D.squad, st = statsOf(m), mine = opts.mine;
+  const partner = m.partner_id && D.members.find(x=>x.id===m.partner_id);
+  const avInner = ringAv(m, 80, !!m.video);
+  return `<section class="ph">
+    <div class="ph-top">
+      ${mine ? `<label class="ph-av" title="${m.photo?"Change photo":"Add a photo"}">${avInner}<span class="plus">${m.photo?"":"+"}</span><input type="file" accept="image/*" hidden id="ph-in"></label>`
+             : m.video ? `<button type="button" class="ph-av" id="openreel" aria-label="Watch declaration">${avInner}</button>` : `<span class="ph-av">${avInner}</span>`}
+      <div class="stats"><div><b>${st.posts}</b><span>${st.posts===1?"post":"posts"}</span></div><div><b>${st.cheers}</b><span>cheers</span></div><div><b>${st.done}/${s.weeks}</b><span>weeks done</span></div></div>
+    </div>
+    <div class="ph-name">${nm(m)}${m.started?`<span class="started">● Started</span>`:""}</div>
+    <div class="ph-role">${m.coach ? "Coach · On It With Genie" : esc(s.name)}</div>
+    <p class="will"><b>WILL</b>${esc(m.goal)}</p>
+    <div class="ph-meta">${[m.deadline?`By ${esc(niceDate(m.deadline))}`:"", m.proof?`Proof: ${esc(m.proof)}`:"", partner?`Held accountable by ${fnm(partner)}`:""].filter(Boolean).join(" · ")}</div>
+    ${mine && !m.photo ? `<p class="ph-meta" style="color:var(--blue);font-weight:600">Tap your circle to add a photo</p>` : ""}
+    <div class="err" id="pherr" hidden></div>
+    <div class="ph-btns">${opts.btns}</div>
+  </section>
+  ${s.week>=1 || s.weeks ? hlHTML(m, s) : ""}`;
+}
+function hlHTML(m, s){
+  let h = "";
+  for(let w=1; w<=s.weeks; w++){ const c = m.checkins && m.checkins[w];
+    h += `<div class="hl-i"><div class="hl-c ${c?c.status:""}${w===s.week?" now":""}">${c ? (c.status==="done"?"✓":c.status==="partly"?"½":"✕") : w}</div><span>Week ${w}</span></div>`; }
+  return `<div class="hl">${h}</div>`;
+}
+
 function weeksHTML(m, s){
   let h = "";
   for(let w=1; w<=s.weeks; w++){ const c = m.checkins && m.checkins[w]; h += `<span class="${c?c.status:""}${w===s.week?" now":""}" title="Week ${w}">${c ? (c.status==="done"?"✓":c.status==="partly"?"½":"✕") : "W"+w}</span>`; }
   return `<div class="weeks">${h}</div>`;
 }
 
+/* ---------- overlays ---------- */
+function closeOv(){ const o = $(".ov"); if(o){ o.remove(); document.body.style.overflow = ""; } }
+function openOv(html){
+  closeOv(); const o = document.createElement("div"); o.className = "ov"; o.innerHTML = `<button type="button" class="x" aria-label="Close">×</button>${html}`;
+  o.addEventListener("click", e=>{ if(e.target===o || e.target.closest(".x")) closeOv(); });
+  document.body.appendChild(o); document.body.style.overflow = "hidden"; wireFeed();
+}
+addEventListener("keydown", e=>{ if(e.key==="Escape") closeOv(); });
+function openReel(m){
+  openOv(`<video src="${esc(m.video)}" autoplay controls playsinline></video>
+    <div class="cap"><div class="n">${av(m, 32)}${nm(m)}</div><div class="w"><b>WILL</b>${esc(m.goal)}</div></div>`);
+}
+
 /* ---------- no code ---------- */
 function codeScreen(msg){
-  $("#root").innerHTML = `<div class="wrap">${brand}<div class="card"><h2>Join a squad</h2><p class="sub">${esc(msg||"Type the code you were given.")}</p>
-    <form id="cf"><div class="field"><label for="c">Squad code</label><input id="c" autocomplete="off" autocapitalize="characters" placeholder="e.g. FWG06" style="text-transform:uppercase;font-family:var(--mono);letter-spacing:.08em"></div>
-    <button class="btn" type="submit">Open squad</button></form></div></div>`;
+  $("#root").innerHTML = `<div class="wrap">${bar("Squad")}<div class="blk" style="margin-top:24px"><h2>Join a squad</h2><p class="sub">${esc(msg||"Type the code you were given.")}</p>
+    <form id="cf"><div class="f"><input id="c" autocomplete="off" autocapitalize="characters" placeholder="e.g. FWG06" aria-label="Squad code" style="text-transform:uppercase;font-family:var(--mono);letter-spacing:.08em"></div>
+    <button class="b blue full" type="submit">Open squad</button></form></div></div>`;
   $("#cf").addEventListener("submit", e=>{ e.preventDefault(); const c = $("#c").value.trim().toUpperCase().replace(/[^A-Z0-9-]/g,""); if(c) location.href = "/squad/" + c; });
 }
 
-/* ---------- pick your name (registered attendees) ---------- */
+/* ---------- join + declare ---------- */
 const showPicker = () => !editing && !SEL && !NEWP && (D.attendees||[]).length > 0;
 function pickHTML(){
   if(!showPicker()) return "";
-  return `<div class="card"><h2>Find your name</h2><p class="sub">You registered for the session. Tap your name to start.</p>
-    <div class="namegrid">${D.attendees.map(a=>`<button type="button" data-id="${esc(a.id)}">${esc(a.label)}</button>`).join("")}</div>
-    <button type="button" class="btn line" id="newp" style="margin-top:14px">I'm not on the list</button></div>`;
+  return `<div class="label">Find your name</div>
+    <ul class="ppl">${D.attendees.map(a=>`<li>${av({ name:a.label }, 44)}<div class="nm"><b>${esc(a.label)}</b><span>Registered for the session</span></div><button type="button" class="b blue" data-id="${esc(a.id)}">That's me</button></li>`).join("")}</ul>
+    <p class="note" style="margin:14px 0 4px"><button type="button" class="tl" id="newp">I'm not on the list</button></p>`;
 }
-
-/* ---------- join + declare ---------- */
 function joinScreen(){
   const s = D.squad, me = D.me || {};
   let pre = {}; try{ const p = JSON.parse(localStorage.getItem("ev_fwg-06")||"null"); if(p && p.name) pre.name = p.name; }catch(_){}
-  const by = me.deadline || s.ends_on;
-  $("#root").innerHTML = `<div class="wrap">${brand}
-    <section class="hero">
-      <div class="top"><span>Squad · ${esc(s.code)}</span><span>${s.weeks} weeks</span></div>
-      <h1 class="title">${titleHTML(s.name)}</h1>
-      <p class="lede">Say what you'll get done, out loud, in front of people who will ask you about it every week.</p>
-      ${s.price ? `<div class="price"><s>&#8358;${Number(s.price).toLocaleString("en-NG")}</s><b>Free for Session ${esc(s.code.replace(/\D/g,"").slice(-2) || "")}</b><span>${s.weeks} weeks of check-ins with your squad</span></div>` : ""}
-      ${faces(D.members)}
-    </section>
+  const by = me.deadline || s.ends_on, shown = D.members.slice(-5);
+  $("#root").innerHTML = `<div class="wrap">${bar(esc(s.name), editing ? SQ() : "")}
+    ${editing ? "" : `<section class="sq-hd">
+      <div class="mono">Squad · ${esc(s.code)} · ${s.weeks} weeks</div>
+      <h2 class="title">${titleHTML(s.name)}</h2>
+      <p>Say what you'll get done in front of people who will ask you about it every week.</p>
+      ${s.price ? `<div class="free"><s>&#8358;${Number(s.price).toLocaleString("en-NG")}</s>Free for Session ${esc(s.code.replace(/\D/g,"").slice(-2) || "")}</div>` : ""}
+      ${shown.length ? `<div class="stack">${shown.map(m=>av(m, 30)).join("")}</div><p style="font-size:13px">${D.members.length} declared</p>` : `<p style="margin-top:12px;font-size:13px">Be the first to declare</p>`}
+    </section>`}
     ${pickHTML()}
-    <form class="card" id="jf" novalidate ${showPicker() ? "hidden" : ""}>
-      <h2>${editing ? "Change your declaration" : SEL ? `${esc(SEL.first)}, declare it` : "Declare it"}</h2>
-      <p class="sub">${editing ? "Your squad sees the new version straight away." : SEL ? `${SEL.goal ? "This is the goal you registered with. Sharpen it if you need to." : "One goal. Be specific enough that anyone could check it."} <a class="link" href="#" id="notme">Not you?</a>` : "One goal. Be specific enough that anyone could check it."}</p>
-      <div class="field will"><label for="goal">I will…</label><textarea id="goal" maxlength="200" rows="2" placeholder="Post 30 TikToks" required style="min-height:64px">${esc(me.goal||(SEL&&SEL.goal)||"")}</textarea></div>
+    <form class="blk" id="jf" novalidate ${showPicker() ? "hidden" : ""}>
+      <h2>${editing ? "Edit your declaration" : SEL ? `${esc(SEL.first)}, declare it` : "Declare it"}</h2>
+      <p class="sub">${editing ? "Your squad sees the new version straight away." : SEL ? `${SEL.goal ? "This is the goal you registered with. Sharpen it if you need to." : "One goal. Specific enough that anyone could check it."} <button type="button" class="tl" id="notme">Not you?</button>` : "One goal. Specific enough that anyone could check it."}</p>
+      <div class="f big"><label for="goal">I will…</label><textarea id="goal" maxlength="200" rows="2" placeholder="Post 30 TikToks" required>${esc(me.goal||(SEL&&SEL.goal)||"")}</textarea></div>
       <div class="row2">
-        <div class="field"><label for="dl">By</label><input id="dl" type="date" value="${esc(by)}" min="${esc(s.starts_on)}"></div>
-        <div class="field"><label for="proof">Proof</label><input id="proof" maxlength="200" value="${esc(me.proof||"")}" placeholder="How we'll know"></div>
+        <div class="f"><label for="dl">By</label><input id="dl" type="date" value="${esc(by)}" min="${esc(s.starts_on)}"></div>
+        <div class="f"><label for="proof">Proof</label><input id="proof" maxlength="200" value="${esc(me.proof||"")}" placeholder="How we'll know"></div>
       </div>
-      <div class="field"><label for="fs">First step <em>(in the next 48 hours)</em></label><input id="fs" maxlength="200" value="${esc(me.first_step||"")}" placeholder="Write 5 video ideas tonight"></div>
-      ${editing || SEL ? "" : `<div class="field"><label for="nm">Your name</label><input id="nm" autocomplete="name" value="${esc(pre.name||"")}" required></div>
-      <div class="field"><label for="em">Email <em>(your squad link goes here)</em></label><input id="em" type="email" inputmode="email" autocomplete="email" required></div>
-      <div class="field"><label for="ph">WhatsApp <em>(optional)</em></label><input id="ph" type="tel" inputmode="tel" autocomplete="tel"></div>`}
+      <div class="f"><label for="fs">First step <em>(next 48 hours)</em></label><input id="fs" maxlength="200" value="${esc(me.first_step||"")}" placeholder="Write 5 video ideas tonight"></div>
+      ${editing || SEL ? "" : `<div class="f"><label for="nm">Your name</label><input id="nm" autocomplete="name" value="${esc(pre.name||"")}" required></div>
+      <div class="f"><label for="em">Email <em>(your squad link goes here)</em></label><input id="em" type="email" inputmode="email" autocomplete="email" required></div>
+      <div class="f"><label for="ph">WhatsApp <em>(optional)</em></label><input id="ph" type="tel" inputmode="tel" autocomplete="tel"></div>`}
       <div class="err" id="jerr" hidden></div>
-      <button class="btn red" id="jb" type="submit">${editing ? "Save my declaration" : "Declare it"}</button>
-      ${editing ? `<p class="note"><a class="link" href="#" id="cancel">Cancel</a></p>` : `<p class="note">Your squad sees your name and goal. Your email and number stay private.</p>`}
+      <button class="b blue full" id="jb" type="submit" style="margin-top:4px">${editing ? "Save" : "Declare it"}</button>
+      ${editing ? `<p class="note"><button type="button" class="tl" id="cancel">Cancel</button></p>` : `<p class="note">Your squad sees your name and goal. Your email and number stay private.</p>`}
     </form>
-    ${D.members.length ? `<div class="sq-h"><h3>Already declared</h3><span>${D.members.length}</span></div>${D.members.slice().reverse().map(m=>memHTML(m, s)).join("")}` : ""}
-    ${(D.posts||[]).length ? `<div class="sq-h"><h3>Squad updates</h3><span>${D.posts.length}</span></div>${feedHTML(D.posts.slice(0,20))}` : ""}
+    ${editing ? "" : `${D.members.length ? `<div class="label">Already declared</div>${storiesHTML("")}` : ""}
+    ${(D.posts||[]).length ? feedHTML(D.posts.slice(0,20)) : ""}`}
   </div>`;
-  if(editing) $("#cancel").addEventListener("click", e=>{ e.preventDefault(); editing=false; render(); });
-  document.querySelectorAll(".namegrid button[data-id]").forEach(b=>b.addEventListener("click", async ()=>{
-    b.classList.add("on"); b.disabled = true;
+  const cc = $("#cancel"); if(cc) cc.addEventListener("click", ()=>{ editing=false; render(); });
+  $$(".ppl button[data-id]").forEach(b=>b.addEventListener("click", async ()=>{
+    b.disabled = true; b.innerHTML = '<span class="spin"></span>';
     const r = await post({ action:"who", code:s.code, reg_id:b.dataset.id });
-    if(!r.ok){ b.classList.remove("on"); b.disabled = false; return; }
-    SEL = { id:b.dataset.id, first:r.first, goal:r.goal }; render(); window.scrollTo(0, $("#jf").offsetTop - 12);
+    if(!r.ok){ b.disabled = false; b.textContent = "That's me"; return; }
+    SEL = { id:b.dataset.id, first:r.first, goal:r.goal }; render(); window.scrollTo(0, $("#jf").offsetTop - 64);
   }));
-  const np = $("#newp"); if(np) np.addEventListener("click", ()=>{ NEWP = true; render(); window.scrollTo(0, $("#jf").offsetTop - 12); });
-  const nm = $("#notme"); if(nm) nm.addEventListener("click", e=>{ e.preventDefault(); SEL = null; NEWP = false; render(); });
+  const np = $("#newp"); if(np) np.addEventListener("click", ()=>{ NEWP = true; render(); window.scrollTo(0, $("#jf").offsetTop - 64); });
+  const nt = $("#notme"); if(nt) nt.addEventListener("click", ()=>{ SEL = null; NEWP = false; render(); });
   $("#jf").addEventListener("submit", async e=>{
     e.preventDefault();
     const v = id => ($("#"+id)?.value || "").trim(), err = $("#jerr"), b = $("#jb");
@@ -372,7 +512,7 @@ function joinScreen(){
     if(!body.name) return show(ERR.missing_name);
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(body.email)) return show(ERR.bad_email);
     err.hidden = true; b.disabled = true; const label = b.textContent; b.innerHTML = '<span class="spin"></span>';
-    const r = await fetch(API, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(x=>x.json()).catch(()=>({ ok:false }));
+    const r = await post(body);
     if(r.ok){ ME = r.token; try{ localStorage.setItem(KEY, ME); }catch(_){} editing = false; SEL = null; await load(); window.scrollTo(0,0); return; }
     b.disabled = false; b.textContent = label; show(ERR[r.error] || "Something went wrong. Try again in a moment.");
   });
@@ -384,67 +524,52 @@ function home(){
   const inWeek = s.week >= 1 && s.week <= s.weeks, before = s.week < 1, over = s.week > s.weeks;
   const cur = me.checkins && me.checkins[Math.max(1, s.week)];
   const closes = niceDate(addDays(s.starts_on, Math.max(1, s.week) * 7 - 1));
+  const meFull = Object.assign({}, me, { name:my.name, photo:my.photo, goal:my.goal, deadline:my.deadline, proof:my.proof, started:my.started, partner_id:my.partner_id });
   let action = "";
   if(!my.started && !over){
-    action = `<div class="card" id="startc"><h2>Take your first step</h2><p class="sub">${my.first_step ? `You said your first step is: <b>${esc(my.first_step)}</b>. Do it, then tell your squad.` : "Do one small thing towards your goal today, then tell your squad."}</p>
-      <div class="field"><label for="sn">What did you do? <em>(optional)</em></label><input id="sn" maxlength="200" placeholder="e.g. Listed all my chapter titles"></div>
-      <div class="err" id="serr" hidden></div><button class="btn" id="sb">I've done it</button></div>`;
+    action = `<div class="blk" id="startc"><h2>Take your first step</h2><p class="sub">${my.first_step ? `You said your first step is <b style="color:var(--text)">${esc(my.first_step)}</b>. Do it, then tell your squad.` : "Do one small thing towards your goal today, then tell your squad."}</p>
+      <div class="f"><label for="sn">What did you do? <em>(optional)</em></label><input id="sn" maxlength="200" placeholder="e.g. Listed all my chapter titles"></div>
+      <div class="err" id="serr" hidden></div><button class="b blue full" id="sb">I've done it</button></div>`;
   }
   const today = new Date(Date.now()+3600000).toISOString().slice(0,10);
   const dayIn = before ? -1 : Math.round((Date.parse(today) - Date.parse(s.starts_on)) / 86400000) % 7;
   const opensOn = addDays(s.starts_on, Math.max(1, s.week) * 7 - 3);
+  const wk = Math.max(1, s.week);
   if((inWeek || before) && my.started && !cur && dayIn < 4){
-    action = `<div class="card"><h2>You're in. Now go.</h2><p class="sub">Week ${Math.max(1, s.week)} check-in opens ${esc(niceDate(opensOn))} and closes ${esc(closes)}. You'll get an email when it's time.</p>
-      <div class="got"><i style="background:var(--ink)">${Math.max(1, s.week)}</i><div><b>Your first step</b><br><span style="color:var(--muted);font-size:14px">${esc(my.first_step || "Do the smallest thing that moves it today.")}</span></div></div></div>`;
+    action = `<div class="blk"><h2>You're in. Now go.</h2><p class="sub">Week ${wk} check-in opens ${esc(niceDate(opensOn))} and closes ${esc(closes)}. We'll email you when it's time.</p>
+      <div class="got"><i style="background:var(--ink)">${wk}</i><div><b style="font-size:14px">Your next move</b><br><span style="color:var(--muted);font-size:14px">${esc(my.first_step || "Do the smallest thing that moves it today.")}</span></div></div></div>`;
   } else if((inWeek || before) && my.started){
-    const wk = Math.max(1, s.week);
     if(cur && !pick){
-      const lab = { done:["Done","✓",""], partly:["Partly","½",""], missed:["Missed","✕",""] }[cur.status];
-      action = `<div class="card"><h2>Week ${wk} check-in</h2><p class="sub">Closes ${esc(closes)}. You can change it until then.</p>
-        <div class="got"><i style="background:var(--${cur.status==="done"?"done":cur.status==="partly"?"part":"miss"})">${lab[1]}</i><div><b>${lab[0]}</b>${cur.note?`<br><span style="color:var(--muted);font-size:14px">"${esc(cur.note)}"</span>`:""}</div></div>
-        <p class="note"><a class="link" href="#" id="chg">Change my check-in</a></p></div>`;
+      const lab = { done:["Done","✓"], partly:["Partly","½"], missed:["Missed","✕"] }[cur.status];
+      action = `<div class="blk"><h2>Week ${wk} check-in</h2><p class="sub">Closes ${esc(closes)}. You can change it until then.</p>
+        <div class="got"><i style="background:var(--${cur.status==="done"?"done":cur.status==="partly"?"part":"miss"})">${lab[1]}</i><div><b style="font-size:14px">${lab[0]}</b>${cur.note?`<br><span style="color:var(--muted);font-size:14px">"${esc(cur.note)}"</span>`:""}</div></div>
+        <p class="note"><button type="button" class="tl" id="chg">Change my check-in</button></p></div>`;
     } else {
-      action = `<div class="card"><h2>Week ${wk} check-in</h2><p class="sub">Closes ${esc(closes)}. Be honest. Your squad sees it.</p>
+      action = `<div class="blk"><h2>Week ${wk} check-in</h2><p class="sub">Closes ${esc(closes)}. Be honest. Your squad sees it.</p>
         <div class="pick">${[["done","Done","did what I said"],["partly","Partly","moved, not enough"],["missed","Missed","didn't move"]].map(([k,l,sm])=>`<button type="button" data-k="${k}" class="${k}${pick===k?" on":""}">${l}<small>${sm}</small></button>`).join("")}</div>
-        <div class="field"><label for="cn">What happened? <em>(optional)</em></label><input id="cn" maxlength="300" value="${esc(cur&&cur.note||"")}" placeholder="Posted 6 videos this week"></div>
-        <div class="err" id="cerr" hidden></div><button class="btn" id="cb">Check in</button></div>`;
+        <div class="f"><label for="cn">What happened? <em>(optional)</em></label><input id="cn" maxlength="300" value="${esc(cur&&cur.note||"")}" placeholder="Posted 6 videos this week"></div>
+        <div class="err" id="cerr" hidden></div><button class="b blue full" id="cb">Check in</button></div>`;
     }
   }
-  if(over) action = `<div class="card"><h2>The squad has finished</h2><p class="sub">${s.weeks} weeks done. If you want someone checking your proof every day, that's the 15-day challenge.</p><a class="btn" href="/app">See the challenge</a></div>`;
-  $("#root").innerHTML = `<div class="wrap">${brand}
-    <div class="dec">${my.started?`<span class="stamp">STARTED</span>`:""}
-      <label class="dec-av" title="Change photo">${av({ name:my.name, photo:my.photo }, 56)}<input type="file" accept="image/*" hidden id="ph-in"><i>${my.photo?"Change":"Add photo"}</i></label>
-      <div class="k">${esc(s.name)} · ${before ? "Starts " + esc(niceDate(s.starts_on)) : over ? "Finished" : "Week " + s.week + " of " + s.weeks}</div>
-      <div class="who">${esc(firstName(my.name))} <em>will</em></div>
-      <div class="goal">${esc(my.goal)}</div>
-      <div class="meta">${my.deadline?`<span>By <b>${esc(niceDate(my.deadline))}</b></span>`:""}${my.proof?`<span>Proof: <b>${esc(my.proof)}</b></span>`:""}</div>
-      ${weeksHTML(me, s)}
-    </div>
-    <div class="err" id="pherr" hidden style="margin-top:10px"></div>
-    ${action}
+  if(over) action = `<div class="blk"><h2>The squad has finished</h2><p class="sub">${s.weeks} weeks done. If you want someone checking your proof every day, that's the 15-day challenge.</p><a class="b blue full" href="/app">See the challenge</a></div>`;
+  $("#root").innerHTML = `<div class="wrap">${bar(esc(s.name))}
+    ${storiesHTML(my.id)}
+    ${phHTML(meFull, { mine:true, btns:`<button type="button" class="b" id="edit">Edit declaration</button><a class="b" href="${profLink(my.id)}">View profile</a>` })}
+    <div style="border-top:1px solid var(--line2);padding-top:2px">${action}</div>
     ${accHTML(my, s)}
     ${holdingHTML(my, s)}
-    <div class="row-links"><a class="link" href="${profLink(my.id)}">View my profile</a><a class="link" href="#" id="edit">Change my declaration</a></div>
-    ${my.has_video ? `<div class="card vcard"><div><b>Your declaration video</b><span>${my.show_video ? "Showing on your profile" : "Hidden from your profile"}</span></div><button type="button" class="btn line sm" id="vtog">${my.show_video ? "Hide it" : "Show it"}</button></div>` : ""}
-    ${over ? "" : `<form class="card" id="pf"><h2>Post progress</h2><p class="sub">What did you do towards it? A line or a photo. Your squad sees it.</p>
-      <div class="field"><textarea id="pt" maxlength="500" rows="3" placeholder="Wrote 2 pages today"></textarea></div>
-      <div class="pf-row"><label class="btn line sm" id="pa">Add photo<input type="file" accept="image/*" hidden id="pi"></label><span class="pf-prev" id="pp"></span><button class="btn sm" id="pb" type="submit">Post</button></div>
-      <div class="err" id="perr" hidden style="margin:10px 0 0"></div></form>`}
-    <div class="sq-h"><h3>Squad updates</h3><span>${(D.posts||[]).length || ""}</span></div>
-    ${feedHTML((D.posts||[]).slice(0,30), "No updates yet. Post the first one.")}
-    <div class="sq-h"><h3>Your squad</h3><span>${D.members.length} declared</span></div>
-    ${D.members.map(m=>memHTML(m, s, m.id===my.id)).join("")}
+    ${my.has_video ? `<div class="blk" style="display:flex;align-items:center;gap:12px"><span style="color:var(--text)">${I.reel}</span><div style="flex:1"><b style="font-size:14px">Your declaration video</b><div style="font-size:13px;color:var(--muted)">${my.show_video ? "Showing on your profile" : "Hidden from your profile"}</div></div><button type="button" class="b" id="vtog">${my.show_video ? "Hide" : "Show"}</button></div>` : ""}
+    <div class="label">Squad updates</div>
+    ${over ? "" : `<form id="pf"><div class="cmp">${av({ name:my.name, photo:my.photo }, 36)}<textarea id="pt" maxlength="500" rows="1" placeholder="What did you do towards it today?" aria-label="Post progress"></textarea></div>
+      <div class="cmp-tools"><label>${I.img}<span>Photo</span><input type="file" accept="image/*" hidden id="pi"></label><span class="prev" id="pp"></span><button class="b blue" id="pb" type="submit" style="margin-left:auto">Post</button></div>
+      <div class="err" id="perr" hidden style="margin:8px 16px"></div></form>`}
+    ${feedHTML((D.posts||[]).slice(0,30), "<b>No updates yet</b>Post the first one. A line or a photo is enough.")}
   </div>`;
-  wireAcc(my);
-  const phin = $("#ph-in"); phin.addEventListener("change", async ()=>{
-    const f = phin.files[0]; if(!f) return; const e = $("#pherr"); e.hidden = true;
-    const lab = $(".dec-av i"); lab.textContent = "Uploading…";
-    try{ const path = await uploadImage(f, "photo"); const r = await post({ action:"set_photo", token:ME, path }); if(!r.ok) throw new Error(r.error); load(); }
-    catch(err){ lab.textContent = "Try again"; e.textContent = "Couldn't upload that photo. Check your connection and try again."; e.hidden = false; }
-  });
+  wireAcc(my); wirePhoto();
+  const pt = $("#pt"); if(pt) pt.addEventListener("input", ()=>{ pt.style.height = "auto"; pt.style.height = pt.scrollHeight + "px"; });
   const vt = $("#vtog"); if(vt) vt.addEventListener("click", async ()=>{ vt.disabled = true; await post({ action:"show_video", token:ME, show:!my.show_video }); load(); });
   let pfile = null; const pi = $("#pi");
-  if(pi) pi.addEventListener("change", ()=>{ pfile = pi.files[0] || null; $("#pp").innerHTML = pfile ? `<img src="${URL.createObjectURL(pfile)}" alt=""><button type="button" class="link" id="px">Remove</button>` : ""; const px = $("#px"); if(px) px.addEventListener("click", ()=>{ pfile = null; pi.value = ""; $("#pp").innerHTML = ""; }); });
+  if(pi) pi.addEventListener("change", ()=>{ pfile = pi.files[0] || null; $("#pp").innerHTML = pfile ? `<img src="${URL.createObjectURL(pfile)}" alt=""><button type="button" class="tl" id="px">Remove</button>` : ""; const px = $("#px"); if(px) px.addEventListener("click", ()=>{ pfile = null; pi.value = ""; $("#pp").innerHTML = ""; }); });
   const pf = $("#pf"); if(pf) pf.addEventListener("submit", async ev=>{
     ev.preventDefault(); const t = $("#pt").value.trim(), e = $("#perr"), b = $("#pb");
     if(!t && !pfile){ e.textContent = "Write something or add a photo."; e.hidden = false; return; }
@@ -456,9 +581,9 @@ function home(){
       load();
     }catch(err){ b.disabled = false; b.textContent = "Post"; e.textContent = err.message.startsWith("upload") ? "Couldn't upload the photo. Try again." : err.message; e.hidden = false; }
   });
-  $("#edit").addEventListener("click", e=>{ e.preventDefault(); editing = true; render(); window.scrollTo(0,0); });
-  const chg = $("#chg"); if(chg) chg.addEventListener("click", e=>{ e.preventDefault(); pick = cur.status; home(); });
-  document.querySelectorAll(".pick button").forEach(b=>b.addEventListener("click", ()=>{ pick = b.dataset.k; document.querySelectorAll(".pick button").forEach(x=>x.classList.toggle("on", x===b)); }));
+  $("#edit").addEventListener("click", ()=>{ editing = true; render(); window.scrollTo(0,0); });
+  const chg = $("#chg"); if(chg) chg.addEventListener("click", ()=>{ pick = cur.status; home(); });
+  $$(".pick button").forEach(b=>b.addEventListener("click", ()=>{ pick = b.dataset.k; $$(".pick button").forEach(x=>x.classList.toggle("on", x===b)); }));
   const sb = $("#sb"); if(sb) sb.addEventListener("click", async ()=>{
     sb.disabled = true; sb.innerHTML = '<span class="spin"></span>';
     const r = await post({ action:"start", token:ME, note:$("#sn").value.trim() });
@@ -474,11 +599,7 @@ function home(){
     cb.disabled = false; cb.textContent = "Check in"; e.textContent = ERR[r.error] || "Something went wrong. Try again."; e.hidden = false;
   });
 }
-function memHTML(m, s, you){
-  return `<a class="mem${you?" you":""}" href="${profLink(m.id)}"><div class="n"><span class="nm">${av(m, 36)}<b>${esc(m.name)}${you?" (you)":""}</b></span>${m.video?`<small class="vtag">Video</small>`:""}${m.started?`<small>Started</small>`:""}</div>
-    <div class="g">${esc(m.goal)}</div>${m.deadline?`<div class="d">By ${esc(niceDate(m.deadline))}${m.proof?` · Proof: ${esc(m.proof)}`:""}</div>`:""}
-    ${s.week>=1 ? weeksHTML(m, s) : ""}</a>`;
-}
+
 /* ---------- who holds you accountable ---------- */
 let SHOWCOACH = false;
 const coachOf = () => D.squad.coach || { name:"Genie", photo:null, member_id:null };
@@ -486,81 +607,81 @@ function coachPanel(){
   return `<div class="coach-more" id="cm" ${SHOWCOACH?"":"hidden"}>
     <ul><li>You upload proof every day. I review every one and reply.</li><li>Two strategy calls with me, the first within 48 hours.</li><li>Your progress tracked on your own dashboard.</li></ul>
     <div class="cprice"><b>15 days</b><span>&#8358;15,000</span></div>
-    <button type="button" class="btn red" id="gocoach">Start with Genie</button></div>`;
+    <button type="button" class="b blue full" id="gocoach">Start with Genie</button></div>`;
 }
 function coachBtn(){
   const c = coachOf();
-  return `<button type="button" class="coach${SHOWCOACH?" open":""}" id="coachbtn">${av({ name:"Genie", photo:c.photo }, 44)}<span class="cb-t"><b>Genie <span class="tick">&#10003; Coach</span></b><span>I check your proof every day</span></span><span class="chev">&rsaquo;</span></button>`;
+  return `<button type="button" class="coach${SHOWCOACH?" open":""}" id="coachbtn">${ringAv({ name:"Genie", photo:c.photo }, 44, true)}<span class="cb-t"><b>Genie ${tick(15)}</b><span>Coach · checks your proof every day</span></span><span class="chev">&rsaquo;</span></button>`;
 }
 function accHTML(my, s){
   if(s.week > s.weeks) return "";
   const byId = Object.fromEntries(D.members.map(m=>[m.id,m]));
   const partner = my.partner_id && byId[my.partner_id];
-  if(partner) return `<div class="card acc"><div class="acc-set">${av(partner, 44)}<div><small>Holding you accountable</small><b>${esc(partner.name)}</b></div><button type="button" class="link" id="chgp">Change</button></div>
-    <button type="button" class="link up" id="upc">Want me checking your proof every day instead?</button>${coachPanel()}</div>`;
+  if(partner) return `<div class="blk"><div class="acc-set">${av(partner, 44)}<div><small>Holding you accountable</small><b>${nm(partner)}</b></div><button type="button" class="b" id="chgp">Change</button></div>
+    ${partner.coach ? "" : `<p style="margin-top:12px"><button type="button" class="tl" id="upc">Want Genie checking your proof every day instead?</button></p>`}${coachPanel()}</div>`;
   const peers = D.members.filter(m=>m.id!==my.id && !m.coach);
-  return `<div class="card acc"><h2>Who's holding you accountable?</h2><p class="sub">Pick one person. They see your check-ins and can nudge you when you go quiet.</p>
+  return `<div class="blk"><h2>Who's holding you accountable?</h2><p class="sub">Pick one person. They see your check-ins and can nudge you when you go quiet.</p>
     ${coachBtn()}${coachPanel()}
-    ${peers.length ? `<div class="or"><span>or someone from your squad</span></div><div class="peers">${peers.map(m=>`<button type="button" class="peer" data-id="${esc(m.id)}">${av(m, 44)}<span>${esc(firstName(m.name))}</span></button>`).join("")}</div>` : ""}
-    <div class="err" id="accerr" hidden style="margin:10px 0 0"></div></div>`;
+    ${peers.length ? `<div class="or">or someone from your squad</div><div class="peers">${peers.map(m=>`<button type="button" class="peer" data-id="${esc(m.id)}">${ringAv(m, 52, false)}<span>${esc(firstName(m.name))}</span></button>`).join("")}</div>` : ""}
+    <div class="err" id="accerr" hidden></div></div>`;
 }
 function holdingHTML(my, s){
   const mine = D.members.filter(m=>m.partner_id===my.id);
   if(!mine.length) return "";
   const wk = Math.max(1, Math.min(s.week, s.weeks));
-  return `<div class="card"><h2>You're holding ${mine.length===1?esc(firstName(mine[0].name)):mine.length+" people"} accountable</h2><p class="sub">Check on them. If they've gone quiet, send a nudge.</p>
+  return `<div class="blk"><h2>You're holding ${mine.length===1?esc(firstName(mine[0].name)):mine.length+" people"} accountable</h2><p class="sub" style="margin-bottom:6px">Check on them. If they've gone quiet, send a nudge.</p>
     ${mine.map(m=>{ const c = m.checkins && m.checkins[wk]; const st = c ? ({ done:"Done this week", partly:"Partly this week", missed:"Missed this week" })[c.status] : "No check-in yet this week";
-      return `<div class="hold">${av(m, 40)}<div class="h-t"><a href="${profLink(m.id)}"><b>${esc(m.name)}</b></a><span>${esc(m.goal)}</span><small class="${c?c.status:""}">${st}</small></div>
-        <button type="button" class="btn line sm nudge" data-id="${esc(m.id)}" ${m.nudged_recently?"disabled":""}>${m.nudged_recently?"Nudged":"Nudge"}</button></div>`; }).join("")}</div>`;
+      return `<div class="hold"><a href="${profLink(m.id)}">${av(m, 40)}</a><div class="h-t"><a href="${profLink(m.id)}"><b>${nm(m)}</b></a><span>${esc(m.goal)}</span><small class="${c?c.status:""}">${st}</small></div>
+        <button type="button" class="b ${m.nudged_recently?"":"blue"} nudge" data-id="${esc(m.id)}" ${m.nudged_recently?"disabled":""}>${m.nudged_recently?"Nudged":"Nudge"}</button></div>`; }).join("")}</div>`;
 }
 function wireAcc(my){
-  const cb = $("#coachbtn"); if(cb) cb.addEventListener("click", ()=>{ SHOWCOACH = !SHOWCOACH; $("#cm").hidden = !SHOWCOACH; cb.classList.toggle("open", SHOWCOACH); });
-  const up = $("#upc"); if(up) up.addEventListener("click", ()=>{ SHOWCOACH = !SHOWCOACH; $("#cm").hidden = !SHOWCOACH; });
+  const tog = ()=>{ SHOWCOACH = !SHOWCOACH; $("#cm").hidden = !SHOWCOACH; const cb = $("#coachbtn"); if(cb) cb.classList.toggle("open", SHOWCOACH); };
+  const cb = $("#coachbtn"); if(cb) cb.addEventListener("click", tog);
+  const up = $("#upc"); if(up) up.addEventListener("click", tog);
   const go = $("#gocoach"); if(go) go.addEventListener("click", async ()=>{ go.disabled = true; go.innerHTML = '<span class="spin"></span>'; await post({ action:"want_coach", token:ME }); location.href = "/app"; });
   const ch = $("#chgp"); if(ch) ch.addEventListener("click", async ()=>{ ch.disabled = true; await post({ action:"set_partner", token:ME, partner_id:"" }); load(); });
-  document.querySelectorAll(".peer").forEach(b=>b.addEventListener("click", async ()=>{
+  $$(".peer").forEach(b=>b.addEventListener("click", async ()=>{
     const m = D.members.find(x=>x.id===b.dataset.id); if(!m) return;
     if(!confirm(`Ask ${firstName(m.name)} to hold you accountable? They'll get an email.`)) return;
     b.disabled = true; const r = await post({ action:"set_partner", token:ME, partner_id:m.id });
     if(r.ok) return load();
     b.disabled = false; const e = $("#accerr"); e.textContent = "Couldn't save that. Try again."; e.hidden = false;
   }));
-  document.querySelectorAll(".nudge").forEach(b=>b.addEventListener("click", async ()=>{
+  $$(".nudge").forEach(b=>b.addEventListener("click", async ()=>{
     b.disabled = true; b.textContent = "Sending…";
     const r = await post({ action:"nudge", token:ME, member_id:b.dataset.id });
-    b.textContent = r.ok ? "Nudged" : r.error==="too_soon" ? "Nudged" : "Try again"; if(!r.ok && r.error!=="too_soon") b.disabled = false;
+    b.classList.remove("blue"); b.textContent = r.ok || r.error==="too_soon" ? "Nudged" : "Try again"; if(!r.ok && r.error!=="too_soon"){ b.disabled = false; b.classList.add("blue"); }
   }));
 }
 
 /* ---------- public profile ---------- */
 function profile(){
   const s = D.squad, m = D.members.find(x=>x.id===PID);
-  if(!m){ $("#root").innerHTML = `<div class="wrap">${brand}<div class="card"><h2>Profile not found</h2><p class="sub">This person may have left the squad.</p><a class="btn" href="${SQ()}">See the squad</a></div></div>`; return; }
+  if(!m){ $("#root").innerHTML = `<div class="wrap">${bar("Profile", SQ())}<div class="empty"><b>Profile not found</b>This person may have left the squad.<div style="margin-top:16px"><a class="b blue" href="${SQ()}">See the squad</a></div></div></div>`; return; }
   const mine = D.me && D.me.id === m.id;
   const url = location.origin + profLink(m.id);
   const shareText = `${firstName(m.name)} declared: "${m.goal}"${m.deadline?` by ${niceDate(m.deadline)}`:""}. Hold them to it.`;
   const posts = (D.posts||[]).filter(x=>x.member_id===m.id);
   const ref = firstName(m.name).toLowerCase().replace(/[^a-z]/g,"");
-  $("#root").innerHTML = `<div class="wrap">${brand}
-    <a class="back" href="${SQ()}">&larr; ${esc(s.name)}</a>
-    ${m.video ? `<div class="vid"><video src="${esc(m.video)}" controls playsinline preload="metadata"></video></div>` : ""}
-    <div class="dec prof">${m.started?`<span class="stamp">STARTED</span>`:""}
-      <div class="prof-h">${av(m, 64)}<div class="k" style="padding-right:0">${esc(s.name)}</div></div>
-      <div class="who">${esc(firstName(m.name))} <em>will</em></div>
-      <div class="goal">${esc(m.goal)}</div>
-      <div class="meta">${m.deadline?`<span>By <b>${esc(niceDate(m.deadline))}</b></span>`:""}${m.proof?`<span>Proof: <b>${esc(m.proof)}</b></span>`:""}${(()=>{ const p = m.partner_id && D.members.find(x=>x.id===m.partner_id); return p ? `<span>Held accountable by <b>${esc(firstName(p.name))}</b></span>` : ""; })()}</div>
-      ${s.week>=1 ? weeksHTML(m, s) : ""}
-    </div>
-    <div class="share"><a class="btn red" href="https://wa.me/?text=${encodeURIComponent(shareText + " " + url)}" target="_blank" rel="noopener">Share on WhatsApp</a><button type="button" class="btn line" id="cp">Copy link</button></div>
-    ${mine ? `<p class="note"><a class="link" href="${SQ()}">Go to my squad page</a> to post progress or check in.</p>` : ""}
-    <div class="sq-h"><h3>Progress</h3><span>${posts.length || ""}</span></div>
-    ${feedHTML(posts, mine ? "Nothing yet. Post your first update from your squad page." : `${esc(firstName(m.name))} hasn't posted an update yet.`)}
-    ${D.me ? "" : `<div class="cta"><small>Forward with Genie · Session 07</small><b>SAT 28 NOV · ABUJA</b><p>${esc(firstName(m.name))} is in. Get your own free pass and declare yours in the room.</p><a class="btn red" href="/events?ref=${esc(ref)}">Get your free pass</a></div>`}
+  if(TAB==="reel" && !m.video) TAB = "posts";
+  const grid = posts.length ? `<div class="grid">${posts.map(x=>x.photo
+      ? `<button type="button" class="tile" data-p="${esc(x.id)}"><img src="${esc(x.photo)}" alt="" loading="lazy"></button>`
+      : `<button type="button" class="tile txt" data-p="${esc(x.id)}" style="background:${color(m.name)}"><span>${esc(x.text)}</span></button>`).join("")}</div>`
+    : `<div class="empty"><b>No posts yet</b>${mine ? "Post your first update from your squad page." : `${esc(firstName(m.name))} hasn't posted an update yet.`}</div>`;
+  const reel = m.video ? `<div class="reel"><video src="${esc(m.video)}" controls playsinline preload="metadata"></video></div>` : "";
+  $("#root").innerHTML = `<div class="wrap">${bar(nm(m), SQ())}
+    ${phHTML(m, { mine:false, btns: mine
+      ? `<a class="b" href="${SQ()}">Go to my squad</a><button type="button" class="b" id="cp">Copy link</button>`
+      : `<a class="b blue" href="https://wa.me/?text=${encodeURIComponent(shareText + " " + url)}" target="_blank" rel="noopener">${I.share}Share</a><button type="button" class="b" id="cp">Copy link</button>` })}
+    <div class="tabs" style="--n:${m.video?2:1}"><button type="button" class="${TAB==="posts"?"on":""}" data-t="posts" aria-label="Posts">${I.grid}</button>${m.video?`<button type="button" class="${TAB==="reel"?"on":""}" data-t="reel" aria-label="Declaration video">${I.reel}</button>`:""}</div>
+    ${TAB==="reel" ? reel : grid}
+    ${D.me ? "" : `<div class="cta"><small>Forward with Genie · Session 07</small><b>SAT 28 NOV · ABUJA</b><p>${esc(firstName(m.name))} is in. Get your own free pass and declare yours in the room.</p><a class="b red full" href="/events?ref=${esc(ref)}">Get your free pass</a></div>`}
   </div>`;
   $("#cp").addEventListener("click", ()=>{ (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(()=>{ $("#cp").textContent = "Copied"; }).catch(()=>prompt("Copy this link:", url)); });
+  $$(".tabs button").forEach(b=>b.addEventListener("click", ()=>{ TAB = b.dataset.t; profile(); }));
+  const orl = $("#openreel"); if(orl) orl.addEventListener("click", ()=>openReel(m));
+  $$(".tile").forEach(t=>t.addEventListener("click", ()=>{ const x = posts.find(p=>p.id===t.dataset.p); if(x) openOv(`<div class="card">${postHTML(x)}</div>`); }));
 }
-
-const post = body => fetch(API, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) }).then(x=>x.json()).catch(()=>({ ok:false }));
 
 /* ---------- projector wall ---------- */
 let seen = new Set(), qrDone = false;

@@ -108,6 +108,9 @@ p{margin:0}
 .card p{color:#3B3B3E;font-size:15.5px;max-width:38ch}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{font-size:13px;font-weight:600;padding:7px 12px;border-radius:999px;background:var(--surface)}
+.card.closed{filter:grayscale(1);opacity:.6}.card.closed .arrow{opacity:.4}
+.closed-hero{display:flex;flex-direction:column}.closed-hero h1{margin-top:10px}
+.proof-line{margin-top:14px!important;font-size:14px;font-weight:600;color:var(--muted)}.proof-line b{color:var(--ink);font-size:18px;font-weight:800;margin-right:4px}
 .chip.dark{background:var(--ink);color:#fff}
 .chip.free{background:#178A4A;color:#fff}
 .card:not(.t-onit) .ico svg rect{fill:currentColor}
@@ -733,6 +736,7 @@ ${backLink()}
       <span class="eyebrow">Coaching session · ${naira(CONFIG.hourRate)} an hour</span>
       <h1>One focused hour on the problem you can't shake.</h1>
       <p>We name what's really in the way, decide what to do about it, and you leave with steps you can start the same day.</p>
+      <p class="proof-line"><b>300+</b> people coached one-on-one</p>
     </section>
     <div class="panel">
       <h3>People book me for</h3>
@@ -1242,7 +1246,33 @@ async function nextOpen(svc){
   if(!data){ try{ const r = await fetchSlots(svc, len); if(r.ok) data = r; }catch(e){} }
   return firstOpen(data);
 }
+/* Free clarity sessions can be closed: no active free_call hours = closed. Genie flips this in admin. */
+const SB = "https://vbafqulhbskaswkyjjdn.supabase.co", ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiYWZxdWxoYnNrYXN3a3lqamRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwODE3NDcsImV4cCI6MjA4MTY1Nzc0N30.cg7zCIJN9cPd1XUO29BVDjxDlOxcTzY1p6ndDThWr4Q";
+let FREE_OPEN = null;
+async function freeOpen(){
+  if(FREE_OPEN !== null) return FREE_OPEN;
+  try{ const r = await fetch(`${SB}/rest/v1/availability_rules?select=id&service=eq.free_call&limit=1`, { headers:{ apikey:ANON, Authorization:"Bearer "+ANON } }); const j = await r.json(); FREE_OPEN = Array.isArray(j) ? j.length > 0 : true; }
+  catch(_){ FREE_OPEN = true; }
+  return FREE_OPEN;
+}
+function markFreeClosed(){
+  document.querySelectorAll('a.card[href="#call"]').forEach(c=>{
+    c.classList.add("closed");
+    c.querySelector(".free-tag")?.remove();
+    const chips = c.querySelector(".chips"); if(chips) chips.innerHTML = `<span class="chip">Closed for now</span>`;
+  });
+}
+function callClosed(){
+  const v = $("#app .view"); if(!v) return;
+  v.innerHTML = `${backLink()}<div class="detail"><div><section class="detail-hero t-mint closed-hero">
+      <span class="eyebrow" style="display:block">Clarity session</span>
+      <h1>Free sessions are closed for now.</h1>
+      <p>If you want my time on what's in your way, book a coaching session. One focused hour, and you leave with steps you can start the same day.</p>
+      <a class="btn btn-ink" href="#coaching" style="margin-top:18px;align-self:flex-start">Book a coaching session</a>
+    </section></div></div>`;
+}
 async function fillNext(){
+  freeOpen().then(o=>{ if(!o) markFreeClosed(); });
   for(const svc of ["free_call","mentorship"]){
     const n = await nextOpen(svc);
     document.querySelectorAll(`[data-next="${svc}"]`).forEach(c=>{ if(n){ c.textContent = "Next: " + whenText(n.s, n.date); c.hidden = false; } });
@@ -2239,7 +2269,7 @@ function route(){
   $("#app").innerHTML = `<div class="view">${views[key]()}</div>`;
   document.querySelectorAll("[data-nav]").forEach(a=>a.classList.toggle("on", a.dataset.nav === (scrollToServices ? "services" : key)));
   reveal();
-  if(key==="call") startBooker("free_call");
+  if(key==="call") freeOpen().then(o=> o ? startBooker("free_call") : callClosed());
   if(key==="coaching"){ startBooker("mentorship"); if(B.fromTest) setTimeout(()=>$("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }), 120); }
   if(key==="test") startTest();
   if(key==="event") startEvent();

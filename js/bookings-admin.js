@@ -74,7 +74,16 @@ function bkStyles(){
   .sq-media video{width:100%;max-height:260px;border-radius:10px;background:#000;margin-top:10px}
   .sq-media label{cursor:pointer}
   .sq-up{margin-top:8px;font-size:12px;color:#9a9a9a}.sq-up i{display:block;height:6px;border-radius:3px;background:#1c1c1c;margin-top:6px;overflow:hidden}.sq-up b{display:block;height:100%;width:0;background:#c49a1c;transition:width .2s}
-  .sq-w{display:flex;gap:4px;margin-top:10px}.sq-w i{flex:1;height:22px;border-radius:6px;background:#161616;color:#666;font-style:normal;font-size:11px;font-weight:700;display:grid;place-items:center}
+  .sq-w{display:flex;gap:4px;margin-top:10px}
+  .bk-switch{display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .vl{margin-top:12px;display:grid;gap:2px}
+  .vl-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid #1c1c1c}
+  .vl-row:first-child{border-top:0}.vl-row .sq-up{grid-column:1/-1;margin:0}
+  .vl-who{display:flex;align-items:center;gap:10px;min-width:0}.vl-who img,.vl-who i{width:38px;height:38px;border-radius:50%;object-fit:cover;flex:none}
+  .vl-who i{display:grid;place-items:center;background:#222;color:#c49a1c;font-style:normal;font-weight:800}
+  .vl-who b{display:block;color:#ededed;font-size:14px}.vl-who span{display:block;color:#8a8a8a;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+  .vl-act{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.vl-act label{cursor:pointer}
+  .vl-ok{font-size:12px;font-weight:700;color:#4dc98a;margin-right:4px}.sq-w i{flex:1;height:22px;border-radius:6px;background:#161616;color:#666;font-style:normal;font-size:11px;font-weight:700;display:grid;place-items:center}
   .sq-w i.done{background:#178A4A;color:#fff}.sq-w i.partly{background:#C98A0B;color:#fff}.sq-w i.missed{background:#D7401C;color:#fff}.sq-w i.now{outline:1.5px solid #c49a1c;outline-offset:-1.5px}
   .bk-evby{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px}
   .bk-evby span{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#777;margin-right:2px}
@@ -126,8 +135,8 @@ function bkRender(){
   const d = BK.data, now = Date.parse(d.now);
   const upcoming = d.bookings.filter(b=>b.status==="confirmed" && Date.parse(b.ends_at) > now);
   const optedIn = d.contacts.filter(x=>x.opted_in).length;
-  const tabs = [["calls","Calls"],["event","Event"],["squads","Squads"],["mentorship","Mentorship"],["test","Comm test"],["lists","Waitlists & emails"],["hours","Hours & settings"]];
-  const body = { calls:bkCalls, event:bkEvent, squads:bkSquads, mentorship:bkMentorship, test:bkTest, lists:bkLists, hours:bkHours }[BK.view](d, now);
+  const tabs = [["calls","Calls"],["event","Event"],["squads","Squads"],["videos","Videos"],["mentorship","Mentorship"],["test","Comm test"],["lists","Waitlists & emails"],["hours","Hours & settings"]];
+  const body = { calls:bkCalls, event:bkEvent, squads:bkSquads, videos:bkVideos, mentorship:bkMentorship, test:bkTest, lists:bkLists, hours:bkHours }[BK.view](d, now);
   c.innerHTML = `<div class="bk">
     <div class="bk-stats">
       <div class="bk-stat"><b>${upcoming.filter(b=>b.service==="free_call").length}</b><span>Clarity calls coming</span></div>
@@ -411,7 +420,10 @@ function bkHours(d){
       <div class="bk-acts" style="margin-top:12px"><button class="bk-btn gold" onclick="bkSaveRules('${key}')">Save ${key==="free_call"?"call":"mentorship"} hours</button></div></div>`;
   };
   const s = d.settings, synced = s.calendar_synced_at ? new Date(s.calendar_synced_at).toLocaleString("en-GB",{ timeZone:"Africa/Lagos", hour:"numeric", minute:"2-digit", day:"numeric", month:"short" }) : "never";
-  return `${svc("free_call","Clarity call hours","10-minute slots. Anything in your Google Calendar blocks the time on its own.")}
+  const freeOpen = d.rules.some(r=>r.service==="free_call" && r.active);
+  return `<div class="bk-card bk-switch"><div><h4>Free clarity sessions</h4><p class="h" style="margin:0">${freeOpen ? "Open. People can book free 10-minute sessions." : "Closed for now. The tile shows greyed out and people are sent to coaching. Calls already booked still happen."}</p></div>
+      <button class="bk-btn ${freeOpen?"":"gold"}" onclick="bkFreeCalls(${!freeOpen}, this)">${freeOpen ? "Close" : "Reopen"}</button></div>
+    ${svc("free_call","Clarity call hours","10-minute slots. Anything in your Google Calendar blocks the time on its own.")}
     ${svc("mentorship","Mentorship hours","Sessions start on the half hour inside these hours.")}
     <div class="bk-card"><h4>Settings</h4>
       <p class="h">Your WhatsApp number is only shown to people after they pay for mentorship. Leave it empty to keep it private.</p>
@@ -421,6 +433,27 @@ function bkHours(d){
       <button class="bk-btn gold" onclick="bkSaveSettings(this)">Save settings</button>
       <p class="h" style="margin:14px 0 0">Google Calendar last synced: ${bkEsc(synced)} (every 5 minutes). New bookings are emailed to ${bkEsc(s.notify_email||"you")}.</p></div>`;
 }
+async function bkFreeCalls(open, btn){
+  if(!confirm(open ? "Reopen free clarity sessions on your usual days?" : "Close free clarity sessions? Calls already booked still happen.")) return;
+  btn.disabled = true;
+  try{ await bkFetch("free_calls",{ open }); showToast(open ? "Free sessions reopened" : "Free sessions closed","success"); await bkRefresh(); }
+  catch(e){ btn.disabled = false; showToast("Couldn't change it: " + e.message, "error"); }
+}
+
+/* ---------- Videos: one place to upload each person's declaration video ---------- */
+function bkVideos(d){
+  const sq = (d.squads||[]).filter(q=>q.members.length);
+  if(!sq.length) return `<div class="bk-empty">No squad members yet.</div>`;
+  return sq.map(q=>{ const done = q.members.filter(m=>m.video).length;
+    return `<div class="bk-card"><div class="bk-top"><div><h4>${bkEsc(q.name)}</h4><p class="h" style="margin:0">${done} of ${q.members.length} videos uploaded. Each video must be under 50MB.</p></div></div>
+      <div class="vl">${q.members.map(m=>`<div class="vl-row">
+        <div class="vl-who">${m.photo?`<img src="${bkEsc(m.photo)}" alt="">`:`<i>${bkEsc((m.name||"?").trim()[0].toUpperCase())}</i>`}<div><b>${bkEsc(m.name)}</b><span>${bkEsc(m.goal)}</span></div></div>
+        <div class="vl-act">${m.video?`<span class="vl-ok">&#10003; Uploaded</span><a class="bk-btn" href="${bkEsc(m.video)}" target="_blank" rel="noopener">Watch</a>`:""}
+          <label class="bk-btn ${m.video?"":"gold"}">${m.video?"Replace":"Upload video"}<input type="file" accept="video/*" hidden onchange="bkSqUpload(this,'${m.id}','video')"></label></div>
+        <div class="sq-up" id="sq-up-${m.id}" hidden><span></span><i><b></b></i></div></div>`).join("")}</div>
+      <p class="h" style="margin:12px 0 0">Over 50MB? Send the video to yourself on WhatsApp, save that copy, and upload it instead. WhatsApp shrinks it.</p></div>`; }).join("");
+}
+
 function bkToggleRule(id){
   const r = BK.data.rules.find(x=>x.id===id); if(!r) return;
   r.start_time = (el("rs-"+id)||{}).value || r.start_time; r.end_time = (el("re-"+id)||{}).value || r.end_time;

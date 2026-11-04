@@ -15,6 +15,7 @@
  *   squad_toggle  {id, active}            Open/close a squad (closed = no new joins, no reminders)
  *   squad_media_url {member_id, kind:"video"|"photo", type}   Signed upload URL for a member's declaration video/photo
  *   squad_set_media {member_id, kind, path}                   Attach the uploaded file (path "" removes it)
+ *   free_calls    {open}                  Close free clarity sessions (all free_call hours off, remembered) or reopen them
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -189,6 +190,19 @@ async function squadSetMedia(p: P) {
   const { error } = await sb.from("squad_members").update({ [kind]: path || null }).eq("id", id);
   return error ? { ok: false, error: error.message } : { ok: true, url: path ? MEDIA + path : null };
 }
+async function freeCalls(p: P) {
+  if (p.open === true) {
+    const { data: saved } = await sb.from("private_settings").select("value").eq("key", "free_calls_reopen_rules").maybeSingle();
+    let ids: string[] = []; try { ids = JSON.parse(saved?.value || "[]"); } catch { ids = []; }
+    if (ids.length) await sb.from("availability_rules").update({ active: true }).in("id", ids);
+    else await sb.from("availability_rules").update({ active: true }).eq("service", "free_call");
+  } else {
+    const { data: act } = await sb.from("availability_rules").select("id").eq("service", "free_call").eq("active", true);
+    if ((act ?? []).length) await sb.from("private_settings").upsert({ key: "free_calls_reopen_rules", value: JSON.stringify((act ?? []).map((r: any) => r.id)), updated_at: new Date().toISOString() });
+    await sb.from("availability_rules").update({ active: false }).eq("service", "free_call");
+  }
+  return { ok: true };
+}
 async function squadToggle(p: P) {
   const { error } = await sb.from("squads").update({ active: p.active === true }).eq("id", clean(p.id, 60));
   return error ? { ok: false, error: error.message } : { ok: true };
@@ -259,7 +273,7 @@ async function addRule(p: P) {
 }
 
 const ACTIONS: Record<string, (p: P) => Promise<P>> = {
-  list, cancel, attend, checkin, squad_create: squadCreate, squad_toggle: squadToggle, squad_media_url: squadMediaUrl, squad_set_media: squadSetMedia, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
+  list, cancel, attend, checkin, squad_create: squadCreate, squad_toggle: squadToggle, squad_media_url: squadMediaUrl, squad_set_media: squadSetMedia, free_calls: freeCalls, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
 };
 
 Deno.serve(async (req) => {
