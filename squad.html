@@ -265,7 +265,17 @@ body.wall{font-family:var(--body)}
 .dd-empty{margin:14px 16px 0;padding:14px;border-radius:12px;background:var(--bg);font-size:14px;color:var(--muted);text-align:center}
 .vthumb{position:relative;display:block;width:100%;aspect-ratio:4/5;max-height:70vh;border-radius:14px;overflow:hidden;background:#000;text-align:left}
 .vthumb video{width:100%;height:100%;object-fit:cover;opacity:.85;display:block}
-.vthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.vthumb img,.vthumb video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.ppl{display:flex;gap:6px;overflow-x:auto;padding:10px 16px 8px;scrollbar-width:none;border-bottom:1px solid var(--line2)}.ppl::-webkit-scrollbar{display:none}
+.pp{flex:none;display:flex;align-items:center;gap:7px;padding:4px 12px 4px 4px;border-radius:999px;background:var(--bg);font-size:13.5px;font-weight:600;color:var(--muted);border:1px solid transparent}
+.pp.on{background:var(--card);color:var(--text);border-color:var(--text)}
+.pager{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;align-items:flex-start;overscroll-behavior-x:contain;transition:height .25s}
+.pager::-webkit-scrollbar{display:none}
+.pg{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always;padding-bottom:4px}
+.swipe-hint{text-align:center;font-size:12.5px;color:var(--muted);padding:12px 0 0;transition:opacity .4s}.swipe-hint.gone{opacity:0}
+.dd .post{border:1px solid var(--line2);border-radius:14px;margin:0 16px;overflow:hidden;padding-bottom:6px}
+.dd .post+.post{margin-top:10px}
+.dd .post-img{max-height:320px;width:100%;object-fit:cover}
 .ribbon{position:absolute;top:0;left:0;width:170px;height:170px;overflow:hidden;pointer-events:none;z-index:2}
 .ribbon span{position:absolute;top:40px;left:-50px;width:230px;padding:8px 0;transform:rotate(-45deg);background:var(--blue);color:#fff;text-align:center;font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;box-shadow:0 3px 10px rgba(0,0,0,.3)}
 .ov .vwrap{position:relative;display:inline-block;line-height:0;-webkit-user-select:none;user-select:none}
@@ -310,8 +320,8 @@ body.wall{background:var(--cream)}
 <div id="root"><div class="wrap"><p style="padding:60px 0;text-align:center;color:var(--muted)">Loading your squad…</p></div></div>
 <script>
 const API = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/squads-api";
-const $ = s => document.querySelector(s);
-const $$ = s => document.querySelectorAll(s);
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const firstName = n => String(n||"").trim().split(/\s+/)[0] || "";
 const COLORS = ["#D7401C","#2F6F5E","#178A4A","#3B5BDB","#C98A0B","#7A4A2E","#8E44AD","#1E7F8C"];
@@ -686,44 +696,88 @@ function home(){
 const coachOf = () => D.squad.coach || { name:"Genie", photo:null, member_id:null };
 function toastMsg(m){ let t = $("#tst"); if(!t){ t = document.createElement("div"); t.id = "tst"; t.className = "tst"; document.body.appendChild(t); } t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("on"), 2600); }
 
-/* ---------- public profile ---------- */
-let PCAL = "week", PSEL = "";
-function profile(){
-  const s = D.squad, m = D.members.find(x=>x.id===PID);
-  if(!m){ $("#root").innerHTML = `<div class="wrap">${bar("Profile", SQ())}<div class="empty"><b>Profile not found</b>This person may have left the squad.<div style="margin-top:16px"><a class="b blue" href="${SQ()}">See the squad</a></div></div></div>`; return; }
-  const mine = D.me && D.me.id === m.id, x = stat(m), t = todayISO();
-  const url = location.origin + profLink(m.id);
-  const shareText = `${firstName(m.name)} declared: "${m.goal}"${m.deadline?` by ${niceDate(m.deadline)}`:""}. Hold them to it.`;
-  const ref = firstName(m.name).toLowerCase().replace(/[^a-z]/g,"");
-  const posts = (D.posts||[]).filter(p=>p.member_id===m.id);
-  if(!PSEL){ const ds = Object.keys(x.byDay).sort(); PSEL = x.byDay[t] ? t : (ds[ds.length-1] || t); }
-  const video = m.video ? `<button type="button" class="vthumb" id="openreel" aria-label="Watch ${esc(firstName(m.name))}'s declaration">
-      <span class="ribbon"><span>Declaration</span></span>${m.cover?`<img src="${esc(m.cover)}" alt="" draggable="false">`:`<video src="${esc(m.video)}#t=0.5" preload="metadata" muted playsinline disablepictureinpicture></video>`}<span class="vplay">${I.play}</span>
+/* ---------- public profile: swipe left/right through the squad ---------- */
+let PCAL = "week", PCUR = "";
+const PSEL = {};
+function selDay(m){
+  if(!PSEL[m.id]){ const by = postsByDay(m.id), t = todayISO(), ds = Object.keys(by).sort(); PSEL[m.id] = by[t] ? t : (ds[ds.length-1] || t); }
+  return PSEL[m.id];
+}
+function profPanel(m){
+  const s = D.squad, mine = D.me && D.me.id === m.id, x = stat(m), t = todayISO();
+  const video = m.video ? `<button type="button" class="vthumb" data-reel="${esc(m.id)}" aria-label="Watch ${esc(firstName(m.name))}'s declaration">
+      ${m.cover?`<img src="${esc(m.cover)}" alt="" draggable="false" loading="lazy">`:`<video src="${esc(m.video)}#t=0.5" preload="metadata" muted playsinline disablepictureinpicture></video>`}<span class="ribbon"><span>Declaration</span></span><span class="vplay">${I.play}</span>
       <span class="vcap"><b>Declaration video</b><small>Watch ${esc(firstName(m.name))} say it out loud</small></span></button>`
-    : mine ? `<div class="vnone">${I.reel}<span>Genie adds your declaration video here.</span></div>` : "";
-  $("#root").innerHTML = `<div class="wrap">${bar(nm(m), SQ())}
-    <section class="ph">
+    : `<div class="vnone">${I.reel}<span>${mine ? "Genie adds your declaration video here." : "Declaration video coming soon."}</span></div>`;
+  return `<section class="pg" data-id="${esc(m.id)}">
+    <div class="ph">
       <div class="ph-top">${ringAv(m, 84, !!m.video)}
         <div class="stats"><div><b>${x.days}</b><span>days shown up</span></div><div><b>${x.ups}</b><span>updates</span></div><div><b>${s.week>=1 ? Math.min(dayNo(t), s.weeks*7) : 0}</b><span>days in</span></div></div></div>
       <div class="ph-name">${nm(m)}${x.today?`<span class="started">● Posted today</span>`:""}</div>
       <div class="ph-role">${m.coach ? "Coach · On It With Genie" : esc(s.name)}</div>
       <p class="will"><b>WILL</b>${esc(m.goal)}</p>
       <div class="ph-meta">${[m.deadline?`By ${esc(niceDate(m.deadline))}`:"", m.proof?`Proof: ${esc(m.proof)}`:""].filter(Boolean).join(" · ")}</div>
-    </section>
-    ${video ? `<div style="padding:4px 16px 0">${video}</div>` : ""}
+    </div>
+    <div style="padding:4px 16px 0">${video}</div>
     <div class="label lab-row"><span>Progress</span><span class="seg mini">${[["week","Week"],["month","All days"]].map(([k,l])=>`<button type="button" class="${PCAL===k?"on":""}" data-c="${k}">${l}</button>`).join("")}</span></div>
-    <div style="padding:0 16px">${calHTML(m, PCAL, PSEL)}</div>
-    <div id="dd">${dayDetail(m, PSEL)}</div>
-    <div class="ph-btns" style="padding:16px">${mine
-      ? `<a class="b" href="${SQ()}">Post today's progress</a><button type="button" class="b" id="cp">Copy link</button>`
-      : `<a class="b blue" href="https://wa.me/?text=${encodeURIComponent(shareText + " " + url)}" target="_blank" rel="noopener">${I.share}Share</a><button type="button" class="b" id="cp">Copy link</button>`}</div>
-    ${(()=>{ const rest = posts.filter(p=>lagosDay(p.at)!==PSEL); return rest.length ? `<div class="label">Other days</div>${rest.map(postHTML).join("")}` : ""; })()}
-    ${D.me ? "" : `<div class="cta"><small>Forward with Genie · Session 07</small><b>SAT 28 NOV · ABUJA</b><p>${esc(firstName(m.name))} is in. Get your own free pass and declare yours in the room.</p><a class="b red full" href="/events?ref=${esc(ref)}">Get your free pass</a></div>`}
+    <div class="pcal" style="padding:0 16px">${calHTML(m, PCAL, selDay(m))}</div>
+    <div class="dd">${dayDetail(m, selDay(m))}</div>
+  </section>`;
+}
+function profBtns(m){
+  const mine = D.me && D.me.id === m.id, url = location.origin + profLink(m.id);
+  const shareText = `${firstName(m.name)} declared: "${m.goal}"${m.deadline?` by ${niceDate(m.deadline)}`:""}. Hold them to it.`;
+  return mine ? `<a class="b" href="${SQ()}">Post today's progress</a><button type="button" class="b" id="cp" data-url="${esc(url)}">Copy link</button>`
+    : `<a class="b blue" href="https://wa.me/?text=${encodeURIComponent(shareText + " " + url)}" target="_blank" rel="noopener">${I.share}Share ${esc(firstName(m.name))}</a><button type="button" class="b" id="cp" data-url="${esc(url)}">Copy link</button>`;
+}
+function profile(){
+  const s = D.squad, list = D.members;
+  if(!PCUR) PCUR = PID;
+  let m = list.find(x=>x.id===PCUR);
+  if(!m){ $("#root").innerHTML = `<div class="wrap">${bar("Profile", SQ())}<div class="empty"><b>Profile not found</b>This person may have left the squad.<div style="margin-top:16px"><a class="b blue" href="${SQ()}">See the squad</a></div></div></div>`; return; }
+  const ref = firstName(m.name).toLowerCase().replace(/[^a-z]/g,"");
+  $("#root").innerHTML = `<div class="wrap">${bar(nm(m), SQ())}
+    <div class="ppl" role="tablist">${list.map(x=>`<button type="button" class="pp${x.id===m.id?" on":""}" data-go="${esc(x.id)}">${ringAv(x, 28, !!x.video)}<span>${esc(x.coach ? "Genie" : firstName(x.name))}</span></button>`).join("")}</div>
+    <div class="pager" id="pager">${list.map(profPanel).join("")}</div>
+    <div class="swipe-hint" id="sh">← Swipe to see the others →</div>
+    <div class="ph-btns" id="pbtns" style="padding:16px">${profBtns(m)}</div>
+    ${D.me ? "" : `<div class="cta"><small>Forward with Genie · Session 07</small><b>SAT 28 NOV · ABUJA</b><p>This squad declared it in a room in Abuja. Get your own free pass and declare yours.</p><a class="b red full" href="/events?ref=${esc(ref)}">Get your free pass</a></div>`}
   </div>`;
-  $("#cp").addEventListener("click", ()=>{ (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(()=>{ $("#cp").textContent = "Copied"; }).catch(()=>prompt("Copy this link:", url)); });
-  $$("[data-c]").forEach(b=>b.addEventListener("click", ()=>{ PCAL = b.dataset.c; profile(); wireFeed(); }));
-  $$(".cal .cd").forEach(b=>b.addEventListener("click", ()=>{ PSEL = b.dataset.d; const y = scrollY; profile(); wireFeed(); scrollTo(0, y); }));
-  const orl = $("#openreel"); if(orl) orl.addEventListener("click", ()=>openReel(m));
+  const pager = $("#pager"), panels = $$(".pg", pager);
+  const fit = () => { const pg = panels.find(x=>x.dataset.id===PCUR); if(pg) pager.style.height = pg.offsetHeight + "px"; };
+  const select = id => {
+    if(id === PCUR && pager.dataset.ready) return;
+    PCUR = id; const mm = list.find(x=>x.id===id); if(!mm) return;
+    const t = $(".bar h1, .bar .t, .bar b"); if(t) t.innerHTML = nm(mm);
+    $$(".pp").forEach(b=>b.classList.toggle("on", b.dataset.go===id));
+    const on = $(`.pp[data-go="${id}"]`); if(on) on.scrollIntoView({ block:"nearest", inline:"center", behavior:"smooth" });
+    $("#pbtns").innerHTML = profBtns(mm); wireCp();
+    try{ history.replaceState(null, "", profLink(id) + location.search); }catch(_){}
+    fit();
+  };
+  const wireCp = () => { const cp = $("#cp"); if(cp) cp.addEventListener("click", ()=>{ const u = cp.dataset.url; (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(()=>{ cp.textContent = "Copied"; }).catch(()=>prompt("Copy this link:", u)); }); };
+  wireCp();
+  // start on the person whose link was opened
+  const i0 = panels.findIndex(x=>x.dataset.id===PCUR);
+  pager.scrollLeft = i0 * pager.clientWidth; fit(); pager.dataset.ready = 1;
+  if(i0 < 0) select(list[0].id);
+  let tm; pager.addEventListener("scroll", ()=>{ clearTimeout(tm); tm = setTimeout(()=>{ const i = Math.round(pager.scrollLeft / pager.clientWidth); if(panels[i]) select(panels[i].dataset.id); }, 80);
+  }, { passive:true });
+  ["touchstart","pointerdown"].forEach(ev=>pager.addEventListener(ev, ()=>{ const sh = $("#sh"); if(sh) sh.classList.add("gone"); }, { once:true, passive:true }));
+  { const on = $(".pp.on"), row = $(".ppl"); if(on && row) row.scrollLeft = on.offsetLeft - (row.clientWidth - on.offsetWidth)/2; }
+  $$(".pp").forEach(b=>b.addEventListener("click", ()=>{ const i = panels.findIndex(x=>x.dataset.id===b.dataset.go); pager.scrollTo({ left:i*pager.clientWidth, behavior:"smooth" }); }));
+  addEventListener("resize", ()=>{ const i = panels.findIndex(x=>x.dataset.id===PCUR); pager.scrollLeft = i*pager.clientWidth; fit(); });
+  // per-panel: week/all days, tap a day, play video
+  panels.forEach(pg=>{
+    const mm = list.find(x=>x.id===pg.dataset.id);
+    const redraw = () => { $(".pcal", pg).innerHTML = calHTML(mm, PCAL, selDay(mm)); $(".dd", pg).innerHTML = dayDetail(mm, selDay(mm)); wireDays(); wireFeed(); fit(); };
+    const wireDays = () => $$(".cal .cd", pg).forEach(b=>b.addEventListener("click", ()=>{ PSEL[mm.id] = b.dataset.d; redraw(); }));
+    wireDays();
+    $$("[data-c]", pg).forEach(b=>b.addEventListener("click", ()=>{ PCAL = b.dataset.c; panels.forEach(q=>{ $$("[data-c]", q).forEach(c=>c.classList.toggle("on", c.dataset.c===PCAL)); const qm = list.find(x=>x.id===q.dataset.id); $(".pcal", q).innerHTML = calHTML(qm, PCAL, selDay(qm)); $(".dd", q).innerHTML = dayDetail(qm, selDay(qm)); $$(".cal .cd", q).forEach(c=>c.addEventListener("click", ()=>{ PSEL[qm.id] = c.dataset.d; q.dispatchEvent(new Event("redraw")); })); }); wireFeed(); fit(); }));
+    pg.addEventListener("redraw", redraw);
+    const rl = $("[data-reel]", pg); if(rl) rl.addEventListener("click", ()=>openReel(mm));
+    $$("img", pg).forEach(im=>im.addEventListener("load", fit));
+  });
 }
 
 /* ---------- projector wall ---------- */
