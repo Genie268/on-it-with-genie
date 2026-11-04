@@ -337,7 +337,10 @@ function showAppTransfer(t,email,fk){
     .atx-acct small{display:block;font-size:10.5px;color:#8a8a8a}
     .atx-acct b{display:block;font-family:ui-monospace,Menlo,monospace;font-weight:600;font-size:clamp(19px,5.6vw,23px);letter-spacing:.03em;margin-top:2px;white-space:nowrap}
     .atx-acct em{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#c49a1c;color:#0b0b0a;flex:none}
-    .atx-bank{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:11.5px;color:#8a8a8a}
+    .atx-row{padding:2px 13px 12px}
+    .atx-row small{display:block;font-size:10.5px;color:#8a8a8a}
+    .atx-row b{display:block;font-size:18px;font-weight:800;color:#fff;margin-top:2px;overflow-wrap:anywhere}
+    .atx-row span{display:block;font-size:11.5px;color:#c49a1c;margin-top:3px}
     .atx-wait{display:flex;align-items:center;justify-content:center;gap:9px;font-size:14px;font-weight:700;color:#fff;margin-top:4px}
     .atx-dot{width:9px;height:9px;border-radius:50%;background:#4dc98a;animation:atxp 1.6s infinite}
     @keyframes atxp{0%{box-shadow:0 0 0 0 rgba(77,201,138,.45)}70%{box-shadow:0 0 0 9px rgba(77,201,138,0)}100%{box-shadow:0 0 0 0 rgba(77,201,138,0)}}
@@ -347,13 +350,14 @@ function showAppTransfer(t,email,fk){
     <div class="atx-amt">${amt}</div>
     <div class="atx-what">${what} · ${S.user?.duration||15} days</div>
     <div class="atx-cut"></div>
-    <button type="button" class="atx-acct" data-copy="${acct}"><span><small>Account number</small><b>${grouped}</b></span><em><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg></em></button>
-    <div class="atx-bank"><span>${t.bank||""}</span><span>${t.account_name||""}</span></div>
+    <div class="atx-row"><small>1. Bank</small><b>${t.bank||""}</b>${/titan/i.test(t.bank||"")?`<span>In your bank app, search "Titan"</span>`:""}</div>
+    <button type="button" class="atx-acct" data-copy="${acct}"><span><small>2. Account number</small><b>${grouped}</b></span><em><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg></em></button>
+    ${t.account_name?`<div class="atx-row" style="padding-top:12px;padding-bottom:0"><small>3. Name you'll see</small><b>${t.account_name}</b><span style="color:#8a8a8a">That's our payment partner. It's safe to send.</span></div>`:""}
   </div>
   <div class="atx-wait" id="tx-wait"><span class="atx-dot"></span><span>Waiting for your transfer</span></div>
   <p class="muted" style="font-size:11.5px;text-align:center;margin-top:6px">Send the exact amount. This page moves on by itself.</p>
   <p style="text-align:center;margin:12px 0 4px"><a href="#" id="tx-other" style="font-size:12.5px;font-weight:700;color:#c49a1c;text-decoration:underline">Pay with card instead</a></p>`;
-  box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);const sm=b.querySelector("small");if(sm){sm.textContent="Copied";setTimeout(()=>sm.textContent="Account number",1500);}}catch(e){}});
+  box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(b.dataset.copy);const sm=b.querySelector("small");if(sm){sm.textContent="Copied";setTimeout(()=>sm.textContent="2. Account number",1500);}}catch(e){}});
   clearInterval(S._txClock);clearInterval(S._txPoll);
   const clock=()=>{const left=Math.max(0,end-Date.now()),m=Math.floor(left/60000),sec=Math.floor(left/1000)%60;const c=el("tx-clock");if(c)c.textContent=left?`${m}:${String(sec).padStart(2,"0")}`:"Closed";if(!left)clearInterval(S._txClock);};
   clock();S._txClock=setInterval(clock,1000);

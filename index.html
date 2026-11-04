@@ -287,7 +287,11 @@ p{margin:0}
 .txc-acct>span{min-width:0}
 .txc-acct em{font-style:normal;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:var(--lime);color:var(--ink);flex:none;transition:transform .2s}
 .txc-acct.ok em{transform:scale(1.06)}
-.txc-bank{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:12.5px;color:rgba(244,242,236,.55)}
+.txc-row{padding:4px 14px 14px}.txc-row+.txc-acct{margin-top:0}.txc-acct+.txc-row{padding-top:14px;padding-bottom:2px}
+.txc-row small{display:block;font-size:11.5px;color:rgba(244,242,236,.55)}
+.txc-row b{display:block;font-size:20px;font-weight:700;color:#fff;margin-top:2px;letter-spacing:-.01em;overflow-wrap:anywhere}
+.txc-row span{display:block;font-size:12.5px;color:var(--lime);margin-top:3px}.txc-row q{quotes:"\201C" "\201D";font-weight:700}
+.txc-acct+.txc-row span{color:rgba(244,242,236,.55)}
 .txw{display:flex;align-items:center;justify-content:center;gap:10px;margin:18px 0 4px;font-weight:600;font-size:15px}
 .txw-dot{width:10px;height:10px;border-radius:50%;background:#178A4A;box-shadow:0 0 0 0 rgba(23,138,74,.5);animation:txping 1.6s infinite}
 .txw.late{font-weight:500;font-size:14px;color:var(--muted);text-align:left}
@@ -2059,8 +2063,9 @@ function showTransfer(t, f, payLabel){
       <div class="txc-amt">${amt}</div>
       <div class="txc-what">${esc(what)}</div>
       <div class="txc-cut"></div>
-      <button type="button" class="txc-acct" data-copy="${esc(acct)}" aria-label="Copy account number"><span><small>Account number</small><b>${esc(grouped)}</b></span><em>${copyIco}</em></button>
-      <div class="txc-bank"><span>${esc(t.bank||"")}</span><span>${esc(t.account_name||"")}</span></div>
+      <div class="txc-row"><small>1. Bank</small><b>${esc(t.bank||"")}</b>${/titan/i.test(t.bank||"") ? `<span>In your bank app, search <q>Titan</q></span>` : ""}</div>
+      <button type="button" class="txc-acct" data-copy="${esc(acct)}" aria-label="Copy account number"><span><small>2. Account number</small><b>${esc(grouped)}</b></span><em>${copyIco}</em></button>
+      ${t.account_name ? `<div class="txc-row"><small>3. Name you'll see</small><b>${esc(t.account_name)}</b><span>That's our payment partner. It's safe to send.</span></div>` : ""}
     </div>
     <div class="txw" id="tx-wait"><span class="txw-dot"></span><span>Waiting for your transfer</span></div>
     <p class="txn">Send the exact amount. This page moves on by itself.</p>
