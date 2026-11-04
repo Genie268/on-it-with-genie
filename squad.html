@@ -263,8 +263,13 @@ body.wall{font-family:var(--body)}
 .cd.now{box-shadow:inset 0 0 0 2px var(--text)}.cd.sel{box-shadow:0 0 0 2px var(--blue)}
 .dd-h{padding:16px 16px 4px;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .dd-empty{margin:14px 16px 0;padding:14px;border-radius:12px;background:var(--bg);font-size:14px;color:var(--muted);text-align:center}
-.vthumb{position:relative;display:block;width:100%;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:#000;text-align:left}
+.vthumb{position:relative;display:block;width:100%;aspect-ratio:4/5;max-height:70vh;border-radius:14px;overflow:hidden;background:#000;text-align:left}
 .vthumb video{width:100%;height:100%;object-fit:cover;opacity:.85;display:block}
+.vthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.ribbon{position:absolute;top:0;left:0;width:130px;height:130px;overflow:hidden;pointer-events:none;z-index:2}
+.ribbon span{position:absolute;top:26px;left:-42px;width:170px;padding:6px 0;transform:rotate(-45deg);background:var(--blue);color:#fff;text-align:center;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+.ov .vwrap{position:relative;display:inline-block;line-height:0;-webkit-user-select:none;user-select:none}
+.ov .vwrap video{display:block;width:auto;height:auto;max-width:100vw;max-height:100vh;max-height:100dvh}
 .vplay{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.22);backdrop-filter:blur(6px);display:grid;place-items:center;border:1.5px solid rgba(255,255,255,.6)}
 .vcap{position:absolute;left:0;right:0;bottom:0;padding:30px 14px 12px;background:linear-gradient(to top,rgba(0,0,0,.75),transparent);color:#fff}.vcap b{display:block;font-size:15px}.vcap small{font-size:13px;opacity:.85}
 .vnone{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px dashed var(--line);color:var(--muted);font-size:14px}
@@ -459,8 +464,9 @@ function openOv(html){
   document.body.appendChild(o); document.body.style.overflow = "hidden"; wireFeed();
 }
 addEventListener("keydown", e=>{ if(e.key==="Escape") closeOv(); });
+addEventListener("contextmenu", e=>{ if(e.target.closest && e.target.closest("video,.vthumb,.vwrap")) e.preventDefault(); });
 function openReel(m){
-  openOv(`<video src="${esc(m.video)}" autoplay controls playsinline></video>
+  openOv(`<div class="vwrap"><span class="ribbon"><span>Declaration</span></span><video src="${esc(m.video)}" ${m.cover?`poster="${esc(m.cover)}"`:""} autoplay controls controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback playsinline></video></div>
     <div class="cap"><div class="n">${av(m, 32)}${nm(m)}</div><div class="w"><b>WILL</b>${esc(m.goal)}</div></div>`);
 }
 
@@ -692,7 +698,7 @@ function profile(){
   const posts = (D.posts||[]).filter(p=>p.member_id===m.id);
   if(!PSEL){ const ds = Object.keys(x.byDay).sort(); PSEL = x.byDay[t] ? t : (ds[ds.length-1] || t); }
   const video = m.video ? `<button type="button" class="vthumb" id="openreel" aria-label="Watch ${esc(firstName(m.name))}'s declaration">
-      <video src="${esc(m.video)}#t=0.5" preload="metadata" muted playsinline></video><span class="vplay">${I.play}</span>
+      <span class="ribbon"><span>Declaration</span></span>${m.cover?`<img src="${esc(m.cover)}" alt="" draggable="false">`:`<video src="${esc(m.video)}#t=0.5" preload="metadata" muted playsinline disablepictureinpicture></video>`}<span class="vplay">${I.play}</span>
       <span class="vcap"><b>Declaration video</b><small>Watch ${esc(firstName(m.name))} say it out loud</small></span></button>`
     : mine ? `<div class="vnone">${I.reel}<span>Genie adds your declaration video here.</span></div>` : "";
   $("#root").innerHTML = `<div class="wrap">${bar(nm(m), SQ())}

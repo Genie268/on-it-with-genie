@@ -102,12 +102,15 @@ async function list() {
   // squads with their members and check-ins
   const [{ data: sqs }, { data: sqm }, { data: sqc }] = await Promise.all([
     sb.from("squads").select("*").order("created_at", { ascending: false }),
-    sb.from("squad_members").select("id,squad_id,name,email,phone,goal,deadline,proof,first_step,started_at,started_note,created_at,photo_path,video_path,show_video").order("created_at"),
+    sb.from("squad_members").select("id,squad_id,name,email,phone,goal,deadline,proof,first_step,started_at,started_note,created_at,photo_path,video_path,video_cover_path,show_video").order("created_at"),
     sb.from("squad_checkins").select("member_id,squad_id,week,status,note"),
   ]);
+  const vpaths = (sqm ?? []).map((m: any) => m.video_path).filter(Boolean);
+  const signed: Record<string, string> = {};
+  if (vpaths.length) { const { data: su } = await sb.storage.from("squad-video").createSignedUrls(vpaths, 6 * 3600); (su ?? []).forEach((x: any) => { if (x.signedUrl) signed[x.path] = x.signedUrl; }); }
   const squads = (sqs ?? []).map((q: any) => ({ ...q,
     week: (() => { const d = Math.floor((Date.parse(new Date(Date.now() + 3600_000).toISOString().slice(0, 10)) - Date.parse(q.starts_on)) / 86400000); return d < 0 ? 0 : Math.floor(d / 7) + 1; })(),
-    members: (sqm ?? []).filter((m: any) => m.squad_id === q.id).map((m: any) => ({ ...m, photo: m.photo_path ? URL_ + "/storage/v1/object/public/squad-media/" + m.photo_path : null, video: m.video_path ? URL_ + "/storage/v1/object/public/squad-media/" + m.video_path : null, checkins: Object.fromEntries((sqc ?? []).filter((c: any) => c.member_id === m.id).map((c: any) => [c.week, { status: c.status, note: c.note }])) })) }));
+    members: (sqm ?? []).filter((m: any) => m.squad_id === q.id).map((m: any) => ({ ...m, photo: m.photo_path ? URL_ + "/storage/v1/object/public/squad-media/" + m.photo_path : null, video: m.video_path ? (signed[m.video_path] ?? null) : null, cover: m.video_cover_path ? URL_ + "/storage/v1/object/public/squad-media/" + m.video_cover_path : null, checkins: Object.fromEntries((sqc ?? []).filter((c: any) => c.member_id === m.id).map((c: any) => [c.week, { status: c.status, note: c.note }])) })) }));
   return {
     squads,
     ok: true,
@@ -175,20 +178,23 @@ async function squadCreate(p: P) {
 }
 const MEDIA = URL_ + "/storage/v1/object/public/squad-media/";
 async function squadMediaUrl(p: P) {
-  const id = clean(p.member_id, 60), kind = p.kind === "photo" ? "photo" : "video", type = clean(p.type, 40);
+  const id = clean(p.member_id, 60), kind = p.kind === "photo" ? "photo" : p.kind === "cover" ? "cover" : "video", type = clean(p.type, 40);
   const { data: m } = await sb.from("squad_members").select("id, squads(code)").eq("id", id).maybeSingle();
   if (!m) return { ok: false, error: "not_found" };
-  const ext = kind === "photo" ? (type === "image/png" ? "png" : "jpg") : (type === "video/quicktime" ? "mov" : type === "video/webm" ? "webm" : "mp4");
-  const path = `${(m as any).squads.code}/${m.id}/${kind === "photo" ? "photo" : "declaration"}-${Date.now()}.${ext}`;
-  const { data, error } = await sb.storage.from("squad-media").createSignedUploadUrl(path);
+  const ext = kind === "video" ? (type === "video/quicktime" ? "mov" : type === "video/webm" ? "webm" : "mp4") : (type === "image/png" ? "png" : "jpg");
+  const path = `${(m as any).squads.code}/${m.id}/${kind === "video" ? "declaration" : kind}-${Date.now()}.${ext}`;
+  // videos go in a private bucket (only short-lived links are handed out); photos and covers stay public
+  const { data, error } = await sb.storage.from(kind === "video" ? "squad-video" : "squad-media").createSignedUploadUrl(path);
   if (error || !data) return { ok: false, error: "upload_failed" };
   return { ok: true, url: data.signedUrl, path };
 }
 async function squadSetMedia(p: P) {
-  const id = clean(p.member_id, 60), kind = p.kind === "photo" ? "photo_path" : "video_path", path = clean(p.path, 200);
+  const id = clean(p.member_id, 60), kind = p.kind === "photo" ? "photo_path" : p.kind === "cover" ? "video_cover_path" : "video_path", path = clean(p.path, 200);
   if (path && (!path.includes(`/${id}/`) || path.includes(".."))) return { ok: false, error: "bad_path" };
-  const { error } = await sb.from("squad_members").update({ [kind]: path || null }).eq("id", id);
-  return error ? { ok: false, error: error.message } : { ok: true, url: path ? MEDIA + path : null };
+  const upd: Record<string, string | null> = { [kind]: path || null };
+  if (kind === "video_path") upd.video_cover_path = null; // a new video needs a new cover
+  const { error } = await sb.from("squad_members").update(upd).eq("id", id);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 async function freeCalls(p: P) {
   if (p.open === true) {

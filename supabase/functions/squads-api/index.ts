@@ -78,7 +78,7 @@ async function view(code: string, me: string) {
   const s = await squadBy(code);
   if (!s) return json({ ok: false, error: "not_found" }, 404);
   const [{ data: mem }, { data: chk }] = await Promise.all([
-    sb.from("squad_members").select("id,created_at,name,goal,deadline,proof,first_step,started_at,started_note,token,email,photo_path,video_path,show_video,partner_id,nudged_at").eq("squad_id", s.id).order("created_at"),
+    sb.from("squad_members").select("id,created_at,name,goal,deadline,proof,first_step,started_at,started_note,token,email,photo_path,video_path,video_cover_path,show_video,partner_id,nudged_at").eq("squad_id", s.id).order("created_at"),
     sb.from("squad_checkins").select("member_id,week,status,note,created_at").eq("squad_id", s.id),
   ]);
   const { data: posts } = await sb.from("squad_posts").select("id,created_at,member_id,text,photo_path,cheers").eq("squad_id", s.id).eq("hidden", false).order("created_at", { ascending: false }).limit(400);
@@ -87,10 +87,14 @@ async function view(code: string, me: string) {
   const week = weekOf(s.starts_on);
   const genieEmail = String(await setting("notify_email")).toLowerCase();
   const coach = (mem ?? []).find((m: any) => String(m.email).toLowerCase() === genieEmail);
+  // declaration videos live in a private bucket; hand out links that expire in a few hours
+  const vpaths = (mem ?? []).filter((m: any) => m.show_video && m.video_path).map((m: any) => m.video_path);
+  const signed: Record<string, string> = {};
+  if (vpaths.length) { const { data: su } = await sb.storage.from("squad-video").createSignedUrls(vpaths, 4 * 3600); (su ?? []).forEach((x: any) => { if (x.signedUrl) signed[x.path] = x.signedUrl; }); }
   let mine = null;
   const members = (mem ?? []).map((m: any) => {
     if (me && m.token === me) mine = { id: m.id, can_edit: canEdit(m.created_at), name: m.name, email: m.email, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, photo: media(m.photo_path), has_video: !!m.video_path, show_video: m.show_video, partner_id: m.partner_id };
-    return { id: m.id, name: m.name, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, started_note: m.started_note, checkins: byMember[m.id] ?? {}, photo: media(m.photo_path), video: m.show_video ? media(m.video_path) : null, partner_id: m.partner_id, coach: !!coach && m.id === coach.id, nudged_recently: !!m.nudged_at && Date.parse(m.nudged_at) > Date.now() - 12 * 3600_000 };
+    return { id: m.id, name: m.name, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, started_note: m.started_note, checkins: byMember[m.id] ?? {}, photo: media(m.photo_path), video: m.show_video && m.video_path ? (signed[m.video_path] ?? null) : null, cover: m.show_video ? media(m.video_cover_path) : null, partner_id: m.partner_id, coach: !!coach && m.id === coach.id, nudged_recently: !!m.nudged_at && Date.parse(m.nudged_at) > Date.now() - 12 * 3600_000 };
   });
   // registered attendees of the linked event who haven't joined yet (first name + initial only)
   let attendees: { id: string; label: string }[] = [];

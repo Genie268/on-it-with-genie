@@ -219,9 +219,9 @@ function bkSquads(d){
           <div class="sq-g">${bkEsc(m.goal)}</div>
           <div class="bk-meta">${m.deadline?`<span>By ${bkEsc(m.deadline)}</span>`:""}${m.proof?`<span>Proof: ${bkEsc(m.proof)}</span>`:""}${wa?`<a href="${wa}" target="_blank" rel="noopener">${bkEsc(m.phone)}</a>`:""}<span>${bkEsc(m.email)}</span></div>
           <div class="sq-w">${wks}</div>
-          <div class="sq-media">${m.video?`<video src="${bkEsc(m.video)}" controls playsinline preload="metadata"></video>`:""}
+          <div class="sq-media">${m.video?`<video src="${bkEsc(m.video)}" ${m.cover?`poster="${bkEsc(m.cover)}"`:""} controls controlslist="nodownload" disablepictureinpicture playsinline preload="metadata"></video>`:""}
             <div class="bk-acts" style="margin-top:8px">
-              <label class="bk-btn gold">${m.video?"Replace video":"Upload declaration video"}<input type="file" accept="video/*" hidden onchange="bkSqUpload(this,'${m.id}','video')"></label>
+              <label class="bk-btn gold">${m.video?"Replace video":"Upload declaration video"}<input type="file" accept="video/*" hidden onchange="bkSqUpload(this,'${m.id}','video')"></label>${m.video?`<button class="bk-btn" onclick="bkCoverPicker('${m.id}')">${m.cover?"Change cover":"Pick cover"}</button>`:""}
               <label class="bk-btn">${m.photo?"Change photo":"Add photo"}<input type="file" accept="image/*" hidden onchange="bkSqUpload(this,'${m.id}','photo')"></label>
               <a class="bk-btn" href="${SQ_SITE}/squad/${q.code}/m/${m.id}" target="_blank" rel="noopener">Profile</a>
             </div><div class="sq-up" id="sq-up-${m.id}" hidden><span></span><i><b></b></i></div></div></div>`; }).join("")}</div>` : `<p class="h" style="margin:10px 0 0">Nobody yet. Put the wall on screen and have them scan the code.</p>`}
@@ -236,22 +236,75 @@ function bkSquads(d){
       <button class="bk-btn gold" onclick="bkSquadCreate(this)">Create squad</button></div>`;
 }
 /* upload straight to storage with a signed URL, showing progress (videos can be big on mobile data) */
+function bkPut(url, blob, type, onprog){
+  return new Promise((ok, no)=>{ const x = new XMLHttpRequest(); x.open("PUT", url); x.setRequestHeader("content-type", type); x.setRequestHeader("x-upsert","true");
+    x.upload.onprogress = e=>{ if(e.lengthComputable && onprog) onprog(e.loaded/e.total); };
+    x.onload = ()=> x.status < 300 ? ok() : no(new Error("upload "+x.status)); x.onerror = ()=>no(new Error("network")); x.send(blob); });
+}
 async function bkSqUpload(input, memberId, kind){
   const f = input.files && input.files[0]; input.value = ""; if(!f) return;
+  if(kind === "video") return bkCoverPicker(memberId, f);
   const box = document.getElementById("sq-up-"+memberId), label = box.querySelector("span"), bar = box.querySelector("b");
   box.hidden = false; bar.style.width = "0%";
-  const MB = f.size/1048576;
-  if(MB > 49){ label.textContent = `This video is ${MB.toFixed(0)}MB. The limit is 50MB. Send it to yourself on WhatsApp, save that copy, and upload it instead.`; return; }
   try{
-    label.textContent = "Preparing…";
-    const { url, path } = await bkFetch("squad_media_url",{ member_id:memberId, kind, type:f.type });
-    await new Promise((ok, no)=>{ const x = new XMLHttpRequest(); x.open("PUT", url); x.setRequestHeader("content-type", f.type || (kind==="photo"?"image/jpeg":"video/mp4")); x.setRequestHeader("x-upsert","true");
-      x.upload.onprogress = e=>{ if(e.lengthComputable){ const pc = Math.round(e.loaded/e.total*100); bar.style.width = pc+"%"; label.textContent = `Uploading ${pc}% of ${MB.toFixed(1)}MB`; } };
-      x.onload = ()=> x.status < 300 ? ok() : no(new Error("upload "+x.status)); x.onerror = ()=>no(new Error("network")); x.send(f); });
-    label.textContent = "Saving…";
+    label.textContent = "Uploading…";
+    const type = f.type || "image/jpeg";
+    const { url, path } = await bkFetch("squad_media_url",{ member_id:memberId, kind, type });
+    await bkPut(url, f, type, r=>{ bar.style.width = Math.round(r*100)+"%"; });
     await bkFetch("squad_set_media",{ member_id:memberId, kind, path });
-    showToast(kind==="video"?"Video added":"Photo added","success"); await bkRefresh();
+    showToast("Photo added","success"); await bkRefresh();
   }catch(e){ label.textContent = "Upload failed: " + e.message + ". Check your connection and try again."; }
+}
+/* pick the cover from the video's timeline. file = a new video to upload; no file = change the cover of the one already up */
+function bkFindMember(id){ for(const q of (BK.data.squads||[])) for(const m of q.members) if(m.id===id) return m; return null; }
+function bkCoverPicker(memberId, file){
+  const m = bkFindMember(memberId) || {}, MB = file ? file.size/1048576 : 0;
+  if(file && MB > 49){ showToast(`This video is ${MB.toFixed(0)}MB. The limit is 50MB.`, "error"); return; }
+  const src = file ? URL.createObjectURL(file) : m.video;
+  if(!src){ showToast("Upload the video first","error"); return; }
+  const md = bkModal(`<h4>Pick the cover</h4><p>Drag the slider to the frame you want people to see before they press play.</p>
+    <video id="cv-v" ${file?"":`crossorigin="anonymous"`} src="${bkEsc(src)}" muted playsinline preload="auto" style="width:100%;max-height:52vh;border-radius:10px;background:#000;display:block"></video>
+    <input id="cv-r" type="range" min="0" max="1" step="0.04" value="0" style="width:100%;margin:14px 0 4px;accent-color:#c49a1c">
+    <div id="cv-t" style="font-size:12px;color:#8a8a8a;margin-bottom:12px">0:00</div>
+    <div class="sq-up" id="cv-up" hidden><span></span><i><b></b></i></div>
+    <div class="bk-acts"><button class="bk-btn gold" id="cv-go" disabled>${file?"Use this frame and upload":"Save cover"}</button><button class="bk-btn" id="cv-no">Cancel</button></div>`);
+  md.querySelector(":scope>div").style.maxWidth = "440px";
+  const v = md.querySelector("#cv-v"), r = md.querySelector("#cv-r"), t = md.querySelector("#cv-t"), go = md.querySelector("#cv-go");
+  const fmt = x=>`${Math.floor(x/60)}:${String(Math.floor(x%60)).padStart(2,"0")}`;
+  const close = ()=>{ md.remove(); if(file) URL.revokeObjectURL(src); };
+  md.querySelector("#cv-no").onclick = close;
+  v.addEventListener("loadedmetadata", ()=>{ r.max = Math.max(0, v.duration - 0.1); const start = Math.min(1, v.duration/2); r.value = start; v.currentTime = start; t.textContent = fmt(start); go.disabled = false; });
+  v.addEventListener("error", ()=>{ t.textContent = "This video won't play in this browser. Try Chrome, or upload an MP4."; });
+  r.addEventListener("input", ()=>{ v.currentTime = +r.value; t.textContent = fmt(+r.value); });
+  // iPhones won't load a video until it's played once; play-then-pause wakes it up
+  v.play().then(()=>{ v.pause(); }).catch(()=>{});
+  const frame = ()=> new Promise((ok, no)=>{ try{
+      const w = Math.min(1080, v.videoWidth), h = Math.round(v.videoHeight * w / v.videoWidth);
+      const c = document.createElement("canvas"); c.width = w; c.height = h; c.getContext("2d").drawImage(v, 0, 0, w, h);
+      c.toBlob(b=> b ? ok(b) : no(new Error("no frame")), "image/jpeg", 0.85);
+    }catch(e){ no(e); } });
+  go.onclick = async ()=>{
+    go.disabled = true; r.disabled = true;
+    const box = md.querySelector("#cv-up"), label = box.querySelector("span"), bar = box.querySelector("b"); box.hidden = false;
+    try{
+      const cover = await frame();
+      if(file){
+        const type = file.type || "video/mp4";
+        label.textContent = "Uploading video…";
+        const up = await bkFetch("squad_media_url",{ member_id:memberId, kind:"video", type });
+        await bkPut(up.url, file, type, x=>{ bar.style.width = Math.round(x*100)+"%"; label.textContent = `Uploading ${Math.round(x*100)}% of ${MB.toFixed(1)}MB`; });
+        await bkFetch("squad_set_media",{ member_id:memberId, kind:"video", path:up.path });
+      }
+      label.textContent = "Saving cover…";
+      const cu = await bkFetch("squad_media_url",{ member_id:memberId, kind:"cover", type:"image/jpeg" });
+      await bkPut(cu.url, cover, "image/jpeg");
+      await bkFetch("squad_set_media",{ member_id:memberId, kind:"cover", path:cu.path });
+      close(); showToast(file?"Video and cover added":"Cover saved","success"); await bkRefresh();
+    }catch(e){
+      label.textContent = (e && e.name==="SecurityError") ? "Couldn't grab that frame. Upload the video again and pick the cover then." : "Upload failed: " + (e.message||e) + ". Check your connection and try again.";
+      go.disabled = false; r.disabled = false;
+    }
+  };
 }
 async function bkSquadCreate(btn){
   const v = id => (document.getElementById(id).value||"").trim();
@@ -442,16 +495,16 @@ async function bkFreeCalls(open, btn){
 
 /* ---------- Videos: one place to upload each person's declaration video ---------- */
 function bkVideos(d){
-  const sq = (d.squads||[]).filter(q=>q.members.length);
+  const sq = (d.squads||[]).filter(q=>q.members.length && q.code!=="ZZTEST");
   if(!sq.length) return `<div class="bk-empty">No squad members yet.</div>`;
   return sq.map(q=>{ const done = q.members.filter(m=>m.video).length;
     return `<div class="bk-card"><div class="bk-top"><div><h4>${bkEsc(q.name)}</h4><p class="h" style="margin:0">${done} of ${q.members.length} videos uploaded. Each video must be under 50MB.</p></div></div>
       <div class="vl">${q.members.map(m=>`<div class="vl-row">
-        <div class="vl-who">${m.photo?`<img src="${bkEsc(m.photo)}" alt="">`:`<i>${bkEsc((m.name||"?").trim()[0].toUpperCase())}</i>`}<div><b>${bkEsc(m.name)}</b><span>${bkEsc(m.goal)}</span></div></div>
-        <div class="vl-act">${m.video?`<span class="vl-ok">&#10003; Uploaded</span><a class="bk-btn" href="${bkEsc(m.video)}" target="_blank" rel="noopener">Watch</a>`:""}
+        <div class="vl-who">${m.cover?`<img src="${bkEsc(m.cover)}" alt="" style="border-radius:8px;width:52px;height:38px">`:m.photo?`<img src="${bkEsc(m.photo)}" alt="">`:`<i>${bkEsc((m.name||"?").trim()[0].toUpperCase())}</i>`}<div><b>${bkEsc(m.name)}</b><span>${m.video?(m.cover?"Video and cover up":"Video up, no cover yet"):bkEsc(m.goal)}</span></div></div>
+        <div class="vl-act">${m.video?`<span class="vl-ok">&#10003;</span><button class="bk-btn" onclick="bkCoverPicker('${m.id}')">${m.cover?"Change cover":"Pick cover"}</button>`:""}
           <label class="bk-btn ${m.video?"":"gold"}">${m.video?"Replace":"Upload video"}<input type="file" accept="video/*" hidden onchange="bkSqUpload(this,'${m.id}','video')"></label></div>
         <div class="sq-up" id="sq-up-${m.id}" hidden><span></span><i><b></b></i></div></div>`).join("")}</div>
-      <p class="h" style="margin:12px 0 0">Over 50MB? Send the video to yourself on WhatsApp, save that copy, and upload it instead. WhatsApp shrinks it.</p></div>`; }).join("");
+      <p class="h" style="margin:12px 0 0">After you choose a video you pick the cover from its timeline, then it uploads. Each video must be under 50MB.</p></div>`; }).join("");
 }
 
 function bkToggleRule(id){
