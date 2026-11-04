@@ -365,6 +365,11 @@ p{margin:0}
 .ev-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ev-actions>*{min-width:0;padding-left:10px;padding-right:10px;justify-content:center;font-size:14.5px}
 .paid-hint{font-size:13.5px;color:var(--muted);text-align:center;margin-top:12px}
+.hold-bn{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:16px;background:var(--ink);color:#F4F2EC;margin-top:12px}
+.hold-bn>div:first-child{min-width:0;flex:1 1 200px}.hold-bn b{display:block;font-size:15px}.hold-bn span{display:block;font-size:13px;color:rgba(244,242,236,.65);margin-top:2px}
+.hold-bn-a{display:flex;align-items:center;gap:14px}.hold-bn .btn-ink{background:var(--lime);color:var(--ink);padding:10px 16px;min-height:0;font-size:14px}
+.hold-x{font-size:14px;font-weight:600;color:#F4F2EC;text-decoration:underline;text-underline-offset:3px;background:none;border:0;cursor:pointer;padding:0}
+#hold-sw .hold-bn{margin:0 0 4px}
 .paid-hint a{text-decoration:underline;color:inherit;font-weight:600}
 .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-inline:-4px;padding-inline:4px;scrollbar-width:none}
 .days::-webkit-scrollbar{display:none}
@@ -1179,6 +1184,43 @@ function wireBasket(el){
   el.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ B.basket = B.basket.filter(x=>tms(x.start)!==tms(b.dataset.rm)); renderBooker(); });
   el.querySelectorAll("[data-rep]").forEach(b=>b.onclick=()=>{ b.disabled=true; b.innerHTML='<span class="spin"></span>'; repeatWeekly(b.dataset.rep); });
 }
+/* ---------- a coaching time held while paying: remembered so a refresh or second try never double-holds ---------- */
+const HOLDK = "coach_hold";
+function getHold(){ try{ const h = JSON.parse(localStorage.getItem(HOLDK)||"null"); return h && h.until > Date.now() ? h : null; }catch(e){ return null; } }
+function setHold(h){ try{ h ? localStorage.setItem(HOLDK, JSON.stringify(h)) : localStorage.removeItem(HOLDK); }catch(e){} }
+const sessLabel = x => `${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}, ${x.label}`;
+const holdLabel = h => h.basket.length===1 ? sessLabel(h.basket[0]) : `${h.basket.length} sessions`;
+const lagosClock = ms => new Date(ms).toLocaleTimeString("en-US",{ hour:"numeric", minute:"2-digit", timeZone:"Africa/Lagos" }).toLowerCase().replace(" ","");
+async function releaseHold(){
+  const h = getHold(); setHold(null);
+  if(h) await api("POST",{ action:"release", reference:h.reference });
+  Object.keys(slotCache).forEach(k=>delete slotCache[k]);
+}
+async function resumeHold(h){
+  B.basket = h.basket.map(x=>Object.assign({}, x)); B.hours = h.hours; B.form = h.f; B.step = "details";
+  if(h.t && Date.parse(h.t.expires_at) > Date.now()){ renderBooker(); return showTransfer(h.t, h.f, "Pay "+naira(h.hours*CONFIG.hourRate)); }
+  await releaseHold(); renderBooker();   // card checkout can't be reopened: free it and hold again when they tap Pay
+}
+function holdBannerHTML(){
+  const h = getHold(); if(!h) return "";
+  return `<div class="hold-bn" id="hold-bn"><div><b>You're holding ${esc(holdLabel(h))}</b><span>Kept for you until ${lagosClock(h.until)} while you pay.</span></div>
+    <div class="hold-bn-a"><button type="button" class="btn btn-ink" id="hb-pay">Finish payment</button><button type="button" class="hold-x" id="hb-rel">Release it</button></div></div>`;
+}
+function wireHoldBanner(el){
+  const h = getHold(); if(!h) return;
+  $("#hb-pay").onclick = ()=>resumeHold(h);
+  $("#hb-rel").onclick = async ()=>{ const b=$("#hb-rel"); b.disabled=true; b.textContent="Releasing"; await releaseHold(); toast("Released. That time is open again."); renderBooker(); loadSlots(); };
+}
+function sameAsHold(h){ return h && h.basket.length===B.basket.length && h.basket.every(x=>B.basket.some(y=>tms(y.start)===tms(x.start) && y.minutes===x.minutes)); }
+function switchPrompt(el, h){
+  const box = $("#hold-sw"); if(!box) return;
+  const now = B.basket.length===1 ? sessLabel(B.basket[0]) : `these ${B.basket.length} sessions`;
+  box.innerHTML = `<div class="hold-bn"><div><b>Switch to ${esc(now)}?</b><span>Your hold on ${esc(holdLabel(h))} will be released.</span></div>
+    <div class="hold-bn-a"><button type="button" class="btn btn-ink" id="sw-yes">Switch</button><button type="button" class="hold-x" id="sw-no">Keep ${esc(h.basket.length===1 ? sessLabel(h.basket[0]).split(",")[0] : "my first pick")}</button></div></div>`;
+  box.hidden = false; $("#toDetails").style.display = "none"; box.scrollIntoView({ behavior:"smooth", block:"center" });
+  $("#sw-no").onclick = ()=>resumeHold(h);
+  $("#sw-yes").onclick = async ()=>{ const b=$("#sw-yes"); b.disabled=true; b.innerHTML='<span class="spin"></span>'; await releaseHold(); B.step="details"; renderBooker(); $("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }); };
+}
 function renderSessions(el){
   const n = B.basket.length, left = leftMins(), pack = isPack();
   const one = !pack && n ? B.basket[0] : null;
@@ -1186,15 +1228,18 @@ function renderSessions(el){
     : one ? `Continue · ${dayParts(one.date).wd} ${dayParts(one.date).dd} ${dayParts(one.date).mon}, ${one.label}` : "Pick a time";
   stage(el, `${stepsBar()}<button type="button" class="back" id="toPlan">${I.back} Back</button>
     <h3>Pick a time</h3>
+    ${holdBannerHTML()}
     ${pack ? `<p class="hint" style="margin:4px 0 0">Pick as many 1-hour sessions as you like now. The rest stay on your plan to book later.</p>` : ""}
     <div style="height:12px"></div>
     ${pickerHTML()}
     ${pack && n ? basketHTML() : ""}
     <div style="height:16px"></div>
+    <div id="hold-sw" hidden></div>
     <button class="btn btn-ink btn-block" id="toDetails" ${n?"":"disabled"}>${btnLabel}</button>
     ${pack && n && left>0 ? `<p class="note">${minsText(left)} left to book whenever you like.</p>` : ""}`);
-  wirePicker(el); if(pack) wireBasket(el);
-  $("#toDetails").onclick = ()=>{ if(B.basket.length){ B.step="details"; renderBooker(); $("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }); } };
+  wirePicker(el); if(pack) wireBasket(el); wireHoldBanner(el);
+  $("#toDetails").onclick = ()=>{ const h = getHold(); if(B.basket.length && h){ return sameAsHold(h) ? resumeHold(h) : switchPrompt(el, h); }
+    if(B.basket.length){ B.step="details"; renderBooker(); $("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }); } };
   $("#toPlan").onclick=()=>{ B.step="plan"; renderBooker(); };
 }
 function lagosDateStr(){ const n=lagosNow(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; }
@@ -2011,10 +2056,12 @@ async function submitBooking(){
   sortBasket();
   const h = await api("POST", { action:"hold", hours:B.hours, sessions:B.basket.map(x=>({ start:x.start, minutes:x.minutes })), ...base });
   if(!h.ok){ B.busy=false; setBusy(false, payLabel); return sessionsFailed(h); }
+  const kept = { reference:h.reference, until:Date.now()+(h.hold_minutes||15)*60000, basket:B.basket.map(x=>Object.assign({}, x)), hours:B.hours, f };
+  setHold(kept);
   if((B.payMethod||"transfer")==="transfer"){
     setBusy(true, "Getting your account number");
     const t = await api("POST", { action:"transfer_start", reference:h.reference });
-    if(t.ok){ B.busy=false; return showTransfer(t, f, payLabel); }
+    if(t.ok){ B.busy=false; kept.t = t; kept.until = Date.parse(t.expires_at)+5*60000 || kept.until; setHold(kept); return showTransfer(t, f, payLabel); }
     // Couldn't make our own transfer account; fall back to Paystack's screen on bank transfer.
   }
   if(typeof PaystackPop==="undefined"){ B.busy=false; setBusy(false, payLabel); return showErr("Payment couldn't load. Refresh the page and try again."); }
@@ -2023,7 +2070,7 @@ async function submitBooking(){
     key: CONFIG.paystackKey, email: h.email, amount: h.amount_kobo, currency:"NGN", ref: h.reference,
     channels: PAY_CHANNELS[B.payMethod||"transfer"],
     metadata:{ custom_fields:[{ display_name:"Service", variable_name:"service", value:"Coaching" },{ display_name:"Hours", variable_name:"hours", value:String(B.hours) }] },
-    onClose: ()=>{ B.busy=false; setBusy(false, payLabel); showErr("Payment closed before it finished. You haven't been charged. Tap pay to try again."); api("POST",{ action:"release", reference:h.reference }); },
+    onClose: ()=>{ B.busy=false; setBusy(false, payLabel); showErr("Payment closed before it finished. You haven't been charged. Tap pay to try again."); setHold(null); api("POST",{ action:"release", reference:h.reference }); },
     callback: async (res)=>{
       setBusy(true, "Confirming payment");
       const c = await api("POST", { action:"confirm", reference: res.reference || h.reference });
@@ -2035,6 +2082,7 @@ async function submitBooking(){
   handler.openIframe();
 }
 function coachingDone(c, f){
+  setHold(null);
       {
         const wa = c.whatsapp ? `<div class="panel" style="text-align:left"><h3>You can reach me directly</h3><dl class="kv"><dt>WhatsApp</dt><dd>${esc(c.whatsapp)}</dd></dl></div>` : "";
         const plan = c.plan || { minutes_left:0, sessions:[] }, left = plan.minutes_left || 0;
@@ -2086,7 +2134,7 @@ function showTransfer(t, f, payLabel){
   };
   B.tpoll = setInterval(check, 5000);
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") check(); });
-  $("#tx-other").onclick = ()=>{ clearInterval(B.tpoll); clearInterval(B.tclock); api("POST",{ action:"release", reference:t.reference }); B.step="details"; renderBooker(); setTimeout(()=>{ const r=document.querySelector('[name=paym][value=card]'); if(r){ r.checked=true; B.payMethod="card"; } }, 30); };
+  $("#tx-other").onclick = ()=>{ clearInterval(B.tpoll); clearInterval(B.tclock); setHold(null); api("POST",{ action:"release", reference:t.reference }); B.step="details"; renderBooker(); setTimeout(()=>{ const r=document.querySelector('[name=paym][value=card]'); if(r){ r.checked=true; B.payMethod="card"; } }, 30); };
   el.scrollIntoView({ behavior:"smooth", block:"start" });
 }
 function trackSite(){ /* placeholder for site analytics */ }
