@@ -285,26 +285,47 @@ function bkCoverPicker(memberId, file){
     }catch(e){ no(e); } });
   go.onclick = async ()=>{
     go.disabled = true; r.disabled = true;
-    const box = md.querySelector("#cv-up"), label = box.querySelector("span"), bar = box.querySelector("b"); box.hidden = false;
-    try{
-      const cover = await frame();
-      if(file){
-        const type = file.type || "video/mp4";
-        label.textContent = "Uploading video…";
-        const up = await bkFetch("squad_media_url",{ member_id:memberId, kind:"video", type });
-        await bkPut(up.url, file, type, x=>{ bar.style.width = Math.round(x*100)+"%"; label.textContent = `Uploading ${Math.round(x*100)}% of ${MB.toFixed(1)}MB`; });
-        await bkFetch("squad_set_media",{ member_id:memberId, kind:"video", path:up.path });
-      }
-      label.textContent = "Saving cover…";
-      const cu = await bkFetch("squad_media_url",{ member_id:memberId, kind:"cover", type:"image/jpeg" });
-      await bkPut(cu.url, cover, "image/jpeg");
-      await bkFetch("squad_set_media",{ member_id:memberId, kind:"cover", path:cu.path });
-      close(); showToast(file?"Video and cover added":"Cover saved","success"); await bkRefresh();
-    }catch(e){
-      label.textContent = (e && e.name==="SecurityError") ? "Couldn't grab that frame. Upload the video again and pick the cover then." : "Upload failed: " + (e.message||e) + ". Check your connection and try again.";
-      go.disabled = false; r.disabled = false;
-    }
+    const box = md.querySelector("#cv-up"), label = box.querySelector("span"); box.hidden = false;
+    let cover;
+    try{ cover = await frame(); }
+    catch(e){ label.textContent = (e && e.name==="SecurityError") ? "Couldn't grab that frame. Upload the video again and pick the cover then." : "Couldn't grab that frame: " + (e.message||e); go.disabled = false; r.disabled = false; return; }
+    // the upload carries on in the background so you can start the next person straight away
+    close(); bkBgUpload(memberId, m.name || "Video", file, cover);
   };
+}
+/* background uploads: a small tray at the bottom shows each one; the list refreshes when they're all done */
+const BK_UPS = {};
+addEventListener("beforeunload", e=>{ if(Object.values(BK_UPS).some(x=>!x.done && !x.err)){ e.preventDefault(); e.returnValue = ""; } });
+function bkTray(){
+  let t = document.getElementById("bk-tray");
+  const ids = Object.keys(BK_UPS);
+  if(!ids.length){ if(t) t.remove(); return; }
+  if(!t){ t = document.createElement("div"); t.id = "bk-tray"; t.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;z-index:8000;max-width:420px;margin:0 auto;background:#111;border:1px solid #2a2a2a;border-radius:14px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:13px;color:#ddd"; document.body.appendChild(t); }
+  t.innerHTML = ids.map(id=>{ const u = BK_UPS[id];
+    return `<div style="padding:6px 0"><div style="display:flex;justify-content:space-between;gap:10px"><b style="color:#ededed;font-weight:600">${bkEsc(u.name)}</b><span style="color:${u.err?"#ff6b6b":u.done?"#4dc98a":"#9a9a9a"}">${bkEsc(u.label)}</span></div>
+      <i style="display:block;height:5px;border-radius:3px;background:#1c1c1c;margin-top:5px;overflow:hidden"><b style="display:block;height:100%;width:${u.pct}%;background:${u.err?"#ff6b6b":"#c49a1c"};transition:width .2s"></b></i></div>`; }).join("");
+}
+async function bkBgUpload(memberId, name, file, cover){
+  const u = BK_UPS[memberId] = { name, pct:0, label:"Starting…", done:false, err:false }; bkTray();
+  try{
+    if(file){
+      const type = file.type || "video/mp4", MB = file.size/1048576;
+      const up = await bkFetch("squad_media_url",{ member_id:memberId, kind:"video", type });
+      await bkPut(up.url, file, type, x=>{ u.pct = Math.round(x*95); u.label = `${Math.round(x*100)}% of ${MB.toFixed(0)}MB`; bkTray(); });
+      await bkFetch("squad_set_media",{ member_id:memberId, kind:"video", path:up.path });
+    }
+    u.label = "Saving cover…"; bkTray();
+    const cu = await bkFetch("squad_media_url",{ member_id:memberId, kind:"cover", type:"image/jpeg" });
+    await bkPut(cu.url, cover, "image/jpeg");
+    await bkFetch("squad_set_media",{ member_id:memberId, kind:"cover", path:cu.path });
+    u.pct = 100; u.done = true; u.label = "Done ✓"; bkTray();
+    setTimeout(()=>{ if(BK_UPS[memberId]===u){ delete BK_UPS[memberId]; bkTray(); } }, 2500);
+  }catch(e){
+    u.err = true; u.label = "Failed. Try again"; bkTray();
+    setTimeout(()=>{ if(BK_UPS[memberId]===u){ delete BK_UPS[memberId]; bkTray(); } }, 8000);
+  }
+  // refresh the list once nothing is still uploading
+  if(!Object.values(BK_UPS).some(x=>!x.done && !x.err)) bkRefresh();
 }
 async function bkSquadCreate(btn){
   const v = id => (document.getElementById(id).value||"").trim();
