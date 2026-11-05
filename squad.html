@@ -273,7 +273,13 @@ body.wall{font-family:var(--body)}
 .pager::-webkit-scrollbar{display:none}
 .pg{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always;padding-bottom:4px}
 .swipe-hint{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:20px 16px 2px;border-top:1px solid var(--line2);margin-top:14px}
-.dd .post{border:1px solid var(--line2);border-radius:14px;margin:0 16px;overflow:hidden;padding-bottom:6px}
+.dd-tip{margin:12px 16px 0;font-size:13px;color:var(--muted);text-align:center}
+.dd-open{margin:12px 16px 0;border:1px solid var(--line2);border-radius:16px;background:var(--bg);padding:4px 0 12px;animation:ddIn .22s ease-out;transform-origin:top}
+@keyframes ddIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.dd-open .dd-h{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 8px 14px}
+.dd-x{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:20px;line-height:1;color:var(--muted);background:var(--card);border:1px solid var(--line2)}
+.dd-open .dd-empty{margin:0 12px}
+.dd .post{border:1px solid var(--line2);border-radius:14px;margin:0 12px;overflow:hidden;padding-bottom:6px;background:var(--card)}
 .dd .post+.post{margin-top:10px}
 .dd .post-img{max-height:320px;width:100%;object-fit:cover}
 .ribbon{position:absolute;top:0;left:0;width:170px;height:170px;overflow:hidden;pointer-events:none;z-index:2}
@@ -585,10 +591,12 @@ function calHTML(m, mode, sel){
   return `${head}<div class="cal ${mode}">${days.map(cell).join("")}</div>`;
 }
 function dayDetail(m, d){
+  if(!d){ const n = Object.keys(postsByDay(m.id)).length;
+    return n ? `<div class="dd-tip">Tap a green day to see what ${esc(firstName(m.name))} did.</div>` : ""; }
   const list = postsByDay(m.id)[d] || [];
   const when = d === todayISO() ? "Today" : niceDate(d);
-  if(!list.length) return `<div class="dd-empty">${esc(when)}: nothing posted.</div>`;
-  return `<div class="dd-h">${esc(when)} · Day ${dayNo(d)}</div>${list.map(postHTML).join("")}`;
+  return `<div class="dd-open"><div class="dd-h"><span>${esc(when)} · Day ${dayNo(d)}</span><button type="button" class="dd-x" aria-label="Close">×</button></div>
+    ${list.length ? list.map(postHTML).join("") : `<div class="dd-empty">Nothing posted this day.</div>`}</div>`;
 }
 
 /* ---------- member home ---------- */
@@ -699,10 +707,7 @@ function toastMsg(m){ let t = $("#tst"); if(!t){ t = document.createElement("div
 /* ---------- public profile: swipe left/right through the squad ---------- */
 let PCAL = "week", PCUR = "";
 const PSEL = {};
-function selDay(m){
-  if(!PSEL[m.id]){ const by = postsByDay(m.id), t = todayISO(), ds = Object.keys(by).sort(); PSEL[m.id] = by[t] ? t : (ds[ds.length-1] || t); }
-  return PSEL[m.id];
-}
+function selDay(m){ return PSEL[m.id] || ""; }   // nothing open until someone taps a day
 function profPanel(m){
   const s = D.squad, mine = D.me && D.me.id === m.id, x = stat(m), t = todayISO();
   const video = m.video ? `<button type="button" class="vthumb" data-reel="${esc(m.id)}" aria-label="Watch ${esc(firstName(m.name))}'s declaration">
@@ -769,11 +774,16 @@ function profile(){
   // per-panel: week/all days, tap a day, play video
   panels.forEach(pg=>{
     const mm = list.find(x=>x.id===pg.dataset.id);
-    const redraw = () => { $(".pcal", pg).innerHTML = calHTML(mm, PCAL, selDay(mm)); $(".dd", pg).innerHTML = dayDetail(mm, selDay(mm)); wireDays(); wireFeed(); fit(); };
-    const wireDays = () => $$(".cal .cd", pg).forEach(b=>b.addEventListener("click", ()=>{ PSEL[mm.id] = b.dataset.d; redraw(); }));
-    wireDays();
-    $$("[data-c]", pg).forEach(b=>b.addEventListener("click", ()=>{ PCAL = b.dataset.c; panels.forEach(q=>{ $$("[data-c]", q).forEach(c=>c.classList.toggle("on", c.dataset.c===PCAL)); const qm = list.find(x=>x.id===q.dataset.id); $(".pcal", q).innerHTML = calHTML(qm, PCAL, selDay(qm)); $(".dd", q).innerHTML = dayDetail(qm, selDay(qm)); $$(".cal .cd", q).forEach(c=>c.addEventListener("click", ()=>{ PSEL[qm.id] = c.dataset.d; q.dispatchEvent(new Event("redraw")); })); }); wireFeed(); fit(); }));
+    const redraw = () => {
+      $(".pcal", pg).innerHTML = calHTML(mm, PCAL, selDay(mm)); $(".dd", pg).innerHTML = dayDetail(mm, selDay(mm));
+      $$(".cal .cd", pg).forEach(b=>b.addEventListener("click", ()=>{ PSEL[mm.id] = PSEL[mm.id]===b.dataset.d ? "" : b.dataset.d; redraw(); }));
+      const x = $(".dd-x", pg); if(x) x.addEventListener("click", ()=>{ PSEL[mm.id] = ""; redraw(); });
+      $$("[data-c]", pg).forEach(c=>c.classList.toggle("on", c.dataset.c===PCAL));
+      wireFeed(); fit();
+    };
     pg.addEventListener("redraw", redraw);
+    redraw();
+    $$("[data-c]", pg).forEach(b=>b.addEventListener("click", ()=>{ PCAL = b.dataset.c; panels.forEach(q=>q.dispatchEvent(new Event("redraw"))); }));
     const rl = $("[data-reel]", pg); if(rl) rl.addEventListener("click", ()=>openReel(mm));
     $$("img", pg).forEach(im=>im.addEventListener("load", fit));
   });
