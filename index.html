@@ -1430,7 +1430,7 @@ function sumHTML(){
   const free = B.service==="free_call";
   const title = free ? "Clarity session" : "Coaching session";
   const len = free ? "10 minutes" : isPack() ? `${B.hours} hours · book as you go` : (B.hours===2 ? "2 hours" : "1 hour");
-  const price = free ? "Free" : naira(price(B.hours));
+  const priceText = free ? "Free" : naira(price(B.hours));
   const picks = free ? (B.slot ? [{ date:B.slot.date, label:B.slot.label }] : []) : (B.basket||[]);
   const when = picks.length ? picks.map(x=>`${dayParts(x.date).wd} ${dayParts(x.date).dd} ${dayParts(x.date).mon}, ${x.label}`).join("<br>") : "";
   const note = (B.form && B.form.note) || "";
@@ -1439,7 +1439,7 @@ function sumHTML(){
     <ul class="sumc-meta">
       <li>${ICO.clock}<span>${len}</span></li>
       <li>${ICO.cam}<span>Video call on Google Meet</span></li>
-      <li>${ICO.cash}<span>${price}</span></li>
+      <li>${ICO.cash}<span>${priceText}</span></li>
       ${when ? `<li class="on">${ICO.cal}<span>${when}</span></li>` : ""}
     </ul>
     ${note ? `<div class="sumc-note"><small>${free?"What you're stuck on":"What we'll work on"}</small><p>${esc(note)}</p>${free?"":`<button type="button" class="sumc-edit" data-edit>Edit</button>`}</div>` : ""}
