@@ -572,6 +572,14 @@ p{margin:0}
 .picked-multi ul{list-style:none;margin:8px 0 6px;padding:0;display:grid;gap:4px;font-size:14px}
 .picked-multi li em{font-style:normal;color:var(--muted);font-size:13px}
 .done-list{max-width:360px;margin:16px auto 0;text-align:left}
+.ab{margin:0 0 16px}
+.ab-t{font-size:14px;color:var(--muted);padding:2px 0}.ab-t u{color:var(--ink);font-weight:700}
+.ab-f{margin-top:10px;padding:14px;border-radius:14px;background:rgba(0,0,0,.04)}
+.ab-f p{font-size:13.5px;color:var(--muted);margin:0 0 10px;line-height:1.45}
+.ab-row{display:flex;gap:8px}.ab-row input{flex:1;min-width:0;height:46px;border-radius:12px;border:1px solid rgba(0,0,0,.15);padding:0 12px;font:inherit;font-size:15px;background:#fff}
+.ab-row .btn{height:46px;padding:0 16px;white-space:nowrap}
+.ab-f .ab-m{margin:10px 0 0;color:var(--ink);font-weight:600}
+.chg-btn{font-size:13.5px;font-weight:700;padding:8px 12px;border-radius:999px;border:1.5px solid var(--ink);white-space:nowrap}
 .link{font-weight:700;font-size:14px;text-decoration:underline;white-space:nowrap}
 .muted-s{font-size:13px;color:var(--muted);white-space:nowrap}
 .cal-btns{display:grid;gap:10px;max-width:340px;margin:22px auto 0}
@@ -790,7 +798,7 @@ ${backLink()}
         <li>${I.tick}<span>A decision they've sat on for months.</span></li>
         <li>${I.tick}<span>A plan for a big goal that feels too big.</span></li>
       </ul>
-      <p class="hint" style="margin:12px 0 0">Plans change? Move your session up to 24 hours before. Your time stays yours.</p>
+      <p class="hint" style="margin:12px 0 0">Plans change? Move your session up to 24 hours before. Your time stays yours. <a href="#" onclick="openAlreadyBooked();return false" style="color:inherit;font-weight:700;text-decoration:underline">Already booked? Change your time</a></p>
     </div>
     <div class="panel who-card">
       <img src="${CONFIG.aboutPhoto}" alt="Genie" loading="lazy">
@@ -1291,9 +1299,31 @@ function renderSessions(el){
 }
 function lagosDateStr(){ const n=lagosNow(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; }
 
+/* "Already booked? Change your time": emails them their private plan link */
+function alreadyBookedHTML(){
+  return `<div class="ab"><button type="button" class="ab-t" id="ab-t">Already booked? <u>Change your time</u></button>
+    <form class="ab-f" id="ab-f" hidden><p>Enter the email you booked with. I'll send you the link where you can move your session.</p>
+      <div class="ab-row"><input type="email" id="ab-e" placeholder="you@email.com" autocomplete="email" required><button class="btn btn-ink" id="ab-s">Send link</button></div>
+      <p class="ab-m" id="ab-m" hidden></p></form></div>`;
+}
+function wireAlreadyBooked(){
+  const t = $("#ab-t"), f = $("#ab-f"); if(!t || !f) return;
+  t.onclick = ()=>{ f.hidden = !f.hidden; if(!f.hidden) $("#ab-e").focus(); };
+  f.onsubmit = async e=>{
+    e.preventDefault(); const em = $("#ab-e").value.trim(), m = $("#ab-m"), b = $("#ab-s");
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)){ m.textContent = "That email doesn't look right."; m.hidden = false; return; }
+    b.disabled = true; b.innerHTML = '<span class="spin"></span>';
+    const r = await fetch(CONFIG.api.replace("booking-api","booking-help"), { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ action:"find_plan", email:em }) }).then(x=>x.json()).catch(()=>({ ok:false }));
+    b.disabled = false; b.textContent = "Send link";
+    m.textContent = r.ok ? `If ${em} has a booking, the link is on its way. Check your inbox and spam.` : "Something went wrong. Try again in a minute.";
+    m.hidden = false;
+  };
+}
+function openAlreadyBooked(){ const box = $("#ab-f"); if(box){ box.hidden = false; $("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }); setTimeout(()=>$("#ab-e")?.focus(), 400); } }
 function renderPlan(el){
   const cur = B.hours || 1;
   stage(el, `${stepsBar()}
+    ${alreadyBookedHTML()}
     ${B.fromTest?`<span class="gt-from">From your test · ${esc(B.fromTest)}</span>`:""}
     <h3>What do you want help with?</h3>
     <textarea class="gt-note" id="m-note" maxlength="600" placeholder="e.g. I freeze when I present at work and I have a big one next month.">${esc((B.form && B.form.note) || B.prefillNote || "")}</textarea>
@@ -1305,6 +1335,7 @@ function renderPlan(el){
     </div>
     <div style="height:16px"></div>
     <button class="btn btn-ink btn-block" id="toTime">Pick a time</button>`);
+  wireAlreadyBooked();
   const keepNote = ()=>{ const n=$("#m-note"); if(n){ B.form = Object.assign({}, B.form||{}, { note:n.value.trim() }); } };
   $("#m-note").addEventListener("input", keepNote);
   $("#toTime").onclick=()=>{
@@ -2265,7 +2296,7 @@ function renderPlanPage(){
   const p = B.plan, first = esc((p.name||"").split(" ")[0] || "there");
   const pct = Math.round(100 * (p.minutes_total - p.minutes_left) / p.minutes_total);
   const upcoming = p.sessions.filter(s=>!s.past), past = p.sessions.filter(s=>s.past);
-  const row = s => `<li class="sess${s.past?" past":""}"><div><b>${s.date}</b><span>${s.label} · ${lenLabel(s.minutes)}</span></div>${!s.past ? (s.can_cancel ? `<button type="button" class="link" data-cancel="${s.id}">Cancel</button>` : `<span class="muted-s">Within 24h</span>`) : `<span class="muted-s">Done</span>`}</li>`;
+  const row = s => `<li class="sess${s.past?" past":""}"><div><b>${s.date}</b><span>${s.label} · ${lenLabel(s.minutes)}</span></div>${!s.past ? (s.can_cancel ? `<button type="button" class="chg-btn" data-cancel="${s.id}">Change time</button>` : `<span class="muted-s">Under 24h away</span>`) : `<span class="muted-s">Done</span>`}</li>`;
   $("#app").innerHTML = `<div class="view"><div class="detail">
     <div>
       <section class="detail-hero t-sky">
@@ -2277,18 +2308,18 @@ function renderPlanPage(){
       <div class="panel">
         <h3>Your sessions</h3>
         ${p.sessions.length ? `<ul class="sess-list">${upcoming.map(row).join("")}${past.map(row).join("")}</ul>` : `<p class="muted-s">None booked yet.</p>`}
-        <p class="note" style="text-align:left">Cancel up to 24 hours before and the time goes back on your plan.</p>
+        <p class="note" style="text-align:left">Need a different time? Tap <b>Change time</b> up to 24 hours before, then pick a new slot. Less than 24 hours away? Reply to your confirmation email.</p>
         <div class="err" id="perr" hidden></div>
       </div>
     </div>
     <div class="panel" id="booker"></div>
   </div></div>`;
   $("#app").querySelectorAll("[data-cancel]").forEach(b=>b.onclick=async()=>{
-    if(b.dataset.armed!=="1"){ b.dataset.armed="1"; b.textContent="Tap again to cancel"; setTimeout(()=>{ b.dataset.armed=""; b.textContent="Cancel"; }, 4000); return; }
+    if(b.dataset.armed!=="1"){ b.dataset.armed="1"; b.textContent="Tap again to free it"; setTimeout(()=>{ b.dataset.armed=""; b.textContent="Change time"; }, 4000); return; }
     b.disabled = true; b.innerHTML = '<span class="spin"></span>';
     const r = await api("POST", { action:"cancel_session", token:B.token, id:b.dataset.cancel });
-    if(r.ok){ B.plan = r.plan; toast("Cancelled. The time is back on your plan."); Object.keys(slotCache).forEach(k=>delete slotCache[k]); renderPlanPage(); if(B.plan.minutes_left>=30) loadSlots(); }
-    else { const e=$("#perr"); e.textContent = r.error==="too_late_to_cancel" ? "It's less than 24 hours away, so it can't be cancelled here. Reply to your confirmation email." : ERR.default; e.hidden=false; b.disabled=false; b.textContent="Cancel"; }
+    if(r.ok){ B.plan = r.plan; toast("Done. Now pick your new time."); Object.keys(slotCache).forEach(k=>delete slotCache[k]); renderPlanPage(); if(B.plan.minutes_left>=30) loadSlots(); setTimeout(()=>$("#booker")?.scrollIntoView({ behavior:"smooth", block:"start" }), 150); }
+    else { const e=$("#perr"); e.textContent = r.error==="too_late_to_cancel" ? "It's less than 24 hours away, so it can't be moved here. Reply to your confirmation email." : ERR.default; e.hidden=false; b.disabled=false; b.textContent="Change time"; }
   });
   renderBooker();
 }
