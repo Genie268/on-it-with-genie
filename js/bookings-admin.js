@@ -29,6 +29,21 @@ function bkCopy(text, msg){
   (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(()=>showToast(msg||"Copied","success")).catch(()=>{ prompt("Copy this:", text); });
 }
 
+function bkStylesExtra(){
+  if(document.getElementById("bk-styles-x")) return;
+  const st = document.createElement("style"); st.id = "bk-styles-x";
+  st.textContent = `.bk-evpicks{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+  .bk-evpick{flex:none;min-width:120px;text-align:left;padding:10px 12px;border-radius:12px;background:#141414;border:1px solid #262626;color:#ddd;display:grid;gap:3px;font-family:inherit;cursor:pointer}
+  .bk-evpick b{font-size:14px;color:#ededed}.bk-evpick span{font-size:12px;color:#8a8a8a}.bk-evpick.on{border-color:#c49a1c;background:#1c1810}.bk-evpick.new{border-style:dashed}
+  .bk-chip{font-style:normal;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;justify-self:start;margin-top:3px}
+  .bk-chip.green{background:rgba(77,201,138,.15);color:#4dc98a}.bk-chip.amber{background:rgba(196,154,28,.15);color:#e0b43a}.bk-chip.grey{background:#222;color:#888}
+  .bk-evsum{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;padding-top:4px}.bk-evsum>div:first-child{display:grid;gap:4px}.bk-evsum b{font-size:15px;color:#ededed}.bk-evsum span{font-size:13px;color:#9a9a9a}
+  .bk-lab{display:block;font-size:12px;color:#7a7a7a;margin-bottom:8px}.bk-lab .bk-in{margin-top:4px}
+  .bk-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}@media(max-width:520px){.bk-grid3{grid-template-columns:1fr 1fr}}
+  .bk-check{display:flex;gap:10px;align-items:center;font-size:14px;color:#ddd;margin:8px 0}.bk-check input{width:18px;height:18px;accent-color:#c49a1c}
+  .bk-evform{border-top:1px solid #262626;padding-top:10px}`;
+  document.head.appendChild(st);
+}
 function bkStyles(){
   if(document.getElementById("bk-css")) return;
   const s = document.createElement("style"); s.id = "bk-css";
@@ -132,10 +147,11 @@ async function bkRefresh(){ await bkLoad(); bkRender(); }
 
 function bkRender(){
   const c = el("admin-content"); if(!c || adminCurrentTab!=="bookings" || !BK.data) return;
+  bkStylesExtra();
   const d = BK.data, now = Date.parse(d.now);
   const upcoming = d.bookings.filter(b=>b.status==="confirmed" && Date.parse(b.ends_at) > now);
   const optedIn = d.contacts.filter(x=>x.opted_in).length;
-  const tabs = [["calls","Calls"],["event","Event"],["squads","Squads"],["videos","Videos"],["mentorship","Mentorship"],["test","Comm test"],["lists","Waitlists & emails"],["hours","Hours & settings"]];
+  const tabs = [["calls","Calls"],["event","Event"],["squads","Squads"],["videos","Videos"],["mentorship","Mentorship"],["test","Comm test"],["lists","Waitlists & emails"],["hours","Switches & hours"]];
   const body = { calls:bkCalls, event:bkEvent, squads:bkSquads, videos:bkVideos, mentorship:bkMentorship, test:bkTest, lists:bkLists, hours:bkHours }[BK.view](d, now);
   c.innerHTML = `<div class="bk">
     <div class="bk-stats">
@@ -151,17 +167,87 @@ function bkRender(){
 }
 
 /* ---------- Event: passes and door check-in ---------- */
+/* which session the Event tab is showing: the one you picked, else the next one coming, else the latest */
+function bkEvCur(){
+  const evs = (BK.data && BK.data.events) || [], now = Date.now();
+  if(BK.evCode && evs.some(e=>e.code===BK.evCode)) return BK.evCode;
+  const up = evs.filter(e=>Date.parse(e.ends_at) > now).sort((a,b)=>Date.parse(a.starts_at)-Date.parse(b.starts_at))[0];
+  return up ? up.code : (evs[0] ? evs[0].code : "");
+}
 function bkEvRows(){
-  const all = (BK.data && BK.data.event_regs) || [];
-  const ev = all.length ? all[all.length-1].event : "";
+  const all = (BK.data && BK.data.event_regs) || [], ev = bkEvCur();
   return all.filter(r=>r.event===ev);
+}
+const bkLagos = (iso, o) => new Date(iso).toLocaleString("en-GB", Object.assign({ timeZone:"Africa/Lagos" }, o));
+const bkHM = iso => bkLagos(iso,{ hour:"2-digit", minute:"2-digit", hour12:false });
+const bkYMD = iso => new Date(new Date(iso).getTime()+3600000).toISOString().slice(0,10);
+function bkEvStatus(e){
+  const now = Date.now();
+  if(Date.parse(e.ends_at) < now) return ["Done","grey"];
+  if(!e.published) return ["Hidden","grey"];
+  return e.registration_open ? ["Passes open","green"] : ["Passes closed","amber"];
+}
+/* the session list + editor at the top of the Event tab */
+function bkEvManage(d){
+  const evs = d.events || [], cur = bkEvCur(), ed = BK.evEdit;
+  const list = evs.map(e=>{ const [t,c] = bkEvStatus(e);
+    return `<button class="bk-evpick${e.code===cur?" on":""}" onclick="BK.evCode='${e.code}';BK.evEdit=null;bkRender()">
+      <b>Session ${bkEsc(e.session)}</b><span>${bkEsc(bkLagos(e.starts_at,{ weekday:"short", day:"numeric", month:"short" }))}</span><i class="bk-chip ${c}">${t}</i></button>`; }).join("");
+  const e = ed === "new" ? null : evs.find(x=>x.code===cur);
+  const form = ed ? bkEvForm(e, evs) : (e ? `<div class="bk-evsum">
+      <div><b>${bkEsc(e.title)} · Session ${bkEsc(e.session)}</b>
+      <span>${bkEsc(bkLagos(e.starts_at,{ weekday:"long", day:"numeric", month:"long" }))}, ${bkHM(e.starts_at)} to ${bkHM(e.ends_at)}</span>
+      <span>${e.venue_short||e.venue ? bkEsc(e.venue_short||e.venue) + (e.address?` · ${bkEsc(e.address)}`:"") : `<em style="color:#c49a1c">No venue yet: the site says "Venue announced soon"</em>`}</span>
+      <span>${e.capacity} seats · ${e.registration_open?"Passes open":"Passes closed (people can join the list)"}</span></div>
+      <div class="bk-acts"><button class="bk-btn gold" onclick="BK.evEdit='edit';bkRender()">Edit</button>
+      ${Date.parse(e.ends_at) > Date.now() ? `<button class="bk-btn" onclick="bkEvQuick('${e.code}',${!e.registration_open},this)">${e.registration_open?"Close passes":"Open passes"}</button>` : ""}</div></div>` : "");
+  return `<div class="bk-card"><h4>Your sessions</h4><p class="h">What you set here is what the website, the passes and the emails show. The site always shows the next session that hasn't ended.</p>
+    <div class="bk-evpicks">${list}<button class="bk-evpick new" onclick="BK.evEdit='new';bkRender()"><b>+ New session</b><span>Next one</span></button></div>
+    ${form}</div>`;
+}
+function bkEvForm(e, evs){
+  const nextNum = String(Math.max(0, ...evs.map(x=>+x.session||0)) + 1).padStart(2,"0");
+  const last = evs[0] || {};
+  const v = e ? { code:e.code, session:e.session, title:e.title, date:bkYMD(e.starts_at), start:bkHM(e.starts_at), end:bkHM(e.ends_at), venue:e.venue||"", venue_short:e.venue_short||"", address:e.address||"", maps:e.maps||"", capacity:e.capacity, open:e.registration_open, published:e.published }
+    : { code:"", session:nextNum, title:last.title||"Forward with Genie", date:"", start:last.starts_at?bkHM(last.starts_at):"11:00", end:last.ends_at?bkHM(last.ends_at):"12:30", venue:"", venue_short:"", address:"", maps:"", capacity:last.capacity||20, open:false, published:true };
+  const f = (id, label, val, extra="") => `<label class="bk-lab">${label}<input class="bk-in" id="${id}" value="${bkEsc(val)}" ${extra}></label>`;
+  return `<div class="bk-evform">
+    <h4 style="margin-top:6px">${e ? `Edit Session ${bkEsc(e.session)}` : "New session"}</h4>
+    <div class="bk-grid2">${f("ef-session","Session number",v.session,'inputmode="numeric" maxlength="3"')}${f("ef-cap","Seats",v.capacity,'type="number" min="1" max="1000"')}</div>
+    ${f("ef-title","Name",v.title,'maxlength="80"')}
+    <div class="bk-grid3">${f("ef-date","Date",v.date,'type="date"')}${f("ef-start","Starts",v.start,'type="time" step="900"')}${f("ef-end","Ends",v.end,'type="time" step="900"')}</div>
+    ${f("ef-vs","Venue (short, on the pass)",v.venue_short,'placeholder="e.g. Busy Mart, Jabi" maxlength="60"')}
+    ${f("ef-venue","Venue name",v.venue,'placeholder="e.g. Busy Mart" maxlength="80"')}
+    ${f("ef-addr","Full address",v.address,'placeholder="e.g. Suite TF2, 44 Ebitu Ukiwe, Jabi, Abuja" maxlength="200"')}
+    ${f("ef-maps","Google Maps link (optional)",v.maps,'placeholder="Leave empty and it\'s made from the address"')}
+    <label class="bk-check"><input type="checkbox" id="ef-open" ${v.open?"checked":""}> Passes open (people can get a free pass now)</label>
+    <label class="bk-check"><input type="checkbox" id="ef-pub" ${v.published?"checked":""}> Show on the website</label>
+    <p class="h" style="margin:8px 0 0">Leave the venue empty if you don't know it yet. The site will say "Venue announced soon" and people can join the list.</p>
+    <div class="bk-acts" style="margin-top:12px"><button class="bk-btn gold" onclick="bkEvSave('${bkEsc(v.code)}',this)">${e?"Save changes":"Create session"}</button><button class="bk-btn" onclick="BK.evEdit=null;bkRender()">Cancel</button></div>
+  </div>`;
+}
+async function bkEvSave(code, btn){
+  const g = id => (document.getElementById(id)||{}).value || "";
+  const body = { code, session:g("ef-session"), title:g("ef-title"), date:g("ef-date"), start:g("ef-start"), end:g("ef-end"), venue_short:g("ef-vs").trim(), venue:g("ef-venue").trim(), address:g("ef-addr").trim(), maps:g("ef-maps").trim(),
+    capacity:g("ef-cap"), registration_open:document.getElementById("ef-open").checked, published:document.getElementById("ef-pub").checked };
+  btn.disabled = true;
+  try{ const r = await bkFetch("event_save", body); BK.evCode = r.code; BK.evEdit = null; showToast("Saved. The website shows it now.","success"); await bkRefresh(); }
+  catch(e){ btn.disabled = false; showToast(e.message, "error"); }
+}
+async function bkEvQuick(code, open, btn){
+  const e = (BK.data.events||[]).find(x=>x.code===code); if(!e) return;
+  if(!confirm(open ? `Open passes for Session ${e.session}? People can get a free pass straight away.` : `Close passes for Session ${e.session}? People already holding one keep it. New people join the list instead.`)) return;
+  btn.disabled = true;
+  try{ await bkFetch("event_save",{ code, session:e.session, title:e.title, date:bkYMD(e.starts_at), start:bkHM(e.starts_at), end:bkHM(e.ends_at), venue:e.venue||"", venue_short:e.venue_short||"", address:e.address||"", maps:e.maps||"", capacity:e.capacity, registration_open:open, published:e.published });
+    showToast(open?"Passes open":"Passes closed","success"); await bkRefresh(); }
+  catch(err){ btn.disabled = false; showToast(err.message,"error"); }
 }
 const bkVia = r => r.ref ? r.ref.replace(/[-_]+/g," ").replace(/\b\w/g,c=>c.toUpperCase()) : (r.invited_by||"").trim();
 function bkEvent(d){
-  const rows = bkEvRows();
-  if(!rows.length) return `<div class="bk-empty">No passes yet. They show up here as people sign up at eugeneobo.com/events.</div>`;
+  const rows = bkEvRows(), cur = (d.events||[]).find(e=>e.code===bkEvCur()), cap = cur ? cur.capacity : d.event_capacity;
+  if(!rows.length) return bkEvManage(d) + `<div class="bk-empty">No passes for this session yet. They show up here as people sign up at eugeneobo.com/events.</div>`;
   const live = rows.filter(r=>!r.released_at), inn = live.filter(r=>r.checked_in).length, freed = rows.length-live.length;
-  return `<div class="bk-evhead"><b>${inn}</b> of ${live.length} arrived<span>${live.length} of ${d.event_capacity} passes taken${freed?` · ${freed} freed`:""}</span></div>
+  return bkEvManage(d) + `<div class="bk-evhead"><b>${inn}</b> of ${live.length} arrived<span>${live.length} of ${cap} passes taken${freed?` · ${freed} freed`:""}</span></div>
     ${(()=>{ const by={}; live.forEach(r=>{ const k=bkVia(r)||"Not said"; by[k]=(by[k]||0)+1; });
       const list=Object.entries(by).sort((a,b)=>(a[0]==="Not said")-(b[0]==="Not said")||b[1]-a[1]);
       return `<div class="bk-evby"><span>Invited by</span>${list.map(([k,n])=>`<b class="${k==="Not said"?"ns":""}">${bkEsc(k)} <i>${n}</i></b>`).join("")}</div>`; })()}
@@ -495,7 +581,19 @@ function bkHours(d){
   };
   const s = d.settings, synced = s.calendar_synced_at ? new Date(s.calendar_synced_at).toLocaleString("en-GB",{ timeZone:"Africa/Lagos", hour:"numeric", minute:"2-digit", day:"numeric", month:"short" }) : "never";
   const freeOpen = d.rules.some(r=>r.service==="free_call" && r.active);
-  return `<div class="bk-card bk-switch"><div><h4>Free clarity sessions</h4><p class="h" style="margin:0">${freeOpen ? "Open. People can book free 10-minute sessions." : "Closed for now. The tile shows greyed out and people are sent to coaching. Calls already booked still happen."}</p></div>
+  const it = d.intake || { open:true }, itOpen = it.open !== false;
+  const today = new Date(Date.now()+3600000).toISOString().slice(0,10);
+  const itLine = !itOpen ? `Closed. The sign-up button is off${it.next_opens?` and the page says the next one opens ${bkEsc(it.next_opens)}`:""}.`
+    : it.closes && it.closes < today ? `Closed by date (${bkEsc(it.closes)})${it.next_opens?`. Reopens by itself on ${bkEsc(it.next_opens)}`:""}.`
+    : it.closes ? `Open until ${bkEsc(it.closes)}. The page shows a countdown.` : "Open. People can sign up any time.";
+  return `<div class="bk-card"><div class="bk-switch" style="margin:0;padding:0;border:0;background:none"><div><h4>15-day challenge sign-ups</h4><p class="h" style="margin:0">${itLine}</p></div>
+      <button class="bk-btn ${itOpen?"":"gold"}" onclick="bkIntake(${!itOpen}, this)">${itOpen ? "Close" : "Open"}</button></div>
+      <div class="bk-grid3" style="margin-top:12px">
+        <label class="bk-lab">Closes on (optional)<input class="bk-in" type="date" id="it-closes" value="${bkEsc(it.closes||"")}"></label>
+        <label class="bk-lab">Next one opens (optional)<input class="bk-in" type="date" id="it-next" value="${bkEsc(it.next_opens||"")}"></label>
+        <label class="bk-lab">People at a time<input class="bk-in" type="number" min="1" id="it-cap" value="${bkEsc(it.cap||"")}"></label></div>
+      <div class="bk-acts"><button class="bk-btn gold" onclick="bkIntake(${itOpen}, this)">Save dates</button></div></div>
+    <div class="bk-card bk-switch"><div><h4>Free clarity sessions</h4><p class="h" style="margin:0">${freeOpen ? "Open. People can book free 10-minute sessions." : "Closed for now. The tile shows greyed out and people are sent to coaching. Calls already booked still happen."}</p></div>
       <button class="bk-btn ${freeOpen?"":"gold"}" onclick="bkFreeCalls(${!freeOpen}, this)">${freeOpen ? "Close" : "Reopen"}</button></div>
     ${svc("free_call","Clarity call hours","10-minute slots. Anything in your Google Calendar blocks the time on its own.")}
     ${svc("mentorship","Mentorship hours","Sessions start on the half hour inside these hours.")}
@@ -506,6 +604,15 @@ function bkHours(d){
       <label style="font-size:12px;color:#7a7a7a">Mentorship: days ahead<input class="bk-in" id="st-mw" type="number" min="1" max="60" value="${bkEsc(s.mentorship_window_days)}" style="margin-top:4px"></label></div>
       <button class="bk-btn gold" onclick="bkSaveSettings(this)">Save settings</button>
       <p class="h" style="margin:14px 0 0">Google Calendar last synced: ${bkEsc(synced)} (every 5 minutes). New bookings are emailed to ${bkEsc(s.notify_email||"you")}.</p></div>`;
+}
+async function bkIntake(open, btn){
+  const g = id => (document.getElementById(id)||{}).value || "";
+  const body = { open, closes:g("it-closes"), next_opens:g("it-next"), cap:g("it-cap") };
+  const cur = (BK.data.intake||{}).open !== false;
+  if(open !== cur && !confirm(open ? "Open the 15-day challenge? People can sign up straight away." : "Close the 15-day challenge? The sign-up button switches off. People already in carry on.")) return;
+  btn.disabled = true;
+  try{ await bkFetch("intake_save", body); showToast(open !== cur ? (open ? "Challenge open" : "Challenge closed") : "Saved","success"); await bkRefresh(); }
+  catch(e){ btn.disabled = false; showToast(e.message,"error"); }
 }
 async function bkFreeCalls(open, btn){
   if(!confirm(open ? "Reopen free clarity sessions on your usual days?" : "Close free clarity sessions? Calls already booked still happen.")) return;

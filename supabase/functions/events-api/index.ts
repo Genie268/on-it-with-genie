@@ -1,7 +1,7 @@
 /*
  * events-api: free passes for in-person events (Forward with Genie).
  *
- * GET  ?event=fwg-06                 -> { ok, left, full }
+ * GET  ?event=fwg-07                 -> { ok, left, full, open }
  * POST { action:"register", event, name, email, phone, goal?, ref?, invited_by? }
  *      ref comes from an invite link (eugeneobo.com/events?ref=tobi); invited_by is typed on the form.
  *      -> { ok, pass:{ code, name }, already? }   or { ok:false, error:"full" }
@@ -11,7 +11,8 @@
  * POST { action:"cron" } + x-cron-key  Every 15 min: day-before reminder (6pm the evening before),
  *      follow-up email 4h after the end to people Genie checked in at the door.
  *
- * Capacity comes from private_settings.event_capacity (default 15).
+ * Events (date, venue, capacity, passes open or not) live in the events table and are edited in
+ * Admin > Bookings > Event. Nothing about a session is hardcoded here.
  * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -22,26 +23,33 @@ const RESEND = Deno.env.get("RESEND_API_KEY") ?? "";
 const FROM = "Genie <genie@eugeneobo.com>";
 const SITE = "https://eugeneobo.com";
 
-const EVENTS: Record<string, { title: string; session: string; start: string; end: string; when: string; short: string; time: string; venue: string; venueShort: string; address: string; maps: string }> = {
-  "fwg-06": {
-    title: "Forward with Genie", session: "06",
-    start: "2026-10-31T11:00:00+01:00", end: "2026-10-31T12:30:00+01:00",
-    when: "Saturday 31 October, 11:00am to 12:30pm", short: "Sat 31 Oct", time: "11:00am to 12:30pm",
-    venue: "Busy Mart", venueShort: "Busy Mart, Jabi", address: "Suite TF2, 44 Ebitu Ukiwe, Jabi, Abuja",
-    maps: "https://maps.google.com/?q=Busy+Mart+44+Ebitu+Ukiwe+Jabi+Abuja",
-  },
-};
+type Ev = { code: string; title: string; session: string; start: string; end: string; when: string; short: string; time: string; venue: string; venueShort: string; address: string; maps: string; capacity: number; open: boolean };
+const fmtT = (d: Date) => d.toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Africa/Lagos" }).replace(" ", "").toLowerCase();
+function toEv(r: any): Ev {
+  const st = new Date(r.starts_at), en = new Date(r.ends_at);
+  const d = (o: Intl.DateTimeFormatOptions) => st.toLocaleDateString("en-GB", { timeZone: "Africa/Lagos", ...o });
+  const time = `${fmtT(st)} to ${fmtT(en)}`;
+  return { code: r.code, title: r.title || "Forward with Genie", session: r.session, start: st.toISOString(), end: en.toISOString(),
+    when: `${d({ weekday: "long", day: "numeric", month: "long" })}, ${time}`, short: d({ weekday: "short", day: "numeric", month: "short" }).replace(",", ""), time,
+    venue: r.venue || r.venue_short || "Venue to be announced", venueShort: r.venue_short || r.venue || "Abuja", address: r.address || "Abuja", maps: r.maps || "",
+    capacity: Number(r.capacity) > 0 ? Number(r.capacity) : 15, open: r.registration_open !== false };
+}
+async function loadEvents(): Promise<Record<string, Ev>> {
+  const { data } = await sb.from("events").select("*").eq("published", true).order("starts_at");
+  const out: Record<string, Ev> = {};
+  (data ?? []).forEach((r: any) => (out[r.code] = toEv(r)));
+  return out;
+}
+/* the next session after this one, for "see you at..." lines */
+function nextAfter(all: Record<string, Ev>, e: Ev) {
+  return Object.values(all).filter((x) => Date.parse(x.start) > Date.parse(e.end)).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0] ?? null;
+}
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info, x-cron-key", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { "Content-Type": "application/json", ...CORS } });
 const clean = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const validEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 
-async function capacity() {
-  const { data } = await sb.from("private_settings").select("value").eq("key", "event_capacity").maybeSingle();
-  const n = Number(data?.value);
-  return Number.isFinite(n) && n > 0 ? n : 15;
-}
 async function taken(event: string) {
   const { count } = await sb.from("event_registrations").select("id", { count: "exact", head: true }).eq("event", event).is("released_at", null);
   return count ?? 0;
@@ -51,7 +59,7 @@ function passCode(session: string) {
   const r = crypto.getRandomValues(new Uint8Array(4));
   return `FWG${session}-` + Array.from(r, (x) => abc[x % abc.length]).join("");
 }
-function ics(e: typeof EVENTS[string], code: string) {
+function ics(e: Ev, code: string) {
   const f = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//with Genie//Events//EN", "METHOD:PUBLISH", "BEGIN:VEVENT",
     `UID:${code}@eugeneobo.com`, `DTSTAMP:${f(new Date().toISOString())}`, `DTSTART:${f(e.start)}`, `DTEND:${f(e.end)}`,
@@ -61,7 +69,7 @@ function ics(e: typeof EVENTS[string], code: string) {
 }
 // PDF standard fonts only cover basic Latin: turn Ọ/ẹ/ṣ etc into plain letters, drop anything else
 const latin = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7E]/g, "").trim();
-async function passPdf(e: typeof EVENTS[string], name: string, code: string) {
+async function passPdf(e: Ev, name: string, code: string) {
   const doc = await PDFDocument.create();
   doc.setTitle(`${e.title} pass ${code}`); doc.setAuthor("Genie");
   const W = 360, H = 450, pg = doc.addPage([W, H]);
@@ -110,7 +118,7 @@ function waLink(phone: string) {
   return "https://wa.me/" + d;
 }
 const first = (n: string) => (n || "there").trim().split(" ")[0];
-const fmtWhen = (e: typeof EVENTS[string]) => `${e.when}\n${e.venue}, ${e.address}\nDirections: ${e.maps}`;
+const fmtWhen = (e: Ev) => `${e.when}\n${e.venue}, ${e.address}${e.maps ? `\nDirections: ${e.maps}` : ""}`;
 async function notifyEmail() {
   const { data } = await sb.from("private_settings").select("value").eq("key", "notify_email").maybeSingle();
   return data?.value ?? "";
@@ -118,7 +126,7 @@ async function notifyEmail() {
 
 /* someone freed a seat: tell the waitlist (each person at most once every 6 hours) */
 async function alertWaitlist(event: string) {
-  const e = EVENTS[event]; if (!e || Date.parse(e.start) < Date.now()) return 0;
+  const e = (await loadEvents())[event]; if (!e || Date.parse(e.start) < Date.now()) return 0;
   const cutoff = new Date(Date.now() - 6 * 3600_000).toISOString();
   const { data: wl } = await sb.from("waitlist").select("id,email,name,notified_at").eq("list", "event");
   const { data: regs } = await sb.from("event_registrations").select("email").eq("event", event).is("released_at", null);
@@ -139,18 +147,18 @@ async function release(p: Record<string, unknown>) {
   if (!/^[0-9a-f-]{36}$/i.test(token)) return json({ ok: false, error: "bad_token" }, 400);
   const { data: r } = await sb.from("event_registrations").select("id,event,name,email,released_at").eq("release_token", token).maybeSingle();
   if (!r) return json({ ok: false, error: "not_found" }, 404);
-  const e = EVENTS[r.event];
+  const e = (await loadEvents())[r.event];
   if (r.released_at) return json({ ok: true, already: true, name: r.name, event: r.event });
   if (e && Date.parse(e.start) < Date.now()) return json({ ok: false, error: "over" }, 409);
   await sb.from("event_registrations").update({ released_at: new Date().toISOString() }).eq("id", r.id);
   const told = await alertWaitlist(r.event);
-  const to = await notifyEmail(), cap = await capacity(), n = await taken(r.event);
+  const to = await notifyEmail(), cap = e?.capacity ?? 15, n = await taken(r.event);
   if (to) await sendEmail(to, `Seat freed: ${r.name} can't come`, `${r.name} (${r.email}) freed their seat for ${e?.title ?? r.event}.\n\n${n} of ${cap} seats now taken. ${told ? `Told ${told} people on the waitlist.` : "Nobody on the waitlist to tell."}`);
   return json({ ok: true, name: r.name, event: r.event });
 }
 
 async function joinWaitlist(p: Record<string, unknown>) {
-  const event = clean(p.event, 20), e = EVENTS[event];
+  const event = clean(p.event, 20), e = (await loadEvents())[event];
   const email = clean(p.email, 120).toLowerCase(), name = clean(p.name, 80);
   if (!validEmail(email)) return json({ ok: false, error: "bad_email" }, 400);
   const { data: ins, error } = await sb.from("waitlist").upsert({ list: "event", email, name: name || null }, { onConflict: "list,email", ignoreDuplicates: true }).select("id");
@@ -168,6 +176,7 @@ async function cron(req: Request) {
   const { data: k } = await sb.from("private_settings").select("value").eq("key", "cron_key").maybeSingle();
   if (!k?.value || req.headers.get("x-cron-key") !== k.value) return new Response("forbidden", { status: 403 });
   const now = Date.now(), done = { reminded: 0, followed: 0 };
+  const EVENTS = await loadEvents();
   for (const [code, e] of Object.entries(EVENTS)) {
     const start = Date.parse(e.start), end = Date.parse(e.end), remindAt = start - 17 * 3600_000; // 6pm the evening before
     if (now >= remindAt && now < start) {
@@ -196,7 +205,7 @@ async function cron(req: Request) {
           next = `You haven't put it in front of your squad yet. It takes a minute. Tap your name and declare it:\n${SITE}/squad/${sq.code}`;
         }
         await sendEmail(r.email, "The goal you brought",
-          `Hi ${first(r.name)},\n\nThanks for coming to ${e.title}.\n\n${goal}\n\nMost people leave a room like that fired up and have done nothing by Tuesday. Make sure you're not one of them.\n\n${next ? next + "\n\n" : ""}See you on Saturday 28 November with proof.\n\nGenie`);
+          `Hi ${first(r.name)},\n\nThanks for coming to ${e.title}.\n\n${goal}\n\nMost people leave a room like that fired up and have done nothing by Tuesday. Make sure you're not one of them.\n\n${next ? next + "\n\n" : ""}${(() => { const nx = nextAfter(EVENTS, e); return nx ? `See you at Session ${nx.session} on ${nx.short} with proof.` : "See you at the next session with proof."; })()}\n\nGenie`);
         done.followed++;
       }
     }
@@ -209,18 +218,20 @@ Deno.serve(async (req) => {
   try {
     if (req.method === "GET") {
       const event = new URL(req.url).searchParams.get("event") ?? "";
-      if (!EVENTS[event]) return json({ ok: false, error: "no_event" }, 404);
-      const cap = await capacity(), n = await taken(event);
-      return json({ ok: true, left: Math.max(0, cap - n), full: n >= cap });
+      const e = (await loadEvents())[event];
+      if (!e) return json({ ok: false, error: "no_event" }, 404);
+      const cap = e.capacity, n = await taken(event);
+      return json({ ok: true, left: Math.max(0, cap - n), full: n >= cap, open: e.open });
     }
     const p = await req.json().catch(() => ({}));
     if (p.action === "cron") return await cron(req);
     if (p.action === "release") return await release(p);
     if (p.action === "waitlist") return await joinWaitlist(p);
     if (p.action !== "register") return json({ ok: false, error: "unknown_action" }, 400);
-    const event = clean(p.event, 20), e = EVENTS[event];
+    const event = clean(p.event, 20), e = (await loadEvents())[event];
     if (!e) return json({ ok: false, error: "no_event" }, 404);
     if (Date.parse(e.end) < Date.now()) return json({ ok: false, error: "over" }, 409);
+    if (!e.open) return json({ ok: false, error: "not_open" }, 409);
     const name = clean(p.name, 80), email = clean(p.email, 120).toLowerCase(), phone = clean(p.phone, 30), goal = clean(p.goal, 300);
     const ref = clean(p.ref, 40).toLowerCase().replace(/[^a-z0-9_-]/g, ""), invitedBy = clean(p.invited_by, 80);
     if (!name) return json({ ok: false, error: "missing_name" }, 400);
@@ -228,7 +239,7 @@ Deno.serve(async (req) => {
     if (phone.replace(/\D/g, "").length < 7) return json({ ok: false, error: "missing_phone" }, 400);
 
     const { data: had } = await sb.from("event_registrations").select("id,pass_code,name,released_at").eq("event", event).eq("email", email).maybeSingle();
-    const cap = await capacity();
+    const cap = e.capacity;
     if (had && !had.released_at) return json({ ok: true, already: true, pass: { code: had.pass_code, name: had.name } });
     if ((await taken(event)) >= cap) return json({ ok: false, error: "full" }, 409);
     if (had) { // freed their seat earlier, now wants it back
@@ -255,7 +266,7 @@ Deno.serve(async (req) => {
     let pdf: { filename: string; content: string }[] = [];
     try { pdf = [{ filename: `${row.pass_code}.pdf`, content: b64(await passPdf(e, name, row.pass_code)) }]; } catch (err) { console.error("pdf failed", err); }
     await sendEmail(email, `Your pass: ${e.title}, ${e.when.split(",")[0]}`,
-      `Hi ${first(name)},\n\nYou're in. Here's your pass.\n\n${e.title} · Session ${e.session}\n${e.when}\n${e.venue}, ${e.address}\nDirections: ${e.maps}\n\nPass code: ${row.pass_code}\nYour pass is attached. Save it to your phone and show it at the door.\n\nBring the one goal you keep pushing to next week${goal ? ` (you said: "${goal}")` : ""}. Entry is free.\n\nCan't come any more? Free your seat so someone on the waitlist can come: ${SITE}/events?release=${row.release_token}\n\nGenie`,
+      `Hi ${first(name)},\n\nYou're in. Here's your pass.\n\n${e.title} · Session ${e.session}\n${fmtWhen(e)}\n\nPass code: ${row.pass_code}\nYour pass is attached. Save it to your phone and show it at the door.\n\nBring the one goal you keep pushing to next week${goal ? ` (you said: "${goal}")` : ""}. Entry is free.\n\nCan't come any more? Free your seat so someone on the waitlist can come: ${SITE}/events?release=${row.release_token}\n\nGenie`,
       ics(e, row.pass_code), {}, pdf);
     const to = await notifyEmail(), count = await taken(event);
     if (to) {

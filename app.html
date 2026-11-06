@@ -535,7 +535,6 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
     <button id="tab-notifications" class="admin-tab" onclick="adminTab('notifications')">Notifications</button>
     <button id="tab-analytics" class="admin-tab" onclick="adminTab('analytics')">Analytics</button>
     <button id="tab-settings" class="admin-tab" onclick="adminTab('settings')">Settings</button>
-    <button id="tab-design" class="admin-tab" onclick="adminTab('design')">Design</button>
   </div>
 
   <!-- Tab content -->
@@ -714,7 +713,7 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 
 <!-- JS Modules: config loads first, ui loads last. ?v= forces browsers to
      re-download after a deploy instead of serving the cached old build. -->
-<script src="js/intake.js?v=20261010c"></script>
+<script src="js/intake.js?v=20261106"></script>
 <script src="js/config.js?v=20261104f"></script>
 <script src="js/theme.js?v=20260926bulk"></script>
 <script src="js/lil.js?v=20260926bulk"></script>
@@ -727,9 +726,8 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 <script src="js/miss-preview.js?v=20260926bulk"></script>
 <script src="js/dashboard.js?v=20260926bulk"></script>
 <script src="js/uploads.js?v=20260926bulk"></script>
-<script src="js/admin.js?v=20261010"></script>
-<script src="js/bookings-admin.js?v=20261104bg"></script>
-<script src="js/design.js?v=20260926bulk"></script>
+<script src="js/admin.js?v=20261106"></script>
+<script src="js/bookings-admin.js?v=20261106"></script>
 <script src="js/ui.js?v=20260926bulk"></script>
 
 <!-- Add-to-home-screen prompt: shown on the dashboard to signed-in challengers who opened the app in a browser -->
@@ -773,21 +771,27 @@ if(/^\/witness\/[^/]+/.test(window.location.pathname)||/[?&]witness=/.test(windo
 </script>
 
 <script>
-/* Intake note under the main button. Settings live in js/intake.js. */
+/* Intake note under the main button. Open/close it in Admin > Bookings > Switches & hours. */
 (function(){
   var el=document.getElementById("oi-intake"), cta=document.querySelector('#s-land .kl-cta');
   if(!el || !window.intakeState) return;
-  var st=intakeState(), cap=st.cap?" <i>&bull;</i> Only "+st.cap+" people at a time":"";
-  if(st.mode==="open"){
-    el.innerHTML='<span class="oi-dot"></span>'+(st.daysLeft===0?"Joining closes today":st.daysLeft===1?"Joining closes tomorrow":"Joining closes "+st.closes)+cap;
-    el.hidden=false;
-  } else if(st.mode==="off" && st.cap){
-    el.innerHTML="Only "+st.cap+" people at a time"; el.hidden=false;
-  } else if(st.mode==="closed"){
-    el.innerHTML='<span class="oi-dot"></span>This intake is closed'+(st.nextOpens?". The next one opens "+st.nextOpens:"")+'. <a href="/book#coaching">Book a session with me</a> in the meantime.';
-    el.hidden=false; el.classList.add("closed");
-    if(cta){ cta.disabled=true; cta.removeAttribute("onclick"); cta.innerHTML=st.nextOpens?"Opens "+st.nextOpens:"Intake closed"; }
+  var ctaHTML=cta?cta.innerHTML:"";
+  function draw(){
+    var st=intakeState(), cap=st.cap?" <i>&bull;</i> Only "+st.cap+" people at a time":"";
+    el.hidden=true; el.classList.remove("closed");
+    if(cta){ cta.disabled=false; cta.setAttribute("onclick","startOB()"); cta.innerHTML=ctaHTML; }
+    if(st.mode==="open"){
+      el.innerHTML='<span class="oi-dot"></span>'+(st.daysLeft===0?"Joining closes today":st.daysLeft===1?"Joining closes tomorrow":"Joining closes "+st.closes)+cap;
+      el.hidden=false;
+    } else if(st.mode==="off" && st.cap){
+      el.innerHTML="Only "+st.cap+" people at a time"; el.hidden=false;
+    } else if(st.mode==="closed"){
+      el.innerHTML='<span class="oi-dot"></span>This intake is closed'+(st.nextOpens?". The next one opens "+st.nextOpens:"")+'. <a href="/book#coaching">Book a session with me</a> in the meantime.';
+      el.hidden=false; el.classList.add("closed");
+      if(cta){ cta.disabled=true; cta.removeAttribute("onclick"); cta.innerHTML=st.nextOpens?"Opens "+st.nextOpens:"Intake closed"; }
+    }
   }
+  draw(); window.addEventListener("site-config", draw);
 })();
 </script>
 <script>

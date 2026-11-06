@@ -324,6 +324,7 @@ body.wall{background:var(--cream)}
 </head>
 <body>
 <div id="root"><div class="wrap"><p style="padding:60px 0;text-align:center;color:var(--muted)">Loading your squad…</p></div></div>
+<script src="/js/intake.js?v=20261106"></script>
 <script>
 const API = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/squads-api";
 const $ = (s, r=document) => r.querySelector(s);
@@ -480,6 +481,7 @@ function openOv(html){
   document.body.appendChild(o); document.body.style.overflow = "hidden"; wireFeed();
 }
 addEventListener("keydown", e=>{ if(e.key==="Escape") closeOv(); });
+addEventListener("site-config", ()=>{ try{ if(typeof D!=="undefined" && D && !D.me && PID && !WALL) render(); }catch(_){} });
 addEventListener("contextmenu", e=>{ if(e.target.closest && e.target.closest("video,.vthumb,.vwrap")) e.preventDefault(); });
 function openReel(m){
   openOv(`<div class="vwrap"><span class="ribbon"><span>Declaration</span></span><video src="${esc(m.video)}" ${m.cover?`poster="${esc(m.cover)}"`:""} autoplay controls controlslist="nodownload noplaybackrate noremoteplayback" disablepictureinpicture disableremoteplayback playsinline></video></div>
@@ -504,7 +506,7 @@ function pickHTML(){
 }
 function joinScreen(){
   const s = D.squad, me = D.me || {};
-  let pre = {}; try{ const p = JSON.parse(localStorage.getItem("ev_fwg-06")||"null"); if(p && p.name) pre.name = p.name; }catch(_){}
+  let pre = {}; try{ const ev = (D.squad && D.squad.event) || "fwg-06"; const p = JSON.parse(localStorage.getItem("ev_"+ev)||localStorage.getItem("ev_fwg-06")||"null"); if(p && p.name) pre.name = p.name; }catch(_){}
   const by = me.deadline || s.ends_on, shown = D.members.slice(-5);
   $("#root").innerHTML = `<div class="wrap">${bar(esc(s.name), editing ? SQ() : "")}
     ${editing ? "" : `<section class="sq-hd">
@@ -704,6 +706,13 @@ function home(){
 const coachOf = () => D.squad.coach || { name:"Genie", photo:null, member_id:null };
 function toastMsg(m){ let t = $("#tst"); if(!t){ t = document.createElement("div"); t.id = "tst"; t.className = "tst"; document.body.appendChild(t); } t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("on"), 2600); }
 
+/* next Forward with Genie session, as set in Admin > Bookings > Event */
+function nextEventCTA(ref){
+  const now = Date.now(), up = ((window.SITE && SITE.events) || []).filter(e=>Date.parse(e.ends_at) > now).sort((a,b)=>Date.parse(a.starts_at)-Date.parse(b.starts_at))[0];
+  const when = up ? new Date(up.starts_at).toLocaleDateString("en-GB",{ weekday:"short", day:"numeric", month:"short", timeZone:"Africa/Lagos" }).replace(",","").toUpperCase() : "";
+  const open = up && up.registration_open !== false;
+  return `<div class="cta"><small>${esc((up && up.title) || "Forward with Genie")}${up ? ` · Session ${esc(up.session)}` : ""}</small><b>${up ? `${esc(when)} · ABUJA` : "NEXT SESSION SOON · ABUJA"}</b><p>This squad declared it in a room in Abuja. ${open ? "Get your own free pass and declare yours." : "Get on the list and declare yours at the next one."}</p><a class="b red full" href="/events?ref=${esc(ref)}">${open ? "Get your free pass" : "Get on the list"}</a></div>`;
+}
 /* ---------- public profile: swipe left/right through the squad ---------- */
 let PCAL = "week", PCUR = "";
 const PSEL = {};
@@ -746,7 +755,7 @@ function profile(){
     <div class="swipe-hint" id="sh">Swipe, or tap a name to see the others</div>
     <div class="ppl" role="tablist">${list.map(x=>`<button type="button" class="pp${x.id===m.id?" on":""}" data-go="${esc(x.id)}">${ringAv(x, 28, !!x.video)}<span>${esc(x.coach ? "Genie" : firstName(x.name))}</span></button>`).join("")}</div>
     <div class="ph-btns" id="pbtns" style="padding:16px">${profBtns(m)}</div>
-    ${D.me ? "" : `<div class="cta"><small>Forward with Genie · Session 07</small><b>SAT 28 NOV · ABUJA</b><p>This squad declared it in a room in Abuja. Get your own free pass and declare yours.</p><a class="b red full" href="/events?ref=${esc(ref)}">Get your free pass</a></div>`}
+    ${D.me ? "" : nextEventCTA(ref)}
   </div>`;
   const pager = $("#pager"), panels = $$(".pg", pager);
   const fit = () => { const pg = panels.find(x=>x.dataset.id===PCUR); if(pg) pager.style.height = pg.offsetHeight + "px"; };

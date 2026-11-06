@@ -646,7 +646,7 @@ p{margin:0}
 </div>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="/js/intake.js?v=20261010c"></script>
+<script src="/js/intake.js?v=20261106"></script>
 <script>
 /* ===== EDIT THESE ===== */
 const CONFIG = {
@@ -656,15 +656,38 @@ const CONFIG = {
   hourRate: 25000,
   prices: { 1:25000, 2:50000, 4:90000, 8:170000 },   // must match PACK_PRICE_NAIRA in booking-api
   photo: "/img/forward-session06.jpg",   // homepage photo
-  nextEvent: { session:"07", when:"Sat 28 Nov" },
-  squad: "FWG06",                  // live goals shown on the homepage
+  nextEvent: null,                 // filled from Admin > Bookings > Event (see applySite)
+  squad: "FWG06",                  // live goals on the homepage: newest active squad, set automatically
   quotes: [],                      // real client words only: { text, name, detail }
   aboutPhoto: "/img/genie-about-bw.jpg",
   meet: "https://meet.google.com/mmt-ahkf-zaz",
   accountabilityUrl: "/app?start",  // goes straight into the sign-up flow
+  // Fallback only. The real event comes from Admin > Bookings > Event.
   event: { code:"fwg-06", session:"06", name:"Forward with Genie", mon:"OCT", day:"31", when:"Saturday, 31 October", short:"Sat 31 Oct", time:"11:00am to 12:30pm", place:"Busy Mart, Jabi", address:"Suite TF2, 44 Ebitu Ukiwe, Jabi, Abuja", start:"2026-10-31T11:00:00+01:00", end:"2026-10-31T12:30:00+01:00", maps:"https://maps.google.com/?q=Busy+Mart+44+Ebitu+Ukiwe+Jabi+Abuja", photo:"/img/forward-session06.jpg" }
 };
 /* ====================== */
+
+/* Events, the homepage squad and the challenge intake are edited in Admin, loaded by js/intake.js.
+   The site shows the next session that hasn't ended; if none is set, the last one (as "done"). */
+function applySite(){
+  const S = window.SITE || {}, list = (S.events||[]).slice().sort((a,b)=>Date.parse(a.starts_at)-Date.parse(b.starts_at));
+  if(S.squad) CONFIG.squad = S.squad;
+  if(!list.length) return;
+  const now = Date.now(), up = list.filter(e=>Date.parse(e.ends_at) > now);
+  const pick = up[0] || list[list.length-1], st = new Date(pick.starts_at), en = new Date(pick.ends_at);
+  const t = d => d.toLocaleTimeString("en-GB",{ hour:"numeric", minute:"2-digit", hour12:true, timeZone:"Africa/Lagos" }).replace(" ","").toLowerCase();
+  const dp = o => st.toLocaleDateString("en-GB", Object.assign({ timeZone:"Africa/Lagos" }, o));
+  CONFIG.event = Object.assign({}, CONFIG.event, {
+    code: pick.code, session: pick.session, name: pick.title || "Forward with Genie",
+    mon: dp({ month:"short" }).toUpperCase(), day: dp({ day:"numeric" }),
+    when: dp({ weekday:"long", day:"numeric", month:"long" }).replace(/^(\w+) /,"$1, "), short: dp({ weekday:"short", day:"numeric", month:"short" }).replace(",",""),
+    time: `${t(st)} to ${t(en)}`, startTime: t(st),
+    place: pick.venue_short || pick.venue || "", address: pick.address || "", maps: pick.maps || "",
+    start: pick.starts_at, end: pick.ends_at, open: pick.registration_open !== false, capacity: pick.capacity });
+  CONFIG.nextEvent = up[0] ? { session: up[0].session, when: CONFIG.event.short } : null;
+}
+applySite();
+const evNextNum = () => String(+CONFIG.event.session+1).padStart(2,"0");
 
 const $ = s => document.querySelector(s);
 const naira = n => "₦" + n.toLocaleString("en-NG");
@@ -749,10 +772,10 @@ ${quotesHTML()}
 <div class="goals" id="sq-goals"></div>
 <div class="sec-head"><h2>Upcoming event</h2></div>
 <a class="event" href="#event">
-  ${evOver() ? `<div class="date"><small>NEXT</small><b>${String(+CONFIG.event.session+1).padStart(2,"0")}</b></div>
-  <div class="meta"><small>Session ${String(+CONFIG.event.session+1).padStart(2,"0")} · In person · Free</small><h3>${CONFIG.event.name}</h3><p>${CONFIG.nextEvent ? esc(CONFIG.nextEvent.when) : "Date coming soon"} · <b class="ev-cta">Get on the list</b></p></div>`
+  ${evOver() ? `<div class="date"><small>NEXT</small><b>${evNextNum()}</b></div>
+  <div class="meta"><small>Session ${evNextNum()} · In person · Free</small><h3>${esc(CONFIG.event.name)}</h3><p>Date coming soon · <b class="ev-cta">Get on the list</b></p></div>`
   : `<div class="date"><small>${CONFIG.event.mon}</small><b>${CONFIG.event.day}</b></div>
-  <div class="meta"><small>Session ${CONFIG.event.session} · In person · Free</small><h3>${CONFIG.event.name}</h3><p>${CONFIG.event.place} · 11:00am · <b class="ev-cta">Get your free pass</b></p></div>`}
+  <div class="meta"><small>Session ${esc(CONFIG.event.session)} · In person · Free</small><h3>${esc(CONFIG.event.name)}</h3><p>${esc(CONFIG.event.place || "Abuja")} · ${esc(CONFIG.event.startTime || "11:00am")} · <b class="ev-cta">${CONFIG.event.open === false ? "Get on the list" : "Get your free pass"}</b></p></div>`}
   <span class="arrow">${I.arrow}</span>
 </a>`;},
 
@@ -862,7 +885,7 @@ event(){ const e=CONFIG.event; return `
 ${backLink()}
 <div class="detail ev">
   <section class="ev-hero">
-    <div class="ev-top"><span>Session ${e.session}</span><span>In person · Abuja</span></div>
+    <div class="ev-top"><span>Session ${esc(e.session)}</span><span>In person · Abuja</span></div>
     <div class="ev-word">FORWARD<span><i></i>WITH GENIE</span></div>
     <div class="ev-body">
       <figure class="ev-fig">
@@ -1490,8 +1513,8 @@ const EV_API = () => CONFIG.api.replace("booking-api","events-api");
 function evFacts(){
   const e = CONFIG.event;
   return `<ul class="ev-facts">
-    <li>${ICO.cal}<span><b>${e.when}</b>${e.time}</span></li>
-    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span><b>${e.place}</b>${e.address}</span></li>
+    <li>${ICO.cal}<span><b>${esc(e.when)}</b>${esc(e.time)}</span></li>
+    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span><b>${esc(e.place || "Abuja")}</b>${esc(e.address || "Venue announced soon")}</span></li>
     <li>${ICO.cash}<span><b>Free entry</b>Small group. A pass is required.</span></li>
   </ul>`;
 }
@@ -1525,6 +1548,7 @@ async function startEvent(){
   if(rel) return evRelease(el, rel);
   if(evOver()) return evDone(el);
   const mine = evSaved();
+  if(CONFIG.event.open === false && !mine) return evSoon(el);
   if(mine) return evPass(el, mine, true);
   el.innerHTML = `<h3>Get your free pass</h3>
     ${evFacts()}
@@ -1563,8 +1587,12 @@ function evFull(el){
   el.innerHTML = `<h3>This session is full</h3>${evFacts()}<p class="hint" style="margin:0 0 12px">People drop out. Leave your email and you'll get one the moment a seat opens.</p>${evWaitHTML("Email me if a seat opens")}`;
   evWireWait(el);
 }
+function evSoon(el){
+  el.innerHTML = `<h3>Passes open soon</h3>${evFacts()}<p class="hint" style="margin:0 0 12px">The room is small and people on the list hear first. Leave your email and you'll get yours before anyone else.</p>${evWaitHTML("Put me on the list")}`;
+  evWireWait(el);
+}
 function evDone(el){
-  const next = String(+CONFIG.event.session+1).padStart(2,"0");
+  const next = evNextNum();
   el.innerHTML = `<h3>Session ${CONFIG.event.session} is done</h3><p class="hint" style="margin:0 0 14px">Session ${next} is next. Passes go first to people on the list, and the room is small.</p>${evWaitHTML("Put me on the list")}`;
   evWireWait(el);
 }
@@ -1612,8 +1640,8 @@ function evPass(el, p, again){
       <div class="ev-pass-name">${esc(p.name)}</div>
       <div class="ev-pass-grid">
         <div><small>Date</small><b>${e.short}</b></div>
-        <div><small>Time</small><b>11:00am</b></div>
-        <div><small>Venue</small><b>${e.place}</b></div>
+        <div><small>Time</small><b>${esc(e.startTime || "11:00am")}</b></div>
+        <div><small>Venue</small><b>${esc(e.place || "Abuja")}</b></div>
       </div>
       <div class="ev-pass-cut"></div>
       <div class="ev-pass-code"><small>Pass code</small><b>${esc(p.code)}</b></div>
@@ -1623,7 +1651,7 @@ function evPass(el, p, again){
     <button class="btn btn-ink btn-block" type="button" id="ev-save" style="margin-bottom:8px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg> Save pass to phone</button>
     <div class="ev-actions">
       <a class="btn btn-line" href="${evCal()}" target="_blank" rel="noopener">Add to calendar</a>
-      <a class="btn btn-line" href="${e.maps}" target="_blank" rel="noopener">Directions</a>
+      ${e.maps ? `<a class="btn btn-line" href="${esc(e.maps)}" target="_blank" rel="noopener">Directions</a>` : ""}
     </div>`;
   $("#ev-save").addEventListener("click", ()=>evSavePng(p));
 }
@@ -1644,7 +1672,7 @@ async function evSavePng(p){
   x.fillText(e.name.toUpperCase(), L, cy+100); x.textAlign="right"; x.fillText("SESSION "+e.session, R, cy+100); x.textAlign="left";
   x.fillStyle="#D7401C"; x.font=`400 150px ${BIG}`; fit("FORWARD", `400 $px ${BIG}`, 150, R-L); x.fillText("FORWARD", L, cy+270);
   x.fillStyle="#F4F2EC"; const name=(p.name||"").toUpperCase(); fit(name, `400 $px ${BIG}`, 104, R-L); x.fillText(name, L, cy+420);
-  const cols=[["DATE",e.short],["TIME","11:00am"],["VENUE",e.place]], colW=(R-L)/3;
+  const cols=[["DATE",e.short],["TIME",e.startTime||"11:00am"],["VENUE",e.place||"Abuja"]], colW=(R-L)/3;
   cols.forEach(([k,v],i)=>{ const X=L+i*colW; x.fillStyle="rgba(244,242,236,.55)"; x.font=`500 26px ${MONO}`; x.fillText(k,X,cy+520);
     x.fillStyle="#fff"; fit(v, `700 $px ${SANS}`, 40, colW-20); x.fillText(v,X,cy+575); });
   x.strokeStyle="rgba(255,255,255,.3)"; x.lineWidth=3; x.setLineDash([18,14]); x.beginPath(); x.moveTo(cx+22,cy+660); x.lineTo(cx+cw,cy+660); x.stroke(); x.setLineDash([]);
@@ -2445,7 +2473,16 @@ const cancelToken = qs.get("cancel"), planToken = qs.get("plan"), appealToken = 
 if(appealToken) handleAppealLink(appealToken);
 else if(cancelToken) handleCancel(cancelToken);
 else if(planToken) openPlan(planToken);
-else { window.addEventListener("hashchange", route); route(); }
+else {
+  window.addEventListener("hashchange", route);
+  let booted = false; const boot = ()=>{ if(booted) return; booted = true; route(); };
+  let cached = false; try{ cached = !!localStorage.getItem("site_cfg_v1"); }catch(_){}
+  if(cached) boot(); else { Promise.race([window.SITE_READY, new Promise(r=>setTimeout(r,1500))]).then(boot); }
+  // admin changed an event or the intake: redraw if nobody is typing
+  window.addEventListener("site-config", ()=>{ applySite(); if(!booted) return boot();
+    const k = (location.hash||"#home").slice(1), typing = document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName);
+    if(!typing && ["home","event","services",""].includes(k) || (!typing && /^\/events\/?$/.test(location.pathname))) route(); });
+}
 /* Warm up the calendars in the background so booking pages open instantly */
 setTimeout(()=>{ prefetch("free_call"); prefetch("mentorship", 60); }, 900);
 </script>

@@ -16,6 +16,9 @@
  *   squad_media_url {member_id, kind:"video"|"photo", type}   Signed upload URL for a member's declaration video/photo
  *   squad_set_media {member_id, kind, path}                   Attach the uploaded file (path "" removes it)
  *   free_calls    {open}                  Close free clarity sessions (all free_call hours off, remembered) or reopen them
+ *   event_save    {code?, session, title?, date, start, end, venue?, venue_short?, address?, maps?, capacity, registration_open, published?}
+ *                                         Create or edit a Forward with Genie session (no code = new one)
+ *   intake_save   {open, closes?, next_opens?, cap?}   15-day challenge sign-ups switch
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -111,7 +114,13 @@ async function list() {
   const squads = (sqs ?? []).map((q: any) => ({ ...q,
     week: (() => { const d = Math.floor((Date.parse(new Date(Date.now() + 3600_000).toISOString().slice(0, 10)) - Date.parse(q.starts_on)) / 86400000); return d < 0 ? 0 : Math.floor(d / 7) + 1; })(),
     members: (sqm ?? []).filter((m: any) => m.squad_id === q.id).map((m: any) => ({ ...m, photo: m.photo_path ? URL_ + "/storage/v1/object/public/squad-media/" + m.photo_path : null, video: m.video_path ? (signed[m.video_path] ?? null) : null, cover: m.video_cover_path ? URL_ + "/storage/v1/object/public/squad-media/" + m.video_cover_path : null, checkins: Object.fromEntries((sqc ?? []).filter((c: any) => c.member_id === m.id).map((c: any) => [c.week, { status: c.status, note: c.note }])) })) }));
+  const [{ data: evs }, { data: intakeRow }] = await Promise.all([
+    sb.from("events").select("*").order("starts_at", { ascending: false }),
+    sb.from("public_settings").select("value").eq("key", "intake").maybeSingle(),
+  ]);
   return {
+    events: evs ?? [],
+    intake: intakeRow?.value ?? { open: true, closes: null, next_opens: null, cap: 12 },
     squads,
     ok: true,
     now: new Date().toISOString(),
@@ -209,6 +218,40 @@ async function freeCalls(p: P) {
   }
   return { ok: true };
 }
+const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v), isTime = (v: string) => /^\d{2}:\d{2}$/.test(v);
+async function eventSave(p: P) {
+  const session = clean(p.session, 6).replace(/\D/g, "").padStart(2, "0");
+  const date = clean(p.date, 10), start = clean(p.start, 5), end = clean(p.end, 5);
+  if (!session || session === "00") return { ok: false, error: "Add the session number" };
+  if (!isDate(date) || !isTime(start) || !isTime(end) || end <= start) return { ok: false, error: "Check the date and times" };
+  const cap = Math.round(Number(p.capacity));
+  if (!(cap >= 1 && cap <= 1000)) return { ok: false, error: "Capacity must be a number" };
+  let maps = clean(p.maps, 300), address = clean(p.address, 200), venue = clean(p.venue, 80), venueShort = clean(p.venue_short, 60);
+  if (maps && !/^https?:\/\//.test(maps)) return { ok: false, error: "The map link must start with https://" };
+  if (!maps && (venue || address)) maps = "https://maps.google.com/?q=" + encodeURIComponent([venue, address].filter(Boolean).join(" "));
+  const row: Record<string, unknown> = {
+    title: clean(p.title, 80) || "Forward with Genie", session,
+    starts_at: `${date}T${start}:00+01:00`, ends_at: `${date}T${end}:00+01:00`,
+    venue: venue || null, venue_short: venueShort || venue || null, address: address || null, maps: maps || null,
+    capacity: cap, registration_open: p.registration_open === true, published: p.published !== false, updated_at: new Date().toISOString(),
+  };
+  const code = clean(p.code, 20);
+  if (code) {
+    const { error } = await sb.from("events").update(row).eq("code", code);
+    return error ? { ok: false, error: error.message } : { ok: true, code };
+  }
+  const newCode = `fwg-${session}`;
+  const { error } = await sb.from("events").insert({ code: newCode, ...row });
+  if (error) return { ok: false, error: String(error.code) === "23505" ? `Session ${session} already exists. Edit it instead.` : error.message };
+  return { ok: true, code: newCode };
+}
+async function intakeSave(p: P) {
+  const closes = clean(p.closes, 10), next = clean(p.next_opens, 10), cap = Math.round(Number(p.cap));
+  if ((closes && !isDate(closes)) || (next && !isDate(next))) return { ok: false, error: "Check the dates" };
+  const value = { open: p.open === true, closes: closes || null, next_opens: next || null, cap: cap >= 1 && cap <= 10000 ? cap : null };
+  const { error } = await sb.from("public_settings").upsert({ key: "intake", value, updated_at: new Date().toISOString() });
+  return error ? { ok: false, error: error.message } : { ok: true, intake: value };
+}
 async function squadToggle(p: P) {
   const { error } = await sb.from("squads").update({ active: p.active === true }).eq("id", clean(p.id, 60));
   return error ? { ok: false, error: error.message } : { ok: true };
@@ -279,7 +322,7 @@ async function addRule(p: P) {
 }
 
 const ACTIONS: Record<string, (p: P) => Promise<P>> = {
-  list, cancel, attend, checkin, squad_create: squadCreate, squad_toggle: squadToggle, squad_media_url: squadMediaUrl, squad_set_media: squadSetMedia, free_calls: freeCalls, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
+  list, cancel, attend, checkin, squad_create: squadCreate, squad_toggle: squadToggle, squad_media_url: squadMediaUrl, squad_set_media: squadSetMedia, free_calls: freeCalls, event_save: eventSave, intake_save: intakeSave, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
 };
 
 Deno.serve(async (req) => {
