@@ -30,10 +30,24 @@ h1,h2{font-family:Archivo,system-ui,sans-serif;font-stretch:88%;margin:0}
 .now small{display:block;font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--red);text-transform:uppercase}
 .now h1{font-size:clamp(24px,7vw,32px);font-weight:900;line-height:1.05;margin:8px 0 6px}
 .now .ref{margin-top:8px;font-size:13px;font-weight:700;color:var(--soft)}
-.script{background:#FFFDF8;color:#17140F;border-radius:20px;padding:18px 18px 20px}
-.script small{display:block;font-size:11px;font-weight:800;letter-spacing:.14em;color:#D2402F;text-transform:uppercase;margin-bottom:8px}
-.script div{font-size:18px;line-height:1.5;font-weight:600;white-space:pre-wrap}
-.script.empty div{color:#8C8375;font-size:15px}
+.script{background:#FFFDF8;color:#14204A;border-radius:20px;padding:8px 18px 12px}
+.script.empty{padding:18px;color:#8C8375;font-size:15px}
+.beat{padding:14px 0;border-top:1px solid #ECE4D6}
+.beat:first-child{border-top:0}
+.beat .lab{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.16em;border-radius:6px;padding:3px 7px;margin-bottom:7px}
+.beat.say .lab{background:#D2402F;color:#fff}
+.beat.say p{margin:0;font-size:20px;line-height:1.45;font-weight:700;color:#14204A}
+.beat.read{background:#EEF1F8;border-radius:14px;padding:14px;margin:6px 0;border-top:0}
+.beat.read + .beat{border-top:0}
+.beat.read .lab{background:#14204A;color:#fff}
+.beat.read .ref{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#14204A;margin:0 0 4px}
+.beat.read p{margin:0;font-size:20px;line-height:1.45;font-weight:600;color:#14204A}
+.beat.do{display:flex;gap:10px;align-items:baseline}
+.beat.do .lab{flex:none;background:none;color:#9A9080;border:1px solid #D9D0C0;margin:0}
+.beat.do p{margin:0;font-size:14.5px;line-height:1.45;font-weight:600;color:#8C8375}
+.legend{display:flex;gap:14px;font-size:11.5px;font-weight:700;color:var(--soft)}
+.legend b{font-size:10px;letter-spacing:.14em;padding:2px 6px;border-radius:5px;margin-right:5px}
+.legend .s{background:#D2402F;color:#fff}.legend .r{background:#EEF1F8;color:#14204A}.legend .d{border:1px solid #5A5246;color:#A79E8E}
 .upnext{font-size:13px;color:var(--soft);font-weight:700}
 .upnext b{color:var(--text)}
 .bars{display:grid;gap:8px;margin-top:4px}
@@ -104,7 +118,8 @@ input:focus,textarea:focus{border-color:var(--soft)}
     <section id="run" style="display:flex;flex-direction:column;gap:12px">
       <div class="chips" id="chips"></div>
       <div class="panel now" id="now"></div>
-      <div class="script" id="script"><small>Your script</small><div id="scriptText"></div></div>
+      <div class="legend"><span><b class="s">SAY</b>out loud</span><span><b class="r">READ</b>scripture</span><span><b class="d">DO</b>just for you</span></div>
+      <div class="script" id="script"></div>
       <div class="panel hide" id="extra"></div>
       <div class="upnext" id="upnext"></div>
     </section>
@@ -133,7 +148,7 @@ input:focus,textarea:focus{border-color:var(--soft)}
         <p class="note">Shows at the top of every phone and on the lock screen. Leave empty to show the name instead.</p>
         <label>Welcome note</label><textarea id="f_intro" rows="2"></textarea>
         <label>Your script for the welcome screen</label><textarea id="f_intro_notes" rows="5"></textarea>
-        <p class="note">Tip: type {name} in a question or helper line and each person sees their own first name there.</p>
+        <p class="note">Script format: start each paragraph with SAY: (you read it out), READ: (reference on the first line, verse below) or DO: (a note just for you). Leave a blank line between paragraphs. In a poll script, {top1} and {top2} fill in with the live top answers. In questions, {name} becomes each person&rsquo;s first name.</p>
         <div id="f_steps"></div>
         <div class="stepedit">
           <h2>Their card at the end</h2>
@@ -207,14 +222,37 @@ function stepInfo(i){
   return {k:`${kind} · ${i} of ${N()}`, h:s.q.replace(/\{name\},?\s*/g,'').replace(/,\s*\{name\}/g,'').replace(/^./,c=>c.toUpperCase()), notes:s.notes, r:s.ref ? `${s.ref}: ${s.verse}` : '', s};
 }
 
+function topAnswers(){
+  const i = ev.current_step, s = i>=1 && i<=N() ? ev.steps[i-1] : null;
+  if(!s || s.type!=='poll') return ['[top answer]','[second answer]'];
+  const c = st.counts || {};
+  const r = (s.options||[]).map((o,k)=>({o, n:+(c[k]||0)})).sort((a,b)=>b.n-a.n);
+  const nm = x => x && x.n ? x.o.toLowerCase() : null;
+  return [nm(r[0]) || '[top answer]', nm(r[1]) || '[second answer]'];
+}
+function renderScript(notes){
+  const box = $('#script');
+  if(!notes || !notes.trim()){ box.className='script empty'; box.textContent='No script for this card yet. Add one in Edit.'; return; }
+  box.className = 'script';
+  const [t1,t2] = topAnswers();
+  const paras = notes.replace(/\{top1\}/g,t1).replace(/\{top2\}/g,t2).split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);
+  box.innerHTML = paras.map(p => {
+    const m = p.match(/^(SAY|DO|READ)\s*:\s*/i); const kind = m ? m[1].toLowerCase() : 'do';
+    let body = m ? p.slice(m[0].length) : p;
+    if(kind==='read'){
+      const lines = body.split('\n'); const ref = lines.shift();
+      return `<div class="beat read"><span class="lab">READ</span><div class="ref">${esc(ref)}</div><p>${esc(lines.join(' '))}</p></div>`;
+    }
+    return `<div class="beat ${kind}"><span class="lab">${kind.toUpperCase()}</span><p>${esc(body)}</p></div>`;
+  }).join('');
+}
+
 function draw(){
   if(!ev) return;
   $('#evName').textContent = ev.host || ev.title;
   const i = ev.current_step, t = stepInfo(i);
-  $('#now').innerHTML = `<small>${esc(t.k)}</small><h1>${esc(t.h)}</h1>${t.r?`<div class="ref">${esc(t.r)}</div>`:''}`;
-  const sc = $('#script');
-  sc.classList.toggle('empty', !t.notes);
-  $('#scriptText').textContent = t.notes || 'No script for this card yet. Add one in Edit.';
+  $('#now').innerHTML = `<small>${esc(t.k)}</small><h1>${esc(t.h)}</h1>`;
+  renderScript(t.notes);
   // up next
   const n = i+1;
   $('#upnext').innerHTML = n<=N() ? `Up next: <b>${esc(stepInfo(n).h)}</b>` : n===REVEAL() ? 'Up next: <b>their full card</b>' : '';
@@ -265,7 +303,7 @@ async function refresh(){
     const te = s.timer_ms != null ? Date.now() + s.timer_ms : null;
     const timerChanged = (!!te) !== (!!timerEnd) || (te && Math.abs(te - timerEnd) > 1500);
     if(timerChanged) timerEnd = te;
-    if(changed) draw(); else if(oldCounts !== JSON.stringify(s.counts||{}) || timerChanged) drawExtra();
+    if(changed) draw(); else if(oldCounts !== JSON.stringify(s.counts||{}) || timerChanged){ drawExtra(); renderScript(stepInfo(ev.current_step).notes); }
   }catch(e){ setLive(false); }
 }
 

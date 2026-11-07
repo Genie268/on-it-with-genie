@@ -65,7 +65,8 @@ textarea:focus,input[type=text]:focus{border-color:var(--ink);box-shadow:0 0 0 4
 .pulse{width:9px;height:9px;border-radius:50%;background:var(--red);flex:none;animation:p 1.6s infinite}
 @keyframes p{0%{box-shadow:0 0 0 0 rgba(210,64,47,.45)}70%{box-shadow:0 0 0 10px rgba(210,64,47,0)}100%{box-shadow:0 0 0 0 rgba(210,64,47,0)}}
 .hello h1{font-size:clamp(40px,12vw,54px);font-weight:900;line-height:.95;margin:8px 0 10px}
-.hello .lead{font-size:16.5px;color:var(--soft);margin:0 0 20px}
+.hello .lead{font-size:17px;color:var(--soft);margin:0 0 18px}
+.hello #nm{font-size:20px;padding:16px}
 .label{display:block;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);margin-bottom:8px}
 .steps-list{list-style:none;margin:20px 0 0;padding:0;display:grid;gap:9px}
 .steps-list li{display:flex;gap:12px;align-items:center;font-weight:600;font-size:15px}
@@ -122,7 +123,7 @@ textarea:focus,input[type=text]:focus{border-color:var(--ink);box-shadow:0 0 0 4
     <div class="dots" id="dots"></div>
   </div>
   <main id="main"></main>
-  <div class="foot" id="foot">Your answers stay on this phone.</div>
+  <div class="foot hide" id="foot"></div>
 </div>
 
 <div class="modal" id="modal">
@@ -143,16 +144,16 @@ const LS = 'goalcard:' + SLUG;
 
 const DEFAULT = {
   title:'Your Goal Card', host:'Relentless Love Church', logo_url:'',
-  intro:'Keep this page open. Each card opens as the message goes on. Your answers stay on your phone.',
+  intro:'Type your first name. Then look up.',
   wall_ref:'Proverbs 16:3', wall_verse:'Commit your works to the LORD and your plans will be achieved.',
   steps:[
-    {key:'worry',type:'question',q:'What are you worried about for next year?',hint:'Be honest, {name}. Only you will see this.',ex:"e.g. That I'll still be in the same place this time next year",ref:'Matthew 6:27',verse:'Who of you by worrying can add a single hour to his life?'},
-    {key:'worry_poll',type:'poll',q:'{name}, what is that worry mostly about?',hint:'Tap one. Then look at the screen.',options:['Money','School or exams','Work or career','Family','Direction and purpose','Relationships']},
-    {key:'goal',type:'question',q:'{name}, what is the one thing you want to get done?',hint:"One sentence. Plain enough that you'd know when it's done.",ex:'e.g. Sell 20 pairs of shoes by the end of March',ref:'Habakkuk 2:2',verse:'Write down this vision and clearly inscribe it on tablets, so that a herald may run with it.'},
-    {key:'say',type:'pair',q:'Say it out loud',hint:'Turn to the person next to you. Read your goal to them, word for word. Then listen to theirs.',seconds:60,ref:'Proverbs 27:17',verse:'As iron sharpens iron, so one man sharpens another.'},
-    {key:'cost',type:'question',q:'What will it cost you, {name}?',hint:"Sleep, phone time, weekends, money, some friends. Name it now so it doesn't surprise you later.",ex:'e.g. One hour of phone time every night',ref:'Luke 14:28',verse:'Which of you, wishing to build a tower, does not first sit down and count the cost to see if he has the resources to complete it?'},
-    {key:'week',type:'question',q:'{name}, what will you do this week?',hint:'Small enough to start before next Sunday.',ex:'e.g. Post 5 shoes on my WhatsApp status by Wednesday',ref:'Matthew 6:34',verse:'Therefore do not worry about tomorrow, for tomorrow will worry about itself. Today has enough trouble of its own.'},
-    {key:'person',type:'question',q:'Who will check on you?',hint:'One name. Someone who will actually ask.',ex:'e.g. Tolu',ref:'Ecclesiastes 4:10',verse:'For if one falls, his companion can lift him up; but pity the one who falls without another to help him up!'}
+    {key:'worry',type:'question',q:'What are you worried about for next year?',hint:'Be honest, {name}. Only you see this.',ex:"e.g. That I'll still be in the same place this time next year",ref:'Matthew 6:27',verse:'Who of you by worrying can add a single hour to his life?'},
+    {key:'worry_poll',type:'poll',q:'{name}, what is that worry mostly about?',hint:'Tap one.',options:['Money','School or exams','Work or career','Family','Direction and purpose','Relationships']},
+    {key:'goal',type:'question',q:'{name}, what is the one thing you want to get done?',hint:'One sentence.',ex:'e.g. Sell 20 pairs of shoes by the end of March',ref:'Habakkuk 2:2',verse:'Write down this vision and clearly inscribe it on tablets, so that a herald may run with it.'},
+    {key:'say',type:'pair',q:'Say it out loud',hint:'Read it to the person next to you.',seconds:60,ref:'Proverbs 27:17',verse:'As iron sharpens iron, so one man sharpens another.'},
+    {key:'cost',type:'question',q:'What will it cost you, {name}?',hint:'Sleep? Phone time? Weekends?',ex:'e.g. One hour of phone time every night',ref:'Luke 14:28',verse:'Which of you, wishing to build a tower, does not first sit down and count the cost to see if he has the resources to complete it?'},
+    {key:'week',type:'question',q:'{name}, what will you do this week?',hint:'Something you can start before Sunday.',ex:'e.g. Post 5 shoes on my WhatsApp status by Wednesday',ref:'Matthew 6:34',verse:'Therefore do not worry about tomorrow, for tomorrow will worry about itself. Today has enough trouble of its own.'},
+    {key:'person',type:'question',q:'Who will check on you?',hint:'Someone who will actually ask.',ex:'e.g. Tolu',ref:'Ecclesiastes 4:10',verse:'For if one falls, his companion can lift him up; but pity the one who falls without another to help him up!'}
   ]
 };
 
@@ -255,7 +256,7 @@ function renderDots(){
 function waitLine(){
   const u = unlocked();
   if(u >= REVEAL() || view < u) return '';
-  return `<div class="wait"><span class="pulse"></span>${u===0 ? 'The first card opens when the message starts.' : 'Eyes up. The next card opens soon.'}</div>`;
+  return `<div class="wait"><span class="pulse"></span>${u===0 ? 'Now look up. Your first card opens soon.' : 'Eyes up. The next card opens soon.'}</div>`;
 }
 function navHTML(){
   const u = unlocked();
@@ -282,7 +283,6 @@ function render(){
   renderDots();
   clearInterval(timerTick); timerTick = null;
   const m = $('#main');
-  $('#foot').classList.toggle('hide', view >= REVEAL());
   window.scrollTo({top:0});
   if(view === 0) return renderHello(m);
   if(view >= REVEAL()) return renderReveal(m);
@@ -299,7 +299,6 @@ function render(){
           ? `<input type="text" id="ans" maxlength="40" autocomplete="off" placeholder="${esc(s.ex)}">`
           : `<textarea id="ans" maxlength="220" rows="3" placeholder="${esc(s.ex)}"></textarea>`}
         <div class="saved" id="saved">Saved on your phone</div>
-        ${verseHTML(s)}
       </div>
     </div>${navHTML()}`;
   const a = $('#ans'); a.value = answers[s.key] || ''; let t;
@@ -322,14 +321,14 @@ function renderPoll(m, s){
         <div class="opts" id="opts">
           ${(s.options||[]).map((o,i)=>`<button class="opt ${mine===i?'mine':''}" data-i="${i}"><i class="bar"></i><span>${esc(o)}</span><span class="pct"></span></button>`).join('')}
         </div>
-        <div class="voted-note" id="vnote">${mine!=null ? 'Your answer is in. You can change it.' : 'Nobody sees who picked what.'}</div>
+        <div class="voted-note" id="vnote">${mine!=null ? 'Done. Look at the screen.' : 'Nobody sees who picked what.'}</div>
       </div>
     </div>${navHTML()}`;
   m.querySelectorAll('.opt').forEach(b => b.onclick = async () => {
     const i = +b.dataset.i; const prev = answers._votes[s.key];
     answers._votes[s.key] = i; persist();
     m.querySelectorAll('.opt').forEach(x => x.classList.toggle('mine', +x.dataset.i===i));
-    $('#vnote').textContent = 'Your answer is in. You can change it.';
+    $('#vnote').textContent = 'Done. Look at the screen.';
     if(prev !== i){ counts = {...counts}; if(prev!=null) counts[prev] = Math.max(0,(counts[prev]||1)-1); counts[i] = (counts[i]||0)+1; }
     updatePollBars(true);
     try{ navigator.vibrate && navigator.vibrate(20) }catch(e){}
@@ -369,7 +368,6 @@ function renderPair(m, s){
           <div class="ring"><svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" stroke="#EDE4D3" stroke-width="7" fill="none"/><circle id="arc" cx="40" cy="40" r="34" stroke="#D2402F" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="0"/></svg><b id="secs">60</b></div>
           <p id="tmsg">You first. Then swap.</p>
         </div>
-        ${verseHTML(s)}
       </div>
     </div>${navHTML()}`;
   bindNav();
@@ -401,14 +399,9 @@ function renderHello(m){
   m.innerHTML = `
     <div class="card hello"><div class="art">${window.GC_ART ? GC_ART('welcome') : ''}</div>
       <div class="body">
-        <div class="num"><span>${esc((cfg.host||'').toUpperCase())}</span></div>
         <h1>${esc(cfg.title)}</h1>
         <p class="lead">${esc(cfg.intro)}</p>
-        <label class="label" for="nm">Your first name</label>
-        <input type="text" id="nm" maxlength="24" autocomplete="given-name" placeholder="e.g. Ada">
-        <ul class="steps-list">
-          ${cfg.steps.map((s,i)=>`<li class="${s.type!=='question'?'x':''}"><i>${String(i+1).padStart(2,'0')}</i>${esc(shortLabel(s))}</li>`).join('')}
-        </ul>
+        <input type="text" id="nm" maxlength="24" autocomplete="given-name" placeholder="Your first name" aria-label="Your first name">
       </div>
     </div>
     ${u>0 ? `<div class="nav"><button class="btn dark full" id="go">Open card ${u>=REVEAL()?1:u}</button></div>` : waitLine()}`;
