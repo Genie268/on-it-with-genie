@@ -1557,7 +1557,7 @@ async function startEvent(){
       <div class="field"><label for="ev-name">Your name</label><input id="ev-name" autocomplete="name" required></div>
       <div class="field"><label for="ev-email">Email <em>(your pass goes here)</em></label><input id="ev-email" type="email" inputmode="email" autocomplete="email" required></div>
       <div class="field"><label for="ev-phone">WhatsApp number</label><input id="ev-phone" type="tel" inputmode="tel" autocomplete="tel" required></div>
-      <div class="field"><label for="ev-goal">The goal you're bringing <em>(optional)</em></label><input id="ev-goal" maxlength="300" placeholder="e.g. Finish my CV and apply to 5 jobs"></div>
+      <div class="field"><label for="ev-goal">The goal you're bringing <em>(optional)</em></label><input id="ev-goal" maxlength="300" placeholder="e.g. Finish my CV and apply to 5 jobs" value="${esc(goalTestLine())}"><p class="hint" style="margin-top:6px">Not sure it's solid? <a href="/goal?from=event" style="text-decoration:underline;font-weight:600">Test it in 2 minutes</a>.</p></div>
       ${evRef() ? `<p class="ev-inv">Invited by <b>${esc(evRefName(evRef()))}</b></p>` : `<div class="field"><label for="ev-by">Who invited you? <em>(optional)</em></label><input id="ev-by" maxlength="80" autocomplete="off" placeholder="A friend's name, or where you saw this"></div>`}
       <div class="err" id="ev-err" hidden></div>
       <button class="btn btn-ink btn-block" type="submit" id="ev-sub">Get my free pass</button>
@@ -1816,6 +1816,8 @@ const GA = (()=>{
 })();
 const GT_TINTS = ["t-peach","t-sky","t-mint","t-lilac","t-sand"];
 
+/* sharpened goal from the Goal Test (/goal), if they took it in the last day */
+function goalTestLine(){ try{ const g = JSON.parse(localStorage.getItem("goal_test")||"null"); return g && g.sentence && g.at > Date.now()-86400000 ? g.sentence : ""; }catch(_){ return ""; } }
 /* ---------- Communication Gap Test ---------- */
 const GT_SIT = [
   { id:"A", q:"Talking with friends or family", p:"talking with friends or family" },

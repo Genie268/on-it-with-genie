@@ -510,7 +510,8 @@ function pickHTML(){
 }
 function joinScreen(){
   const s = D.squad, me = D.me || {};
-  let pre = {}; try{ const ev = (D.squad && D.squad.event) || "fwg-06"; const p = JSON.parse(localStorage.getItem("ev_"+ev)||localStorage.getItem("ev_fwg-06")||"null"); if(p && p.name) pre.name = p.name; }catch(_){}
+  let pre = {}; try{ const g = JSON.parse(localStorage.getItem("goal_test")||"null"); if(g && g.at > Date.now()-7*86400000){ pre.goal = g.will; pre.proof = g.proof; pre.first = g.first; } }catch(_){}
+  try{ const ev = (D.squad && D.squad.event) || "fwg-06"; const p = JSON.parse(localStorage.getItem("ev_"+ev)||localStorage.getItem("ev_fwg-06")||"null"); if(p && p.name) pre.name = p.name; }catch(_){}
   const by = me.deadline || s.ends_on, shown = D.members.slice(-5);
   $("#root").innerHTML = `<div class="wrap">${bar(esc(s.name), editing ? SQ() : "")}
     ${editing ? "" : `<section class="sq-hd">
@@ -524,12 +525,12 @@ function joinScreen(){
     <form class="blk" id="jf" novalidate ${showPicker() ? "hidden" : ""}>
       <h2>${editing ? (REV() ? "Change your goal" : "Edit your declaration") : SEL ? `${esc(SEL.first)}, declare it` : "Declare it"}</h2>
       <p class="sub">${editing ? (REV() ? `One change only. Your squad will see it used to say "${esc(me.goal||"")}".` : "Your squad sees the new version straight away.") : SEL ? `${SEL.goal ? "This is the goal you registered with. Sharpen it if you need to." : "One goal. Specific enough that anyone could check it."} <button type="button" class="tl" id="notme">Not you?</button>` : "One goal. Specific enough that anyone could check it."}</p>
-      <div class="f big"><label for="goal">I will…</label><textarea id="goal" maxlength="200" rows="2" placeholder="Post 30 TikToks" required>${esc(me.goal||(SEL&&SEL.goal)||"")}</textarea></div>
+      <div class="f big"><label for="goal">I will…</label><textarea id="goal" maxlength="200" rows="2" placeholder="Post 30 TikToks" required>${esc(me.goal||(SEL&&SEL.goal)||(!editing&&pre.goal)||"")}</textarea></div>
       <div class="row2">
         <div class="f"><label for="dl">By</label><input id="dl" type="date" value="${esc(by)}" min="${esc(s.starts_on)}" ${REV()?"disabled":""}></div>
-        <div class="f"><label for="proof">Proof</label><input id="proof" maxlength="200" value="${esc(me.proof||"")}" placeholder="How we'll know"></div>
+        <div class="f"><label for="proof">Proof</label><input id="proof" maxlength="200" value="${esc(me.proof||(!editing&&pre.proof)||"")}" placeholder="How we'll know"></div>
       </div>
-      <div class="f"><label for="fs">First step <em>(next 48 hours)</em></label><input id="fs" maxlength="200" value="${esc(me.first_step||"")}" placeholder="Write 5 video ideas tonight"></div>
+      <div class="f"><label for="fs">First step <em>(next 48 hours)</em></label><input id="fs" maxlength="200" value="${esc(me.first_step||(!editing&&pre.first)||"")}" placeholder="Write 5 video ideas tonight"></div>
       ${editing || SEL ? "" : `<div class="f"><label for="nm">Your name</label><input id="nm" autocomplete="name" value="${esc(pre.name||"")}" required></div>
       <div class="f"><label for="em">Email <em>(your squad link goes here)</em></label><input id="em" type="email" inputmode="email" autocomplete="email" required></div>
       <div class="f"><label for="ph">WhatsApp <em>(optional)</em></label><input id="ph" type="tel" inputmode="tel" autocomplete="tel"></div>`}

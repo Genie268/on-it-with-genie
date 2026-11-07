@@ -93,9 +93,22 @@
           "value": "no-cache, no-store, must-revalidate"
         }
       ]
+    },
+    {
+      "source": "/goal",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
     }
   ],
   "rewrites": [
+    {
+      "source": "/goal",
+      "destination": "/goal.html"
+    },
     {
       "source": "/squad",
       "destination": "/squad.html"

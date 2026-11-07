@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Goal Test · with Genie</title>
+<meta name="description" content="Is your goal real, or a wish? 6 quick questions. Get a score, the one thing holding it back, and a goal you can say out loud.">
+<meta name="theme-color" content="#EAE6DD">
+<meta property="og:title" content="Goal Test: is your goal real, or a wish?">
+<meta property="og:description" content="6 quick questions. 2 minutes. Find the one thing holding your goal back.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%230F0F10'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-size='17' font-weight='800' fill='%23C8EF62' font-family='system-ui'%3EG%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#EAE6DD;--surface:#FAF8F3;--ink:#0F0F10;--muted:#6C6C70;--line:#DCD6CA;
+  --lime:#C8EF62;--mint:#DDF2E3;--peach:#FCE3D6;--lilac:#E7E2F7;--sky:#DCEBF7;--sand:#F3EBD9;--red:#D7401C;
+  --display:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font-family:var(--display);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px;border-radius:12px}
+h1,h2,h3{margin:0;letter-spacing:-0.035em;line-height:1.05;text-wrap:balance}
+p{margin:0}
+.wrap{max-width:560px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 80px}
+.top{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px}
+.mark{width:38px;height:38px;border-radius:50%;background:var(--ink);color:var(--lime);display:grid;place-items:center;font-weight:800;font-size:16px}
+.mono{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:22px}
+.hero{background:var(--ink);color:#fff;border-radius:28px;padding:26px 22px 22px;position:relative;overflow:hidden}
+.hero .mono{color:var(--lime)}
+.hero h1{font-size:clamp(36px,10vw,52px);font-weight:800;margin:14px 0 12px}
+.hero p{color:#CFCFCA;font-size:16.5px;max-width:32ch}
+.meter{display:flex;gap:6px;margin:22px 0 22px}
+.meter i{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.14)}
+.meter i.on{background:var(--lime)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;padding:0 22px;border-radius:999px;font-weight:700;font-size:16.5px;transition:transform .15s ease,opacity .15s}
+.btn:active{transform:scale(.98)}
+.btn-lime{background:var(--lime);color:var(--ink)}
+.btn-ink{background:var(--ink);color:#fff}
+.btn-line{border:1.5px solid var(--ink);color:var(--ink);background:transparent}
+.btn[disabled]{opacity:.45}
+.what{display:grid;gap:10px;margin-top:14px}
+.what li{display:flex;gap:12px;align-items:center;font-size:15px}
+.what b{width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--lime);display:grid;place-items:center;font-size:13px;flex:none}
+ul{list-style:none;margin:0;padding:0}
+.qtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;color:var(--muted)}
+.qtop button{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:6px 0;color:var(--muted)}
+.prog{height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin-bottom:22px}
+.prog i{display:block;height:100%;background:var(--ink);border-radius:99px;transition:width .35s ease}
+.q{font-size:clamp(26px,7vw,32px);font-weight:800;margin-bottom:8px}
+.sub{color:var(--muted);font-size:15px;margin-bottom:18px}
+.opts{display:grid;gap:9px}
+.opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:16px;border-radius:18px;border:1.5px solid var(--line);background:#fff;font-size:15.5px;font-weight:600;line-height:1.35;transition:border-color .15s,background .15s}
+.opt:hover{border-color:var(--ink)}
+.opt[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.opt .k{width:28px;height:28px;border-radius:50%;background:var(--bg);display:grid;place-items:center;font-family:var(--mono);font-size:12px;flex:none;color:var(--ink)}
+.opt[aria-pressed="true"] .k{background:var(--lime)}
+.opt small{display:block;font-weight:500;color:var(--muted);font-size:13.5px;margin-top:2px}
+.opt[aria-pressed="true"] small{color:#BDBDB8}
+.in{width:100%;border-radius:16px;border:1.5px solid var(--line);background:#fff;padding:14px 15px;font:inherit;font-size:16px;color:var(--ink)}
+.in:focus{border-color:var(--ink);outline:none}
+textarea.in{min-height:96px;resize:vertical;font-size:17px;font-weight:600}
+.lab{display:block;font-size:13px;font-weight:700;margin:14px 0 6px}
+.lab em{font-style:normal;font-weight:500;color:var(--muted)}
+.ex{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.ex button{font-size:13px;padding:7px 11px;border-radius:999px;background:var(--sand);border:1px solid var(--line)}
+.anim{animation:in .28s ease both}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.score{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.ring{width:118px;height:118px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .n{position:absolute;inset:0;display:grid;place-items:center;text-align:center;line-height:1}
+.ring .n b{font-size:38px;font-weight:800;letter-spacing:-0.04em}
+.ring .n span{display:block;font-family:var(--mono);font-size:11px;color:#9a9a96;margin-top:2px}
+.band{font-size:clamp(28px,8vw,36px);font-weight:800}
+.bandline{color:#CFCFCA;font-size:15px;margin-top:6px}
+.bars{display:grid;gap:10px;margin-top:20px}
+.bar{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;font-size:13.5px}
+.bar .t{height:9px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+.bar .t i{display:block;height:100%;border-radius:99px;background:var(--lime);transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.bar .t i.weak{background:#FF7A55}
+.bar span{color:#CFCFCA}
+.fix{background:var(--peach);border-radius:22px;padding:18px;margin-top:12px}
+.fix .mono{color:var(--red)}
+.fix h3{font-size:22px;font-weight:800;margin:8px 0 6px}
+.fix p{font-size:15px;color:#3a3a3d}
+.sec{margin-top:26px}
+.sec h2{font-size:24px;font-weight:800}
+.sec>p{color:var(--muted);font-size:15px;margin-top:6px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.say{background:var(--ink);color:#fff;border-radius:24px;padding:22px;margin-top:16px}
+.say .mono{color:var(--lime)}
+.say .line{font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1.25;margin-top:10px}
+.say ul{margin-top:12px;display:grid;gap:6px;font-size:15px;color:#CFCFCA}
+.say ul b{color:#fff;font-weight:700}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.tip{font-size:13.5px;color:var(--muted);text-align:center;margin-top:10px}
+.next{display:grid;gap:10px;margin-top:14px}
+.nx{display:flex;align-items:center;gap:14px;padding:16px;border-radius:20px;background:var(--surface);border:1px solid var(--line)}
+.nx .ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;flex:none;font-size:20px}
+.nx b{display:block;font-size:15.5px}
+.nx small{color:var(--muted);font-size:13.5px}
+.nx .ch{margin-left:auto;font-size:22px;color:var(--muted)}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px;margin-top:12px;color:#3a3a3d}
+.check input{width:20px;height:20px;margin:1px 0 0;accent-color:var(--ink)}
+.err{color:#B3261E;font-size:14px;margin-top:8px}
+.ok{background:var(--mint);border-radius:16px;padding:14px;font-size:15px;margin-top:12px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;background:var(--ink);color:#fff;padding:12px 18px;border-radius:999px;font-size:14.5px;font-weight:600;transition:.25s;pointer-events:none;z-index:9}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid currentColor;border-right-color:transparent;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><a class="brand" href="/?home"><span class="mark">G</span>with Genie</a><span class="mono" style="color:var(--muted)">Goal Test</span></header>
+  <main id="root"></main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const API = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/goal-api";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const SRC = (new URLSearchParams(location.search).get("from") || "").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 30);
+
+/* Six checks. Points add up to 100. "In your control" weighs most: it's what breaks most goals. */
+const QS = [
+  { k:"finish", label:"Finish line", q:"Could a stranger tell when it's done?", sub:"Picture someone who doesn't know you, checking your goal.",
+    o:[["Yes. There's a number or a clear finish line",20],["Sort of. I'd know it when I see it",8],["No. It's more of a direction",0]] },
+  { k:"date", label:"Deadline", q:"When is it due?", sub:"Be honest. \"Soon\" is not a date.",
+    o:[["A date within the next 30 days",15],["A date, but it's months away",8],["No date yet",0]] },
+  { k:"control", label:"In your control", q:"If you do your part, can anything stop it?", sub:"Think about money, approval, other people saying yes.",
+    o:[["No. It's all on me",25],["Partly. I need one or two people to say yes",10],["Yes. It depends on others, or money I don't have",0]] },
+  { k:"time", label:"Time", q:"How many hours a week can you really give it?", sub:"Not the hours you wish you had.",
+    o:[["5 hours or more",15],["2 to 4 hours",10],["Less than 2",4],["I haven't thought about it",0]] },
+  { k:"first", label:"First step", q:"Could you start in the next 24 hours?", sub:"Something you could do tonight or tomorrow morning.",
+    o:[["Yes. I know exactly what I'd do first",15],["I'd have to figure out where to start",5],["Not until something else happens",0]] },
+  { k:"proof", label:"Proof", q:"How will people know you did it?", sub:"Proof is what stops you letting yourself off.",
+    o:[["They'll see it: a post, a link, a photo",10],["I'll tell them",3],["They won't",0]] },
+];
+const MAX = Object.fromEntries(QS.map(q => [q.k, q.o[0][1]]));
+const FIX = {
+  finish:{ t:"No finish line", p:"Put a number on it. “Grow my YouTube” becomes “Post 4 YouTube videos”. If a stranger can't check it, neither can you." },
+  date:{ t:"No real deadline", p:"Give it a date inside 30 days. Without a date, “next week” never ends." },
+  control:{ t:"It depends on other people", p:"Make it about what you do, not what others decide. “Build a team” becomes “Ask 5 people to join me”. You control the asking, not the yes." },
+  time:{ t:"No time set aside", p:"Block the hours now: which days, what time. Or shrink the goal to fit the time you really have." },
+  first:{ t:"No first step", p:"Shrink the first step until you could do it tonight. “Start a business” becomes “Write down 3 business names”." },
+  proof:{ t:"Nobody will see it", p:"Pick proof people can see: a link, a post, a photo. If nobody can see it, you'll let yourself off." },
+};
+const ORDER = ["control","finish","date","first","time","proof"];   // tie-break: what breaks goals most
+const BANDS = [
+  [80, "Ready to declare.", "This goal is real. Say it out loud and start."],
+  [55, "Close.", "One weak spot. Fix it and this goal holds."],
+  [30, "Still a wish.", "There's a goal in here. Sharpen it before you bet your month on it."],
+  [0,  "Not a goal yet.", "Right now this is a hope. Let's turn it into something you can actually do."],
+];
+const EXAMPLES = ["Grow my YouTube","Get fit","Start my business","Read more books"];
+
+const S = { i:-1, goal:"", a:{}, id:null, saved:false };
+let toastT;
+function toast(m){ const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove("on"), 2400); }
+const post = b => fetch(API, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(b) }).then(r=>r.json()).catch(()=>({ ok:false }));
+const pts = k => S.a[k] == null ? 0 : QS.find(q=>q.k===k).o[S.a[k]][1];
+const total = () => QS.reduce((n,q)=>n+pts(q.k), 0);
+const weakest = () => ORDER.slice().sort((x,y)=> (MAX[y]-pts(y)) - (MAX[x]-pts(x)) || ORDER.indexOf(x)-ORDER.indexOf(y))[0];
+const band = n => BANDS.find(b => n >= b[0]);
+const isoIn = d => { const t = new Date(Date.now() + 3600000 + d*86400000); return t.toISOString().slice(0,10); };
+const nice = iso => iso ? new Date(iso+"T12:00:00Z").toLocaleDateString("en-GB",{ weekday:"short", day:"numeric", month:"short", timeZone:"UTC" }) : "";
+const willText = s => String(s||"").trim().replace(/^i\s+will\s+/i,"").replace(/^to\s+/i,"").replace(/[.\s]+$/,"");
+function go(i){ S.i = i; render(); window.scrollTo({ top:0, behavior:"smooth" }); }
+
+function render(){
+  const R = $("#root");
+  if(S.i < 0){
+    R.innerHTML = `<section class="hero anim"><div class="mono">Goal Test · 2 minutes</div>
+      <h1>Is your goal real, or a wish?</h1>
+      <p>Six quick questions. You get a score, the one thing holding your goal back, and a goal you can say out loud.</p>
+      <div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+      <button class="btn btn-lime" id="start">Test my goal</button></section>
+      <div class="card anim" style="margin-top:12px"><div class="mono" style="color:var(--muted)">What it checks</div>
+      <ul class="what"><li><b>1</b>Could anyone tell when it's done?</li><li><b>2</b>Is there a real deadline?</li><li><b>3</b>Is it in your control?</li><li><b>4</b>Do you have the time?</li><li><b>5</b>Can you start in 24 hours?</li><li><b>6</b>Will anyone see the proof?</li></ul></div>`;
+    $("#start").onclick = ()=>go(0);
+    return;
+  }
+  if(S.i === 0){
+    R.innerHTML = `<div class="anim">${qtop(0)}
+      <h2 class="q">What's the goal?</h2><p class="sub">Write it the way you'd say it to a friend. Messy is fine. We'll sharpen it.</p>
+      <textarea class="in" id="g" maxlength="300" placeholder="e.g. Grow my YouTube channel">${esc(S.goal)}</textarea>
+      <div class="ex">${EXAMPLES.map(e=>`<button type="button" data-e="${esc(e)}">${esc(e)}</button>`).join("")}</div>
+      <div class="err" id="gerr" hidden></div>
+      <div style="height:18px"></div><button class="btn btn-ink" id="nx">Next</button></div>`;
+    wireTop();
+    const g = $("#g");
+    document.querySelectorAll(".ex button").forEach(b=>b.onclick=()=>{ g.value = b.dataset.e; g.focus(); });
+    $("#nx").onclick = ()=>{ const v = g.value.trim(); if(v.length < 3){ $("#gerr").textContent = "Write your goal first, even roughly."; $("#gerr").hidden = false; return; } S.goal = v; go(1); };
+    return;
+  }
+  if(S.i <= QS.length){
+    const q = QS[S.i-1], cur = S.a[q.k];
+    R.innerHTML = `<div class="anim">${qtop(S.i)}
+      <h2 class="q">${esc(q.q)}</h2><p class="sub">${esc(q.sub)}</p>
+      <div class="opts">${q.o.map((o,j)=>`<button type="button" class="opt" data-j="${j}" aria-pressed="${cur===j}"><span class="k">${"ABCD"[j]}</span><span>${esc(o[0])}</span></button>`).join("")}</div></div>`;
+    wireTop();
+    document.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{
+      S.a[q.k] = +b.dataset.j; S.saved = false;
+      document.querySelectorAll(".opt").forEach(x=>x.setAttribute("aria-pressed", x===b));
+      setTimeout(()=>go(S.i+1), 240);
+    });
+    return;
+  }
+  result(R);
+}
+function qtop(i){
+  const n = QS.length + 1, pct = Math.round(i/n*100);
+  return `<div class="qtop"><button type="button" id="back">${i>0?"Back":"Start"}</button><span class="mono">${i+1} of ${n}</span></div><div class="prog"><i style="width:${pct}%"></i></div>`;
+}
+function wireTop(){ const b = $("#back"); if(b) b.onclick = ()=>go(S.i-1); }
+
+function result(R){
+  const n = total(), [, title, line] = band(n), wk = weakest(), C = 2*Math.PI*52;
+  if(!S.saved){ S.saved = true; post({ action:"save", goal:S.goal, answers:S.a, score:n, weakest:wk, source:SRC }).then(r=>{ if(r.ok) S.id = r.id; }); }
+  const prev = load();
+  const f = { will: prev.will || willText(S.goal), by: prev.by || isoIn(30), proof: prev.proof || "", first: prev.first || "" };
+  R.innerHTML = `<section class="hero anim">
+      <div class="mono">Your goal</div><p style="color:#fff;font-size:17px;font-weight:600;margin-top:6px">“${esc(S.goal)}”</p>
+      <div class="score" style="margin-top:18px">
+        <div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/><circle id="arc" cx="60" cy="60" r="52" fill="none" stroke="#C8EF62" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C}" style="transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)"/></svg><div class="n"><div><b id="num">0</b><span>/ 100</span></div></div></div>
+        <div><div class="band">${esc(title)}</div><p class="bandline">${esc(line)}</p></div>
+      </div>
+      <div class="bars">${QS.map(q=>`<div class="bar"><span>${esc(q.label)}</span><div class="t"><i class="${q.k===wk && n<100 ? "weak" : ""}" style="width:0" data-w="${Math.round(pts(q.k)/MAX[q.k]*100)}"></i></div></div>`).join("")}</div>
+    </section>
+    ${n < 100 ? `<div class="fix anim"><div class="mono">What's holding it back</div><h3>${esc(FIX[wk].t)}</h3><p>${esc(FIX[wk].p)}</p></div>` : `<div class="fix anim" style="background:var(--mint)"><div class="mono" style="color:#178A4A">Nothing to fix</div><h3>Every check passed.</h3><p>Write it down below and tell someone today.</p></div>`}
+    <section class="sec">
+      <h2>Now sharpen it</h2><p>Fill these in. This is the sentence you say out loud.</p>
+      <label class="lab" for="f-will">I will… <em>(with a number)</em></label><input class="in" id="f-will" maxlength="200" value="${esc(f.will)}" placeholder="post 4 YouTube videos">
+      <div class="row2"><div><label class="lab" for="f-by">By</label><input class="in" id="f-by" type="date" value="${esc(f.by)}" min="${isoIn(1)}"></div>
+        <div><label class="lab" for="f-proof">Proof</label><input class="in" id="f-proof" maxlength="200" value="${esc(f.proof)}" placeholder="the videos on my channel"></div></div>
+      <label class="lab" for="f-first">First step <em>(next 24 hours)</em></label><input class="in" id="f-first" maxlength="200" value="${esc(f.first)}" placeholder="script video 1 tonight">
+      <div class="say" id="say"></div>
+      <div class="acts"><button class="btn btn-ink" id="copy">Copy</button><a class="btn btn-line" id="wa" target="_blank" rel="noopener">WhatsApp</a></div>
+      <p class="tip">Say it out loud once. If it sounds vague to you, it is.</p>
+    </section>
+    <section class="sec card" id="mail">
+      <h2 style="font-size:21px">Email it to yourself</h2><p style="color:var(--muted);font-size:14.5px;margin-top:6px">So you have it when the week gets busy.</p>
+      <input class="in" id="m-name" style="margin-top:12px" maxlength="80" autocomplete="given-name" placeholder="First name">
+      <input class="in" id="m-email" style="margin-top:8px" type="email" inputmode="email" autocomplete="email" placeholder="Email">
+      <label class="check"><input type="checkbox" id="m-opt" checked><span>Also send me Genie's emails on getting things done</span></label>
+      <div class="err" id="m-err" hidden></div>
+      <div style="height:12px"></div><button class="btn btn-ink" id="m-send">Send it to me</button>
+    </section>
+    <section class="sec">
+      <h2>Keep it alive</h2>
+      <div class="next">
+        ${SRC==="event" ? `<a class="nx" href="/events"><span class="ic" style="background:var(--lime)">←</span><span><b>Back to your pass</b><small>Your sharpened goal is filled in for you</small></span><span class="ch">›</span></a>` : ""}
+        <a class="nx" href="/events"><span class="ic" style="background:var(--peach)">🗣</span><span><b>Say it in a room</b><small>Forward with Genie, Abuja. Free pass.</small></span><span class="ch">›</span></a>
+        <a class="nx" href="/app"><span class="ic" style="background:var(--lilac)">✓</span><span><b>Have Genie check on you daily</b><small>The 15-day challenge</small></span><span class="ch">›</span></a>
+        <button class="nx" id="again" style="text-align:left;width:100%"><span class="ic" style="background:var(--sand)">↻</span><span><b>Test another goal</b><small>Or test this one again after sharpening</small></span><span class="ch">›</span></button>
+      </div>
+    </section>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    $("#arc").style.strokeDashoffset = C*(1-n/100);
+    document.querySelectorAll(".bar i").forEach(i=>i.style.width = i.dataset.w+"%");
+    const el = $("#num"), t0 = performance.now();
+    (function tick(t){ const p = Math.min(1,(t-t0)/900); el.textContent = Math.round(n*(1-Math.pow(1-p,3))); if(p<1) requestAnimationFrame(tick); })(t0);
+  }));
+  const ids = ["f-will","f-by","f-proof","f-first"];
+  ids.forEach(id=>$("#"+id).addEventListener("input", sayUpdate));
+  sayUpdate();
+  $("#copy").onclick = async ()=>{ const t = sentence(true); try{ await navigator.clipboard.writeText(t); toast("Copied"); }catch(_){ toast("Couldn't copy. Hold and copy instead."); } };
+  $("#again").onclick = ()=>{ Object.assign(S, { i:0, goal:"", a:{}, id:null, saved:false }); render(); window.scrollTo(0,0); };
+  $("#m-send").onclick = sendMail;
+}
+function vals(){ return { will:willText($("#f-will").value), by:$("#f-by").value, proof:$("#f-proof").value.trim(), first:$("#f-first").value.trim() }; }
+function sentence(plain){
+  const v = vals(), will = v.will || "…";
+  const head = `${v.by ? `By ${nice(v.by)}, I` : "I"} will ${will}.`;
+  if(!plain) return head;
+  return [head, v.proof ? `Proof: ${v.proof}.` : "", v.first ? `First step: ${v.first}.` : ""].filter(Boolean).join(" ");
+}
+function sayUpdate(){
+  const v = vals();
+  $("#say").innerHTML = `<div class="mono">Say it like this</div><div class="line">${esc(sentence(false))}</div>
+    ${v.proof || v.first ? `<ul>${v.proof?`<li><b>Proof:</b> ${esc(v.proof)}</li>`:""}${v.first?`<li><b>First step:</b> ${esc(v.first)}</li>`:""}</ul>` : ""}`;
+  $("#wa").href = "https://wa.me/?text=" + encodeURIComponent(`My goal: ${sentence(true)}\n\nTest yours in 2 minutes: https://eugeneobo.com/goal`);
+  try{ localStorage.setItem("goal_test", JSON.stringify({ ...v, sentence:sentence(true), score:total(), at:Date.now() })); }catch(_){}
+}
+function load(){ try{ const g = JSON.parse(localStorage.getItem("goal_test")||"null"); return g && g.at > Date.now()-3600000 ? g : {}; }catch(_){ return {}; } }
+async function sendMail(){
+  const e = $("#m-err"), b = $("#m-send"), email = $("#m-email").value.trim(), v = vals();
+  const show = m => { e.textContent = m; e.hidden = false; };
+  if(v.will.length < 3) return show("Fill in “I will…” first.");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return show("Check your email address.");
+  e.hidden = true; b.disabled = true; b.innerHTML = '<span class="spin"></span>';
+  for(let k=0; !S.id && k<20; k++) await new Promise(r=>setTimeout(r,200));
+  if(!S.id){ const r0 = await post({ action:"save", goal:S.goal, answers:S.a, score:total(), weakest:weakest(), source:SRC }); if(r0.ok) S.id = r0.id; }
+  const r = S.id ? await post({ action:"email", id:S.id, email, name:$("#m-name").value.trim(), opt_in:$("#m-opt").checked, will:v.will, by:v.by, proof:v.proof, first_step:v.first }) : { ok:false };
+  if(r.ok){ $("#mail").innerHTML = `<h2 style="font-size:21px">Sent.</h2><div class="ok">Check your inbox for “Your goal, sharpened”. If it's not there in a few minutes, look in spam.</div>`; return; }
+  b.disabled = false; b.textContent = "Send it to me"; show("Couldn't send. Try again.");
+}
+render();
+</script>
+</body>
+</html>
