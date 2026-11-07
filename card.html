@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F3EEE4">
+<title>Your Goal Card</title>
+<meta name="description" content="Write your goal down, one card at a time.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2317140F'/%3E%3Cpath d='M18 34l9 9 19-21' stroke='%23E2513F' stroke-width='7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F3EEE4; --card:#FFFDF8; --ink:#17140F; --soft:#6B6357; --line:#E3DBCC;
+  --red:#D2402F; --red-soft:#F7DCD5; --green:#1F7A4D;
+  --shadow:0 1px 0 rgba(23,20,15,.04), 0 18px 40px -18px rgba(23,20,15,.28);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--paper);color:var(--ink)}
+body{font-family:Manrope,system-ui,sans-serif;font-size:16px;line-height:1.5;min-height:100dvh;
+  background-image:radial-gradient(rgba(23,20,15,.035) 1px,transparent 1px);background-size:18px 18px}
+.wrap{max-width:520px;margin:0 auto;padding:16px 16px calc(28px + env(safe-area-inset-bottom));min-height:100dvh;display:flex;flex-direction:column}
+h1,h2,.display{font-family:Archivo,system-ui,sans-serif;font-stretch:88%;letter-spacing:-.01em;margin:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 2px 14px}
+.brand{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--soft)}
+.dots{display:flex;gap:6px}
+.dot{width:22px;height:6px;border-radius:6px;background:var(--line);transition:background .3s,width .3s}
+.dot.open{background:var(--ink)}
+.dot.here{background:var(--red);width:30px}
+main{flex:1;display:flex;flex-direction:column}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:24px 22px 22px;position:relative;animation:rise .45s cubic-bezier(.2,.8,.2,1)}
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:none}}
+.num{font-family:Archivo;font-weight:800;font-size:13px;letter-spacing:.12em;color:var(--red);display:flex;justify-content:space-between;align-items:center}
+.num span:last-child{color:var(--soft);font-weight:600}
+.q{font-size:clamp(27px,7.6vw,34px);font-weight:850;line-height:1.08;margin:12px 0 10px}
+.hint{color:var(--soft);font-size:15px;margin:0 0 16px}
+textarea,input[type=text]{width:100%;font:inherit;font-size:18px;font-weight:600;color:var(--ink);background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:14px 15px;outline:none;transition:border-color .2s, box-shadow .2s;resize:none}
+textarea{min-height:96px}
+textarea:focus,input[type=text]:focus{border-color:var(--ink);box-shadow:0 0 0 4px rgba(23,20,15,.07)}
+::placeholder{color:#B3AA9B;font-weight:500}
+.saved{font-size:12px;color:var(--green);font-weight:700;height:18px;margin-top:6px;opacity:0;transition:opacity .3s}
+.saved.on{opacity:1}
+.verse{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
+.verse b{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink)}
+.verse p{margin:4px 0 0;color:var(--soft);font-size:14.5px}
+.nav{display:flex;gap:10px;margin-top:14px}
+.btn{appearance:none;border:0;font:inherit;font-weight:700;font-size:16px;border-radius:14px;padding:15px 18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;transition:transform .12s, opacity .2s}
+.btn:active{transform:scale(.97)}
+.btn.dark{background:var(--ink);color:#fff}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.wa{background:#1FAF5A;color:#fff}
+.btn.red{background:var(--red);color:#fff}
+.btn.full{width:100%}
+.btn[disabled]{opacity:.35;pointer-events:none}
+.wait{display:flex;align-items:center;gap:10px;justify-content:center;color:var(--soft);font-size:14px;font-weight:600;padding:16px 4px 0;text-align:center}
+.pulse{width:9px;height:9px;border-radius:50%;background:var(--red);flex:none;animation:p 1.6s infinite}
+@keyframes p{0%{box-shadow:0 0 0 0 rgba(210,64,47,.45)}70%{box-shadow:0 0 0 10px rgba(210,64,47,0)}100%{box-shadow:0 0 0 0 rgba(210,64,47,0)}}
+.hello h1{font-size:clamp(40px,12vw,56px);font-weight:900;line-height:.95;margin:6px 0 12px}
+.hello .lead{font-size:17px;color:var(--soft);margin:0 0 22px}
+.label{display:block;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);margin-bottom:8px}
+.steps-list{list-style:none;margin:20px 0 0;padding:0;display:grid;gap:8px}
+.steps-list li{display:flex;gap:12px;align-items:center;font-weight:600;font-size:15px}
+.steps-list i{font-style:normal;font-family:Archivo;font-weight:800;font-size:12px;width:28px;height:28px;border-radius:8px;background:var(--paper);display:grid;place-items:center;color:var(--soft);flex:none}
+/* reveal */
+.reveal h1{font-size:clamp(34px,10vw,46px);font-weight:900;line-height:1;margin:4px 0 18px}
+.row{padding:14px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0;padding-top:4px}
+.row small{display:block;font-size:11.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--soft);margin-bottom:4px}
+.row .v{font-size:19px;font-weight:700;line-height:1.3}
+.row .v.big{font-family:Archivo;font-weight:850;font-size:clamp(24px,7vw,30px);line-height:1.1}
+.struck{background-image:linear-gradient(var(--red),var(--red));background-repeat:no-repeat;background-position:0 58%;background-size:0% 3px;box-decoration-break:clone;-webkit-box-decoration-break:clone;color:var(--soft);transition:background-size 1.1s cubic-bezier(.6,0,.2,1) .5s, color .6s .9s}
+.struck.go{background-size:100% 3px;color:#9C9385}
+.instead{display:inline-block;background:var(--red);color:#fff;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:4px 9px;border-radius:7px;margin-bottom:8px;opacity:0;transform:translateY(6px);transition:all .5s 1.7s}
+.instead.go{opacity:1;transform:none}
+.week-row .v{opacity:0;transform:translateY(8px);transition:all .6s 1.9s}
+.week-row.go .v{opacity:1;transform:none}
+.actions{display:grid;gap:10px;margin-top:16px}
+.small-link{background:none;border:0;color:var(--soft);font:inherit;font-weight:600;font-size:14px;text-decoration:underline;text-underline-offset:3px;padding:12px;cursor:pointer}
+.empty-note{color:var(--soft);font-style:normal}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(23,20,15,.86);display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;z-index:20;gap:14px}
+.modal.on{display:flex}
+.modal img{max-height:66dvh;max-width:100%;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal p{color:#EDE6D8;margin:0;font-size:14px;text-align:center}
+.modal .btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.foot{text-align:center;font-size:12px;color:#A39A8B;margin-top:18px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand" id="host">Relentless Love Church</div>
+    <div class="dots" id="dots"></div>
+  </div>
+  <main id="main"></main>
+  <div class="foot" id="foot">Your answers stay on this phone.</div>
+</div>
+
+<div class="modal" id="modal">
+  <img id="wallImg" alt="Your goal card as a lock screen">
+  <p id="modalTip">Press and hold the picture, then tap Save.</p>
+  <div class="btns">
+    <a class="btn red" id="dlBtn" download="my-goal-card.png">Download</a>
+    <button class="btn ghost" style="color:#fff;border-color:rgba(255,255,255,.3)" id="shareBtn">Share</button>
+    <button class="btn ghost" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://vbafqulhbskaswkyjjdn.supabase.co';
+const SB_KEY = 'sb_publishable_XK50Ttn1qZW7HvNz1EMFhQ_gzsvAFko';
+const SLUG = (new URLSearchParams(location.search).get('e') || 'rlc').toLowerCase();
+const LS = 'goalcard:' + SLUG;
+
+const DEFAULT = {
+  title:'Your Goal Card', host:'Relentless Love Church',
+  intro:'Keep this page open. Each question opens as the message goes on. Your answers stay on your phone.',
+  wall_ref:'Proverbs 16:3', wall_verse:'Commit thy works unto the LORD, and thy thoughts shall be established.',
+  steps:[
+    {key:'worry',q:'What are you worried about for next year?',hint:'Be honest. Only you will see this.',ex:"e.g. That I'll still be in the same place this time next year",ref:'Matthew 6:27',verse:'Which of you by taking thought can add one cubit unto his stature?'},
+    {key:'goal',q:'What is the one thing you want to get done?',hint:"One sentence. Plain enough that you'd know when it's done.",ex:'e.g. Sell 20 pairs of shoes by the end of March',ref:'Habakkuk 2:2',verse:'Write the vision, and make it plain upon tables, that he may run that readeth it.'},
+    {key:'cost',q:'What will it cost you?',hint:"Sleep, phone time, weekends, money, some friends. Name it now so it doesn't surprise you later.",ex:'e.g. One hour of phone time every night',ref:'Luke 14:28',verse:'For which of you, intending to build a tower, sitteth not down first, and counteth the cost, whether he have sufficient to finish it?'},
+    {key:'week',q:'What will you do this week?',hint:'Small enough to start before next Sunday.',ex:'e.g. Post 5 shoes on my WhatsApp status by Wednesday',ref:'Matthew 6:34',verse:'Take therefore no thought for the morrow: for the morrow shall take thought for the things of itself.'},
+    {key:'person',q:'Who will check on you?',hint:'One name. Someone who will actually ask.',ex:'e.g. Tolu',ref:'Ecclesiastes 4:9',verse:'Two are better than one; because they have a good reward for their labour.'}
+  ]
+};
+
+let cfg = DEFAULT, live = {current_step:0, free_mode:false, updated_at:null};
+let answers = {}, view = 0, lastUnlocked = -1, fails = 0, offline = false;
+try{ answers = JSON.parse(localStorage.getItem(LS)) || {} }catch(e){}
+function persist(){ try{ localStorage.setItem(LS, JSON.stringify(answers)) }catch(e){} }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const unlocked = () => (live.free_mode || offline) ? 6 : Math.max(0, Math.min(6, live.current_step|0));
+const N = () => cfg.steps.length;
+
+async function api(path){
+  const r = await fetch(SB_URL + '/rest/v1/' + path, {headers:{apikey:SB_KEY}, cache:'no-store'});
+  if(!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+async function loadAll(){
+  try{
+    const rows = await api(`goalcard_events?slug=eq.${encodeURIComponent(SLUG)}&select=*`);
+    if(rows[0]){
+      const r = rows[0];
+      cfg = {title:r.title, host:r.host, intro:r.intro, wall_ref:r.wall_ref, wall_verse:r.wall_verse,
+             steps:Array.isArray(r.steps) && r.steps.length ? r.steps : DEFAULT.steps};
+      live = {current_step:r.current_step, free_mode:r.free_mode, updated_at:r.updated_at};
+    }
+    fails = 0; offline = false;
+  }catch(e){ fails++; if(fails >= 2) offline = true; }
+  $('#host').textContent = cfg.host || '';
+  document.title = cfg.title || 'Your Goal Card';
+  view = unlocked(); lastUnlocked = view;
+  render();
+}
+
+async function poll(){
+  if(document.hidden) return;
+  try{
+    const rows = await api(`goalcard_events?slug=eq.${encodeURIComponent(SLUG)}&select=current_step,free_mode,updated_at`);
+    fails = 0;
+    if(offline){ offline = false; }
+    const r = rows[0]; if(!r) return;
+    const stepChanged = r.current_step !== live.current_step || r.free_mode !== live.free_mode;
+    const changed = r.updated_at !== live.updated_at;
+    live = r;
+    if(changed && !stepChanged){ return loadAll(); }
+    if(stepChanged) onUnlock();
+  }catch(e){
+    fails++;
+    if(fails >= 6 && !offline){ offline = true; onUnlock(); }
+  }
+}
+
+function onUnlock(){
+  const u = unlocked();
+  if(u > lastUnlocked){
+    lastUnlocked = u;
+    if(!(live.free_mode || offline) || view >= u - 1){ view = u; }
+    try{ navigator.vibrate && navigator.vibrate(40) }catch(e){}
+    render();
+  } else if(u < lastUnlocked){
+    lastUnlocked = u; if(view > u) view = u; render();
+  } else { renderDots(); }
+}
+
+function renderDots(){
+  const u = unlocked(), n = N();
+  let h = '';
+  for(let i=1;i<=n;i++) h += `<div class="dot ${i<=u?'open':''} ${i===view?'here':''}"></div>`;
+  $('#dots').innerHTML = h;
+}
+
+function waitLine(){
+  const u = unlocked();
+  if(u >= 6 || view < u) return '';
+  return `<div class="wait"><span class="pulse"></span>${u===0 ? 'The first card opens when the message starts.' : 'Eyes up. The next card opens soon.'}</div>`;
+}
+
+function render(){
+  renderDots();
+  const m = $('#main');
+  $('#foot').classList.toggle('hide', view >= 6);
+  if(view === 0) return renderHello(m);
+  if(view >= 6 || view > N()) return renderReveal(m);
+  const s = cfg.steps[view-1], u = unlocked();
+  m.innerHTML = `
+    <div class="card" key="${view}">
+      <div class="num"><span>CARD ${String(view).padStart(2,'0')}</span><span>${view} of ${N()}</span></div>
+      <h2 class="q">${esc(s.q)}</h2>
+      <p class="hint">${esc(s.hint)}</p>
+      ${s.key==='person'
+        ? `<input type="text" id="ans" maxlength="40" autocomplete="off" placeholder="${esc(s.ex)}">`
+        : `<textarea id="ans" maxlength="220" rows="3" placeholder="${esc(s.ex)}"></textarea>`}
+      <div class="saved" id="saved">Saved on your phone</div>
+      <div class="verse"><b>${esc(s.ref)}</b><p>${esc(s.verse)}</p></div>
+    </div>
+    <div class="nav">
+      <button class="btn ghost" id="back" ${view<=1?'disabled':''}>Back</button>
+      <button class="btn dark" style="flex:1" id="fwd" ${view>=u?'disabled':''}>${view+1>N() ? 'See my card' : 'Next card'}</button>
+    </div>
+    ${waitLine()}`;
+  const a = $('#ans'); a.value = answers[s.key] || '';
+  let t;
+  a.addEventListener('input', () => {
+    answers[s.key] = a.value.trim(); persist();
+    clearTimeout(t); $('#saved').classList.add('on'); t = setTimeout(()=>$('#saved').classList.remove('on'), 1200);
+  });
+  $('#back').onclick = () => { view--; render(); };
+  $('#fwd').onclick = () => { view++; render(); };
+}
+
+function renderHello(m){
+  const u = unlocked();
+  m.innerHTML = `
+    <div class="card hello">
+      <div class="num"><span>${esc(cfg.host||'').toUpperCase()}</span><span></span></div>
+      <h1>${esc(cfg.title)}</h1>
+      <p class="lead">${esc(cfg.intro)}</p>
+      <label class="label" for="nm">Your first name</label>
+      <input type="text" id="nm" maxlength="24" autocomplete="given-name" placeholder="e.g. Ada">
+      <ul class="steps-list">
+        ${cfg.steps.map((s,i)=>`<li><i>${String(i+1).padStart(2,'0')}</i>${esc(shortLabel(s))}</li>`).join('')}
+      </ul>
+    </div>
+    ${u>0 ? `<div class="nav"><button class="btn dark full" id="go">Open card ${u>=6?1:u}</button></div>` : waitLine()}`;
+  const nm = $('#nm'); nm.value = answers.name || '';
+  nm.addEventListener('input', () => { answers.name = nm.value.trim(); persist(); });
+  const go = $('#go'); if(go) go.onclick = () => { view = u>=6 ? 1 : u; render(); };
+}
+
+function shortLabel(s){
+  return ({worry:'What worries you',goal:'Your one goal',cost:'What it will cost',week:'Your move this week',person:'Who checks on you'})[s.key] || s.q;
+}
+
+function get(k){ return (answers[k]||'').trim(); }
+
+function renderReveal(m){
+  const name = get('name'), worry = get('worry'), goal = get('goal'), cost = get('cost'), week = get('week'), person = get('person');
+  const missing = !goal || !week;
+  m.innerHTML = `
+    <div class="card reveal">
+      <div class="num"><span>${name ? esc(name.toUpperCase()) + "'S" : 'YOUR'} GOAL CARD</span><span>${esc(cfg.host||'')}</span></div>
+      <h1>${goal ? esc(goal) : '<span class="empty-note">Write your goal on card 2</span>'}</h1>
+      ${worry ? `<div class="row"><small>What I was worried about</small><div class="v"><span class="struck" id="strk">${esc(worry)}</span></div></div>` : ''}
+      <div class="row week-row" id="weekRow">
+        <span class="instead" id="inst">${worry ? 'Instead, this week' : 'This week'}</span>
+        <div class="v big">${week ? esc(week) : '<span class="empty-note">Write your step on card 4</span>'}</div>
+      </div>
+      ${cost ? `<div class="row"><small>What it will cost me</small><div class="v">${esc(cost)}</div></div>` : ''}
+      ${person ? `<div class="row"><small>Checking on me</small><div class="v">${esc(person)}</div></div>` : ''}
+      <div class="verse"><b>${esc(cfg.wall_ref)}</b><p>${esc(cfg.wall_verse)}</p></div>
+    </div>
+    <div class="actions">
+      <button class="btn dark full" id="wallBtn" ${missing?'disabled':''}>Save as my lock screen</button>
+      <a class="btn wa full ${missing?'hide':''}" id="waBtn" target="_blank" rel="noopener">Send it to ${person ? esc(person) : 'someone'} on WhatsApp</a>
+      <button class="small-link" id="editBtn">Change my answers</button>
+    </div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const s = $('#strk'); if(s) s.classList.add('go');
+    $('#inst').classList.add('go'); $('#weekRow').classList.add('go');
+    if(!worry){ $('#inst').style.transitionDelay='.2s'; $('#weekRow').querySelector('.v').style.transitionDelay='.3s'; }
+  }));
+  const msg = `Hi${person ? ' ' + person : ''}, I set a goal in church today.\n\nMy goal: ${goal}\nThis week I will: ${week}\n\nPlease ask me about it every Sunday. Don't let me off easy.`;
+  $('#waBtn').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  $('#wallBtn').onclick = makeWallpaper;
+  $('#editBtn').onclick = () => { view = 1; render(); };
+}
+
+/* ---------- lock screen image ---------- */
+function wrap(ctx, text, maxW){
+  const words = String(text).split(/\s+/), lines = []; let line = '';
+  for(const w of words){
+    const t = line ? line + ' ' + w : w;
+    if(ctx.measureText(t).width > maxW && line){ lines.push(line); line = w; } else line = t;
+  }
+  if(line) lines.push(line);
+  return lines;
+}
+function fit(ctx, text, maxW, maxLines, start, min, weight, family){
+  let size = start;
+  while(size > min){
+    ctx.font = `${weight} ${size}px ${family}`;
+    if(wrap(ctx, text, maxW).length <= maxLines) break;
+    size -= 4;
+  }
+  ctx.font = `${weight} ${size}px ${family}`;
+  return {size, lines: wrap(ctx, text, maxW)};
+}
+
+async function makeWallpaper(){
+  const btn = $('#wallBtn'); btn.textContent = 'Making it...';
+  try{ await Promise.all([document.fonts.load('900 80px Archivo'), document.fonts.load('700 40px Manrope'), document.fonts.load('500 40px Manrope')]); }catch(e){}
+  const W = 1080, H = 2340, X = 96, MW = W - X*2;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#17140F'; ctx.fillRect(0,0,W,H);
+  // subtle dot grid
+  ctx.fillStyle = 'rgba(255,255,255,.035)';
+  for(let y=0;y<H;y+=36) for(let x=0;x<W;x+=36){ ctx.beginPath(); ctx.arc(x,y,2,0,7); ctx.fill(); }
+
+  const name = get('name'), worry = get('worry'), goal = get('goal'), week = get('week'), person = get('person');
+  let y = 1000;
+  ctx.textBaseline = 'alphabetic';
+
+  ctx.fillStyle = '#E2513F'; ctx.font = '800 34px Manrope';
+  ctx.fillText((name ? name.toUpperCase() + ', ' : '') + 'THIS IS THE YEAR I', X, y);
+  y += 30;
+
+  const g = fit(ctx, goal, MW, 4, 104, 60, 900, 'Archivo');
+  ctx.fillStyle = '#FFFDF8';
+  for(const l of g.lines){ y += g.size * 1.02; ctx.fillText(l, X, y); }
+  y += 90;
+
+  ctx.fillStyle = 'rgba(255,253,248,.18)'; ctx.fillRect(X, y, MW, 2); y += 76;
+
+  ctx.fillStyle = '#E2513F'; ctx.font = '800 30px Manrope'; ctx.fillText('THIS WEEK', X, y); y += 18;
+  const w = fit(ctx, week, MW, 3, 58, 38, 700, 'Manrope');
+  ctx.fillStyle = '#FFFDF8';
+  for(const l of w.lines){ y += w.size * 1.25; ctx.fillText(l, X, y); }
+  y += 70;
+
+  if(worry){
+    ctx.fillStyle = 'rgba(255,253,248,.45)'; ctx.font = '800 30px Manrope'; ctx.fillText('NO LONGER WORRIED ABOUT', X, y); y += 14;
+    const wr = fit(ctx, worry, MW, 3, 40, 30, 500, 'Manrope');
+    for(const l of wr.lines){
+      y += wr.size * 1.35;
+      ctx.fillStyle = 'rgba(255,253,248,.5)'; ctx.fillText(l, X, y);
+      const lw = ctx.measureText(l).width;
+      ctx.fillStyle = '#E2513F'; ctx.fillRect(X - 4, y - wr.size*0.33, lw + 8, 5);
+    }
+    y += 70;
+  }
+  if(person){
+    ctx.fillStyle = 'rgba(255,253,248,.45)'; ctx.font = '800 30px Manrope'; ctx.fillText('CHECKING ON ME', X, y); y += 52;
+    ctx.fillStyle = '#FFFDF8'; ctx.font = '700 44px Manrope'; ctx.fillText(person, X, y);
+  }
+
+  // verse at bottom
+  let by = H - 300;
+  ctx.font = '500 34px Manrope';
+  const vl = wrap(ctx, cfg.wall_verse || '', MW);
+  by -= vl.length * 46;
+  ctx.fillStyle = 'rgba(255,253,248,.7)';
+  for(const l of vl){ ctx.fillText(l, X, by); by += 46; }
+  ctx.fillStyle = '#E2513F'; ctx.font = '800 28px Manrope'; ctx.fillText((cfg.wall_ref||'').toUpperCase(), X, by + 16);
+  ctx.fillStyle = 'rgba(255,253,248,.3)'; ctx.font = '700 24px Manrope'; ctx.fillText((cfg.host||'').toUpperCase(), X, H - 150);
+
+  c.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    $('#wallImg').src = url; $('#dlBtn').href = url;
+    const file = new File([blob], 'my-goal-card.png', {type:'image/png'});
+    const canShare = navigator.canShare && navigator.canShare({files:[file]});
+    $('#shareBtn').classList.toggle('hide', !canShare);
+    $('#shareBtn').onclick = async () => { try{ await navigator.share({files:[file], title:'My goal card'}) }catch(e){} };
+    $('#modalTip').textContent = /iPhone|iPad/i.test(navigator.userAgent)
+      ? 'Press and hold the picture, then tap Save to Photos. Set it as your lock screen from Photos.'
+      : 'Tap Download, then set it as your lock screen from your gallery.';
+    $('#modal').classList.add('on');
+    btn.textContent = 'Save as my lock screen';
+  }, 'image/png');
+}
+function closeModal(){ $('#modal').classList.remove('on'); }
+
+document.addEventListener('visibilitychange', () => { if(!document.hidden) poll(); });
+loadAll();
+setInterval(poll, 3000);
+</script>
+</body>
+</html>

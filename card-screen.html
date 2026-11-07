@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Goal Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#17140F;color:#F5EFE3;font-family:Manrope,system-ui,sans-serif;overflow:hidden}
+.s{height:100vh;display:grid;grid-template-columns:1.25fr 1fr;gap:6vw;align-items:center;padding:6vh 7vw}
+.tag{font-size:1.4vw;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#E2513F}
+h1{font-family:Archivo;font-stretch:85%;font-weight:900;font-size:7.4vw;line-height:.92;margin:2vh 0 3vh;letter-spacing:-.01em}
+p{font-size:1.9vw;color:#A79E8E;margin:0;max-width:34ch;line-height:1.35}
+.url{margin-top:4vh;font-family:Archivo;font-weight:800;font-size:2.2vw;color:#F5EFE3}
+.qrbox{background:#FFFDF8;border-radius:2.2vw;padding:2.4vw;justify-self:center;width:min(36vw,72vh);aspect-ratio:1;display:grid;place-items:center}
+#qr,#qr img,#qr canvas{width:100%!important;height:auto!important}
+.ref{margin-top:3vh;font-size:1.5vw;font-weight:800;color:#F5EFE3;letter-spacing:.06em}
+.dots{display:flex;gap:.8vw;margin-top:4vh}
+.dots i{width:3.4vw;height:.7vw;border-radius:1vw;background:#3A342B}
+.dots i.on{background:#E2513F}
+</style>
+</head>
+<body>
+<div class="s">
+  <div>
+    <div class="tag" id="tag">Relentless Love Church</div>
+    <h1 id="h">Scan to get your Goal Card</h1>
+    <p id="p">Keep the page open. Each card opens as we go.</p>
+    <div class="ref" id="ref"></div>
+    <div class="dots" id="dots"></div>
+    <div class="url" id="url"></div>
+  </div>
+  <div class="qrbox"><div id="qr"></div></div>
+</div>
+<script>
+const SB_URL='https://vbafqulhbskaswkyjjdn.supabase.co', SB_KEY='sb_publishable_XK50Ttn1qZW7HvNz1EMFhQ_gzsvAFko';
+const SLUG=(new URLSearchParams(location.search).get('e')||'rlc').toLowerCase();
+const link = location.origin + '/card' + (SLUG==='rlc' ? '' : '?e=' + SLUG);
+document.getElementById('url').textContent = link.replace(/^https?:\/\//,'');
+try{ new QRCode(document.getElementById('qr'), {text:link, width:600, height:600, colorDark:'#17140F', colorLight:'#FFFDF8', correctLevel:QRCode.CorrectLevel.M}); }catch(e){}
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let last='';
+async function tick(){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/goalcard_events?slug=eq.${SLUG}&select=*`,{headers:{apikey:SB_KEY},cache:'no-store'});
+    const ev=(await r.json())[0]; if(!ev||ev.updated_at===last) return; last=ev.updated_at;
+    document.getElementById('tag').textContent=ev.host;
+    const i=ev.current_step, n=ev.steps.length;
+    let h='Scan to get your Goal Card', p='Keep the page open. Each card opens as we go.', ref='';
+    if(i>=1&&i<=n){ const s=ev.steps[i-1]; h=s.q; p=s.hint; ref=s.ref.toUpperCase(); }
+    if(i>=6){ h='Your card is ready'; p='Save it as your lock screen. Then send it to the person who will check on you.'; ref=(ev.wall_ref||'').toUpperCase(); }
+    document.getElementById('h').textContent=h; document.getElementById('p').textContent=p; document.getElementById('ref').textContent=ref;
+    document.getElementById('h').style.fontSize = h.length>40 ? '5.2vw' : '7.4vw';
+    document.getElementById('dots').innerHTML = i>0 ? Array.from({length:n},(_,k)=>`<i class="${k<i?'on':''}"></i>`).join('') : '';
+  }catch(e){}
+}
+tick(); setInterval(tick,2500);
+</script>
+</body>
+</html>
