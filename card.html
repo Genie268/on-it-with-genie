@@ -6,14 +6,14 @@
 <meta name="theme-color" content="#F3EEE4">
 <title>Your Goal Card</title>
 <meta name="description" content="Write your goal down, one card at a time.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2317140F'/%3E%3Cpath d='M18 34l9 9 19-21' stroke='%23E2513F' stroke-width='7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314204A'/%3E%3Cpath d='M18 34l9 9 19-21' stroke='%23E2513F' stroke-width='7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="/card-assets/art.js"></script>
 <style>
 :root{
-  --paper:#F3EEE4; --card:#FFFDF8; --ink:#17140F; --soft:#6B6357; --line:#E3DBCC; --sand:#EDE4D3;
+  --paper:#F3EEE4; --card:#FFFDF8; --ink:#14204A; --soft:#6B6357; --line:#E3DBCC; --sand:#EDE4D3;
   --red:#D2402F; --red-soft:#F7DCD5; --green:#1F7A4D;
   --shadow:0 1px 0 rgba(23,20,15,.04), 0 22px 44px -22px rgba(23,20,15,.32);
 }
@@ -25,7 +25,7 @@ body{font-family:Manrope,system-ui,sans-serif;font-size:16px;line-height:1.5;min
 h1,h2{font-family:Archivo,system-ui,sans-serif;font-stretch:88%;letter-spacing:-.01em;margin:0}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 14px;min-height:46px}
 .brand{display:flex;align-items:center;gap:10px;white-space:nowrap;font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--soft)}
-.brand img{height:32px;width:auto;display:block}
+.brand img{height:34px;width:34px;border-radius:50%;display:block;box-shadow:0 2px 6px rgba(20,32,74,.25)}
 .dots{display:flex;gap:5px}
 .dot{width:12px;height:6px;border-radius:6px;background:var(--line);transition:background .3s,width .3s}
 .dot.open{background:var(--ink)}
@@ -190,7 +190,7 @@ async function rpc(fn, body){
 
 function setBrand(){
   const b = $('#brand');
-  if(cfg.logo_url){ b.innerHTML = `<img src="${esc(cfg.logo_url)}" alt="${esc(cfg.host)}">`; }
+  if(cfg.logo_url){ b.innerHTML = `<img src="${esc(cfg.logo_url)}" alt=""><span>${esc(cfg.host||'')}</span>`; }
   else b.textContent = cfg.host || '';
 }
 
@@ -445,11 +445,12 @@ function renderReveal(m){
         Send it to ${person ? esc(person) : 'someone'} on WhatsApp</a>
       <button class="small-link" id="editBtn">Change my answers</button>
     </div>`;
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  setTimeout(()=>{
     const s = $('#strk'); if(s) s.classList.add('go');
-    $('#inst').classList.add('go'); $('#weekRow').classList.add('go');
-    if(!worry){ $('#inst').style.transitionDelay='.2s'; $('#weekRow').querySelector('.v').style.transitionDelay='.3s'; }
-  }));
+    const i = $('#inst'), r = $('#weekRow'); if(!i || !r) return;
+    if(!worry){ i.style.transitionDelay='.2s'; r.querySelector('.v').style.transitionDelay='.3s'; }
+    i.classList.add('go'); r.classList.add('go');
+  }, 60);
   const msg = `Hi${person ? ' ' + person : ''}, I set a goal in church today.\n\nMy goal: ${goal}\nThis week I will: ${week}\n\nPlease ask me about it every Sunday. Don't let me off easy.`;
   $('#waBtn').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
   $('#wallBtn').onclick = makeWallpaper;
@@ -480,51 +481,74 @@ async function makeWallpaper(){
   const W = 1080, H = 2340, X = 96, MW = W - X*2;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#17140F'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#111B3D'; ctx.fillRect(0,0,W,H);
   ctx.fillStyle = 'rgba(255,255,255,.035)';
   for(let y=0;y<H;y+=36) for(let x=0;x<W;x+=36){ ctx.beginPath(); ctx.arc(x,y,2,0,7); ctx.fill(); }
 
   const name = firstName(), worry = get('worry'), goal = get('goal'), week = get('week'), person = get('person');
-  let y = 980;
-  ctx.fillStyle = '#E2513F'; ctx.font = '800 34px Manrope';
-  ctx.fillText((name ? name.toUpperCase() + ', ' : '') + 'THIS IS THE YEAR I', X, y); y += 30;
-  const g = fit(ctx, goal, MW, 4, 104, 60, 900, 'Archivo');
-  ctx.fillStyle = '#FFFDF8';
-  for(const l of g.lines){ y += g.size * 1.02; ctx.fillText(l, X, y); }
-  y += 90;
-  ctx.fillStyle = 'rgba(255,253,248,.18)'; ctx.fillRect(X, y, MW, 2); y += 76;
-  ctx.fillStyle = '#E2513F'; ctx.font = '800 30px Manrope'; ctx.fillText('THIS WEEK', X, y); y += 18;
-  const w = fit(ctx, week, MW, 3, 58, 38, 700, 'Manrope');
-  ctx.fillStyle = '#FFFDF8';
-  for(const l of w.lines){ y += w.size * 1.25; ctx.fillText(l, X, y); }
-  y += 70;
-  if(worry){
-    ctx.fillStyle = 'rgba(255,253,248,.45)'; ctx.font = '800 30px Manrope'; ctx.fillText('NO LONGER WORRIED ABOUT', X, y); y += 14;
-    const wr = fit(ctx, worry, MW, 3, 40, 30, 500, 'Manrope');
-    for(const l of wr.lines){
-      y += wr.size * 1.35;
-      ctx.fillStyle = 'rgba(255,253,248,.5)'; ctx.fillText(l, X, y);
-      const lw = ctx.measureText(l).width;
-      ctx.fillStyle = '#E2513F'; ctx.fillRect(X - 4, y - wr.size*0.33, lw + 8, 5);
-    }
-    y += 70;
-  }
-  if(person){
-    ctx.fillStyle = 'rgba(255,253,248,.45)'; ctx.font = '800 30px Manrope'; ctx.fillText('CHECKING ON ME', X, y); y += 52;
-    ctx.fillStyle = '#FFFDF8'; ctx.font = '700 44px Manrope'; ctx.fillText(person, X, y);
-  }
-  let by = H - 330;
-  ctx.font = '500 34px Manrope';
+  const HEAD = 'Archivo, Arial, sans-serif', BODY = 'Manrope, Arial, sans-serif';
+
+  // verse block sits at the bottom; measure it first
+  ctx.font = `500 34px ${BODY}`;
   const vl = wrap(ctx, cfg.wall_verse || '', MW);
-  by -= vl.length * 46;
-  ctx.fillStyle = 'rgba(255,253,248,.72)';
+  const verseTop = H - 330 - vl.length * 46 - 34;
+
+  // main block: dry run measures height, real run draws
+  function block(y0, draw, opts){
+    let y = y0;
+    const T = (txt, x, yy) => { if(draw) ctx.fillText(txt, x, yy); };
+    ctx.fillStyle = '#E2513F'; ctx.font = `800 34px ${BODY}`;
+    T((name ? name.toUpperCase() + ', ' : '') + 'THIS IS THE YEAR I', X, y); y += 30;
+    const g = fit(ctx, goal, MW, 4, opts.goalMax, 56, 900, HEAD);
+    ctx.fillStyle = '#FFFDF8';
+    for(const l of g.lines){ y += g.size * 1.02; T(l, X, y); }
+    y += 80;
+    if(draw){ ctx.fillStyle = 'rgba(255,253,248,.18)'; ctx.fillRect(X, y, MW, 2); } y += 70;
+    ctx.fillStyle = '#E2513F'; ctx.font = `800 30px ${BODY}`; T('THIS WEEK', X, y); y += 16;
+    const w = fit(ctx, week, MW, 3, 56, 36, 700, BODY);
+    ctx.fillStyle = '#FFFDF8';
+    for(const l of w.lines){ y += w.size * 1.25; T(l, X, y); }
+    if(worry && opts.worry){
+      y += 64;
+      ctx.fillStyle = 'rgba(255,253,248,.45)'; ctx.font = `800 30px ${BODY}`; T('NO LONGER WORRIED ABOUT', X, y); y += 12;
+      const wr = fit(ctx, worry, MW, 2, 38, 28, 500, BODY);
+      for(const l of wr.lines){
+        y += wr.size * 1.35;
+        ctx.fillStyle = 'rgba(255,253,248,.5)'; T(l, X, y);
+        if(draw){ const lw = ctx.measureText(l).width; ctx.fillStyle = '#E2513F'; ctx.fillRect(X - 4, y - wr.size*0.33, lw + 8, 5); }
+      }
+    }
+    if(person && opts.person){
+      y += 64;
+      ctx.fillStyle = 'rgba(255,253,248,.45)'; ctx.font = `800 30px ${BODY}`; T('CHECKING ON ME', X, y); y += 50;
+      ctx.fillStyle = '#FFFDF8'; ctx.font = `700 42px ${BODY}`; T(person, X, y);
+    }
+    return y;
+  }
+  // pick the richest layout that fits between the clock area and the verse
+  const tries = [
+    {goalMax:104, worry:true, person:true}, {goalMax:88, worry:true, person:true},
+    {goalMax:88, worry:true, person:false}, {goalMax:80, worry:false, person:false}
+  ];
+  const minTop = 740, idealTop = 960, room = verseTop - 90;
+  let chosen = tries[tries.length-1], top = minTop;
+  for(const t of tries){
+    const h = block(0, false, t);
+    if(minTop + h <= room){ chosen = t; top = Math.min(idealTop, room - h); break; }
+  }
+  block(top, true, chosen);
+
+  let by = H - 330 - vl.length * 46;
+  ctx.font = `500 34px ${BODY}`; ctx.fillStyle = 'rgba(255,253,248,.72)';
   for(const l of vl){ ctx.fillText(l, X, by); by += 46; }
-  ctx.fillStyle = '#E2513F'; ctx.font = '800 28px Manrope'; ctx.fillText((cfg.wall_ref||'').toUpperCase(), X, by + 16);
+  ctx.fillStyle = '#E2513F'; ctx.font = `800 28px ${BODY}`; ctx.fillText((cfg.wall_ref||'').toUpperCase(), X, by + 16);
   if(logo){
-    const lh = 84, lw = logo.width * (lh / logo.height);
-    ctx.globalAlpha = .9; ctx.drawImage(logo, X, H - 210, lw, lh); ctx.globalAlpha = 1;
+    const lh = 92, lw = logo.width * (lh / logo.height);
+    ctx.drawImage(logo, X, H - 214, lw, lh);
+    ctx.fillStyle = 'rgba(255,253,248,.55)'; ctx.font = `800 24px ${BODY}`;
+    ctx.fillText((cfg.host||'').toUpperCase(), X + lw + 24, H - 160);
   } else {
-    ctx.fillStyle = 'rgba(255,253,248,.3)'; ctx.font = '700 24px Manrope'; ctx.fillText((cfg.host||'').toUpperCase(), X, H - 150);
+    ctx.fillStyle = 'rgba(255,253,248,.3)'; ctx.font = `700 24px ${BODY}`; ctx.fillText((cfg.host||'').toUpperCase(), X, H - 150);
   }
   c.toBlob(blob => {
     const url = URL.createObjectURL(blob);

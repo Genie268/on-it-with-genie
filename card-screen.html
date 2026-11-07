@@ -12,18 +12,19 @@
 <script src="/card-assets/art.js"></script>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#F3EEE4;color:#17140F;font-family:Manrope,system-ui,sans-serif;overflow:hidden}
+html,body{margin:0;height:100%;background:#F3EEE4;color:#14204A;font-family:Manrope,system-ui,sans-serif;overflow:hidden}
 body{background-image:radial-gradient(rgba(23,20,15,.05) 1px,transparent 1px);background-size:24px 24px}
 .s{height:100vh;display:grid;grid-template-columns:1.2fr 1fr;gap:5vw;align-items:center;padding:6vh 6vw}
 .top{position:fixed;top:4vh;left:6vw;right:6vw;display:flex;justify-content:space-between;align-items:center}
 .brand{font-size:1.2vw;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#6B6357;display:flex;align-items:center}
-.brand img{height:5.5vh;width:auto}
+.brand{gap:1vw}
+.brand img{height:6vh;width:6vh;border-radius:50%}
 .ppl{font-size:1.2vw;font-weight:800;color:#6B6357}
-.ppl b{color:#17140F;font-family:Archivo,system-ui,sans-serif;font-size:1.8vw}
+.ppl b{color:#14204A;font-family:Archivo,system-ui,sans-serif;font-size:1.8vw}
 .kick{font-size:1.3vw;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#D2402F}
 h1{font-family:Archivo,system-ui,sans-serif;font-stretch:85%;font-weight:900;font-size:6.6vw;line-height:.95;margin:2vh 0 2.5vh;letter-spacing:-.01em}
 p{font-size:1.8vw;color:#6B6357;margin:0;max-width:34ch;line-height:1.35}
-.verse{margin-top:3.5vh;font-size:1.5vw;color:#17140F;max-width:40ch;line-height:1.4}
+.verse{margin-top:3.5vh;font-size:1.5vw;color:#14204A;max-width:40ch;line-height:1.4}
 .verse b{display:block;font-size:1.1vw;letter-spacing:.14em;color:#D2402F;margin-bottom:.6vh}
 .url{margin-top:3vh;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-size:2vw}
 .right{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2vh}
@@ -40,7 +41,7 @@ p{font-size:1.8vw;color:#6B6357;margin:0;max-width:34ch;line-height:1.35}
 .bar.win span:last-child{color:#D2402F}
 .bar span{position:relative}
 .total{font-size:1.2vw;font-weight:800;color:#6B6357;letter-spacing:.12em;text-transform:uppercase}
-.clock{font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:16vw;line-height:1;color:#17140F}
+.clock{font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:16vw;line-height:1;color:#14204A}
 .clock.done{color:#D2402F}
 .mini{display:flex;align-items:center;gap:1.2vw;margin-top:3vh}
 .mini .q{width:8vw;background:#FFFDF8;border-radius:.8vw;padding:.5vw}
@@ -72,7 +73,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 $('#url').textContent = link.replace(/^https?:\/\/(www\.)?/,'');
 try{
   const q = qrcode(0,'M'); q.addData(link); q.make();
-  const svg = q.createSvgTag({cellSize:8, margin:0, scalable:true}).replace(/fill="black"/g,'fill="#17140F"').replace(/fill="white"/g,'fill="#FFFDF8"');
+  const svg = q.createSvgTag({cellSize:8, margin:0, scalable:true}).replace(/fill="black"/g,'fill="#14204A"').replace(/fill="white"/g,'fill="#FFFDF8"');
   $('#qr').innerHTML = svg; $('#qrSmall').innerHTML = svg;
 }catch(e){ $('#qr').textContent = link; }
 const clean = t => String(t||'').replace(/\{name\},\s*/g,'').replace(/,\s*\{name\}/g,'').replace(/\s*\{name\}/g,'').replace(/^./,c=>c.toUpperCase());
@@ -91,7 +92,7 @@ function setRight(html, key){
 
 function draw(){
   if(!ev) return;
-  $('#brand').innerHTML = ev.logo_url ? `<img src="${esc(ev.logo_url)}" alt="">` : esc(ev.host);
+  $('#brand').innerHTML = ev.logo_url ? `<img src="${esc(ev.logo_url)}" alt=""><span>${esc(ev.host)}</span>` : esc(ev.host);
   const i=ev.current_step, n=ev.steps.length, s = i>=1&&i<=n ? ev.steps[i-1] : null;
   $('#ppl').classList.toggle('hide', !st || !st.people); if(st) $('#ppl b').textContent = st.people;
   $('#url').classList.toggle('hide', i>0); $('#mini').classList.toggle('hide', i===0);

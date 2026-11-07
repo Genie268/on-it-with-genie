@@ -1,6 +1,6 @@
 /* Goal Card illustrations: one clean spot drawing per card. Same palette, same line weight. */
 (function(){
-  var I='#17140F', R='#D2402F', C='#FFFDF8', S='#EDE4D3', P='#F7DCD5';
+  var I='#14204A', R='#D2402F', C='#FFFDF8', S='#EDE4D3', P='#F7DCD5';
   function svg(inner){
     return '<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
       + '<ellipse cx="110" cy="138" rx="74" ry="6" fill="'+I+'" opacity=".07"/>' + inner + '</svg>';
