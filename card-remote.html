@@ -9,61 +9,77 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23D2402F'/%3E%3Cpath d='M24 18l18 14-18 14z' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#17140F;--panel:#221E18;--line:#36302700;--edge:#3A342B;--text:#F5EFE3;--soft:#A79E8E;--red:#E2513F;--green:#3DBE7A}
+:root{--bg:#17140F;--panel:#221E18;--edge:#3A342B;--text:#F5EFE3;--soft:#A79E8E;--red:#E2513F;--green:#3DBE7A}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:Manrope,system-ui,sans-serif}
-.wrap{max-width:560px;margin:0 auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom));min-height:100dvh;display:flex;flex-direction:column;gap:14px}
-h1,h2,.d{font-family:Archivo,system-ui,sans-serif;font-stretch:88%;margin:0}
-.top{display:flex;justify-content:space-between;align-items:center}
-.tag{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--soft)}
-.live{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--soft)}
+.wrap{max-width:560px;margin:0 auto;padding:14px 16px calc(150px + env(safe-area-inset-bottom));min-height:100dvh;display:flex;flex-direction:column;gap:12px}
+h1,h2{font-family:Archivo,system-ui,sans-serif;font-stretch:88%;margin:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.tag{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--soft)}
+.stats{display:flex;align-items:center;gap:12px;font-size:12px;font-weight:800;color:var(--soft)}
+.live{display:flex;align-items:center;gap:7px}
 .live i{width:8px;height:8px;border-radius:50%;background:var(--green)}
 .live.bad i{background:var(--red)}
+.ppl b{color:var(--text)}
 .tabs{display:flex;background:var(--panel);border-radius:12px;padding:4px}
-.tabs button{flex:1;background:none;border:0;color:var(--soft);font:inherit;font-weight:700;padding:10px;border-radius:9px;cursor:pointer}
+.tabs button{flex:1;background:none;border:0;color:var(--soft);font:inherit;font-weight:800;padding:10px;border-radius:9px;cursor:pointer}
 .tabs button.on{background:var(--text);color:var(--bg)}
-.panel{background:var(--panel);border:1px solid var(--edge);border-radius:20px;padding:20px}
+.panel{background:var(--panel);border:1px solid var(--edge);border-radius:20px;padding:18px}
 .now small{display:block;font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--red);text-transform:uppercase}
-.now h1{font-size:clamp(30px,9vw,42px);font-weight:900;line-height:1.02;margin:8px 0 10px}
-.now p{margin:0;color:var(--soft);font-size:15px}
-.now .ref{margin-top:12px;font-size:13px;font-weight:700;color:var(--text)}
-.ctrl{display:grid;grid-template-columns:1fr 2fr;gap:10px}
-.btn{appearance:none;border:0;font:inherit;font-weight:800;font-size:17px;border-radius:16px;padding:20px 16px;cursor:pointer;transition:transform .1s,opacity .2s}
+.now h1{font-size:clamp(24px,7vw,32px);font-weight:900;line-height:1.05;margin:8px 0 6px}
+.now .ref{margin-top:8px;font-size:13px;font-weight:700;color:var(--soft)}
+.script{background:#FFFDF8;color:#17140F;border-radius:20px;padding:18px 18px 20px}
+.script small{display:block;font-size:11px;font-weight:800;letter-spacing:.14em;color:#D2402F;text-transform:uppercase;margin-bottom:8px}
+.script div{font-size:18px;line-height:1.5;font-weight:600;white-space:pre-wrap}
+.script.empty div{color:#8C8375;font-size:15px}
+.upnext{font-size:13px;color:var(--soft);font-weight:700}
+.upnext b{color:var(--text)}
+.bars{display:grid;gap:8px;margin-top:4px}
+.barrow{position:relative;background:#1B1813;border:1px solid var(--edge);border-radius:11px;padding:11px 12px;display:flex;justify-content:space-between;font-weight:700;font-size:15px;overflow:hidden}
+.barrow i{position:absolute;left:0;top:0;bottom:0;background:rgba(226,81,63,.32);transition:width .6s}
+.barrow span{position:relative}
+.timerbox{display:flex;align-items:center;gap:12px}
+.timerbox .t{font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:40px;min-width:76px}
+.dock{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(transparent,var(--bg) 22%);padding:24px 16px calc(14px + env(safe-area-inset-bottom))}
+.ctrl{max-width:560px;margin:0 auto;display:grid;grid-template-columns:1fr 2.2fr;gap:10px}
+.btn{appearance:none;border:0;font:inherit;font-weight:800;font-size:16px;border-radius:16px;padding:16px;cursor:pointer;transition:transform .1s,opacity .2s}
 .btn:active{transform:scale(.97)}
-.btn.next{background:var(--red);color:#fff;font-size:20px;padding:26px 16px}
+.btn.next{background:var(--red);color:#fff;font-size:19px;padding:22px 14px}
 .btn.prev{background:var(--panel);color:var(--text);border:1px solid var(--edge)}
-.btn.sm{font-size:14px;padding:12px 14px;border-radius:12px}
+.btn.sm{font-size:14px;padding:11px 14px;border-radius:12px}
 .btn.line{background:none;border:1px solid var(--edge);color:var(--text)}
+.btn.go{background:var(--text);color:var(--bg)}
 .btn[disabled]{opacity:.3;pointer-events:none}
-.chips{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-.chips button{background:var(--panel);border:1px solid var(--edge);color:var(--soft);font:inherit;font-family:Archivo;font-weight:800;font-size:15px;padding:12px 0;border-radius:11px;cursor:pointer}
+.chips{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px}
+.chips button{flex:1 0 32px;background:var(--panel);border:1px solid var(--edge);color:var(--soft);font:inherit;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-size:15px;padding:11px 0;border-radius:11px;cursor:pointer}
 .chips button.done{color:var(--text)}
 .chips button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
-.chips-label{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--soft);letter-spacing:.08em;text-transform:uppercase;margin-bottom:-6px}
 .toggle{display:flex;justify-content:space-between;align-items:center;gap:14px}
 .toggle b{display:block;font-size:15px}
 .toggle span{font-size:13px;color:var(--soft)}
-.sw{position:relative;width:52px;height:30px;flex:none}
+.sw{position:relative;width:52px;height:30px;flex:none;margin:0!important}
 .sw input{opacity:0;width:0;height:0}
 .sw i{position:absolute;inset:0;background:#3A342B;border-radius:30px;transition:.2s;cursor:pointer}
 .sw i:before{content:'';position:absolute;width:24px;height:24px;left:3px;top:3px;border-radius:50%;background:#fff;transition:.2s}
 .sw input:checked+i{background:var(--green)}
 .sw input:checked+i:before{transform:translateX(22px)}
-.links{display:grid;gap:8px}
+.links{display:grid;gap:10px}
 .link{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}
-.link code{color:var(--soft);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link code{color:var(--soft);font-size:12.5px}
 label{display:block;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);margin:14px 0 6px}
 input[type=text],input[type=password],textarea{width:100%;font:inherit;font-size:15px;color:var(--text);background:#1B1813;border:1px solid var(--edge);border-radius:11px;padding:11px 12px;outline:none;resize:vertical}
 input:focus,textarea:focus{border-color:var(--soft)}
-.stepedit{border-top:1px solid var(--edge);margin-top:18px;padding-top:6px}
+.stepedit{border-top:1px solid var(--edge);margin-top:18px;padding-top:4px}
 .stepedit h2{font-size:18px;margin-top:12px}
+.stepedit h2 em{font-style:normal;font-family:Manrope,system-ui,sans-serif;font-size:11px;font-weight:800;letter-spacing:.12em;color:var(--red);margin-left:8px;text-transform:uppercase}
 .msg{font-size:13px;font-weight:700;min-height:18px}
 .msg.ok{color:var(--green)} .msg.err{color:var(--red)}
 .pin h1{font-size:34px;font-weight:900;margin-bottom:6px}
 .pin p{color:var(--soft);margin:0 0 16px}
 .pin input{font-size:28px;letter-spacing:.3em;text-align:center}
+.note{font-size:12.5px;color:var(--soft);margin-top:6px}
 .hide{display:none!important}
 </style>
 </head>
@@ -71,10 +87,9 @@ input:focus,textarea:focus{border-color:var(--soft)}
 <div class="wrap">
   <div class="top">
     <div class="tag" id="evName">Goal Card Remote</div>
-    <div class="live" id="live"><i></i><span>Live</span></div>
+    <div class="stats"><span class="ppl hide" id="ppl"><b>0</b> phones</span><span class="live" id="live"><i></i><span>Live</span></span></div>
   </div>
 
-  <!-- PIN -->
   <div class="panel pin" id="pinView">
     <h1>Remote</h1>
     <p>Enter your PIN to control the cards.</p>
@@ -83,40 +98,48 @@ input:focus,textarea:focus{border-color:var(--soft)}
     <button class="btn next" style="width:100%;margin-top:6px" id="pinGo">Unlock</button>
   </div>
 
-  <div id="app" class="hide" style="display:flex;flex-direction:column;gap:14px">
-    <div class="tabs"><button class="on" data-t="run">Run</button><button data-t="edit">Edit</button></div>
+  <div id="app" class="hide" style="display:flex;flex-direction:column;gap:12px">
+    <div class="tabs"><button class="on" data-t="run">Run</button><button data-t="edit">Edit</button><button data-t="more">More</button></div>
 
-    <!-- RUN -->
-    <section id="run" style="display:flex;flex-direction:column;gap:14px">
-      <div class="panel now" id="now"></div>
-      <div class="ctrl">
-        <button class="btn prev" id="prev">Back</button>
-        <button class="btn next" id="next">Open next card</button>
-      </div>
-      <div class="chips-label"><span>Jump to</span><span>S = start · ✓ = reveal</span></div>
+    <section id="run" style="display:flex;flex-direction:column;gap:12px">
       <div class="chips" id="chips"></div>
+      <div class="panel now" id="now"></div>
+      <div class="script" id="script"><small>Your script</small><div id="scriptText"></div></div>
+      <div class="panel hide" id="extra"></div>
+      <div class="upnext" id="upnext"></div>
+    </section>
+
+    <section id="more" class="hide" style="display:flex;flex-direction:column;gap:12px">
       <div class="panel toggle">
-        <div><b>Open all cards</b><span>Backup if the remote stops working. Everyone can move freely.</span></div>
-        <label class="sw" style="margin:0"><input type="checkbox" id="free"><i></i></label>
+        <div><b>Open all cards</b><span>Backup if the remote stops working. Everyone moves at their own pace.</span></div>
+        <label class="sw"><input type="checkbox" id="free"><i></i></label>
       </div>
       <div class="panel links">
         <div class="link"><div><b>Audience link</b><br><code id="aLink"></code></div><button class="btn sm line" data-copy="a">Copy</button></div>
-        <div class="link"><div><b>Big screen (QR)</b><br><code id="sLink"></code></div><button class="btn sm line" data-copy="s">Copy</button></div>
-        <button class="btn sm line" id="reset">Reset to start for next time</button>
+        <div class="link"><div><b>Big screen</b><br><code id="sLink"></code></div><button class="btn sm line" data-copy="s">Copy</button></div>
+      </div>
+      <div class="panel">
+        <b>Start fresh</b>
+        <p class="note" style="margin:6px 0 12px">Closes every card, clears poll votes and the phone count. Use it before your next session. Answers on people's phones are not touched.</p>
+        <button class="btn sm line" id="reset" style="width:100%">Reset the room</button>
       </div>
     </section>
 
-    <!-- EDIT -->
     <section id="edit" class="hide">
       <div class="panel">
         <label>Title</label><input type="text" id="f_title">
         <label>Church or event name</label><input type="text" id="f_host">
+        <label>Logo link</label><input type="text" id="f_logo" placeholder="/card-assets/logo.png">
+        <p class="note">Shows at the top of every phone and on the lock screen. Leave empty to show the name instead.</p>
         <label>Welcome note</label><textarea id="f_intro" rows="2"></textarea>
+        <label>Your script for the welcome screen</label><textarea id="f_intro_notes" rows="5"></textarea>
+        <p class="note">Tip: type {name} in a question or helper line and each person sees their own first name there.</p>
         <div id="f_steps"></div>
         <div class="stepedit">
-          <h2>Lock screen verse</h2>
-          <label>Reference</label><input type="text" id="f_wall_ref">
-          <label>Verse</label><textarea id="f_wall_verse" rows="2"></textarea>
+          <h2>Their card at the end</h2>
+          <label>Lock screen verse reference</label><input type="text" id="f_wall_ref">
+          <label>Lock screen verse</label><textarea id="f_wall_verse" rows="2"></textarea>
+          <label>Your script for the reveal</label><textarea id="f_reveal_notes" rows="5"></textarea>
         </div>
         <div class="stepedit">
           <h2>Change PIN</h2>
@@ -129,6 +152,13 @@ input:focus,textarea:focus{border-color:var(--soft)}
   </div>
 </div>
 
+<div class="dock hide" id="dock">
+  <div class="ctrl">
+    <button class="btn prev" id="prev">Back</button>
+    <button class="btn next" id="next">Open card 1</button>
+  </div>
+</div>
+
 <script>
 const SB_URL = 'https://vbafqulhbskaswkyjjdn.supabase.co';
 const SB_KEY = 'sb_publishable_XK50Ttn1qZW7HvNz1EMFhQ_gzsvAFko';
@@ -136,7 +166,7 @@ const SLUG = (new URLSearchParams(location.search).get('e') || 'rlc').toLowerCas
 const PK = 'goalcard-pin:' + SLUG;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let ev = null, pin = '', busy = false;
+let ev = null, st = {}, pin = '', busy = false, timerEnd = null, tick = null, tab = 'run';
 
 const qs = SLUG === 'rlc' ? '' : '?e=' + SLUG;
 const aURL = location.origin + '/card' + qs, sURL = location.origin + '/card/screen' + qs;
@@ -145,104 +175,175 @@ document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => {
   try{ await navigator.clipboard.writeText(b.dataset.copy==='a'?aURL:sURL); b.textContent='Copied'; setTimeout(()=>b.textContent='Copy',1200) }catch(e){}
 });
 
-async function get(){
+async function getEv(){
   const r = await fetch(`${SB_URL}/rest/v1/goalcard_events?slug=eq.${SLUG}&select=*`, {headers:{apikey:SB_KEY}, cache:'no-store'});
-  if(!r.ok) throw new Error('load'); const rows = await r.json(); return rows[0];
+  if(!r.ok) throw new Error('load'); return (await r.json())[0];
 }
 async function rpc(fn, body){
   const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {method:'POST', headers:{apikey:SB_KEY,'Content-Type':'application/json'}, body:JSON.stringify(body)});
-  const j = await r.json().catch(()=>null);
+  const t = await r.text(); let j = null; try{ j = t ? JSON.parse(t) : null }catch(e){}
   if(!r.ok) throw new Error((j && j.message) || 'Failed');
   return j;
 }
 function setLive(ok){ $('#live').classList.toggle('bad', !ok); $('#live span').textContent = ok ? 'Live' : 'Reconnecting'; }
+const N = () => ev.steps.length, REVEAL = () => N() + 1;
 
 async function setStep(step, free){
   if(busy) return; busy = true;
   try{
     ev = await rpc('goalcard_set_step', {p_slug:SLUG, p_pin:pin, p_step:step, p_free: free ?? null});
-    setLive(true); draw();
+    timerEnd = null; st.counts = {};
+    setLive(true); draw(); refresh();
     try{ navigator.vibrate && navigator.vibrate(30) }catch(e){}
   }catch(e){ setLive(false); if(/PIN/.test(e.message)) logout(); }
   busy = false;
 }
 
-function title(i){
-  if(i===0) return {k:'Before you start', h:'Welcome screen', p:'People scan, type their name and wait for card 1.'};
-  if(i>=6) return {k:'Reveal', h:'Their full card', p:'Worry gets crossed out. They save the lock screen and send it on WhatsApp.'};
+function stepInfo(i){
+  if(i===0) return {k:'Welcome screen is showing', h:'People scan and type their first name', notes:ev.intro_notes};
+  if(i>=REVEAL()) return {k:'Their card is open', h:'Worry crossed out. Lock screen. WhatsApp.', notes:ev.reveal_notes, r:ev.wall_ref};
   const s = ev.steps[i-1];
-  return {k:`Card ${i} of ${ev.steps.length} is open`, h:s.q, p:s.hint, r:`${s.ref}: ${s.verse}`};
+  const kind = s.type==='poll' ? 'Room poll' : s.type==='pair' ? 'Pair moment' : 'Card';
+  return {k:`${kind} · ${i} of ${N()}`, h:s.q.replace(/\{name\},?\s*/g,'').replace(/,\s*\{name\}/g,'').replace(/^./,c=>c.toUpperCase()), notes:s.notes, r:s.ref ? `${s.ref}: ${s.verse}` : '', s};
 }
 
 function draw(){
   if(!ev) return;
   $('#evName').textContent = ev.host || ev.title;
-  const i = ev.current_step, t = title(i);
-  $('#now').innerHTML = `<small>${esc(t.k)}</small><h1>${esc(t.h)}</h1><p>${esc(t.p)}</p>${t.r?`<div class="ref">${esc(t.r)}</div>`:''}`;
-  $('#prev').disabled = i<=0; $('#next').disabled = i>=6;
-  $('#next').textContent = i===0 ? 'Open card 1' : i>=5 ? (i>=6 ? 'All open' : 'Show their card') : `Open card ${i+1}`;
-  const lab = ['S','1','2','3','4','5','✓'];
-  $('#chips').innerHTML = lab.map((l,n)=>`<button data-n="${n}" class="${n<i?'done':''} ${n===i?'on':''}">${l}</button>`).join('');
+  const i = ev.current_step, t = stepInfo(i);
+  $('#now').innerHTML = `<small>${esc(t.k)}</small><h1>${esc(t.h)}</h1>${t.r?`<div class="ref">${esc(t.r)}</div>`:''}`;
+  const sc = $('#script');
+  sc.classList.toggle('empty', !t.notes);
+  $('#scriptText').textContent = t.notes || 'No script for this card yet. Add one in Edit.';
+  // up next
+  const n = i+1;
+  $('#upnext').innerHTML = n<=N() ? `Up next: <b>${esc(stepInfo(n).h)}</b>` : n===REVEAL() ? 'Up next: <b>their full card</b>' : '';
+  // controls
+  $('#prev').disabled = i<=0; $('#next').disabled = i>=REVEAL();
+  $('#next').textContent = i>=REVEAL() ? 'All open' : i===N() ? 'Show their card' : i===0 ? 'Open card 1' : `Open card ${i+1}`;
+  const labs = ['S', ...ev.steps.map((s,k)=>String(k+1)), '✓'];
+  $('#chips').innerHTML = labs.map((l,k)=>`<button data-n="${k}" class="${k<i?'done':''} ${k===i?'on':''}">${l}</button>`).join('');
   $('#chips').querySelectorAll('button').forEach(b => b.onclick = () => setStep(+b.dataset.n));
   $('#free').checked = !!ev.free_mode;
+  drawExtra();
 }
 
+function drawExtra(){
+  const box = $('#extra'); const i = ev.current_step; const s = i>=1 && i<=N() ? ev.steps[i-1] : null;
+  clearInterval(tick); tick = null;
+  if(!s || (s.type!=='poll' && s.type!=='pair')){ box.classList.add('hide'); return; }
+  box.classList.remove('hide');
+  if(s.type==='poll'){
+    const c = st.counts || {}; const total = Object.values(c).reduce((a,b)=>a+(+b||0),0);
+    const rows = (s.options||[]).map((o,k)=>({o, n:+(c[k]||0)})).sort((a,b)=>b.n-a.n);
+    box.innerHTML = `<div class="tag" style="margin-bottom:10px">Live results · ${total} ${total===1?'vote':'votes'}</div><div class="bars">${
+      rows.map(r=>{const p = total?Math.round(r.n*100/total):0; return `<div class="barrow"><i style="width:${p}%"></i><span>${esc(r.o)}</span><span>${p}%</span></div>`}).join('')}</div>`;
+  } else {
+    const secs = s.seconds || 60;
+    box.innerHTML = `<div class="timerbox"><div class="t" id="tleft">${fmt(secs*1000)}</div>
+      <button class="btn go" id="tstart" style="flex:1">${timerEnd?'Restart':'Start'} ${secs}s timer</button>
+      <button class="btn sm line" id="tstop">Stop</button></div>`;
+    $('#tstart').onclick = async () => { try{ await rpc('goalcard_start_timer',{p_slug:SLUG,p_pin:pin,p_seconds:secs}); timerEnd = Date.now()+secs*1000; drawExtra(); }catch(e){ setLive(false); } };
+    $('#tstop').onclick = async () => { try{ await rpc('goalcard_start_timer',{p_slug:SLUG,p_pin:pin,p_seconds:0}); timerEnd = null; drawExtra(); }catch(e){} };
+    if(timerEnd){
+      const f = () => { const l = Math.max(0, timerEnd-Date.now()); const el = $('#tleft'); if(el) el.textContent = fmt(l); if(l<=0){ clearInterval(tick); tick=null; try{navigator.vibrate&&navigator.vibrate([80,60,80])}catch(e){} } };
+      f(); tick = setInterval(f, 250);
+    }
+  }
+}
+const fmt = ms => { const s = Math.ceil(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+
+async function refresh(){
+  try{
+    const s = await rpc('goalcard_state', {p_slug:SLUG});
+    setLive(true); if(!s) return;
+    const changed = ev && (s.updated_at !== ev.updated_at);
+    if(changed && !busy){ ev = await getEv(); }
+    const oldCounts = JSON.stringify(st.counts||{});
+    st = s;
+    $('#ppl').classList.toggle('hide', !s.people); $('#ppl b').textContent = s.people || 0;
+    const te = s.timer_ms != null ? Date.now() + s.timer_ms : null;
+    const timerChanged = (!!te) !== (!!timerEnd) || (te && Math.abs(te - timerEnd) > 1500);
+    if(timerChanged) timerEnd = te;
+    if(changed) draw(); else if(oldCounts !== JSON.stringify(s.counts||{}) || timerChanged) drawExtra();
+  }catch(e){ setLive(false); }
+}
+
+function stepEditor(s,i){
+  const kind = s.type==='poll' ? 'Room poll' : s.type==='pair' ? 'Pair moment' : 'Question';
+  return `<div class="stepedit" data-i="${i}">
+    <h2>Card ${i+1}<em>${kind}</em></h2>
+    <label>${s.type==='pair'?'Title':'Question'}</label><input type="text" data-f="q" value="${esc(s.q)}">
+    <label>Helper line</label><input type="text" data-f="hint" value="${esc(s.hint)}">
+    ${s.type==='question' ? `<label>Example answer</label><input type="text" data-f="ex" value="${esc(s.ex)}">` : ''}
+    ${s.type==='poll' ? `<label>Options (one per line)</label><textarea data-f="options" rows="6">${esc((s.options||[]).join('\n'))}</textarea>` : ''}
+    ${s.type==='pair' ? `<label>Timer seconds</label><input type="text" inputmode="numeric" data-f="seconds" value="${esc(s.seconds||60)}">` : ''}
+    <label>Scripture reference</label><input type="text" data-f="ref" value="${esc(s.ref)}">
+    <label>Verse</label><textarea data-f="verse" rows="2">${esc(s.verse)}</textarea>
+    <label>Your script</label><textarea data-f="notes" rows="6">${esc(s.notes)}</textarea>
+  </div>`;
+}
 function fillEdit(){
-  $('#f_title').value = ev.title; $('#f_host').value = ev.host; $('#f_intro').value = ev.intro;
+  $('#f_title').value = ev.title; $('#f_host').value = ev.host; $('#f_intro').value = ev.intro; $('#f_logo').value = ev.logo_url || '';
+  $('#f_intro_notes').value = ev.intro_notes || ''; $('#f_reveal_notes').value = ev.reveal_notes || '';
   $('#f_wall_ref').value = ev.wall_ref; $('#f_wall_verse').value = ev.wall_verse; $('#f_newpin').value = '';
-  $('#f_steps').innerHTML = ev.steps.map((s,i)=>`
-    <div class="stepedit" data-i="${i}" data-key="${esc(s.key)}">
-      <h2>Card ${i+1}</h2>
-      <label>Question</label><input type="text" data-f="q" value="${esc(s.q)}">
-      <label>Helper line</label><input type="text" data-f="hint" value="${esc(s.hint)}">
-      <label>Example answer</label><input type="text" data-f="ex" value="${esc(s.ex)}">
-      <label>Scripture reference</label><input type="text" data-f="ref" value="${esc(s.ref)}">
-      <label>Verse</label><textarea data-f="verse" rows="2">${esc(s.verse)}</textarea>
-    </div>`).join('');
+  $('#f_steps').innerHTML = ev.steps.map(stepEditor).join('');
 }
-
 $('#save').onclick = async () => {
   const steps = [...document.querySelectorAll('#f_steps .stepedit')].map(d => {
-    const o = {key:d.dataset.key}; d.querySelectorAll('[data-f]').forEach(f => o[f.dataset.f] = f.value.trim()); return o;
+    const o = {...ev.steps[+d.dataset.i]};
+    d.querySelectorAll('[data-f]').forEach(f => {
+      const v = f.value.trim();
+      if(f.dataset.f==='options') o.options = v.split('\n').map(x=>x.trim()).filter(Boolean);
+      else if(f.dataset.f==='seconds') o.seconds = Math.max(10, Math.min(600, parseInt(v)||60));
+      else o[f.dataset.f] = v;
+    });
+    return o;
   });
   const np = $('#f_newpin').value.trim();
   const m = $('#saveMsg'); m.className='msg'; m.textContent='Saving...';
   try{
     ev = await rpc('goalcard_update_event', {p_slug:SLUG, p_pin:pin, p_title:$('#f_title').value.trim(), p_host:$('#f_host').value.trim(),
       p_intro:$('#f_intro').value.trim(), p_steps:steps, p_wall_ref:$('#f_wall_ref').value.trim(), p_wall_verse:$('#f_wall_verse').value.trim(),
-      p_new_pin: np.length>=4 ? np : null});
+      p_new_pin: np.length>=4 ? np : null, p_logo_url:$('#f_logo').value.trim(), p_intro_notes:$('#f_intro_notes').value, p_reveal_notes:$('#f_reveal_notes').value});
     if(np.length>=4){ pin = np; try{localStorage.setItem(PK,pin)}catch(e){} }
-    m.className='msg ok'; m.textContent = np && np.length<4 ? 'Saved. PIN not changed (use 4 or more digits).' : 'Saved. Phones will update in a few seconds.';
+    m.className='msg ok'; m.textContent = np && np.length<4 ? 'Saved. PIN not changed (use 4 or more digits).' : 'Saved. Phones update in a few seconds.';
     draw();
   }catch(e){ m.className='msg err'; m.textContent = e.message; }
 };
 
-$('#next').onclick = () => setStep(Math.min(6, ev.current_step + 1));
+$('#next').onclick = () => setStep(Math.min(REVEAL(), ev.current_step + 1));
 $('#prev').onclick = () => setStep(Math.max(0, ev.current_step - 1));
 $('#free').onchange = e => setStep(ev.current_step, e.target.checked);
-$('#reset').onclick = () => { if(confirm('Send everyone back to the start and close all cards?')) setStep(0, false); };
+$('#reset').onclick = async () => {
+  if(!confirm('Close every card and clear the poll and phone count?')) return;
+  try{ await rpc('goalcard_reset_room', {p_slug:SLUG, p_pin:pin}); ev = await getEv(); st = {}; timerEnd = null; draw(); refresh(); }catch(e){}
+};
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  tab = b.dataset.t;
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x===b));
-  $('#run').classList.toggle('hide', b.dataset.t!=='run'); $('#edit').classList.toggle('hide', b.dataset.t!=='edit');
-  if(b.dataset.t==='edit') fillEdit();
+  ['run','edit','more'].forEach(id => $('#'+id).classList.toggle('hide', id!==tab));
+  $('#dock').classList.toggle('hide', tab!=='run');
+  if(tab==='edit') fillEdit();
 });
 
 async function unlock(p){
   pin = p; $('#pinMsg').textContent = '';
   try{
-    ev = ev || await get();
+    ev = ev || await getEv();
     if(!ev){ $('#pinMsg').textContent = 'Event not found.'; return; }
     ev = await rpc('goalcard_set_step', {p_slug:SLUG, p_pin:pin, p_step:ev.current_step, p_free:null});
     try{ localStorage.setItem(PK, pin) }catch(e){}
-    $('#pinView').classList.add('hide'); $('#app').classList.remove('hide'); draw();
+    $('#pinView').classList.add('hide'); $('#app').classList.remove('hide'); $('#dock').classList.remove('hide');
+    draw(); refresh();
   }catch(e){ $('#pinMsg').textContent = /PIN/.test(e.message) ? 'Wrong PIN.' : 'Could not connect. Check your data.'; }
 }
-function logout(){ try{localStorage.removeItem(PK)}catch(e){} $('#app').classList.add('hide'); $('#pinView').classList.remove('hide'); $('#pinMsg').textContent='PIN no longer valid.'; }
+function logout(){ try{localStorage.removeItem(PK)}catch(e){} $('#app').classList.add('hide'); $('#dock').classList.add('hide'); $('#pinView').classList.remove('hide'); $('#pinMsg').textContent='PIN no longer valid.'; }
 $('#pinGo').onclick = () => unlock($('#pin').value.trim());
 $('#pin').addEventListener('keydown', e => { if(e.key==='Enter') unlock($('#pin').value.trim()); });
 
-setInterval(async () => { if(document.hidden || $('#app').classList.contains('hide') || busy) return;
-  try{ const r = await get(); if(r && r.updated_at !== ev?.updated_at && !busy){ ev = r; draw(); } setLive(true); }catch(e){ setLive(false); } }, 4000);
+setInterval(() => { if(document.hidden || !ev || $('#app').classList.contains('hide') || busy || tab==='edit') return; refresh(); }, 2500);
+document.addEventListener('visibilitychange', () => { if(!document.hidden && ev) refresh(); });
 
 let saved = ''; try{ saved = localStorage.getItem(PK) || '' }catch(e){}
 if(saved) unlock(saved);

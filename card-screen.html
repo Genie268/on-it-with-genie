@@ -8,58 +8,138 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="/card-assets/qrcode.js"></script>
+<script src="/card-assets/art.js"></script>
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:#17140F;color:#F5EFE3;font-family:Manrope,system-ui,sans-serif;overflow:hidden}
-.s{height:100vh;display:grid;grid-template-columns:1.25fr 1fr;gap:6vw;align-items:center;padding:6vh 7vw}
-.tag{font-size:1.4vw;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#E2513F}
-h1{font-family:Archivo;font-stretch:85%;font-weight:900;font-size:7.4vw;line-height:.92;margin:2vh 0 3vh;letter-spacing:-.01em}
-p{font-size:1.9vw;color:#A79E8E;margin:0;max-width:34ch;line-height:1.35}
-.url{margin-top:4vh;font-family:Archivo;font-weight:800;font-size:2.2vw;color:#F5EFE3}
-.qrbox{background:#FFFDF8;border-radius:2.2vw;padding:2.4vw;justify-self:center;width:min(36vw,72vh);aspect-ratio:1;display:grid;place-items:center}
-#qr,#qr img,#qr canvas{width:100%!important;height:auto!important}
-.ref{margin-top:3vh;font-size:1.5vw;font-weight:800;color:#F5EFE3;letter-spacing:.06em}
-.dots{display:flex;gap:.8vw;margin-top:4vh}
-.dots i{width:3.4vw;height:.7vw;border-radius:1vw;background:#3A342B}
-.dots i.on{background:#E2513F}
+html,body{margin:0;height:100%;background:#F3EEE4;color:#17140F;font-family:Manrope,system-ui,sans-serif;overflow:hidden}
+body{background-image:radial-gradient(rgba(23,20,15,.05) 1px,transparent 1px);background-size:24px 24px}
+.s{height:100vh;display:grid;grid-template-columns:1.2fr 1fr;gap:5vw;align-items:center;padding:6vh 6vw}
+.top{position:fixed;top:4vh;left:6vw;right:6vw;display:flex;justify-content:space-between;align-items:center}
+.brand{font-size:1.2vw;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:#6B6357;display:flex;align-items:center}
+.brand img{height:5.5vh;width:auto}
+.ppl{font-size:1.2vw;font-weight:800;color:#6B6357}
+.ppl b{color:#17140F;font-family:Archivo,system-ui,sans-serif;font-size:1.8vw}
+.kick{font-size:1.3vw;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#D2402F}
+h1{font-family:Archivo,system-ui,sans-serif;font-stretch:85%;font-weight:900;font-size:6.6vw;line-height:.95;margin:2vh 0 2.5vh;letter-spacing:-.01em}
+p{font-size:1.8vw;color:#6B6357;margin:0;max-width:34ch;line-height:1.35}
+.verse{margin-top:3.5vh;font-size:1.5vw;color:#17140F;max-width:40ch;line-height:1.4}
+.verse b{display:block;font-size:1.1vw;letter-spacing:.14em;color:#D2402F;margin-bottom:.6vh}
+.url{margin-top:3vh;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-size:2vw}
+.right{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2vh}
+.qrbox{background:#FFFDF8;border:1px solid #E3DBCC;border-radius:2vw;padding:2.2vw;width:min(34vw,62vh);aspect-ratio:1;display:grid;place-items:center;box-shadow:0 30px 60px -30px rgba(23,20,15,.35)}
+#qr,#qr svg{width:100%;height:auto;display:block}
+#qrSmall svg{width:100%;height:auto;display:block}
+.artbox{width:min(36vw,64vh)}
+.artbox svg{width:100%;height:auto}
+.bars{width:100%;display:grid;gap:1.4vh}
+.bar{position:relative;background:#FFFDF8;border:1px solid #E3DBCC;border-radius:1.2vw;padding:1.6vh 1.4vw;display:flex;justify-content:space-between;font-weight:800;font-size:1.7vw;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:#F7DCD5;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.bar.win{border-color:#D2402F}
+.bar.win i{background:#F0B4A8}
+.bar.win span:last-child{color:#D2402F}
+.bar span{position:relative}
+.total{font-size:1.2vw;font-weight:800;color:#6B6357;letter-spacing:.12em;text-transform:uppercase}
+.clock{font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:16vw;line-height:1;color:#17140F}
+.clock.done{color:#D2402F}
+.mini{display:flex;align-items:center;gap:1.2vw;margin-top:3vh}
+.mini .q{width:8vw;background:#FFFDF8;border-radius:.8vw;padding:.5vw}
+.mini span{font-size:1.2vw;color:#6B6357;font-weight:700}
+.hide{display:none!important}
 </style>
 </head>
 <body>
+<div class="top"><div class="brand" id="brand">Relentless Love Church</div><div class="ppl hide" id="ppl"><b>0</b> phones in</div></div>
 <div class="s">
   <div>
-    <div class="tag" id="tag">Relentless Love Church</div>
-    <h1 id="h">Scan to get your Goal Card</h1>
+    <div class="kick" id="kick">Get your Goal Card</div>
+    <h1 id="h">Scan the code</h1>
     <p id="p">Keep the page open. Each card opens as we go.</p>
-    <div class="ref" id="ref"></div>
-    <div class="dots" id="dots"></div>
+    <div class="verse hide" id="verse"><b id="vref"></b><span id="vtext"></span></div>
     <div class="url" id="url"></div>
+    <div class="mini hide" id="mini"><div class="q" id="qrSmall"></div><span>Joining late? Scan here.</span></div>
   </div>
-  <div class="qrbox"><div id="qr"></div></div>
+  <div class="right" id="right">
+    <div class="qrbox" id="qrbox"><div id="qr"></div></div>
+  </div>
 </div>
 <script>
 const SB_URL='https://vbafqulhbskaswkyjjdn.supabase.co', SB_KEY='sb_publishable_XK50Ttn1qZW7HvNz1EMFhQ_gzsvAFko';
 const SLUG=(new URLSearchParams(location.search).get('e')||'rlc').toLowerCase();
 const link = location.origin + '/card' + (SLUG==='rlc' ? '' : '?e=' + SLUG);
-document.getElementById('url').textContent = link.replace(/^https?:\/\//,'');
-try{ new QRCode(document.getElementById('qr'), {text:link, width:600, height:600, colorDark:'#17140F', colorLight:'#FFFDF8', correctLevel:QRCode.CorrectLevel.M}); }catch(e){}
+const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let last='';
-async function tick(){
+$('#url').textContent = link.replace(/^https?:\/\/(www\.)?/,'');
+try{
+  const q = qrcode(0,'M'); q.addData(link); q.make();
+  const svg = q.createSvgTag({cellSize:8, margin:0, scalable:true}).replace(/fill="black"/g,'fill="#17140F"').replace(/fill="white"/g,'fill="#FFFDF8"');
+  $('#qr').innerHTML = svg; $('#qrSmall').innerHTML = svg;
+}catch(e){ $('#qr').textContent = link; }
+const clean = t => String(t||'').replace(/\{name\},\s*/g,'').replace(/,\s*\{name\}/g,'').replace(/\s*\{name\}/g,'').replace(/^./,c=>c.toUpperCase());
+
+let ev=null, st=null, mode='', timerEnd=null, tick=null;
+async function rest(){ const r=await fetch(`${SB_URL}/rest/v1/goalcard_events?slug=eq.${SLUG}&select=*`,{headers:{apikey:SB_KEY},cache:'no-store'}); return (await r.json())[0]; }
+async function state(){ const r=await fetch(`${SB_URL}/rest/v1/rpc/goalcard_state`,{method:'POST',headers:{apikey:SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_slug:SLUG})}); return r.json(); }
+
+function setRight(html, key){
+  if(mode===key) return false; mode=key;
+  $('#qrbox').classList.toggle('hide', key!=='qr');
+  [...$('#right').children].forEach(c=>{ if(c.id!=='qrbox') c.remove(); });
+  if(html) $('#right').insertAdjacentHTML('beforeend', html);
+  return true;
+}
+
+function draw(){
+  if(!ev) return;
+  $('#brand').innerHTML = ev.logo_url ? `<img src="${esc(ev.logo_url)}" alt="">` : esc(ev.host);
+  const i=ev.current_step, n=ev.steps.length, s = i>=1&&i<=n ? ev.steps[i-1] : null;
+  $('#ppl').classList.toggle('hide', !st || !st.people); if(st) $('#ppl b').textContent = st.people;
+  $('#url').classList.toggle('hide', i>0); $('#mini').classList.toggle('hide', i===0);
+  let kick='Get your Goal Card', h='Scan the code', p='Keep the page open. Each card opens as we go.', vref='', vtext='';
+  clearInterval(tick); tick=null;
+  if(i===0){ setRight('', 'qr'); }
+  else if(s){
+    kick = s.type==='poll' ? 'Room poll' : s.type==='pair' ? 'Turn to your neighbour' : `Card ${i} of ${n}`;
+    h = clean(s.q); p = clean(s.hint); vref = s.ref; vtext = s.verse;
+    if(s.type==='poll'){
+      const c = (st && st.counts) || {}; const total = Object.values(c).reduce((a,b)=>a+(+b||0),0);
+      const rows = (s.options||[]).map((o,k)=>({o,n:+(c[k]||0)})).sort((a,b)=>b.n-a.n);
+      setRight(`<div class="bars" id="bars"></div><div class="total" id="total"></div>`, 'poll'+i);
+      $('#bars').innerHTML = rows.map((r,k)=>{const pc=total?Math.round(r.n*100/total):0; return `<div class="bar ${k===0&&r.n?'win':''}"><i style="width:${pc}%"></i><span>${esc(r.o)}</span><span>${pc}%</span></div>`}).join('');
+      $('#total').textContent = total + (total===1?' answer':' answers');
+      vref=''; vtext='';
+    } else if(s.type==='pair'){
+      setRight(`<div class="clock" id="clock"></div>`, 'pair'+i);
+      const secs=(s.seconds||60)*1000;
+      const f=()=>{ const l = timerEnd ? Math.max(0,timerEnd-Date.now()) : secs; const sc=Math.ceil(l/1000);
+        $('#clock').textContent = Math.floor(sc/60)+':'+String(sc%60).padStart(2,'0'); $('#clock').classList.toggle('done', timerEnd && l<=0);
+        if(timerEnd && l<=0){ clearInterval(tick); tick=null; } };
+      f(); if(timerEnd) tick=setInterval(f,250);
+    } else {
+      setRight(`<div class="artbox">${GC_ART(s.key, s.type)}</div>`, 'art'+i);
+    }
+  } else {
+    kick='Your card is ready'; h='Save it. Send it.'; p='Make it your lock screen. Then send it to the person who will check on you.';
+    vref=ev.wall_ref; vtext=ev.wall_verse;
+    setRight(`<div class="artbox">${GC_ART('reveal')}</div>`, 'reveal');
+  }
+  $('#kick').textContent=kick; $('#h').textContent=h; $('#p').textContent=p;
+  $('#h').style.fontSize = h.length>44 ? '4.6vw' : h.length>28 ? '5.4vw' : '6.6vw';
+  $('#verse').classList.toggle('hide', !vref); $('#vref').textContent = (vref||'').toUpperCase() + ' · BSB'; $('#vtext').textContent = vtext||'';
+}
+
+async function loop(){
   try{
-    const r=await fetch(`${SB_URL}/rest/v1/goalcard_events?slug=eq.${SLUG}&select=*`,{headers:{apikey:SB_KEY},cache:'no-store'});
-    const ev=(await r.json())[0]; if(!ev||ev.updated_at===last) return; last=ev.updated_at;
-    document.getElementById('tag').textContent=ev.host;
-    const i=ev.current_step, n=ev.steps.length;
-    let h='Scan to get your Goal Card', p='Keep the page open. Each card opens as we go.', ref='';
-    if(i>=1&&i<=n){ const s=ev.steps[i-1]; h=s.q; p=s.hint; ref=s.ref.toUpperCase(); }
-    if(i>=6){ h='Your card is ready'; p='Save it as your lock screen. Then send it to the person who will check on you.'; ref=(ev.wall_ref||'').toUpperCase(); }
-    document.getElementById('h').textContent=h; document.getElementById('p').textContent=p; document.getElementById('ref').textContent=ref;
-    document.getElementById('h').style.fontSize = h.length>40 ? '5.2vw' : '7.4vw';
-    document.getElementById('dots').innerHTML = i>0 ? Array.from({length:n},(_,k)=>`<i class="${k<i?'on':''}"></i>`).join('') : '';
+    const s = await state(); if(!s) return;
+    const need = !ev || s.updated_at !== ev.updated_at;
+    st = s;
+    const te = s.timer_ms!=null ? Date.now()+s.timer_ms : null;
+    if((!!te)!==(!!timerEnd) || (te && Math.abs(te-timerEnd)>1500)){ timerEnd = te; mode=''; }
+    if(need){ ev = await rest(); mode=''; }
+    draw();
   }catch(e){}
 }
-tick(); setInterval(tick,2500);
+loop(); setInterval(loop, 2000);
 </script>
 </body>
 </html>
