@@ -8,13 +8,14 @@
  *   attend        {id, value}             "showed" | "no_show" | null
  *   grant_call    {email}                 Give someone one more free clarity call
  *   new_plan      {name, email, phone?, hours, notify}   Mentorship hours for a client you already have
- *   save_settings {genie_whatsapp?, booking_window_days?, mentorship_window_days?}
+ *   save_settings {genie_whatsapp?, booking_window_days?, mentorship_window_days?, squad_revision_days?}
  *   save_rule     {id, start_time, end_time, active}
  *   checkin       {id, value}             Door check-in for an event pass (true/false)
  *   squad_create  {name, code, starts_on, weeks, event?}   New accountability squad
  *   squad_toggle  {id, active}            Open/close a squad (closed = no new joins, no reminders)
  *   squad_media_url {member_id, kind:"video"|"photo", type}   Signed upload URL for a member's declaration video/photo
  *   squad_set_media {member_id, kind, path}                   Attach the uploaded file (path "" removes it)
+ *   squad_allow_revision {member_id}      Let a squad member change their goal once (e.g. after a check-in call). Emails them.
  *   free_calls    {open}                  Close free clarity sessions (all free_call hours off, remembered) or reopen them
  *   event_save    {code?, session, title?, date, start, end, venue?, venue_short?, address?, maps?, capacity, registration_open, published?}
  *                                         Create or edit a Forward with Genie session (no code = new one)
@@ -105,7 +106,7 @@ async function list() {
   // squads with their members and check-ins
   const [{ data: sqs }, { data: sqm }, { data: sqc }] = await Promise.all([
     sb.from("squads").select("*").order("created_at", { ascending: false }),
-    sb.from("squad_members").select("id,squad_id,name,email,phone,goal,deadline,proof,first_step,started_at,started_note,created_at,photo_path,video_path,video_cover_path,show_video").order("created_at"),
+    sb.from("squad_members").select("id,squad_id,name,email,phone,goal,deadline,proof,first_step,started_at,started_note,created_at,photo_path,video_path,video_cover_path,show_video,revision_allowed_at,revised_at,first_goal").order("created_at"),
     sb.from("squad_checkins").select("member_id,squad_id,week,status,note"),
   ]);
   const vpaths = (sqm ?? []).map((m: any) => m.video_path).filter(Boolean);
@@ -138,7 +139,7 @@ async function list() {
     settings: {
       genie_whatsapp: s.genie_whatsapp ?? "", booking_window_days: s.booking_window_days ?? "3",
       mentorship_window_days: s.mentorship_window_days ?? "30", notify_email: s.notify_email ?? "",
-      calendar_synced_at: s.calendar_synced_at ?? "",
+      calendar_synced_at: s.calendar_synced_at ?? "", squad_revision_days: s.squad_revision_days ?? "7",
     },
   };
 }
@@ -252,6 +253,21 @@ async function intakeSave(p: P) {
   const { error } = await sb.from("public_settings").upsert({ key: "intake", value, updated_at: new Date().toISOString() });
   return error ? { ok: false, error: error.message } : { ok: true, intake: value };
 }
+async function squadAllowRevision(p: P) {
+  const id = clean(p.member_id, 60);
+  const { data: m } = await sb.from("squad_members").select("id,name,email,goal,token,created_at,revised_at,squads(code,name)").eq("id", id).maybeSingle();
+  if (!m) return { ok: false, error: "Member not found" };
+  if ((m as any).revised_at) return { ok: false, error: "They've already used their one change" };
+  const { data: d } = await sb.from("private_settings").select("value").eq("key", "squad_revision_days").maybeSingle();
+  const days = Number(d?.value) > 0 ? Number(d?.value) : 7;
+  if (Date.parse((m as any).created_at) < Date.now() - days * 86400000) return { ok: false, error: `Changes are only allowed within ${days} days of declaring. Change that in Switches & hours.` };
+  const { error } = await sb.from("squad_members").update({ revision_allowed_at: new Date().toISOString() }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  const q = (m as any).squads, first = String((m as any).name || "there").trim().split(" ")[0];
+  const emailed = await sendEmail((m as any).email, "You can sharpen your goal",
+    `Hi ${first},\n\nAfter our conversation, I've opened your goal for one change.\n\nRight now it reads: "${(m as any).goal}"\n\nRewrite it so it's something within your control, with a number anyone can check. Your deadline stays the same, and your squad will see what it was before.\n\nMake the change here:\n${SITE}/squad/${q.code}?me=${(m as any).token}\n\nGenie`);
+  return { ok: true, emailed };
+}
 async function squadToggle(p: P) {
   const { error } = await sb.from("squads").update({ active: p.active === true }).eq("id", clean(p.id, 60));
   return error ? { ok: false, error: error.message } : { ok: true };
@@ -292,7 +308,7 @@ async function newPlan(p: P) {
 async function saveSettings(p: P) {
   const out: Array<{ key: string; value: string; updated_at: string }> = [], now = new Date().toISOString();
   if (typeof p.genie_whatsapp === "string") out.push({ key: "genie_whatsapp", value: clean(p.genie_whatsapp, 40), updated_at: now });
-  for (const k of ["booking_window_days", "mentorship_window_days"]) {
+  for (const k of ["booking_window_days", "mentorship_window_days", "squad_revision_days"]) {
     if (p[k] === undefined) continue;
     const n = Math.round(Number(p[k]));
     if (!(n >= 1 && n <= 60)) return { ok: false, error: "bad_" + k };
@@ -322,7 +338,7 @@ async function addRule(p: P) {
 }
 
 const ACTIONS: Record<string, (p: P) => Promise<P>> = {
-  list, cancel, attend, checkin, squad_create: squadCreate, squad_toggle: squadToggle, squad_media_url: squadMediaUrl, squad_set_media: squadSetMedia, free_calls: freeCalls, event_save: eventSave, intake_save: intakeSave, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
+  list, cancel, attend, checkin, squad_create: squadCreate, squad_toggle: squadToggle, squad_media_url: squadMediaUrl, squad_set_media: squadSetMedia, squad_allow_revision: squadAllowRevision, free_calls: freeCalls, event_save: eventSave, intake_save: intakeSave, grant_call: grantCall, new_plan: newPlan, save_settings: saveSettings, save_rule: saveRule, add_rule: addRule,
 };
 
 Deno.serve(async (req) => {

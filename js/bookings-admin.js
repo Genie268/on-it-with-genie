@@ -84,7 +84,7 @@ function bkStyles(){
   .sq-stats{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 2px;font-size:12.5px;color:#8a8a8a}.sq-stats b{color:#ededed;font-size:16px;margin-right:3px}
   .sq-mems{margin-top:12px;display:grid;gap:8px}
   .sq-m{background:#080808;border:1px solid #1c1c1c;border-radius:12px;padding:12px}
-  .sq-m b{color:#ededed;font-size:14px}.sq-g{color:#d6d6d6;font-size:14px;margin-top:4px;line-height:1.4}
+  .sq-m b{color:#ededed;font-size:14px}.sq-g{color:#d6d6d6;font-size:14px;margin-top:4px;line-height:1.4}.sq-was{color:#7a7a7a;font-size:12px;margin-top:3px;text-decoration:none}
   .sq-who{display:flex;align-items:center;gap:8px}.sq-who img,.sq-who i{width:28px;height:28px;border-radius:50%;object-fit:cover;flex:none}.sq-who i{display:grid;place-items:center;background:#222;color:#c49a1c;font-style:normal;font-weight:800;font-size:12px}
   .sq-media video{width:100%;max-height:260px;border-radius:10px;background:#000;margin-top:10px}
   .sq-media label{cursor:pointer}
@@ -302,14 +302,14 @@ function bkSquads(d){
       </div>
       ${q.members.length ? `<div class="sq-mems">${q.members.map(m=>{ const wa = bkWa(m.phone); let wks=""; for(let w=1; w<=q.weeks; w++){ const c=m.checkins[w]; wks+=`<i class="${c?c.status:""}${w===q.week?" now":""}" title="Week ${w}${c&&c.note?": "+bkEsc(c.note):""}">${c?(c.status==="done"?"✓":c.status==="partly"?"½":"✕"):w}</i>`; }
         return `<div class="sq-m"><div class="bk-top"><div class="sq-who">${m.photo?`<img src="${bkEsc(m.photo)}" alt="">`:`<i>${bkEsc((m.name||"?").trim()[0].toUpperCase())}</i>`}<b>${bkEsc(m.name)}</b></div>${m.started_at?`<span class="bk-tag free">Started</span>`:""}</div>
-          <div class="sq-g">${bkEsc(m.goal)}</div>
+          <div class="sq-g">${bkEsc(m.goal)}</div>${m.revised_at?`<div class="sq-was">Was: ${bkEsc(m.first_goal||"")} · changed ${bkEsc(String(m.revised_at).slice(0,10))}</div>`:""}
           <div class="bk-meta">${m.deadline?`<span>By ${bkEsc(m.deadline)}</span>`:""}${m.proof?`<span>Proof: ${bkEsc(m.proof)}</span>`:""}${wa?`<a href="${wa}" target="_blank" rel="noopener">${bkEsc(m.phone)}</a>`:""}<span>${bkEsc(m.email)}</span></div>
           <div class="sq-w">${wks}</div>
           <div class="sq-media">${m.video?`<video src="${bkEsc(m.video)}" ${m.cover?`poster="${bkEsc(m.cover)}"`:""} controls controlslist="nodownload" disablepictureinpicture playsinline preload="metadata"></video>`:""}
             <div class="bk-acts" style="margin-top:8px">
               <label class="bk-btn gold">${m.video?"Replace video":"Upload declaration video"}<input type="file" accept="video/*" hidden onchange="bkSqUpload(this,'${m.id}','video')"></label>${m.video?`<button class="bk-btn" onclick="bkCoverPicker('${m.id}')">${m.cover?"Change cover":"Pick cover"}</button>`:""}
               <label class="bk-btn">${m.photo?"Change photo":"Add photo"}<input type="file" accept="image/*" hidden onchange="bkSqUpload(this,'${m.id}','photo')"></label>
-              <a class="bk-btn" href="${SQ_SITE}/squad/${q.code}/m/${m.id}" target="_blank" rel="noopener">Profile</a>
+              <a class="bk-btn" href="${SQ_SITE}/squad/${q.code}/m/${m.id}" target="_blank" rel="noopener">Profile</a>${bkReviseBtn(m)}
             </div><div class="sq-up" id="sq-up-${m.id}" hidden><span></span><i><b></b></i></div></div></div>`; }).join("")}</div>` : `<p class="h" style="margin:10px 0 0">Nobody yet. Put the wall on screen and have them scan the code.</p>`}
     </div>`;
   }).join("");
@@ -418,6 +418,21 @@ async function bkSquadCreate(btn){
   btn.disabled = true;
   try{ await bkFetch("squad_create",{ name:v("sq-name"), code:v("sq-code"), starts_on:v("sq-start"), weeks:+v("sq-weeks") }); showToast("Squad created","success"); await bkRefresh(); }
   catch(e){ showToast(e.message==="code_taken"?"That code is taken":e.message==="bad_code"?"Code needs 3+ letters or numbers":"Couldn't create: "+e.message,"error"); btn.disabled=false; }
+}
+/* one goal change, unlocked by Genie after a check-in call */
+function bkReviseBtn(m){
+  if(m.revised_at) return "";
+  if(m.revision_allowed_at) return `<span class="bk-tag free" title="They got an email with the link">Goal change allowed · waiting</span>`;
+  const days = Number((BK.data.settings||{}).squad_revision_days) || 7;
+  if(Date.parse(m.created_at) < Date.now() - days*86400000) return "";
+  return `<button class="bk-btn" onclick="bkAllowRevision('${m.id}', this)">Allow goal change</button>`;
+}
+async function bkAllowRevision(id, btn){
+  const m = bkFindMember(id); if(!m) return;
+  if(!confirm(`Let ${m.name} change their goal once?\n\nThey get an email with the link. Their deadline stays, and their profile shows the old goal.`)) return;
+  btn.disabled = true;
+  try{ const r = await bkFetch("squad_allow_revision",{ member_id:id }); showToast(r.emailed ? "Done. They've been emailed the link." : "Done. The email didn't go, so send them their squad link.", "success"); await bkRefresh(); }
+  catch(e){ btn.disabled = false; showToast(e.message || "Couldn't update","error"); }
 }
 async function bkSquadToggle(id, active){
   try{ await bkFetch("squad_toggle",{ id, active }); showToast(active?"Squad reopened":"Squad closed","success"); await bkRefresh(); }
@@ -602,6 +617,7 @@ function bkHours(d){
       <input class="bk-in" id="st-wa" placeholder="WhatsApp number for paid clients" value="${bkEsc(s.genie_whatsapp)}">
       <div class="bk-grid2"><label style="font-size:12px;color:#7a7a7a">Clarity calls: days ahead<input class="bk-in" id="st-cw" type="number" min="1" max="14" value="${bkEsc(s.booking_window_days)}" style="margin-top:4px"></label>
       <label style="font-size:12px;color:#7a7a7a">Mentorship: days ahead<input class="bk-in" id="st-mw" type="number" min="1" max="60" value="${bkEsc(s.mentorship_window_days)}" style="margin-top:4px"></label></div>
+      <label style="font-size:12px;color:#7a7a7a;display:block;margin-top:10px">Squad goal changes: allowed up to this many days after someone declares<input class="bk-in" id="st-rv" type="number" min="1" max="60" value="${bkEsc(s.squad_revision_days||"7")}" style="margin-top:4px"></label>
       <button class="bk-btn gold" onclick="bkSaveSettings(this)">Save settings</button>
       <p class="h" style="margin:14px 0 0">Google Calendar last synced: ${bkEsc(synced)} (every 5 minutes). New bookings are emailed to ${bkEsc(s.notify_email||"you")}.</p></div>`;
 }
@@ -657,7 +673,7 @@ async function bkAddRule(key, wd){
 }
 async function bkSaveSettings(btn){
   btn.disabled = true;
-  try{ await bkFetch("save_settings", { genie_whatsapp:el("st-wa").value, booking_window_days:Number(el("st-cw").value), mentorship_window_days:Number(el("st-mw").value) }); showToast("Settings saved.", "success"); bkRefresh(); }
+  try{ await bkFetch("save_settings", { genie_whatsapp:el("st-wa").value, booking_window_days:Number(el("st-cw").value), mentorship_window_days:Number(el("st-mw").value), squad_revision_days:Number(el("st-rv").value) }); showToast("Settings saved.", "success"); bkRefresh(); }
   catch(e){ showToast("Couldn't save: "+e.message, "error"); }
   btn.disabled = false;
 }

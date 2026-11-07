@@ -110,6 +110,9 @@ p{margin:0}h1,h2,h3{margin:0}
 .ph-name{margin-top:12px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px}
 .ph-role{font-size:13px;color:var(--muted);margin-top:1px}
 .will{margin-top:6px;font-size:14px;line-height:1.4;color:var(--text)}
+.was{margin-top:4px;font-size:12px;line-height:1.4;color:var(--muted,#8a8a8a)}
+.rev-ask{margin:18px 16px 6px;padding:14px 16px;background:var(--card);border:1px solid var(--line,#2a2a2a);border-radius:14px;display:flex;flex-direction:column;gap:6px}
+.rev-ask b{font-size:15px}.rev-ask span{font-size:13px;color:var(--muted,#8a8a8a);line-height:1.4}.rev-ask .b{align-self:flex-start;margin-top:4px}
 .will b{font-family:var(--big);font-weight:400;color:var(--red);letter-spacing:.02em;margin-right:5px;font-size:15px}
 .ph-meta{font-size:13px;color:var(--muted);margin-top:4px}
 .ph-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
@@ -337,6 +340,7 @@ const initials = n => String(n||"?").trim().split(/\s+/).slice(0,2).map(w=>w[0])
 const niceDate = iso => iso ? new Date(iso+"T12:00:00Z").toLocaleDateString("en-GB",{ weekday:"short", day:"numeric", month:"short", timeZone:"UTC" }) : "";
 const addDays = (iso, n) => new Date(Date.parse(iso+"T12:00:00Z") + n*86400000).toISOString().slice(0,10);
 const ERR = { missing_name:"Add your name.", bad_email:"Check your email address.", missing_goal:"Write the goal you're declaring.", closed:"This squad is closed.", not_found:"That squad doesn't exist. Check the code.", bad_token:"That link has expired. Use the link in your email.", over:"This squad has finished.", locked:"Your declaration is locked now. That's the point of declaring it." };
+const REV = () => !!(D && D.me && D.me.revising);   // Genie opened this person's goal for one change
 
 const parts = location.pathname.split("/").filter(Boolean);
 const qs = new URLSearchParams(location.search);
@@ -518,11 +522,11 @@ function joinScreen(){
     </section>`}
     ${pickHTML()}
     <form class="blk" id="jf" novalidate ${showPicker() ? "hidden" : ""}>
-      <h2>${editing ? "Edit your declaration" : SEL ? `${esc(SEL.first)}, declare it` : "Declare it"}</h2>
-      <p class="sub">${editing ? "Your squad sees the new version straight away." : SEL ? `${SEL.goal ? "This is the goal you registered with. Sharpen it if you need to." : "One goal. Specific enough that anyone could check it."} <button type="button" class="tl" id="notme">Not you?</button>` : "One goal. Specific enough that anyone could check it."}</p>
+      <h2>${editing ? (REV() ? "Change your goal" : "Edit your declaration") : SEL ? `${esc(SEL.first)}, declare it` : "Declare it"}</h2>
+      <p class="sub">${editing ? (REV() ? `One change only. Your squad will see it used to say "${esc(me.goal||"")}".` : "Your squad sees the new version straight away.") : SEL ? `${SEL.goal ? "This is the goal you registered with. Sharpen it if you need to." : "One goal. Specific enough that anyone could check it."} <button type="button" class="tl" id="notme">Not you?</button>` : "One goal. Specific enough that anyone could check it."}</p>
       <div class="f big"><label for="goal">I will…</label><textarea id="goal" maxlength="200" rows="2" placeholder="Post 30 TikToks" required>${esc(me.goal||(SEL&&SEL.goal)||"")}</textarea></div>
       <div class="row2">
-        <div class="f"><label for="dl">By</label><input id="dl" type="date" value="${esc(by)}" min="${esc(s.starts_on)}"></div>
+        <div class="f"><label for="dl">By</label><input id="dl" type="date" value="${esc(by)}" min="${esc(s.starts_on)}" ${REV()?"disabled":""}></div>
         <div class="f"><label for="proof">Proof</label><input id="proof" maxlength="200" value="${esc(me.proof||"")}" placeholder="How we'll know"></div>
       </div>
       <div class="f"><label for="fs">First step <em>(next 48 hours)</em></label><input id="fs" maxlength="200" value="${esc(me.first_step||"")}" placeholder="Write 5 video ideas tonight"></div>
@@ -530,7 +534,7 @@ function joinScreen(){
       <div class="f"><label for="em">Email <em>(your squad link goes here)</em></label><input id="em" type="email" inputmode="email" autocomplete="email" required></div>
       <div class="f"><label for="ph">WhatsApp <em>(optional)</em></label><input id="ph" type="tel" inputmode="tel" autocomplete="tel"></div>`}
       <div class="err" id="jerr" hidden></div>
-      <button class="b blue full" id="jb" type="submit" style="margin-top:4px">${editing ? "Save" : "Declare it"}</button>
+      <button class="b blue full" id="jb" type="submit" style="margin-top:4px">${editing ? (REV() ? "Save my new goal" : "Save") : "Declare it"}</button>
       ${editing ? `<p class="note"><button type="button" class="tl" id="cancel">Cancel</button></p>` : `<p class="note">Your squad sees your name and goal. Your email and number stay private.</p>`}
     </form>
     ${editing ? "" : `${D.members.length ? `<div class="label">Already declared</div>${storiesHTML("")}` : ""}
@@ -667,7 +671,7 @@ function home(){
     ${feedHTML((D.posts||[]).slice(0, FEEDALL ? 60 : 6), "<b>No updates yet</b>Post the first one.")}
     ${!FEEDALL && (D.posts||[]).length > 6 ? `<p class="note" style="margin:12px 0"><button type="button" class="tl" id="more">See all ${(D.posts||[]).length} updates</button></p>` : ""}
     ${over ? "" : `<a class="coach-line" href="/app">${ringAv({ name:"Genie", photo:coachOf().photo }, 36, true)}<span><b>Want me checking your proof every day? ${tick(13)}</b><small>The 15-day challenge · ₦15,000</small></span><span class="chev">›</span></a>`}
-    ${my.can_edit ? `<p class="note" style="margin:18px 0 6px"><button type="button" class="tl" id="edit">Edit my declaration</button> · locks 24 hours after you declare</p>` : ""}
+    ${my.revising ? `<div class="rev-ask"><b>Genie opened your goal for one change.</b><span>Make it something you control, with a number anyone can check. Your deadline stays.</span><button type="button" class="b blue" id="edit">Change my goal</button></div>` : my.can_edit ? `<p class="note" style="margin:18px 0 6px"><button type="button" class="tl" id="edit">Edit my declaration</button> · locks 24 hours after you declare</p>` : ""}
   </div>`;
   wirePhoto();
   const mo = $("#more"); if(mo) mo.addEventListener("click", ()=>{ FEEDALL = true; home(); wireFeed(); });
@@ -729,7 +733,7 @@ function profPanel(m){
         <div class="stats"><div><b>${x.days}</b><span>days shown up</span></div><div><b>${x.ups}</b><span>updates</span></div><div><b>${s.week>=1 ? Math.min(dayNo(t), s.weeks*7) : 0}</b><span>days in</span></div></div></div>
       <div class="ph-name">${nm(m)}${x.today?`<span class="started">● Posted today</span>`:""}</div>
       <div class="ph-role">${m.coach ? "Coach · On It With Genie" : esc(s.name)}</div>
-      <p class="will"><b>WILL</b>${esc(m.goal)}</p>
+      <p class="will"><b>WILL</b>${esc(m.goal)}</p>${m.first_goal ? `<p class="was">Changed after a call with Genie. Was: ${esc(m.first_goal)}</p>` : ""}
       <div class="ph-meta">${[m.deadline?`By ${esc(niceDate(m.deadline))}`:"", m.proof?`Proof: ${esc(m.proof)}`:""].filter(Boolean).join(" · ")}</div>
     </div>
     <div style="padding:4px 16px 0">${video}</div>

@@ -18,7 +18,9 @@
  * POST {action:"set_partner", token, partner_id}    Pick a squad member to hold you accountable (they get an email). "" clears it.
  * POST {action:"want_coach", token}                Wants Genie as their coach: tells Genie, client sends them to /app.
  * POST {action:"nudge", token, member_id}          Any squad member nudges another who's gone quiet (email, max once per 12h per person).
- * Declarations lock 24 hours after they're made (EDIT_HOURS): after that "join" with the same email returns "locked".
+ * Declarations lock 24 hours after they're made (EDIT_HOURS): after that "join" with the same email returns "locked",
+ *      unless Genie has allowed a revision from Admin (revision_allowed_at). Then one change of goal, proof and first step
+ *      is allowed (deadline stays), the old goal is kept in first_goal and shown on their profile.
  * POST {action:"cron", kind:"remind"|"summary"} + x-cron-key
  *      remind  (Fri 6pm Lagos): members who haven't checked in this week
  *      summary (Sat 9am Lagos): Genie gets who checked in and who didn't
@@ -33,6 +35,9 @@ const SITE = "https://eugeneobo.com";
 const DAY = 86400_000;
 const EDIT_HOURS = 24;   // a declaration can be changed for this long, then it's locked
 const canEdit = (createdAt: string) => Date.parse(createdAt) > Date.now() - EDIT_HOURS * 3600_000;
+/* one change, only after Genie allows it (Admin > Squads), and only within squad_revision_days of declaring */
+const canRevise = (m: any, days: number) => !!m.revision_allowed_at && !m.revised_at && Date.parse(m.created_at) > Date.now() - days * DAY;
+async function revisionDays() { const n = Number(await setting("squad_revision_days")); return Number.isFinite(n) && n > 0 ? n : 7; }
 const MEDIA = Deno.env.get("SUPABASE_URL") + "/storage/v1/object/public/squad-media/";
 const media = (p: string | null) => (p ? MEDIA + p : null);
 
@@ -78,7 +83,7 @@ async function view(code: string, me: string) {
   const s = await squadBy(code);
   if (!s) return json({ ok: false, error: "not_found" }, 404);
   const [{ data: mem }, { data: chk }] = await Promise.all([
-    sb.from("squad_members").select("id,created_at,name,goal,deadline,proof,first_step,started_at,started_note,token,email,photo_path,video_path,video_cover_path,show_video,partner_id,nudged_at").eq("squad_id", s.id).order("created_at"),
+    sb.from("squad_members").select("id,created_at,name,goal,deadline,proof,first_step,started_at,started_note,token,email,photo_path,video_path,video_cover_path,show_video,partner_id,nudged_at,revision_allowed_at,revised_at,first_goal").eq("squad_id", s.id).order("created_at"),
     sb.from("squad_checkins").select("member_id,week,status,note,created_at").eq("squad_id", s.id),
   ]);
   const { data: posts } = await sb.from("squad_posts").select("id,created_at,member_id,text,photo_path,cheers").eq("squad_id", s.id).eq("hidden", false).order("created_at", { ascending: false }).limit(400);
@@ -92,9 +97,11 @@ async function view(code: string, me: string) {
   const signed: Record<string, string> = {};
   if (vpaths.length) { const { data: su } = await sb.storage.from("squad-video").createSignedUrls(vpaths, 4 * 3600); (su ?? []).forEach((x: any) => { if (x.signedUrl) signed[x.path] = x.signedUrl; }); }
   let mine = null;
+  const rdays = await revisionDays();
   const members = (mem ?? []).map((m: any) => {
-    if (me && m.token === me) mine = { id: m.id, can_edit: canEdit(m.created_at), name: m.name, email: m.email, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, photo: media(m.photo_path), has_video: !!m.video_path, show_video: m.show_video, partner_id: m.partner_id };
-    return { id: m.id, name: m.name, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, started_note: m.started_note, checkins: byMember[m.id] ?? {}, photo: media(m.photo_path), video: m.show_video && m.video_path ? (signed[m.video_path] ?? null) : null, cover: m.show_video ? media(m.video_cover_path) : null, partner_id: m.partner_id, coach: !!coach && m.id === coach.id, nudged_recently: !!m.nudged_at && Date.parse(m.nudged_at) > Date.now() - 12 * 3600_000 };
+    const revising = !canEdit(m.created_at) && canRevise(m, rdays);
+    if (me && m.token === me) mine = { id: m.id, can_edit: canEdit(m.created_at) || revising, revising, name: m.name, email: m.email, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, photo: media(m.photo_path), has_video: !!m.video_path, show_video: m.show_video, partner_id: m.partner_id };
+    return { id: m.id, name: m.name, goal: m.goal, deadline: m.deadline, proof: m.proof, first_step: m.first_step, started: !!m.started_at, started_note: m.started_note, checkins: byMember[m.id] ?? {}, photo: media(m.photo_path), video: m.show_video && m.video_path ? (signed[m.video_path] ?? null) : null, cover: m.show_video ? media(m.video_cover_path) : null, partner_id: m.partner_id, coach: !!coach && m.id === coach.id, first_goal: m.revised_at ? m.first_goal : null, revised_at: m.revised_at, nudged_recently: !!m.nudged_at && Date.parse(m.nudged_at) > Date.now() - 12 * 3600_000 };
   });
   // registered attendees of the linked event who haven't joined yet (first name + initial only)
   let attendees: { id: string; label: string }[] = [];
@@ -123,8 +130,15 @@ async function join(p: Record<string, unknown>) {
   if (!name) return json({ ok: false, error: "missing_name" }, 400);
   if (!validEmail(email)) return json({ ok: false, error: "bad_email" }, 400);
   if (goal.length < 3) return json({ ok: false, error: "missing_goal" }, 400);
-  const { data: had } = await sb.from("squad_members").select("id,token,created_at").eq("squad_id", s.id).eq("email", email).maybeSingle();
-  if (had && !canEdit(had.created_at)) return json({ ok: false, error: "locked" }, 409);
+  const { data: had } = await sb.from("squad_members").select("id,token,created_at,goal,name,revision_allowed_at,revised_at").eq("squad_id", s.id).eq("email", email).maybeSingle();
+  if (had && !canEdit(had.created_at)) {
+    if (!canRevise(had, await revisionDays())) return json({ ok: false, error: "locked" }, 409);
+    // Genie-approved revision: goal, proof and first step change once; deadline and identity stay
+    await sb.from("squad_members").update({ goal, proof: proof || null, first_step: firstStep || null, first_goal: had.goal, revised_at: new Date().toISOString(), revision_allowed_at: null, updated_at: new Date().toISOString() }).eq("id", had.id);
+    const to = await setting("notify_email");
+    if (to) await sendEmail(to, `${had.name} revised their goal`, `${had.name} (${s.name}) changed their goal.\n\nWas: "${had.goal}"\nNow: "${goal}"${firstStep ? `\nFirst step: ${firstStep}` : ""}\n\nTheir profile shows both.`);
+    return json({ ok: true, token: had.token, updated: true, revised: true });
+  }
   const row: Record<string, unknown> = { squad_id: s.id, name, email, phone: phone || null, goal, deadline, proof: proof || null, first_step: firstStep || null, updated_at: new Date().toISOString() };
   if (regId) row.reg_id = regId;
   let token: string;
