@@ -120,7 +120,8 @@
   );
 
   window.GC_ART = function(key, type){
-    return A[key] || (type==='poll' ? A.poll : type==='pair' ? A.say : A.goal);
+    var alias = {measure:'poll', system:'week', why:'identity', when:'reality'};
+    return A[key] || A[alias[key]] || (type==='poll' ? A.poll : type==='pair' ? A.say : A.goal);
   };
   window.GC_ART_ALL = A;
 })();

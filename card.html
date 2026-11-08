@@ -114,7 +114,7 @@ textarea:focus,input[type=text]:focus{border-color:var(--ink);box-shadow:0 0 0 4
 .btn.out{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.3)}
 .foot{text-align:center;font-size:12px;color:#A39A8B;margin-top:18px}
 .write{display:flex;gap:6px;margin:0 0 14px}
-.write span{flex:1;height:44px;border-radius:11px;display:grid;place-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:20px;background:var(--paper);color:#B8AE9D;transition:all .3s}
+.write span{flex:1;min-width:0;height:44px;border-radius:11px;display:grid;place-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:20px;background:var(--paper);color:#B8AE9D;transition:all .3s}
 .write span.done{background:var(--ink);color:#fff}
 .write span.now{background:var(--red);color:#fff;transform:translateY(-2px);box-shadow:0 8px 16px -8px rgba(210,64,47,.6)}
 .lettertag{display:flex;align-items:baseline;gap:10px;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-size:13px;letter-spacing:.14em;color:var(--red);text-transform:uppercase}
@@ -163,10 +163,10 @@ const SLUG = (new URLSearchParams(location.search).get('e') || 'rlc').toLowerCas
 const LS = 'goalcard:' + SLUG;
 
 const DEFAULT = {
-  title:'W.R.I.T.E. your goal', host:'Relentless Love Church', logo_url:'',
+  title:'Your SMART + 1 Goal', host:'Relentless Love Church', logo_url:'',
   intro:'Type your first name. Then look up.',
   wall_ref:'Habakkuk 2:2', wall_verse:'Write down this vision and clearly inscribe it on tablets, so that a herald may run with it.',
-  steps:[{"q": "What are you worried about for next year?", "ex": "e.g. That I'll still be in the same place this time next year", "key": "worry", "ref": "Matthew 6:27", "hint": "Be honest, {name}. Only you see this.", "type": "question", "verse": "Who of you by worrying can add a single hour to his life?"}, {"q": "{name}, what is that worry mostly about?", "key": "worry_poll", "ref": "", "hint": "Tap one.", "type": "poll", "verse": "", "options": ["Money", "School or exams", "Work or career", "Family", "Direction and purpose", "Relationships"]}, {"q": "{name}, what is the one thing you want to get done?", "ex": "e.g. Sell 20 pairs of shoes by the end of March", "key": "goal", "ref": "Habakkuk 2:2", "hint": "One sentence. Plain enough that you'd know when it's done.", "type": "question", "word": "Want", "verse": "Write down this vision and clearly inscribe it on tablets, so that a herald may run with it.", "letter": "W"}, {"q": "Say it out loud", "key": "say", "ref": "Proverbs 27:17", "hint": "Read your want to the person next to you.", "type": "pair", "verse": "As iron sharpens iron, so one man sharpens another.", "seconds": 60}, {"q": "{name}, you want to {goal}. Where are you with it today?", "ai": true, "ex": "e.g. I've sold 3 pairs, only to friends", "q0": "Where are you with it today?", "key": "reality", "ref": "Luke 14:28", "hint": "Be honest. What have you done so far? What is in the way?", "type": "question", "word": "Reality", "verse": "Which of you, wishing to build a tower, does not first sit down and count the cost to see if he has the resources to complete it?", "letter": "R"}, {"q": "From {reality} to {goal}. Who do you need to become?", "ai": true, "ex": "e.g. Someone who posts every day, even when nobody buys", "q0": "Who do you need to become to get there?", "key": "identity", "ref": "Romans 12:2", "hint": "What would that person do that you don't? What would they stop?", "type": "question", "word": "Identity", "verse": "Do not be conformed to this world, but be transformed by the renewing of your mind.", "letter": "I"}, {"q": "What will you do this week to move toward {goal}?", "ai": true, "ex": "e.g. Post 5 shoes on my WhatsApp status by Wednesday", "q0": "What will you do this week?", "key": "week", "ref": "Matthew 6:34", "hint": "Small enough to start before next Sunday.", "type": "question", "word": "This week", "verse": "Therefore do not worry about tomorrow, for tomorrow will worry about itself. Today has enough trouble of its own.", "letter": "T"}, {"q": "Who will ask you about {goal} every week?", "ai": true, "ex": "e.g. Tolu", "q0": "Who will check on you every week?", "key": "person", "ref": "Ecclesiastes 4:10", "hint": "One name. Someone who will actually ask.", "type": "question", "word": "Enlist", "verse": "For if one falls, his companion can lift him up; but pity the one who falls without another to help him up!", "letter": "E"}]
+  steps:[{"key": "worry", "type": "question", "q": "What are you worried about for next year?", "hint": "Be honest. Only you will see this.", "ex": "e.g. That nothing will change for me", "ref": "Matthew 6:27", "verse": "Who of you by worrying can add a single hour to his life?"}, {"key": "worry_poll", "type": "poll", "q": "{name}, what is that worry mostly about?", "hint": "Tap one. Then look at the screen.", "options": ["Money", "Health", "School or exams", "Work or career", "Family", "Direction and purpose", "Relationships"], "ref": "", "verse": ""}, {"key": "goal", "type": "question", "letter": "S", "word": "Specific", "lbl": "I want to", "q": "{name}, what exactly do you want?", "hint": "Pick one thing. Say it so plainly a stranger would understand.", "ex": "e.g. Start selling shoes online", "ref": "Habakkuk 2:2", "verse": "Write down this vision and clearly inscribe it on tablets, so that a herald may run with it."}, {"key": "measure", "type": "question", "letter": "M", "word": "Measurable", "lbl": "How I'll know", "ai": true, "q": "{name}, how will you know you've done it?", "q0": "How will you know you've done it?", "hint": "Put a number on it. How many? How much? How often?", "ex": "e.g. 20 pairs sold", "ref": "", "verse": ""}, {"key": "system", "type": "question", "letter": "A", "word": "Achievable", "lbl": "Every week I will", "ai": true, "q": "{name}, what will you do every week to make it happen?", "q0": "What will you do every week to make it happen?", "hint": "This is your system. Something small you can repeat every week, starting this week.", "ex": "e.g. Post 5 shoes on my WhatsApp status every Monday", "ref": "Luke 14:28", "verse": "Which of you, wishing to build a tower, does not first sit down and count the cost to see if he has the resources to complete it?"}, {"key": "why", "type": "question", "letter": "R", "word": "Relevant", "lbl": "Why it matters", "ai": true, "q": "{name}, why does this matter to you?", "q0": "Why does this matter to you?", "hint": "What changes in your life when you get it done?", "ex": "e.g. I can pay my own school fees", "ref": "", "verse": ""}, {"key": "when", "type": "question", "letter": "T", "word": "Time-bound", "lbl": "Done by", "q": "By when?", "hint": "Pick a real date.", "ex": "e.g. 31 March 2027", "ref": "Ecclesiastes 3:1", "verse": "To everything there is a season, and a time for every purpose under heaven."}, {"key": "person", "type": "question", "letter": "+1", "word": "One person", "lbl": "Checking on me", "ai": true, "q": "{name}, who will you tell?", "q0": "Who will you tell?", "hint": "Someone you respect. Someone you would hate to let down.", "ex": "e.g. My elder sister, Tolu", "ref": "Ecclesiastes 4:10", "verse": "For if one falls, his companion can lift him up; but pity the one who falls without another to help him up!"}]
 };
 
 let cfg = DEFAULT, live = {current_step:0, free_mode:false, updated_at:null};
@@ -190,9 +190,9 @@ function trimEnd(x){ return String(x||'').trim().replace(/[.!?]+$/,''); }
 function lowerFirst(x){ x = trimEnd(x); return /^[A-Z][a-z]/.test(x) && !/^I\b/.test(x) ? x.charAt(0).toLowerCase() + x.slice(1) : x; }
 function fillQ(s){
   const t = s.q || '';
-  const need = (t.match(/\{(goal|reality|identity|week|worry)\}/g) || []).map(x=>x.slice(1,-1));
-  if(need.some(k => !get(k))) return personal(s.q0 || t.replace(/\{(goal|reality|identity|week|worry)\}/g,'it'));
-  return personal(t.replace(/\{(goal|reality|identity|week|worry)\}/g, (_,k) => lowerFirst(get(k))));
+  const need = (t.match(/\{(?!name\})(\w+)\}/g) || []).map(x=>x.slice(1,-1));
+  if(need.some(k => !get(k))) return personal(s.q0 || t);
+  return personal(t.replace(/\{(?!name\})(\w+)\}/g, (_,k) => lowerFirst(get(k))));
 }
 function personal(t){
   t = String(t||''); const n = firstName();
@@ -304,17 +304,15 @@ function head(i){
   return `<div class="num"><span>CARD ${String(i).padStart(2,'0')} <span class="for">/ ${String(N()).padStart(2,'0')}</span></span>${n?`<span class="for">FOR ${esc(n.toUpperCase())}</span>`:''}</div>`;
 }
 function carry(s){
-  const order = ['goal','reality','identity','week'];
-  const label = {goal:'Your want', reality:'Where you are', identity:'Who you are becoming', week:'This week'};
-  const pos = order.indexOf(s.key);
-  if(!s.letter || s.key==='goal') return '';
-  const prev = pos === -1 ? 'week' : order[pos-1];
-  const keep = ['goal', prev].filter((k,i,arr)=>get(k) && arr.indexOf(k)===i);
-  return keep.map(k=>`<div class="carry"><small>${label[k]}</small><div>${esc(get(k))}</div></div>`).join('');
+  const L = letters(); const pos = L.findIndex(x=>x.key===s.key);
+  if(pos <= 0) return '';
+  const keys = [L[0], L[pos-1]].filter((x,i,arr)=>arr.indexOf(x)===i && get(x.key));
+  return keys.map(x=>`<div class="carry"><small>${esc(x.lbl || x.word)}</small><div>${esc(get(x.key))}</div></div>`).join('');
 }
 /* ---------- AI question ---------- */
 const AI_URL = SB_URL + '/functions/v1/goalcard-ai';
-function aiSig(s){ return [s.key, get('name'), get('goal'), get('reality'), get('identity'), get('week')].join('|'); }
+function aiCtx(){ const o = {name:firstName(), worry:get('worry')}; letters().forEach(x=>{ o[x.key] = get(x.key); }); return o; }
+function aiSig(s){ return s.key + '|' + JSON.stringify(aiCtx()); }
 async function aiQuestion(s){
   if(!s.ai || !get('goal')) return null;
   answers._ai = answers._ai || {};
@@ -323,7 +321,7 @@ async function aiQuestion(s){
   const ctrl = new AbortController(); const t = setTimeout(()=>ctrl.abort(), 6500);
   try{
     const r = await fetch(AI_URL, {method:'POST', signal:ctrl.signal, headers:{'Content-Type':'application/json', apikey:SB_KEY},
-      body: JSON.stringify({step:s.key, answers:{name:firstName(), worry:get('worry'), goal:get('goal'), reality:get('reality'), identity:get('identity'), week:get('week')}})});
+      body: JSON.stringify({step:s.key, answers:aiCtx()})});
     const j = await r.json(); if(!j || !j.q) return null;
     answers._ai[s.key] = {sig, q:j.q}; persist(); return j.q;
   }catch(e){ return null; } finally { clearTimeout(t); }
@@ -480,18 +478,17 @@ function renderHello(m){
 
 /* ---------- reveal ---------- */
 function renderReveal(m){
-  const name = firstName(), worry = get('worry'), goal = get('goal'), reality = get('reality'), identity = get('identity'), week = get('week'), person = get('person');
-  const missing = !goal || !week;
+  const name = firstName(), worry = get('worry'), goal = get('goal'), person = get('person');
   const L = letters();
-  const val = {goal, reality, identity, week, person};
-  const rows = L.length ? L.filter(x=>x.key!=='goal').map(x=>`<div class="wrow ${x.key==='week'?'t':''}" ${x.key==='week'?'id="weekRow"':''}><i>${esc(x.letter)}</i><div><small>${esc(x.word)}</small><div>${val[x.key] ? esc(val[x.key]) : '<span class="empty-note">Not written yet</span>'}</div></div></div>`).join('') : '';
+  const missing = !goal;
+  const rows = L.slice(1).map(x=>`<div class="wrow ${x.key==='person'?'t':''}"><i>${esc(x.letter)}</i><div><small>${esc(x.word)}</small><div>${get(x.key) ? esc(get(x.key)) : '<span class="empty-note">Not written yet</span>'}</div></div></div>`).join('');
   m.innerHTML = `
     <div class="card reveal"><div class="art">${window.GC_ART ? GC_ART('reveal') : ''}</div>
       <div class="body">
-        <div class="num"><span>${name ? esc(name.toUpperCase()) + "'S" : 'YOUR'} GOAL CARD</span><span class="for">W.R.I.T.E.</span></div>
+        <div class="num"><span>${name ? esc(name.toUpperCase()) + "'S" : 'YOUR'} GOAL CARD</span><span class="for">SMART + 1</span></div>
         ${worry ? `<div class="row" style="border-top:0;padding-top:6px"><small>What I was worried about</small><div class="v"><span class="struck" id="strk">${esc(worry)}</span></div></div>` : ''}
         <span class="instead" id="inst">${worry ? 'Instead, I want to' : 'I want to'}</span>
-        <h1 style="margin-top:0">${goal ? esc(goal) : '<span class="empty-note">Write your want on the W card</span>'}</h1>
+        <h1 style="margin-top:0">${goal ? esc(goal) : '<span class="empty-note">Write your goal on the S card</span>'}</h1>
         ${rows}
         <div class="verse"><b>${esc(cfg.wall_ref)}<span>BSB</span></b><p>${esc(cfg.wall_verse)}</p></div>
       </div>
@@ -502,14 +499,16 @@ function renderReveal(m){
         Save as my lock screen</button>
       <a class="btn wa full ${missing?'hide':''}" id="waBtn" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.2-4.4A9 9 0 1 1 21 12z"/></svg>
-        Send it to ${person ? esc(person) : 'someone'} on WhatsApp</a>
+        Send it to ${person && person.length <= 14 && !/[,\s]/.test(person.trim()) ? esc(person) : 'them'} on WhatsApp</a>
       <button class="small-link" id="editBtn">Change my answers</button>
     </div>`;
   setTimeout(()=>{
     const s = $('#strk'); if(s) s.classList.add('go');
     const i = $('#inst'); if(i){ if(!worry) i.style.transitionDelay='.2s'; i.classList.add('go'); }
   }, 60);
-  const msg = `Hi${person ? ' ' + person : ''}, I wrote down a goal in church today and I'm asking you to hold me to it.\n\nI want to: ${goal}\nWhere I am now: ${reality || '-'}\nWho I'm becoming: ${identity || '-'}\nThis week I will: ${week}\n\nPlease ask me about it every Sunday. Don't let me off easy.`;
+  const lines = L.slice(0,-1).filter(x=>get(x.key)).map(x=>`${x.lbl || x.word}: ${get(x.key)}`).join('\n');
+  const hiName = person && person.length <= 14 && !/[,\s]/.test(person.trim()) ? ' ' + person : '';
+  const msg = `Hi${hiName}, I set a goal in church today. I picked you because I respect you and I don't want to let you down.\n\n${lines}\n\nPlease ask me about it every Sunday. Don't let me off easy.`;
   $('#waBtn').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
   $('#wallBtn').onclick = makeWallpaper;
   $('#editBtn').onclick = () => { view = 1; render(); };
@@ -552,21 +551,20 @@ async function makeWallpaper(){
   const verseTop = H - 330 - vl.length * 46 - 34;
 
   // main block: dry run measures height, real run draws
-  const reality = get('reality'), identity = get('identity');
   function block(y0, draw, opts){
     let y = y0;
     const T = (txt, x, yy) => { if(draw) ctx.fillText(txt, x, yy); };
     ctx.fillStyle = '#E2513F'; ctx.font = `800 32px ${BODY}`;
-    T((name ? name.toUpperCase() + ', ' : '') + 'I WANT TO', X, y); y += 26;
+    T((name ? name.toUpperCase() + ', ' : '') + 'MY SMART + 1 GOAL', X, y); y += 26;
     const g = fit(ctx, goal, MW, 4, opts.goalMax, 54, 900, HEAD);
     ctx.fillStyle = '#FFFDF8';
     for(const l of g.lines){ y += g.size * 1.02; T(l, X, y); }
     y += 56;
-    const rows = [['R','WHERE I AM', reality],['I','WHO I AM BECOMING', identity],['T','THIS WEEK', week],['E','CHECKING ON ME', person]].filter(r=>r[2]);
+    const rows = letters().slice(1).map(x=>[x.letter, (x.lbl || x.word).toUpperCase(), get(x.key)]).filter(r=>r[2]);
     for(const [L, lab, v] of rows){
       y += 22;
-      if(draw){ ctx.fillStyle = L==='T' ? '#E2513F' : 'rgba(255,253,248,.14)'; ctx.beginPath(); ctx.roundRect(X, y-6, 52, 52, 12); ctx.fill();
-        ctx.fillStyle = '#FFFDF8'; ctx.font = `900 30px ${HEAD}`; const lw = ctx.measureText(L).width; ctx.fillText(L, X + 26 - lw/2, y + 31); }
+      if(draw){ ctx.fillStyle = L==='+1' ? '#E2513F' : 'rgba(255,253,248,.14)'; ctx.beginPath(); ctx.roundRect(X, y-6, 52, 52, 12); ctx.fill();
+        ctx.fillStyle = '#FFFDF8'; ctx.font = `900 ${L.length>1?24:30}px ${HEAD}`; const lw = ctx.measureText(L).width; ctx.fillText(L, X + 26 - lw/2, y + 31); }
       ctx.fillStyle = 'rgba(255,253,248,.5)'; ctx.font = `800 24px ${BODY}`; T(lab, X + 76, y + 10);
       const f = fit(ctx, v, MW - 76, opts.lines, opts.rowMax, 30, 700, BODY);
       ctx.fillStyle = '#FFFDF8';

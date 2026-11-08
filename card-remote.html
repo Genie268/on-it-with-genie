@@ -45,9 +45,16 @@ h1,h2{font-family:Archivo,system-ui,sans-serif;font-stretch:88%;margin:0}
 .beat.do{display:flex;gap:10px;align-items:baseline}
 .beat.do .lab{flex:none;background:none;color:#9A9080;border:1px solid #D9D0C0;margin:0}
 .beat.do p{margin:0;font-size:14.5px;line-height:1.45;font-weight:600;color:#8C8375}
-.legend{display:flex;gap:14px;font-size:11.5px;font-weight:700;color:var(--soft)}
+.beat.next{background:#FCEDEA;border-radius:14px;padding:14px;margin:6px 0;border:1.5px dashed #D2402F}
+.beat.next .lab{background:#fff;color:#D2402F;border:1px solid #D2402F}
+.beat.next p{margin:0;font-size:20px;line-height:1.45;font-weight:700;color:#14204A}
+.beat.next + .beat{border-top:0}
+#run > .legend,#run > .script,#run > .upnext{order:2}
+#run > #extra{order:3}
+#run > #extra.top{order:1}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;font-weight:700;color:var(--soft)}
 .legend b{font-size:10px;letter-spacing:.14em;padding:2px 6px;border-radius:5px;margin-right:5px}
-.legend .s{background:#D2402F;color:#fff}.legend .r{background:#EEF1F8;color:#14204A}.legend .d{border:1px solid #5A5246;color:#A79E8E}
+.legend .s{background:#D2402F;color:#fff}.legend .r{background:#EEF1F8;color:#14204A}.legend .n{border:1px dashed #D2402F;color:#E2513F}.legend .d{border:1px solid #5A5246;color:#A79E8E}
 .upnext{font-size:13px;color:var(--soft);font-weight:700}
 .upnext b{color:var(--text)}
 .bars{display:grid;gap:8px;margin-top:4px}
@@ -118,7 +125,7 @@ input:focus,textarea:focus{border-color:var(--soft)}
     <section id="run" style="display:flex;flex-direction:column;gap:12px">
       <div class="chips" id="chips"></div>
       <div class="panel now" id="now"></div>
-      <div class="legend"><span><b class="s">SAY</b>out loud</span><span><b class="r">READ</b>scripture</span><span><b class="d">DO</b>just for you</span></div>
+      <div class="legend"><span><b class="s">SAY</b>out loud</span><span><b class="r">READ</b>scripture</span><span><b class="n">NEXT</b>bridge, then tap</span><span><b class="d">DO</b>just for you</span></div>
       <div class="script" id="script"></div>
       <div class="panel hide" id="extra"></div>
       <div class="upnext" id="upnext"></div>
@@ -148,7 +155,7 @@ input:focus,textarea:focus{border-color:var(--soft)}
         <p class="note">Shows at the top of every phone and on the lock screen. Leave empty to show the name instead.</p>
         <label>Welcome note</label><textarea id="f_intro" rows="2"></textarea>
         <label>Your script for the welcome screen</label><textarea id="f_intro_notes" rows="5"></textarea>
-        <p class="note">Script format: start each paragraph with SAY: (you read it out), READ: (reference on the first line, verse below) or DO: (a note just for you). Leave a blank line between paragraphs. In a poll script, {top1} and {top2} fill in with the live top answers. In questions, {name} becomes each person&rsquo;s first name.</p>
+        <p class="note">Script format: start each paragraph with SAY: (you read it out), READ: (reference on the first line, verse below), NEXT: (your bridge line before tapping) or DO: (a note just for you). Leave a blank line between paragraphs. In a poll script, {top1} and {top2} fill in with the live top answers. In questions, {name} becomes each person&rsquo;s first name.</p>
         <div id="f_steps"></div>
         <div class="stepedit">
           <h2>Their card at the end</h2>
@@ -219,7 +226,7 @@ function stepInfo(i){
   if(i>=REVEAL()) return {k:'Their card is open', h:'Worry crossed out. Lock screen. WhatsApp.', notes:ev.reveal_notes, r:ev.wall_ref};
   const s = ev.steps[i-1];
   const kind = s.letter ? `${s.letter} · ${s.word}` : s.type==='poll' ? 'Room poll' : s.type==='pair' ? 'Pair moment' : 'Card';
-  return {k:`${kind}  ·  card ${i} of ${N()}`, h:s.q.replace(/\{(goal|reality|identity|week)\}/g,'…').replace(/\{name\},?\s*/g,'').replace(/,\s*\{name\}/g,'').replace(/^./,c=>c.toUpperCase()), notes:s.notes, r:s.ref ? `${s.ref}: ${s.verse}` : '', s};
+  return {k:`${kind}  ·  card ${i} of ${N()}`, h:(s.q0||s.q).replace(/\{name\},?\s*/g,'').replace(/,\s*\{name\}/g,'').replace(/^./,c=>c.toUpperCase()), notes:s.notes, r:s.ref ? `${s.ref}: ${s.verse}` : '', s};
 }
 
 function topAnswers(){
@@ -237,13 +244,13 @@ function renderScript(notes){
   const [t1,t2] = topAnswers();
   const paras = notes.replace(/\{top1\}/g,t1).replace(/\{top2\}/g,t2).split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);
   box.innerHTML = paras.map(p => {
-    const m = p.match(/^(SAY|DO|READ)\s*:\s*/i); const kind = m ? m[1].toLowerCase() : 'do';
+    const m = p.match(/^(SAY|DO|READ|NEXT)\s*:\s*/i); const kind = m ? m[1].toLowerCase() : 'do';
     let body = m ? p.slice(m[0].length) : p;
     if(kind==='read'){
       const lines = body.split('\n'); const ref = lines.shift();
       return `<div class="beat read"><span class="lab">READ</span><div class="ref">${esc(ref)}</div><p>${esc(lines.join(' '))}</p></div>`;
     }
-    return `<div class="beat ${kind}"><span class="lab">${kind.toUpperCase()}</span><p>${esc(body)}</p></div>`;
+    return `<div class="beat ${kind}"><span class="lab">${kind==='next'?'NEXT · SAY, THEN TAP':kind.toUpperCase()}</span><p>${esc(body)}</p></div>`;
   }).join('');
 }
 
@@ -271,6 +278,7 @@ function drawExtra(){
   clearInterval(tick); tick = null;
   if(!s || (s.type!=='poll' && s.type!=='pair')){ box.classList.add('hide'); return; }
   box.classList.remove('hide');
+  box.classList.toggle('top', s.type==='poll');
   if(s.type==='poll'){
     const c = st.counts || {}; const total = Object.values(c).reduce((a,b)=>a+(+b||0),0);
     const rows = (s.options||[]).map((o,k)=>({o, n:+(c[k]||0)})).sort((a,b)=>b.n-a.n);
