@@ -133,6 +133,37 @@ textarea:focus,input[type=text]:focus{border-color:var(--ink);box-shadow:0 0 0 4
 .wrow small{display:block;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--soft)}
 .wrow div div{font-size:17px;font-weight:700;line-height:1.3}
 .wrow.t i{background:var(--red)}
+.av{display:inline-grid;place-items:center;border-radius:50%;overflow:hidden;color:#fff;font-family:Archivo,system-ui,sans-serif;font-weight:800;flex:none;background:var(--sand)}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.meRow{display:flex;gap:12px;align-items:center;background:var(--paper);border-radius:16px;padding:10px 12px;margin:4px 0 6px}
+.mePic{position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+.mePic em{font-style:normal;font-size:11px;font-weight:800;color:var(--red)}
+.meInfo{flex:1;min-width:0}
+.meInfo b{display:block;font-size:16px;margin-bottom:4px}
+.meInfo input{font-size:15px!important;padding:10px 12px!important;border-radius:11px!important}
+.tiny{font-size:12.5px;color:var(--soft);margin:4px 2px 12px}
+.search{font-size:16px!important;padding:12px 14px!important}
+.people{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;max-height:330px;overflow-y:auto;padding:2px}
+.pp{position:relative;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font:inherit;color:var(--ink)}
+.pp b{font-size:13px;line-height:1.15;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px}
+.pp small{font-size:10.5px;color:var(--soft);font-weight:700}
+.pp.host{border-color:var(--ink);background:#F4F6FB}
+.pp.host small{color:var(--red)}
+.pp.on{border-color:var(--red);box-shadow:0 0 0 3px rgba(210,64,47,.18)}
+.pp .tick{display:none;position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;font-style:normal;font-size:12px;font-weight:900;place-items:center}
+.pp.on .tick{display:grid}
+.empty-room{grid-column:1/-1;text-align:center;color:var(--soft);font-size:14px;padding:16px}
+.chosen{margin-top:12px;font-size:15px;min-height:4px}
+.chosen span{color:var(--soft);font-weight:600}
+.chosen em{color:var(--soft);font-style:normal;font-size:13px}
+.circ{background:var(--paper);border-radius:16px;padding:12px;margin-bottom:8px}
+.circHead{display:flex;gap:12px;align-items:center}
+.circHead small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--soft)}
+.circHead b{font-size:17px}
+.circHead p{margin:2px 0 0;font-size:13.5px;color:var(--soft);line-height:1.35}
+.circ .btn{margin-top:10px}
+.btn.sm{padding:12px 14px;font-size:15px}
+.circTitle{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin:14px 0 8px}
 .hide{display:none!important}
 </style>
 </head>
@@ -166,7 +197,7 @@ const DEFAULT = {
   title:'Your SMART + 1 Goal', host:'Relentless Love Church', logo_url:'',
   intro:'Type your first name. Then look up.',
   wall_ref:'Habakkuk 2:2', wall_verse:'Write down this vision and clearly inscribe it on tablets, so that a herald may run with it.',
-  steps:[{"key": "worry", "type": "question", "q": "What are you worried about for next year?", "hint": "Be honest. Only you will see this.", "ex": "e.g. That nothing will change for me", "ref": "Matthew 6:27", "verse": "Who of you by worrying can add a single hour to his life?"}, {"key": "worry_poll", "type": "poll", "q": "{name}, what is that worry mostly about?", "hint": "Tap one. Then look at the screen.", "options": ["Money", "Health", "School or exams", "Work or career", "Family", "Direction and purpose", "Relationships"], "ref": "", "verse": ""}, {"key": "goal", "type": "question", "letter": "S", "word": "Specific", "lbl": "I want to", "q": "{name}, what exactly do you want?", "hint": "Pick one thing. Say it so plainly a stranger would understand.", "ex": "e.g. Start selling shoes online", "ref": "Habakkuk 2:2", "verse": "Write down this vision and clearly inscribe it on tablets, so that a herald may run with it."}, {"key": "measure", "type": "question", "letter": "M", "word": "Measurable", "lbl": "How I'll know", "ai": true, "q": "{name}, how will you know you've done it?", "q0": "How will you know you've done it?", "hint": "Put a number on it. How many? How much? How often?", "ex": "e.g. 20 pairs sold", "ref": "", "verse": ""}, {"key": "system", "type": "question", "letter": "A", "word": "Achievable", "lbl": "Every week I will", "ai": true, "q": "{name}, what will you do every week to make it happen?", "q0": "What will you do every week to make it happen?", "hint": "This is your system. Something small you can repeat every week, starting this week.", "ex": "e.g. Post 5 shoes on my WhatsApp status every Monday", "ref": "Luke 14:28", "verse": "Which of you, wishing to build a tower, does not first sit down and count the cost to see if he has the resources to complete it?"}, {"key": "why", "type": "question", "letter": "R", "word": "Relevant", "lbl": "Why it matters", "ai": true, "q": "{name}, why does this matter to you?", "q0": "Why does this matter to you?", "hint": "What changes in your life when you get it done?", "ex": "e.g. I can pay my own school fees", "ref": "", "verse": ""}, {"key": "when", "type": "question", "letter": "T", "word": "Time-bound", "lbl": "Done by", "q": "By when?", "hint": "Pick a real date.", "ex": "e.g. 31 March 2027", "ref": "Ecclesiastes 3:1", "verse": "To everything there is a season, and a time for every purpose under heaven."}, {"key": "person", "type": "question", "letter": "+1", "word": "One person", "lbl": "Checking on me", "ai": true, "q": "{name}, who will you tell?", "q0": "Who will you tell?", "hint": "Someone you respect. Someone you would hate to let down.", "ex": "e.g. My elder sister, Tolu", "ref": "Ecclesiastes 4:10", "verse": "For if one falls, his companion can lift him up; but pity the one who falls without another to help him up!"}]
+  steps:[{"key": "worry", "type": "question", "q": "What are you worried about for next year?", "hint": "Be honest. Only you will see this.", "ex": "e.g. That nothing will change for me", "ref": "Matthew 6:27", "verse": "Who of you by worrying can add a single hour to his life?"}, {"key": "worry_poll", "type": "poll", "q": "{name}, what is that worry mostly about?", "hint": "Tap one. Then look at the screen.", "options": ["Money", "Health", "School or exams", "Work or career", "Family", "Direction and purpose", "Relationships"], "ref": "", "verse": ""}, {"key": "goal", "type": "question", "letter": "S", "word": "Specific", "lbl": "I want to", "q": "{name}, what exactly do you want?", "hint": "Pick one thing. Say it so plainly a stranger would understand.", "ex": "e.g. Start selling shoes online", "ref": "Habakkuk 2:2", "verse": "Write down this vision and clearly inscribe it on tablets, so that a herald may run with it."}, {"key": "measure", "type": "question", "letter": "M", "word": "Measurable", "lbl": "How I'll know", "ai": true, "q": "{name}, how will you know you've done it?", "q0": "How will you know you've done it?", "hint": "Put a number on it. How many? How much? How often?", "ex": "e.g. 20 pairs sold", "ref": "", "verse": ""}, {"key": "system", "type": "question", "letter": "A", "word": "Achievable", "lbl": "Every week I will", "ai": true, "q": "{name}, what will you do every week to make it happen?", "q0": "What will you do every week to make it happen?", "hint": "This is your system. Something small you can repeat every week, starting this week.", "ex": "e.g. Post 5 shoes on my WhatsApp status every Monday", "ref": "Luke 14:28", "verse": "Which of you, wishing to build a tower, does not first sit down and count the cost to see if he has the resources to complete it?"}, {"key": "why", "type": "question", "letter": "R", "word": "Relevant", "lbl": "Why it matters", "ai": true, "q": "{name}, why does this matter to you?", "q0": "Why does this matter to you?", "hint": "What changes in your life when you get it done?", "ex": "e.g. I can pay my own school fees", "ref": "", "verse": ""}, {"key": "when", "type": "question", "letter": "T", "word": "Time-bound", "lbl": "Done by", "q": "By when?", "hint": "Pick a real date.", "ex": "e.g. 31 March 2027", "ref": "Ecclesiastes 3:1", "verse": "To everything there is a season, and a time for every purpose under heaven."}, {"key": "person", "type": "partner", "letter": "+1", "word": "One person", "lbl": "Checking on me", "ai": true, "q": "{name}, who will you tell?", "q0": "Who will you tell?", "hint": "Someone you respect. Someone you would hate to let down.", "ex": "e.g. My elder sister, Tolu", "ref": "Ecclesiastes 4:10", "verse": "For if one falls, his companion can lift him up; but pity the one who falls without another to help him up!"}]
 };
 
 let cfg = DEFAULT, live = {current_step:0, free_mode:false, updated_at:null};
@@ -337,7 +368,7 @@ function art(s){ return `<div class="art">${window.GC_ART ? GC_ART(s.key, s.type
 
 function render(){
   renderDots();
-  clearInterval(timerTick); timerTick = null;
+  clearInterval(timerTick); timerTick = null; clearInterval(roomTick);
   const m = $('#main');
   window.scrollTo({top:0});
   if(view === 0) return renderHello(m);
@@ -345,6 +376,7 @@ function render(){
   const s = cfg.steps[view-1];
   if(s.type === 'poll') return renderPoll(m, s);
   if(s.type === 'pair') return renderPair(m, s);
+  if(s.type === 'partner') return renderPartner(m, s);
   m.innerHTML = `
     <div class="card">${art(s)}
       <div class="body">
@@ -360,7 +392,7 @@ function render(){
     </div>${navHTML()}`;
   const a = $('#ans'); a.value = answers[s.key] || ''; let t, pf;
   a.addEventListener('input', () => {
-    answers[s.key] = a.value.trim(); persist();
+    answers[s.key] = a.value.trim(); persist(); if(s.key==='goal'||s.key==='when') saveProfile();
     clearTimeout(t); $('#saved').classList.add('on'); t = setTimeout(()=>$('#saved').classList.remove('on'), 1200);
     clearTimeout(pf); pf = setTimeout(prefetchNext, 2500);
   });
@@ -454,6 +486,130 @@ function updateTimer(){
   tick(); if(!timerTick) timerTick = setInterval(tick, 250);
 }
 
+/* ---------- profile, room, partner ---------- */
+let room = [], links = null, roomTick = null, saveT = null;
+function saveProfile(photo){
+  if(!get('name')) return;
+  clearTimeout(saveT);
+  const go = () => rpc('goalcard_profile_save', {p_slug:SLUG, p_device:answers._device, p_name:firstName() + (get('name').split(/\s+/)[1] ? ' ' + get('name').split(/\s+/)[1].charAt(0).toUpperCase() + '.' : ''),
+    p_photo: photo === undefined ? null : photo, p_phone:get('phone'), p_goal:get('goal'), p_when:get('when')}).catch(()=>{});
+  if(photo !== undefined) go(); else saveT = setTimeout(go, 900);
+}
+function initials(n){ return String(n||'?').trim().split(/\s+/).slice(0,2).map(x=>x.charAt(0).toUpperCase()).join('') || '?'; }
+function avatar(p, size){
+  const sz = size || 56;
+  if(p.photo) return `<span class="av" style="width:${sz}px;height:${sz}px"><img src="${esc(p.photo)}" alt=""></span>`;
+  const hues = ['#14204A','#D2402F','#2E6F8E','#7A5C3E','#3E7A5C','#6B4E8E'];
+  let h = 0; for(const ch of String(p.name||'')) h = (h*31 + ch.charCodeAt(0)) >>> 0;
+  return `<span class="av" style="width:${sz}px;height:${sz}px;background:${p.is_host?'#14204A':hues[h%hues.length]};font-size:${Math.round(sz*.36)}px">${esc(initials(p.name))}</span>`;
+}
+function waNumber(ph){
+  let d = String(ph||'').replace(/[^0-9]/g,'');
+  if(d.length === 11 && d.startsWith('0')) d = '234' + d.slice(1);
+  return d.length >= 10 ? d : '';
+}
+async function compressPhoto(file){
+  const url = URL.createObjectURL(file);
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+  const S = 200, c = document.createElement('canvas'); c.width = S; c.height = S;
+  const ctx = c.getContext('2d'); const m = Math.min(img.width, img.height);
+  ctx.drawImage(img, (img.width-m)/2, (img.height-m)/2, m, m, 0, 0, S, S);
+  URL.revokeObjectURL(url);
+  return c.toDataURL('image/jpeg', .72);
+}
+async function loadRoom(){
+  try{ room = await rpc('goalcard_room', {p_slug:SLUG, p_device:answers._device}) || []; }catch(e){}
+  drawPeople();
+}
+function drawPeople(){
+  const box = $('#people'); if(!box) return;
+  const q = ($('#psearch') && $('#psearch').value || '').trim().toLowerCase();
+  const sel = answers.partner && answers.partner.id;
+  const list = room.filter(p => !q || p.is_host || p.name.toLowerCase().includes(q));
+  if(!list.length){ box.innerHTML = `<div class="empty-room">${q ? 'Nobody with that name yet. Type it below.' : 'People will show up here as they join.'}</div>`; return; }
+  box.innerHTML = list.map(p => `<button class="pp ${p.id===sel?'on':''} ${p.is_host?'host':''}" data-id="${esc(p.id)}" data-name="${esc(p.name)}">
+      ${avatar(p, 58)}<b>${esc(p.name)}</b><small>${p.is_host ? 'Your speaker' : (+p.picked ? `${p.picked} picked` : '&nbsp;')}</small>
+      <i class="tick">✓</i></button>`).join('');
+  box.querySelectorAll('.pp').forEach(b => b.onclick = () => {
+    const id = b.dataset.id, nm = b.dataset.name;
+    if(answers.partner && answers.partner.id === id){ answers.partner = null; answers.person = ''; }
+    else { answers.partner = {id, name:nm}; answers.person = nm; }
+    persist(); const a = $('#ans'); if(a) a.value = answers.partner ? '' : '';
+    rpc('goalcard_pick', {p_slug:SLUG, p_device:answers._device, p_partner: answers.partner ? id : ''}).catch(()=>{});
+    try{ navigator.vibrate && navigator.vibrate(20) }catch(e){}
+    drawPeople(); drawChosen();
+  });
+}
+function drawChosen(){
+  const el = $('#chosen'); if(!el) return;
+  const p = answers.partner;
+  el.innerHTML = p ? `<span>Your person:</span> <b>${esc(p.name)}</b>` : (get('person') ? `<span>Your person:</span> <b>${esc(get('person'))}</b> <em>(not in the room)</em>` : '');
+}
+function renderPartner(m, s){
+  const me = {name:get('name'), photo:answers.photo || ''};
+  m.innerHTML = `
+    <div class="card">
+      <div class="body">
+        ${head(view)}
+        ${carry(s)}
+        <h2 class="q" id="qtext">${esc((answers._ai && answers._ai[s.key] && answers._ai[s.key].sig===aiSig(s)) ? answers._ai[s.key].q : fillQ(s))}</h2>
+        <p class="hint">${esc(personal(s.hint))}</p>
+        <div class="meRow">
+          <label class="mePic">${avatar(me, 52)}<input type="file" accept="image/*" id="photoIn" hidden><em>${me.photo ? 'Change' : '+ Photo'}</em></label>
+          <div class="meInfo"><b>${esc(get('name') || 'You')}</b><input type="tel" id="phoneIn" inputmode="tel" maxlength="16" placeholder="Your WhatsApp number (optional)"></div>
+        </div>
+        <p class="tiny">Add a photo so people can find you. Your number is only shown to the person you pair with.</p>
+        <input type="text" id="psearch" class="search" placeholder="Search names" autocomplete="off">
+        <div class="people" id="people"><div class="empty-room">Loading the room...</div></div>
+        <div class="chosen" id="chosen"></div>
+        <label class="label" for="ans" style="margin-top:14px">Not in the room? Type their name</label>
+        <input type="text" id="ans" maxlength="40" autocomplete="off" placeholder="${esc(s.ex)}">
+      </div>
+    </div>${navHTML()}`;
+  const ph = $('#phoneIn'); ph.value = get('phone');
+  ph.addEventListener('input', () => { answers.phone = ph.value.trim(); persist(); saveProfile(); });
+  $('#photoIn').addEventListener('change', async e => {
+    const f = e.target.files && e.target.files[0]; if(!f) return;
+    try{ const d = await compressPhoto(f); answers.photo = d; persist(); saveProfile(d); renderPartner(m, s); }catch(err){}
+  });
+  $('#psearch').addEventListener('input', drawPeople);
+  const a = $('#ans'); a.value = answers.partner ? '' : (answers.person || '');
+  a.addEventListener('input', () => {
+    answers.person = a.value.trim();
+    if(answers.partner && a.value.trim()){ answers.partner = null; rpc('goalcard_pick', {p_slug:SLUG, p_device:answers._device, p_partner:''}).catch(()=>{}); drawPeople(); }
+    persist(); drawChosen();
+  });
+  bindNav(); drawChosen(); drawPeople(); loadRoom();
+  clearInterval(roomTick); roomTick = setInterval(() => { if(!document.hidden && $('#people')) loadRoom(); else clearInterval(roomTick); }, 5000);
+  const here = view;
+  if(s.ai){ aiQuestion(s).then(q => { const el = $('#qtext'); if(!q || view !== here || !el || el.textContent === q) return; el.textContent = q; el.classList.remove('swap'); void el.offsetWidth; el.classList.add('swap'); }); }
+}
+async function loadLinks(){
+  try{ links = await rpc('goalcard_links', {p_slug:SLUG, p_device:answers._device}); }catch(e){}
+  drawCircle();
+}
+function drawCircle(){
+  const box = $('#circle'); if(!box) return;
+  const pr = links && links.partner, pk = (links && links.pickers) || [];
+  const goal = get('goal');
+  let h = '';
+  if(pr){
+    const wa = waNumber(pr.phone);
+    h += `<div class="circ"><div class="circHead">${avatar(pr, 48)}<div><small>${pr.is_host ? 'Checking on you' : 'You picked'}</small><b>${esc(pr.name)}</b>${pr.goal ? `<p>Their goal: ${esc(pr.goal)}</p>` : ''}</div></div>
+      ${pr.is_host ? `<p class="tiny" style="margin:8px 0 0">Genie has your goal. Expect a check-in.</p>` : wa ? `<a class="btn wa full sm" target="_blank" rel="noopener" href="https://wa.me/${wa}?text=${encodeURIComponent(waMsg(pr.name))}">Message ${esc(pr.name.split(' ')[0])} on WhatsApp</a>` : `<p class="tiny" style="margin:8px 0 0">They haven't added a number. Find them before you leave the hall.</p>`}</div>`;
+  } else if(get('person')){
+    h += `<div class="circ"><div class="circHead">${avatar({name:get('person')}, 48)}<div><small>Your person</small><b>${esc(get('person'))}</b><p>Not in the room. Send it to them below.</p></div></div></div>`;
+  }
+  if(pk.length){
+    h += `<div class="circTitle">${pk.length === 1 ? '1 person picked you' : pk.length + ' people picked you'}</div>`;
+    h += pk.map(p => { const wa = waNumber(p.phone); return `<div class="circ"><div class="circHead">${avatar(p, 44)}<div><b>${esc(p.name)}</b>${p.goal ? `<p>${esc(p.goal)}${p.when ? ' · by ' + esc(p.when) : ''}</p>` : ''}</div></div>
+      ${wa ? `<a class="btn ghost full sm" target="_blank" rel="noopener" href="https://wa.me/${wa}?text=${encodeURIComponent('Hi ' + p.name.split(' ')[0] + ', I saw you picked me as your person today. I will be checking on you. How is it going?')}">Check on ${esc(p.name.split(' ')[0])}</a>` : ''}</div>`; }).join('');
+  }
+  box.innerHTML = h ? `<div class="label" style="margin:22px 0 10px">Your people</div>${h}` : '';
+  const wb = $('#waBtn'), pwn = pr && !pr.is_host && waNumber(pr.phone);
+  if(wb && pwn && window.waMsg) wb.href = 'https://wa.me/' + pwn + '?text=' + encodeURIComponent(waMsg());
+}
+
 /* ---------- welcome ---------- */
 function shortLabel(s){
   return ({worry:'What worries you',worry_poll:'A quick room poll',goal:'Your one goal',say:'Say it out loud',cost:'What it will cost',week:'Your move this week',person:'Who checks on you'})[s.key]
@@ -472,7 +628,7 @@ function renderHello(m){
     </div>
     ${u>0 ? `<div class="nav"><button class="btn dark full" id="go">Open card ${u>=REVEAL()?1:u}</button></div>` : waitLine()}`;
   const nm = $('#nm'); nm.value = answers.name || '';
-  nm.addEventListener('input', () => { answers.name = nm.value.trim(); persist(); });
+  nm.addEventListener('input', () => { answers.name = nm.value.trim(); persist(); saveProfile(); });
   const go = $('#go'); if(go) go.onclick = () => { view = u>=REVEAL() ? 1 : u; render(); };
 }
 
@@ -490,6 +646,7 @@ function renderReveal(m){
         <span class="instead" id="inst">${worry ? 'Instead, I want to' : 'I want to'}</span>
         <h1 style="margin-top:0">${goal ? esc(goal) : '<span class="empty-note">Write your goal on the S card</span>'}</h1>
         ${rows}
+        <div id="circle"></div>
         <div class="verse"><b>${esc(cfg.wall_ref)}<span>BSB</span></b><p>${esc(cfg.wall_verse)}</p></div>
       </div>
     </div>
@@ -506,10 +663,13 @@ function renderReveal(m){
     const s = $('#strk'); if(s) s.classList.add('go');
     const i = $('#inst'); if(i){ if(!worry) i.style.transitionDelay='.2s'; i.classList.add('go'); }
   }, 60);
+  setTimeout(loadLinks, 50); clearInterval(roomTick); roomTick = setInterval(() => { if($('#circle')) loadLinks(); else clearInterval(roomTick); }, 8000);
   const lines = L.slice(0,-1).filter(x=>get(x.key)).map(x=>`${x.lbl || x.word}: ${get(x.key)}`).join('\n');
   const hiName = person && person.length <= 14 && !/[,\s]/.test(person.trim()) ? ' ' + person : '';
   const msg = `Hi${hiName}, I set a goal in church today. I picked you because I respect you and I don't want to let you down.\n\n${lines}\n\nPlease ask me about it every Sunday. Don't let me off easy.`;
-  $('#waBtn').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  const pw = answers.partner && links && links.partner && waNumber(links.partner.phone);
+  $('#waBtn').href = 'https://wa.me/' + (pw || '') + '?text=' + encodeURIComponent(msg);
+  window.waMsg = () => msg;
   $('#wallBtn').onclick = makeWallpaper;
   $('#editBtn').onclick = () => { view = 1; render(); };
 }
@@ -616,6 +776,7 @@ function closeModal(){ $('#modal').classList.remove('on'); }
 document.addEventListener('visibilitychange', () => { if(!document.hidden) poll(); });
 loadAll().then(poll);
 rpc('goalcard_join', {p_slug:SLUG, p_device:answers._device}).catch(()=>{});
+saveProfile();
 setInterval(poll, 3000);
 </script>
 </body>

@@ -140,9 +140,23 @@ input:focus,textarea:focus{border-color:var(--soft)}
         <div class="link"><div><b>Audience link</b><br><code id="aLink"></code></div><button class="btn sm line" data-copy="a">Copy</button></div>
         <div class="link"><div><b>Big screen</b><br><code id="sLink"></code></div><button class="btn sm line" data-copy="s">Copy</button></div>
       </div>
+      <div class="panel" id="hostPanel">
+        <b>Your profile in the room</b>
+        <p class="note" style="margin:6px 0 12px">You show at the top of everyone's list as their speaker. Add a photo so they recognise you.</p>
+        <div style="display:flex;gap:12px;align-items:center">
+          <label style="margin:0;cursor:pointer"><span id="hostPic" style="width:60px;height:60px;border-radius:50%;background:#14204A;display:grid;place-items:center;overflow:hidden;font-family:Archivo;font-weight:900;color:#fff;font-size:22px">G</span><input type="file" accept="image/*" id="hostPhoto" hidden></label>
+          <div style="flex:1"><input type="text" id="hostName" value="Genie" style="margin-bottom:8px"><input type="tel" id="hostPhone" placeholder="Your WhatsApp number (optional)"></div>
+        </div>
+        <button class="btn sm line" id="hostSave" style="width:100%;margin-top:10px">Save my profile</button>
+        <div class="msg" id="hostMsg"></div>
+      </div>
+      <div class="panel">
+        <b>People who picked you</b> <span class="note" id="pairStats"></span>
+        <div id="hostList" style="margin-top:10px;display:grid;gap:8px"><p class="note">Nobody yet.</p></div>
+      </div>
       <div class="panel">
         <b>Start fresh</b>
-        <p class="note" style="margin:6px 0 12px">Closes every card, clears poll votes and the phone count. Use it before your next session. Answers on people's phones are not touched.</p>
+        <p class="note" style="margin:6px 0 12px">Closes every card and clears the poll and phone count. People's profiles and pairs are kept so they can come back to them.</p>
         <button class="btn sm line" id="reset" style="width:100%">Reset the room</button>
       </div>
     </section>
@@ -371,6 +385,7 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   ['run','edit','more'].forEach(id => $('#'+id).classList.toggle('hide', id!==tab));
   $('#dock').classList.toggle('hide', tab!=='run');
   if(tab==='edit') fillEdit();
+  if(tab==='more') loadHost();
 });
 
 async function unlock(p){
@@ -391,6 +406,36 @@ $('#pin').addEventListener('keydown', e => { if(e.key==='Enter') unlock($('#pin'
 setInterval(() => { if(document.hidden || !ev || $('#app').classList.contains('hide') || busy || tab==='edit') return; refresh(); }, 2500);
 document.addEventListener('visibilitychange', () => { if(!document.hidden && ev) refresh(); });
 
+
+let hostPhotoData = null;
+async function compressPhoto(file){
+  const url = URL.createObjectURL(file);
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+  const S = 200, c = document.createElement('canvas'); c.width = S; c.height = S;
+  const ctx = c.getContext('2d'); const m = Math.min(img.width, img.height);
+  ctx.drawImage(img, (img.width-m)/2, (img.height-m)/2, m, m, 0, 0, S, S);
+  URL.revokeObjectURL(url); return c.toDataURL('image/jpeg', .75);
+}
+$('#hostPhoto').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; if(!f) return;
+  try{ hostPhotoData = await compressPhoto(f); $('#hostPic').innerHTML = `<img src="${hostPhotoData}" style="width:100%;height:100%;object-fit:cover">`; }catch(err){}
+});
+$('#hostSave').onclick = async () => {
+  const m = $('#hostMsg'); m.className = 'msg'; m.textContent = 'Saving...';
+  try{ await rpc('goalcard_host_profile', {p_slug:SLUG, p_pin:pin, p_name:$('#hostName').value.trim() || 'Genie', p_photo:hostPhotoData, p_phone:$('#hostPhone').value.trim()});
+    m.className = 'msg ok'; m.textContent = 'Saved. Phones show it within a few seconds.'; }catch(e){ m.className = 'msg err'; m.textContent = e.message; }
+};
+async function loadHost(){
+  try{
+    const h = await rpc('goalcard_host_links', {p_slug:SLUG, p_pin:pin});
+    $('#pairStats').textContent = `· ${h.paired} of ${h.people} paired`;
+    const L = h.mine || [];
+    $('#hostList').innerHTML = L.length ? L.map(p => {
+      let d = String(p.phone||'').replace(/[^0-9]/g,''); if(d.length===11 && d.startsWith('0')) d = '234' + d.slice(1);
+      return `<div style="background:#1B1813;border:1px solid var(--edge);border-radius:12px;padding:10px 12px"><b>${esc(p.name)}</b><div class="note" style="margin-top:2px">${esc(p.goal || 'No goal yet')}${p.when ? ' · by ' + esc(p.when) : ''}</div>${d.length>=10 ? `<a class="note" style="color:#3DBE7A;font-weight:800" target="_blank" href="https://wa.me/${d}">WhatsApp ${esc(p.phone)}</a>` : ''}</div>`; }).join('') : '<p class="note">Nobody yet.</p>';
+  }catch(e){}
+}
+setInterval(() => { if(tab==='more' && pin) loadHost(); }, 6000);
 let saved = ''; try{ saved = localStorage.getItem(PK) || '' }catch(e){}
 if(saved) unlock(saved);
 </script>
