@@ -689,6 +689,12 @@ function renderReveal(m){
         <span class="instead" id="inst">${worry ? 'Instead, I want to' : 'I want to'}</span>
         <h1 style="margin-top:0">${goal ? esc(goal) : '<span class="empty-note">Write your goal on the S card</span>'}</h1>
         ${rows}
+        <div class="label" style="margin:22px 0 8px">Your profile in the room</div>
+        <div class="meRow" id="meRow">
+          <label class="mePic"><span id="meAv">${avatar({name:get('name'), photo:answers.photo||''}, 56)}</span><input type="file" accept="image/*" id="photoIn2" hidden><em>${answers.photo ? 'Change' : '+ Photo'}</em></label>
+          <div class="meInfo"><input type="text" id="nameIn2" maxlength="24" placeholder="Your first name" style="margin-bottom:6px"><input type="tel" id="phoneIn2" inputmode="tel" maxlength="16" placeholder="Your WhatsApp number (optional)"></div>
+        </div>
+        <p class="tiny">Add a photo so people can find you. Your number is only shown to the person you pair with.</p>
         <div id="circle"></div>
         <div class="verse"><b>${esc(cfg.wall_ref)}<span>BSB</span></b><p>${esc(cfg.wall_verse)}</p></div>
       </div>
@@ -706,6 +712,18 @@ function renderReveal(m){
     const s = $('#strk'); if(s) s.classList.add('go');
     const i = $('#inst'); if(i){ if(!worry) i.style.transitionDelay='.2s'; i.classList.add('go'); }
   }, 60);
+  (() => {
+    const n2 = $('#nameIn2'), p2 = $('#phoneIn2'), f2 = $('#photoIn2');
+    n2.value = get('name'); p2.value = get('phone');
+    n2.addEventListener('input', () => { answers.name = n2.value.trim(); persist(); saveProfile(); });
+    p2.addEventListener('input', () => { answers.phone = p2.value.trim(); persist(); saveProfile(); });
+    f2.addEventListener('change', async e => {
+      const f = e.target.files && e.target.files[0]; if(!f) return;
+      try{ const d = await compressPhoto(f); answers.photo = d; persist();
+        if(!get('name')){ answers.name = 'Friend'; n2.value = ''; }
+        saveProfile(d); $('#meAv').innerHTML = avatar({name:get('name'), photo:d}, 56); f2.parentElement.querySelector('em').textContent = 'Change'; }catch(err){}
+    });
+  })();
   setTimeout(loadLinks, 50); clearInterval(roomTick); roomTick = setInterval(() => { if($('#circle')) loadLinks(); else clearInterval(roomTick); }, 8000);
   const lines = L.slice(0,-1).filter(x=>get(x.key)).map(x=>`${x.lbl || x.word}: ${get(x.key)}`).join('\n');
   const hiName = person && person.length <= 14 && !/[,\s]/.test(person.trim()) ? ' ' + person : '';
@@ -819,7 +837,8 @@ function closeModal(){ $('#modal').classList.remove('on'); }
 document.addEventListener('visibilitychange', () => { if(!document.hidden) poll(); });
 loadAll().then(poll);
 rpc('goalcard_join', {p_slug:SLUG, p_device:answers._device}).catch(()=>{});
-saveProfile();
+saveProfile(answers.photo && !answers._photoSent ? answers.photo : undefined);
+if(answers.photo && !answers._photoSent){ answers._photoSent = 1; persist(); }
 setInterval(poll, 3000);
 </script>
 </body>
