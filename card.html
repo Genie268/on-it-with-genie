@@ -98,7 +98,7 @@ textarea:focus,input[type=text]:focus{border-color:var(--ink);box-shadow:0 0 0 4
 .row .v.big{font-family:Archivo,system-ui,sans-serif;font-stretch:88%;font-weight:850;font-size:clamp(24px,7vw,30px);line-height:1.1}
 .struck{background-image:linear-gradient(var(--red),var(--red));background-repeat:no-repeat;background-position:0 58%;background-size:0% 3px;box-decoration-break:clone;-webkit-box-decoration-break:clone;color:var(--soft);transition:background-size 1.1s cubic-bezier(.6,0,.2,1) .6s, color .6s 1s}
 .struck.go{background-size:100% 3px;color:#9C9385}
-.instead{display:inline-block;background:var(--red);color:#fff;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:4px 9px;border-radius:7px;margin-bottom:8px;opacity:0;transform:translateY(6px);transition:all .5s 1.8s}
+.instead{display:inline-block;margin-top:10px;background:var(--red);color:#fff;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:4px 9px;border-radius:7px;margin-bottom:8px;opacity:0;transform:translateY(6px);transition:all .5s 1.8s}
 .instead.go{opacity:1;transform:none}
 .week-row .v{opacity:0;transform:translateY(8px);transition:all .6s 2s}
 .week-row.go .v{opacity:1;transform:none}
@@ -113,6 +113,26 @@ textarea:focus,input[type=text]:focus{border-color:var(--ink);box-shadow:0 0 0 4
 .modal .btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .btn.out{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.3)}
 .foot{text-align:center;font-size:12px;color:#A39A8B;margin-top:18px}
+.write{display:flex;gap:6px;margin:0 0 14px}
+.write span{flex:1;height:44px;border-radius:11px;display:grid;place-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:20px;background:var(--paper);color:#B8AE9D;transition:all .3s}
+.write span.done{background:var(--ink);color:#fff}
+.write span.now{background:var(--red);color:#fff;transform:translateY(-2px);box-shadow:0 8px 16px -8px rgba(210,64,47,.6)}
+.lettertag{display:flex;align-items:baseline;gap:10px;font-family:Archivo,system-ui,sans-serif;font-weight:800;font-size:13px;letter-spacing:.14em;color:var(--red);text-transform:uppercase}
+.lettertag b{font-size:13px}
+.carry{background:var(--paper);border-radius:14px;padding:11px 14px;margin:2px 0 12px}
+.carry + .carry{margin-top:-4px}
+.carry small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+.carry div{font-weight:700;font-size:15.5px;line-height:1.35;color:var(--ink)}
+.q.swap{animation:qfade .5s ease}
+@keyframes qfade{0%{opacity:.25}100%{opacity:1}}
+.hello .write{margin:4px 0 16px}
+.hello .write span{background:var(--ink);color:#fff;height:48px;font-size:22px}
+.hello .write span:nth-child(odd){background:var(--red)}
+.wrow{display:flex;gap:14px;padding:12px 0;border-top:1px solid var(--line);align-items:flex-start}
+.wrow i{font-style:normal;flex:none;width:34px;height:34px;border-radius:9px;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:17px}
+.wrow small{display:block;font-size:11px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--soft)}
+.wrow div div{font-size:17px;font-weight:700;line-height:1.3}
+.wrow.t i{background:var(--red)}
 .hide{display:none!important}
 </style>
 </head>
@@ -143,18 +163,10 @@ const SLUG = (new URLSearchParams(location.search).get('e') || 'rlc').toLowerCas
 const LS = 'goalcard:' + SLUG;
 
 const DEFAULT = {
-  title:'Your Goal Card', host:'Relentless Love Church', logo_url:'',
+  title:'W.R.I.T.E. your goal', host:'Relentless Love Church', logo_url:'',
   intro:'Type your first name. Then look up.',
-  wall_ref:'Proverbs 16:3', wall_verse:'Commit your works to the LORD and your plans will be achieved.',
-  steps:[
-    {key:'worry',type:'question',q:'What are you worried about for next year?',hint:'Be honest, {name}. Only you see this.',ex:"e.g. That I'll still be in the same place this time next year",ref:'Matthew 6:27',verse:'Who of you by worrying can add a single hour to his life?'},
-    {key:'worry_poll',type:'poll',q:'{name}, what is that worry mostly about?',hint:'Tap one.',options:['Money','School or exams','Work or career','Family','Direction and purpose','Relationships']},
-    {key:'goal',type:'question',q:'{name}, what is the one thing you want to get done?',hint:'One sentence.',ex:'e.g. Sell 20 pairs of shoes by the end of March',ref:'Habakkuk 2:2',verse:'Write down this vision and clearly inscribe it on tablets, so that a herald may run with it.'},
-    {key:'say',type:'pair',q:'Say it out loud',hint:'Read it to the person next to you.',seconds:60,ref:'Proverbs 27:17',verse:'As iron sharpens iron, so one man sharpens another.'},
-    {key:'cost',type:'question',q:'What will it cost you, {name}?',hint:'Sleep? Phone time? Weekends?',ex:'e.g. One hour of phone time every night',ref:'Luke 14:28',verse:'Which of you, wishing to build a tower, does not first sit down and count the cost to see if he has the resources to complete it?'},
-    {key:'week',type:'question',q:'{name}, what will you do this week?',hint:'Something you can start before Sunday.',ex:'e.g. Post 5 shoes on my WhatsApp status by Wednesday',ref:'Matthew 6:34',verse:'Therefore do not worry about tomorrow, for tomorrow will worry about itself. Today has enough trouble of its own.'},
-    {key:'person',type:'question',q:'Who will check on you?',hint:'Someone who will actually ask.',ex:'e.g. Tolu',ref:'Ecclesiastes 4:10',verse:'For if one falls, his companion can lift him up; but pity the one who falls without another to help him up!'}
-  ]
+  wall_ref:'Habakkuk 2:2', wall_verse:'Write down this vision and clearly inscribe it on tablets, so that a herald may run with it.',
+  steps:[{"q": "What are you worried about for next year?", "ex": "e.g. That I'll still be in the same place this time next year", "key": "worry", "ref": "Matthew 6:27", "hint": "Be honest, {name}. Only you see this.", "type": "question", "verse": "Who of you by worrying can add a single hour to his life?"}, {"q": "{name}, what is that worry mostly about?", "key": "worry_poll", "ref": "", "hint": "Tap one.", "type": "poll", "verse": "", "options": ["Money", "School or exams", "Work or career", "Family", "Direction and purpose", "Relationships"]}, {"q": "{name}, what is the one thing you want to get done?", "ex": "e.g. Sell 20 pairs of shoes by the end of March", "key": "goal", "ref": "Habakkuk 2:2", "hint": "One sentence. Plain enough that you'd know when it's done.", "type": "question", "word": "Want", "verse": "Write down this vision and clearly inscribe it on tablets, so that a herald may run with it.", "letter": "W"}, {"q": "Say it out loud", "key": "say", "ref": "Proverbs 27:17", "hint": "Read your want to the person next to you.", "type": "pair", "verse": "As iron sharpens iron, so one man sharpens another.", "seconds": 60}, {"q": "{name}, you want to {goal}. Where are you with it today?", "ai": true, "ex": "e.g. I've sold 3 pairs, only to friends", "q0": "Where are you with it today?", "key": "reality", "ref": "Luke 14:28", "hint": "Be honest. What have you done so far? What is in the way?", "type": "question", "word": "Reality", "verse": "Which of you, wishing to build a tower, does not first sit down and count the cost to see if he has the resources to complete it?", "letter": "R"}, {"q": "From {reality} to {goal}. Who do you need to become?", "ai": true, "ex": "e.g. Someone who posts every day, even when nobody buys", "q0": "Who do you need to become to get there?", "key": "identity", "ref": "Romans 12:2", "hint": "What would that person do that you don't? What would they stop?", "type": "question", "word": "Identity", "verse": "Do not be conformed to this world, but be transformed by the renewing of your mind.", "letter": "I"}, {"q": "What will you do this week to move toward {goal}?", "ai": true, "ex": "e.g. Post 5 shoes on my WhatsApp status by Wednesday", "q0": "What will you do this week?", "key": "week", "ref": "Matthew 6:34", "hint": "Small enough to start before next Sunday.", "type": "question", "word": "This week", "verse": "Therefore do not worry about tomorrow, for tomorrow will worry about itself. Today has enough trouble of its own.", "letter": "T"}, {"q": "Who will ask you about {goal} every week?", "ai": true, "ex": "e.g. Tolu", "q0": "Who will check on you every week?", "key": "person", "ref": "Ecclesiastes 4:10", "hint": "One name. Someone who will actually ask.", "type": "question", "word": "Enlist", "verse": "For if one falls, his companion can lift him up; but pity the one who falls without another to help him up!", "letter": "E"}]
 };
 
 let cfg = DEFAULT, live = {current_step:0, free_mode:false, updated_at:null};
@@ -173,6 +185,15 @@ const REVEAL = () => N() + 1;
 const unlocked = () => (live.free_mode || offline) ? REVEAL() : Math.max(0, Math.min(REVEAL(), live.current_step|0));
 const get = k => (answers[k]||'').trim();
 const firstName = () => { const n = get('name').split(/\s+/)[0] || ''; return n ? n.charAt(0).toUpperCase() + n.slice(1) : ''; };
+const PH = {goal:'goal', reality:'reality', identity:'identity', week:'week', worry:'worry'};
+function trimEnd(x){ return String(x||'').trim().replace(/[.!?]+$/,''); }
+function lowerFirst(x){ x = trimEnd(x); return /^[A-Z][a-z]/.test(x) && !/^I\b/.test(x) ? x.charAt(0).toLowerCase() + x.slice(1) : x; }
+function fillQ(s){
+  const t = s.q || '';
+  const need = (t.match(/\{(goal|reality|identity|week|worry)\}/g) || []).map(x=>x.slice(1,-1));
+  if(need.some(k => !get(k))) return personal(s.q0 || t.replace(/\{(goal|reality|identity|week|worry)\}/g,'it'));
+  return personal(t.replace(/\{(goal|reality|identity|week|worry)\}/g, (_,k) => lowerFirst(get(k))));
+}
 function personal(t){
   t = String(t||''); const n = firstName();
   if(n) return t.replace(/\{name\}/g, n);
@@ -250,7 +271,7 @@ function onUnlock(){
 function renderDots(){
   const u = unlocked(), n = N(); let h = '';
   for(let i=1;i<=n;i++) h += `<div class="dot ${i<=u?'open':''} ${i===view?'here':''}"></div>`;
-  $('#dots').innerHTML = view >= 1 ? h : '';
+  $('#dots').innerHTML = (view >= 1 && !letters().length) ? h : '';
 }
 
 function waitLine(){
@@ -269,9 +290,46 @@ function bindNav(){
   $('#back').onclick = () => { view--; render(); };
   $('#fwd').onclick = () => { view++; render(); };
 }
+function letters(){ return cfg.steps.filter(x=>x.letter); }
+function writeStrip(cur){
+  const L = letters(); if(!L.length) return '';
+  const idx = L.findIndex(x=>x.key===cur);
+  return `<div class="write">${L.map((x,k)=>`<span class="${k<idx?'done':''} ${k===idx?'now':''}">${esc(x.letter)}</span>`).join('')}</div>`;
+}
 function head(i){
-  const n = firstName();
+  const n = firstName(), s = cfg.steps[i-1];
+  if(s && s.letter){
+    return writeStrip(s.key) + `<div class="num"><span class="lettertag"><b>${esc(s.letter)}</b>${esc(s.word||'')}</span>${n?`<span class="for">FOR ${esc(n.toUpperCase())}</span>`:''}</div>`;
+  }
   return `<div class="num"><span>CARD ${String(i).padStart(2,'0')} <span class="for">/ ${String(N()).padStart(2,'0')}</span></span>${n?`<span class="for">FOR ${esc(n.toUpperCase())}</span>`:''}</div>`;
+}
+function carry(s){
+  const order = ['goal','reality','identity','week'];
+  const label = {goal:'Your want', reality:'Where you are', identity:'Who you are becoming', week:'This week'};
+  const pos = order.indexOf(s.key);
+  if(!s.letter || s.key==='goal') return '';
+  const prev = pos === -1 ? 'week' : order[pos-1];
+  const keep = ['goal', prev].filter((k,i,arr)=>get(k) && arr.indexOf(k)===i);
+  return keep.map(k=>`<div class="carry"><small>${label[k]}</small><div>${esc(get(k))}</div></div>`).join('');
+}
+/* ---------- AI question ---------- */
+const AI_URL = SB_URL + '/functions/v1/goalcard-ai';
+function aiSig(s){ return [s.key, get('name'), get('goal'), get('reality'), get('identity'), get('week')].join('|'); }
+async function aiQuestion(s){
+  if(!s.ai || !get('goal')) return null;
+  answers._ai = answers._ai || {};
+  const sig = aiSig(s), c = answers._ai[s.key];
+  if(c && c.sig === sig) return c.q;
+  const ctrl = new AbortController(); const t = setTimeout(()=>ctrl.abort(), 6500);
+  try{
+    const r = await fetch(AI_URL, {method:'POST', signal:ctrl.signal, headers:{'Content-Type':'application/json', apikey:SB_KEY},
+      body: JSON.stringify({step:s.key, answers:{name:firstName(), worry:get('worry'), goal:get('goal'), reality:get('reality'), identity:get('identity'), week:get('week')}})});
+    const j = await r.json(); if(!j || !j.q) return null;
+    answers._ai[s.key] = {sig, q:j.q}; persist(); return j.q;
+  }catch(e){ return null; } finally { clearTimeout(t); }
+}
+function prefetchNext(){
+  const nx = cfg.steps[view]; if(nx && nx.ai) aiQuestion(nx);
 }
 function verseHTML(s){
   if(!s.ref || !s.verse) return '';
@@ -293,7 +351,8 @@ function render(){
     <div class="card">${art(s)}
       <div class="body">
         ${head(view)}
-        <h2 class="q">${esc(personal(s.q))}</h2>
+        ${carry(s)}
+        <h2 class="q" id="qtext">${esc((answers._ai && answers._ai[s.key] && answers._ai[s.key].sig===aiSig(s)) ? answers._ai[s.key].q : fillQ(s))}</h2>
         <p class="hint">${esc(personal(s.hint))}</p>
         ${s.key==='person'
           ? `<input type="text" id="ans" maxlength="40" autocomplete="off" placeholder="${esc(s.ex)}">`
@@ -301,12 +360,20 @@ function render(){
         <div class="saved" id="saved">Saved on your phone</div>
       </div>
     </div>${navHTML()}`;
-  const a = $('#ans'); a.value = answers[s.key] || ''; let t;
+  const a = $('#ans'); a.value = answers[s.key] || ''; let t, pf;
   a.addEventListener('input', () => {
     answers[s.key] = a.value.trim(); persist();
     clearTimeout(t); $('#saved').classList.add('on'); t = setTimeout(()=>$('#saved').classList.remove('on'), 1200);
+    clearTimeout(pf); pf = setTimeout(prefetchNext, 2500);
   });
   bindNav();
+  const here = view;
+  if(s.ai){
+    aiQuestion(s).then(q => {
+      const el = $('#qtext'); if(!q || view !== here || !el || el.textContent === q) return;
+      el.textContent = q; el.classList.remove('swap'); void el.offsetWidth; el.classList.add('swap');
+    });
+  }
 }
 
 /* ---------- poll ---------- */
@@ -362,7 +429,7 @@ function renderPair(m, s){
         ${head(view)}
         <h2 class="q">${esc(personal(s.q))}</h2>
         <p class="hint">${esc(personal(s.hint))}</p>
-        <div class="label">Read this to them</div>
+        <div class="label">Read your want to them</div>
         <div class="say-goal ${goal?'':'empty'}">${goal ? esc(goal) : 'Go back to your goal card and write it first.'}</div>
         <div class="timer hide" id="timer">
           <div class="ring"><svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" stroke="#EDE4D3" stroke-width="7" fill="none"/><circle id="arc" cx="40" cy="40" r="34" stroke="#D2402F" stroke-width="7" fill="none" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="0"/></svg><b id="secs">60</b></div>
@@ -400,6 +467,7 @@ function renderHello(m){
     <div class="card hello"><div class="art">${window.GC_ART ? GC_ART('welcome') : ''}</div>
       <div class="body">
         <h1>${esc(cfg.title)}</h1>
+        ${letters().length ? `<div class="write">${letters().map(x=>`<span>${esc(x.letter)}</span>`).join('')}</div>` : ''}
         <p class="lead">${esc(cfg.intro)}</p>
         <input type="text" id="nm" maxlength="24" autocomplete="given-name" placeholder="Your first name" aria-label="Your first name">
       </div>
@@ -412,20 +480,19 @@ function renderHello(m){
 
 /* ---------- reveal ---------- */
 function renderReveal(m){
-  const name = firstName(), worry = get('worry'), goal = get('goal'), cost = get('cost'), week = get('week'), person = get('person');
+  const name = firstName(), worry = get('worry'), goal = get('goal'), reality = get('reality'), identity = get('identity'), week = get('week'), person = get('person');
   const missing = !goal || !week;
+  const L = letters();
+  const val = {goal, reality, identity, week, person};
+  const rows = L.length ? L.filter(x=>x.key!=='goal').map(x=>`<div class="wrow ${x.key==='week'?'t':''}" ${x.key==='week'?'id="weekRow"':''}><i>${esc(x.letter)}</i><div><small>${esc(x.word)}</small><div>${val[x.key] ? esc(val[x.key]) : '<span class="empty-note">Not written yet</span>'}</div></div></div>`).join('') : '';
   m.innerHTML = `
     <div class="card reveal"><div class="art">${window.GC_ART ? GC_ART('reveal') : ''}</div>
       <div class="body">
-        <div class="num"><span>${name ? esc(name.toUpperCase()) + "'S" : 'YOUR'} GOAL CARD</span></div>
-        <h1>${goal ? esc(goal) : '<span class="empty-note">Write your goal on card 3</span>'}</h1>
-        ${worry ? `<div class="row"><small>What I was worried about</small><div class="v"><span class="struck" id="strk">${esc(worry)}</span></div></div>` : ''}
-        <div class="row week-row" id="weekRow">
-          <span class="instead" id="inst">${worry ? 'Instead, this week' : 'This week'}</span>
-          <div class="v big">${week ? esc(week) : '<span class="empty-note">Write your step on card 6</span>'}</div>
-        </div>
-        ${cost ? `<div class="row"><small>What it will cost me</small><div class="v">${esc(cost)}</div></div>` : ''}
-        ${person ? `<div class="row"><small>Checking on me</small><div class="v">${esc(person)}</div></div>` : ''}
+        <div class="num"><span>${name ? esc(name.toUpperCase()) + "'S" : 'YOUR'} GOAL CARD</span><span class="for">W.R.I.T.E.</span></div>
+        ${worry ? `<div class="row" style="border-top:0;padding-top:6px"><small>What I was worried about</small><div class="v"><span class="struck" id="strk">${esc(worry)}</span></div></div>` : ''}
+        <span class="instead" id="inst">${worry ? 'Instead, I want to' : 'I want to'}</span>
+        <h1 style="margin-top:0">${goal ? esc(goal) : '<span class="empty-note">Write your want on the W card</span>'}</h1>
+        ${rows}
         <div class="verse"><b>${esc(cfg.wall_ref)}<span>BSB</span></b><p>${esc(cfg.wall_verse)}</p></div>
       </div>
     </div>
@@ -440,11 +507,9 @@ function renderReveal(m){
     </div>`;
   setTimeout(()=>{
     const s = $('#strk'); if(s) s.classList.add('go');
-    const i = $('#inst'), r = $('#weekRow'); if(!i || !r) return;
-    if(!worry){ i.style.transitionDelay='.2s'; r.querySelector('.v').style.transitionDelay='.3s'; }
-    i.classList.add('go'); r.classList.add('go');
+    const i = $('#inst'); if(i){ if(!worry) i.style.transitionDelay='.2s'; i.classList.add('go'); }
   }, 60);
-  const msg = `Hi${person ? ' ' + person : ''}, I set a goal in church today.\n\nMy goal: ${goal}\nThis week I will: ${week}\n\nPlease ask me about it every Sunday. Don't let me off easy.`;
+  const msg = `Hi${person ? ' ' + person : ''}, I wrote down a goal in church today and I'm asking you to hold me to it.\n\nI want to: ${goal}\nWhere I am now: ${reality || '-'}\nWho I'm becoming: ${identity || '-'}\nThis week I will: ${week}\n\nPlease ask me about it every Sunday. Don't let me off easy.`;
   $('#waBtn').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
   $('#wallBtn').onclick = makeWallpaper;
   $('#editBtn').onclick = () => { view = 1; render(); };
@@ -487,43 +552,34 @@ async function makeWallpaper(){
   const verseTop = H - 330 - vl.length * 46 - 34;
 
   // main block: dry run measures height, real run draws
+  const reality = get('reality'), identity = get('identity');
   function block(y0, draw, opts){
     let y = y0;
     const T = (txt, x, yy) => { if(draw) ctx.fillText(txt, x, yy); };
-    ctx.fillStyle = '#E2513F'; ctx.font = `800 34px ${BODY}`;
-    T((name ? name.toUpperCase() + ', ' : '') + 'THIS IS THE YEAR I', X, y); y += 30;
-    const g = fit(ctx, goal, MW, 4, opts.goalMax, 56, 900, HEAD);
+    ctx.fillStyle = '#E2513F'; ctx.font = `800 32px ${BODY}`;
+    T((name ? name.toUpperCase() + ', ' : '') + 'I WANT TO', X, y); y += 26;
+    const g = fit(ctx, goal, MW, 4, opts.goalMax, 54, 900, HEAD);
     ctx.fillStyle = '#FFFDF8';
     for(const l of g.lines){ y += g.size * 1.02; T(l, X, y); }
-    y += 80;
-    if(draw){ ctx.fillStyle = 'rgba(255,253,248,.18)'; ctx.fillRect(X, y, MW, 2); } y += 70;
-    ctx.fillStyle = '#E2513F'; ctx.font = `800 30px ${BODY}`; T('THIS WEEK', X, y); y += 16;
-    const w = fit(ctx, week, MW, 3, 56, 36, 700, BODY);
-    ctx.fillStyle = '#FFFDF8';
-    for(const l of w.lines){ y += w.size * 1.25; T(l, X, y); }
-    if(worry && opts.worry){
-      y += 64;
-      ctx.fillStyle = 'rgba(255,253,248,.45)'; ctx.font = `800 30px ${BODY}`; T('NO LONGER WORRIED ABOUT', X, y); y += 12;
-      const wr = fit(ctx, worry, MW, 2, 38, 28, 500, BODY);
-      for(const l of wr.lines){
-        y += wr.size * 1.35;
-        ctx.fillStyle = 'rgba(255,253,248,.5)'; T(l, X, y);
-        if(draw){ const lw = ctx.measureText(l).width; ctx.fillStyle = '#E2513F'; ctx.fillRect(X - 4, y - wr.size*0.33, lw + 8, 5); }
-      }
-    }
-    if(person && opts.person){
-      y += 64;
-      ctx.fillStyle = 'rgba(255,253,248,.45)'; ctx.font = `800 30px ${BODY}`; T('CHECKING ON ME', X, y); y += 50;
-      ctx.fillStyle = '#FFFDF8'; ctx.font = `700 42px ${BODY}`; T(person, X, y);
+    y += 56;
+    const rows = [['R','WHERE I AM', reality],['I','WHO I AM BECOMING', identity],['T','THIS WEEK', week],['E','CHECKING ON ME', person]].filter(r=>r[2]);
+    for(const [L, lab, v] of rows){
+      y += 22;
+      if(draw){ ctx.fillStyle = L==='T' ? '#E2513F' : 'rgba(255,253,248,.14)'; ctx.beginPath(); ctx.roundRect(X, y-6, 52, 52, 12); ctx.fill();
+        ctx.fillStyle = '#FFFDF8'; ctx.font = `900 30px ${HEAD}`; const lw = ctx.measureText(L).width; ctx.fillText(L, X + 26 - lw/2, y + 31); }
+      ctx.fillStyle = 'rgba(255,253,248,.5)'; ctx.font = `800 24px ${BODY}`; T(lab, X + 76, y + 10);
+      const f = fit(ctx, v, MW - 76, opts.lines, opts.rowMax, 30, 700, BODY);
+      ctx.fillStyle = '#FFFDF8';
+      let yy = y + 10;
+      for(const l of f.lines){ yy += f.size * 1.28; T(l, X + 76, yy); }
+      y = Math.max(y + 52, yy) + 18;
     }
     return y;
   }
-  // pick the richest layout that fits between the clock area and the verse
   const tries = [
-    {goalMax:104, worry:true, person:true}, {goalMax:88, worry:true, person:true},
-    {goalMax:88, worry:true, person:false}, {goalMax:80, worry:false, person:false}
+    {goalMax:100, rowMax:42, lines:3}, {goalMax:88, rowMax:38, lines:2}, {goalMax:76, rowMax:34, lines:2}, {goalMax:64, rowMax:30, lines:1}
   ];
-  const minTop = 740, idealTop = 960, room = verseTop - 90;
+  const minTop = 700, idealTop = 900, room = verseTop - 60;
   let chosen = tries[tries.length-1], top = minTop;
   for(const t of tries){
     const h = block(0, false, t);

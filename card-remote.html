@@ -218,8 +218,8 @@ function stepInfo(i){
   if(i===0) return {k:'Welcome screen is showing', h:'People scan and type their first name', notes:ev.intro_notes};
   if(i>=REVEAL()) return {k:'Their card is open', h:'Worry crossed out. Lock screen. WhatsApp.', notes:ev.reveal_notes, r:ev.wall_ref};
   const s = ev.steps[i-1];
-  const kind = s.type==='poll' ? 'Room poll' : s.type==='pair' ? 'Pair moment' : 'Card';
-  return {k:`${kind} · ${i} of ${N()}`, h:s.q.replace(/\{name\},?\s*/g,'').replace(/,\s*\{name\}/g,'').replace(/^./,c=>c.toUpperCase()), notes:s.notes, r:s.ref ? `${s.ref}: ${s.verse}` : '', s};
+  const kind = s.letter ? `${s.letter} · ${s.word}` : s.type==='poll' ? 'Room poll' : s.type==='pair' ? 'Pair moment' : 'Card';
+  return {k:`${kind}  ·  card ${i} of ${N()}`, h:s.q.replace(/\{(goal|reality|identity|week)\}/g,'…').replace(/\{name\},?\s*/g,'').replace(/,\s*\{name\}/g,'').replace(/^./,c=>c.toUpperCase()), notes:s.notes, r:s.ref ? `${s.ref}: ${s.verse}` : '', s};
 }
 
 function topAnswers(){
@@ -259,7 +259,7 @@ function draw(){
   // controls
   $('#prev').disabled = i<=0; $('#next').disabled = i>=REVEAL();
   $('#next').textContent = i>=REVEAL() ? 'All open' : i===N() ? 'Show their card' : i===0 ? 'Open card 1' : `Open card ${i+1}`;
-  const labs = ['S', ...ev.steps.map((s,k)=>String(k+1)), '✓'];
+  const labs = ['S', ...ev.steps.map((s,k)=>s.letter || String(k+1)), '✓'];
   $('#chips').innerHTML = labs.map((l,k)=>`<button data-n="${k}" class="${k<i?'done':''} ${k===i?'on':''}">${l}</button>`).join('');
   $('#chips').querySelectorAll('button').forEach(b => b.onclick = () => setStep(+b.dataset.n));
   $('#free').checked = !!ev.free_mode;

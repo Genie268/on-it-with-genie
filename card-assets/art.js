@@ -97,6 +97,28 @@
     spark(36,96) + spark(194,92,I)
   );
 
+
+  A.reality = svg(
+    '<path d="M30 118C60 108 80 124 110 114S160 104 190 116" stroke="'+I+'" stroke-width="2.5" opacity=".35"/>'+
+    '<path d="M54 120c10-16 34-18 46-4" stroke="'+R+'" stroke-width="2.5" stroke-dasharray="4 7"/>'+
+    '<path d="M110 106C92 84 84 70 84 56A26 26 0 0 1 136 56C136 70 128 84 110 106Z" fill="'+R+'" stroke="'+I+'" stroke-width="2.5"/>'+
+    '<circle cx="110" cy="56" r="10" fill="'+C+'" stroke="'+I+'" stroke-width="2.5"/>'+
+    '<rect x="146" y="28" width="52" height="24" rx="8" fill="'+C+'" stroke="'+I+'" stroke-width="2.5"/>'+
+    '<path d="M156 40h32" stroke="'+I+'" stroke-width="2.5" opacity=".4"/>'+
+    '<path d="M150 52l-6 10" stroke="'+I+'" stroke-width="2.5"/>'
+  );
+
+  A.identity = svg(
+    '<circle cx="62" cy="74" r="11" stroke="'+I+'" stroke-width="2.5" stroke-dasharray="4 5"/>'+
+    '<path d="M42 126C42 104 50 94 62 94S82 104 82 126" stroke="'+I+'" stroke-width="2.5" stroke-dasharray="4 5"/>'+
+    '<path d="M94 92h28" stroke="'+R+'" stroke-width="3"/>'+
+    '<path d="M116 84l10 8-10 8" stroke="'+R+'" stroke-width="3"/>'+
+    '<circle cx="160" cy="58" r="17" fill="'+R+'" stroke="'+I+'" stroke-width="2.5"/>'+
+    '<path d="M132 126C132 96 144 84 160 84S188 96 188 126Z" fill="'+R+'" stroke="'+I+'" stroke-width="2.5"/>'+
+    '<path d="M150 20l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="'+I+'"/>'+
+    '<path d="M186 34l2 4 4 2-4 2-2 4-2-4-4-2 4-2z" fill="'+R+'"/>'
+  );
+
   window.GC_ART = function(key, type){
     return A[key] || (type==='poll' ? A.poll : type==='pair' ? A.say : A.goal);
   };

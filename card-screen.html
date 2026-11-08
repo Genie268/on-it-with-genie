@@ -46,6 +46,10 @@ p{font-size:1.8vw;color:#6B6357;margin:0;max-width:34ch;line-height:1.35}
 .mini{display:flex;align-items:center;gap:1.2vw;margin-top:3vh}
 .mini .q{width:8vw;background:#FFFDF8;border-radius:.8vw;padding:.5vw}
 .mini span{font-size:1.2vw;color:#6B6357;font-weight:700}
+.wstrip{display:flex;gap:.8vw;margin:0 0 3vh}
+.wstrip span{width:5.2vw;height:5.2vw;border-radius:1vw;display:grid;place-items:center;font-family:Archivo,system-ui,sans-serif;font-weight:900;font-size:2.6vw;background:#E9E1D2;color:#B8AE9D}
+.wstrip span.done{background:#14204A;color:#fff}
+.wstrip span.now{background:#D2402F;color:#fff}
 .hide{display:none!important}
 </style>
 </head>
@@ -56,6 +60,7 @@ p{font-size:1.8vw;color:#6B6357;margin:0;max-width:34ch;line-height:1.35}
     <div class="kick" id="kick">Get your Goal Card</div>
     <h1 id="h">Scan the code</h1>
     <p id="p">Keep the page open. Each card opens as we go.</p>
+    <div class="wstrip hide" id="wstrip"></div>
     <div class="verse hide" id="verse"><b id="vref"></b><span id="vtext"></span></div>
     <div class="url" id="url"></div>
     <div class="mini hide" id="mini"><div class="q" id="qrSmall"></div><span>Joining late? Scan here.</span></div>
@@ -100,8 +105,8 @@ function draw(){
   clearInterval(tick); tick=null;
   if(i===0){ setRight('', 'qr'); }
   else if(s){
-    kick = s.type==='poll' ? 'Room poll' : s.type==='pair' ? 'Turn to your neighbour' : `Card ${i} of ${n}`;
-    h = clean(s.q); p = clean(s.hint); vref = s.ref; vtext = s.verse;
+    kick = s.letter ? `${s.letter}  ·  ${s.word}` : s.type==='poll' ? 'Room poll' : s.type==='pair' ? 'Turn to your neighbour' : `Card ${i} of ${n}`;
+    h = clean(s.q0 || s.q).replace(/\{(goal|reality|identity|week)\}/g,'it'); p = clean(s.hint); vref = s.ref; vtext = s.verse;
     if(s.type==='poll'){
       const c = (st && st.counts) || {}; const total = Object.values(c).reduce((a,b)=>a+(+b||0),0);
       const rows = (s.options||[]).map((o,k)=>({o,n:+(c[k]||0)})).sort((a,b)=>b.n-a.n);
@@ -120,10 +125,13 @@ function draw(){
       setRight(`<div class="artbox">${GC_ART(s.key, s.type)}</div>`, 'art'+i);
     }
   } else {
-    kick='Your card is ready'; h='Save it. Send it.'; p='Make it your lock screen. Then send it to the person who will check on you.';
+    kick='W.R.I.T.E.'; h='Want. Reality. Identity. This week. Enlist.'; p='Make it your lock screen. Then send it to the person who will check on you.';
     vref=ev.wall_ref; vtext=ev.wall_verse;
     setRight(`<div class="artbox">${GC_ART('reveal')}</div>`, 'reveal');
   }
+  const L = ev.steps.filter(x=>x.letter), li = s ? L.findIndex(x=>x.key===s.key) : (i>n ? L.length : -1);
+  $('#wstrip').classList.toggle('hide', !L.length || (li<0 && i<=n));
+  $('#wstrip').innerHTML = L.map((x,k)=>`<span class="${k<li?'done':''} ${k===li?'now':''}">${esc(x.letter)}</span>`).join('');
   $('#kick').textContent=kick; $('#h').textContent=h; $('#p').textContent=p;
   $('#h').style.fontSize = h.length>44 ? '4.6vw' : h.length>28 ? '5.4vw' : '6.6vw';
   $('#verse').classList.toggle('hide', !vref); $('#vref').textContent = (vref||'').toUpperCase() + ' · BSB'; $('#vtext').textContent = vtext||'';
