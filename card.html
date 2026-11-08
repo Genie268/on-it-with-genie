@@ -495,6 +495,17 @@ function saveProfile(photo){
     p_photo: photo === undefined ? null : photo, p_phone:get('phone'), p_goal:get('goal'), p_when:get('when')}).catch(()=>{});
   if(photo !== undefined) go(); else saveT = setTimeout(go, 900);
 }
+function profileArgs(photo){
+  const parts = get('name').split(/\s+/);
+  return {p_slug:SLUG, p_device:answers._device, p_name:firstName() + (parts[1] ? ' ' + parts[1].charAt(0).toUpperCase() + '.' : ''),
+    p_photo: photo === undefined ? null : photo, p_phone:get('phone'), p_goal:get('goal'), p_when:get('when')};
+}
+async function doPick(id){
+  if(!get('name')){ answers.name = answers.name || 'Friend'; }
+  try{ await rpc('goalcard_profile_save', profileArgs()); }catch(e){}
+  try{ await rpc('goalcard_pick', {p_slug:SLUG, p_device:answers._device, p_partner: id || ''}); }catch(e){}
+  loadLinks(); loadRoom();
+}
 function initials(n){ return String(n||'?').trim().split(/\s+/).slice(0,2).map(x=>x.charAt(0).toUpperCase()).join('') || '?'; }
 function avatar(p, size){
   const sz = size || 56;
@@ -535,7 +546,7 @@ function drawPeople(){
     if(answers.partner && answers.partner.id === id){ answers.partner = null; answers.person = ''; }
     else { answers.partner = {id, name:nm}; answers.person = nm; }
     persist(); const a = $('#ans'); if(a) a.value = answers.partner ? '' : '';
-    rpc('goalcard_pick', {p_slug:SLUG, p_device:answers._device, p_partner: answers.partner ? id : ''}).catch(()=>{});
+    doPick(answers.partner ? id : '');
     try{ navigator.vibrate && navigator.vibrate(20) }catch(e){}
     drawPeople(); drawChosen();
   });
@@ -576,7 +587,7 @@ function renderPartner(m, s){
   const a = $('#ans'); a.value = answers.partner ? '' : (answers.person || '');
   a.addEventListener('input', () => {
     answers.person = a.value.trim();
-    if(answers.partner && a.value.trim()){ answers.partner = null; rpc('goalcard_pick', {p_slug:SLUG, p_device:answers._device, p_partner:''}).catch(()=>{}); drawPeople(); }
+    if(answers.partner && a.value.trim()){ answers.partner = null; doPick(''); drawPeople(); }
     persist(); drawChosen();
   });
   bindNav(); drawChosen(); drawPeople(); loadRoom();
@@ -586,6 +597,9 @@ function renderPartner(m, s){
 }
 async function loadLinks(){
   try{ links = await rpc('goalcard_links', {p_slug:SLUG, p_device:answers._device}); }catch(e){}
+  if(answers.partner && links && (!links.me || links.me.partner !== answers.partner.id) && !loadLinks._retry){
+    loadLinks._retry = true; await doPick(answers.partner.id); loadLinks._retry = false; return;
+  }
   drawCircle();
 }
 function drawCircle(){
@@ -605,7 +619,14 @@ function drawCircle(){
     h += pk.map(p => { const wa = waNumber(p.phone); return `<div class="circ"><div class="circHead">${avatar(p, 44)}<div><b>${esc(p.name)}</b>${p.goal ? `<p>${esc(p.goal)}${p.when ? ' · by ' + esc(p.when) : ''}</p>` : ''}</div></div>
       ${wa ? `<a class="btn ghost full sm" target="_blank" rel="noopener" href="https://wa.me/${wa}?text=${encodeURIComponent('Hi ' + p.name.split(' ')[0] + ', I saw you picked me as your person today. I will be checking on you. How is it going?')}">Check on ${esc(p.name.split(' ')[0])}</a>` : ''}</div>`; }).join('');
   }
-  box.innerHTML = h ? `<div class="label" style="margin:22px 0 10px">Your people</div>${h}` : '';
+  const needPick = !pr;
+  const html = (h ? `<div class="label" style="margin:22px 0 10px">Your people</div>${h}` : '') +
+    (needPick ? `<div class="label" style="margin:22px 0 6px">${get('person') ? 'Is your person in the room? Tap them' : 'Pick your person from the room'}</div>
+      <input type="text" id="psearch" class="search" placeholder="Search names" autocomplete="off">
+      <div class="people" id="people"></div>` : '');
+  if(box._last === html){ if(needPick) drawPeople(); return; }
+  box._last = html; box.innerHTML = html;
+  if(needPick){ const ps = $('#psearch'); if(ps){ ps.value = drawCircle._q || ''; ps.addEventListener('input', () => { drawCircle._q = ps.value; drawPeople(); }); } if(room.length) drawPeople(); else loadRoom(); }
   const wb = $('#waBtn'), pwn = pr && !pr.is_host && waNumber(pr.phone);
   if(wb && pwn && window.waMsg) wb.href = 'https://wa.me/' + pwn + '?text=' + encodeURIComponent(waMsg());
 }
