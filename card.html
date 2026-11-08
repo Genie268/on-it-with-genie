@@ -149,6 +149,9 @@ textarea:focus,input[type=text]:focus{border-color:var(--ink);box-shadow:0 0 0 4
 .pp small{font-size:10.5px;color:var(--soft);font-weight:700}
 .pp.host{border-color:var(--ink);background:#F4F6FB}
 .pp.host small{color:var(--red)}
+.pp.pastor{border-color:#C9A227;background:#FBF6E6}
+.pp.pastor small{color:#9A7A10}
+.pp.pastor b::before{content:'Pastor ';}
 .pp.on{border-color:var(--red);box-shadow:0 0 0 3px rgba(210,64,47,.18)}
 .pp .tick{display:none;position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;font-style:normal;font-size:12px;font-weight:900;place-items:center}
 .pp.on .tick{display:grid}
@@ -165,6 +168,7 @@ textarea:focus,input[type=text]:focus{border-color:var(--ink);box-shadow:0 0 0 4
 .btn.sm{padding:12px 14px;font-size:15px}
 .chg{appearance:none;border:1.5px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:800;font-size:13px;border-radius:10px;padding:7px 12px;margin-top:10px;cursor:pointer}
 .chg.inline{margin:0 0 0 8px;padding:3px 10px;font-size:12px;vertical-align:middle;color:var(--red);border-color:var(--red-soft)}
+.pickHead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:22px 0 8px}
 .circTitle{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin:14px 0 8px}
 .hide{display:none!important}
 </style>
@@ -546,8 +550,8 @@ function drawPeople(){
   const sel = answers.partner && answers.partner.id;
   const list = room.filter(p => !q || p.is_host || p.name.toLowerCase().includes(q));
   if(!list.length){ box.innerHTML = `<div class="empty-room">${q ? 'Nobody with that name yet. Type it below.' : 'People will show up here as they join.'}</div>`; return; }
-  box.innerHTML = list.map(p => `<button class="pp ${p.id===sel?'on':''} ${p.is_host?'host':''}" data-id="${esc(p.id)}" data-name="${esc(p.name)}">
-      ${avatar(p, 58)}<b>${esc(p.name)}</b><small>${p.is_host ? 'Your speaker' : (+p.picked ? `${p.picked} picked` : '&nbsp;')}</small>
+  box.innerHTML = list.map(p => `<button class="pp ${p.id===sel?'on':''} ${p.is_host?'host':''} ${p.role?'pastor':''}" data-id="${esc(p.id)}" data-name="${esc(p.name)}">
+      ${avatar(p, 58)}<b>${esc(p.name)}</b><small>${p.is_host ? 'Your speaker' : p.role ? esc(p.role) + (+p.picked ? ` · ${p.picked} picked` : '') : (+p.picked ? `${p.picked} picked` : '&nbsp;')}</small>
       <i class="tick">✓</i></button>`).join('');
   box.querySelectorAll('.pp').forEach(b => b.onclick = () => {
     const id = b.dataset.id, nm = b.dataset.name;
@@ -631,7 +635,7 @@ function drawCircle(){
   }
   const needPick = !pr && !get('person') || !!drawCircle._open;
   const html = (h ? `<div class="label" style="margin:22px 0 10px">Your people</div>${h}` : '') +
-    (needPick ? `<div class="label" style="margin:22px 0 6px">${get('person') ? 'Is your person in the room? Tap them' : 'Pick your person from the room'}</div>
+    (needPick ? `<div class="pickHead"><div class="label" style="margin:0">${get('person') ? 'Is your person in the room? Tap them' : 'Pick your person from the room'}</div>${(pr || get('person')) ? '<button class="chg" id="pickClose" style="margin:0">Close</button>' : ''}</div>
       <input type="text" id="psearch" class="search" placeholder="Search names" autocomplete="off">
       <div class="people" id="people"></div>
       <label class="label" for="outName" style="margin-top:14px">Not in the room? Type their name</label>
@@ -640,6 +644,7 @@ function drawCircle(){
   if(box._last === html){ if(needPick) drawPeople(); return; }
   box._last = html; box.innerHTML = html;
   box.querySelectorAll('[data-chg]').forEach(b => b.onclick = () => { drawCircle._open = true; box._last = null; drawCircle(); const ps = $('#psearch'); if(ps) ps.scrollIntoView({behavior:'smooth', block:'center'}); });
+  const pc = $('#pickClose'); if(pc) pc.onclick = () => { drawCircle._open = false; box._last = null; drawCircle(); box.scrollIntoView({behavior:'smooth', block:'start'}); };
   const og = $('#outGo'); if(og) og.onclick = () => { const v = ($('#outName').value||'').trim(); if(!v) return;
     answers.person = v; answers.partner = null; persist(); drawCircle._open = false; doPick(''); updatePlus(); box._last = null; drawCircle(); };
   updatePlus();
