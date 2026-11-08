@@ -163,6 +163,8 @@ textarea:focus,input[type=text]:focus{border-color:var(--ink);box-shadow:0 0 0 4
 .circHead p{margin:2px 0 0;font-size:13.5px;color:var(--soft);line-height:1.35}
 .circ .btn{margin-top:10px}
 .btn.sm{padding:12px 14px;font-size:15px}
+.chg{appearance:none;border:1.5px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:800;font-size:13px;border-radius:10px;padding:7px 12px;margin-top:10px;cursor:pointer}
+.chg.inline{margin:0 0 0 8px;padding:3px 10px;font-size:12px;vertical-align:middle;color:var(--red);border-color:var(--red-soft)}
 .circTitle{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin:14px 0 8px}
 .hide{display:none!important}
 </style>
@@ -506,6 +508,12 @@ async function doPick(id){
   try{ await rpc('goalcard_pick', {p_slug:SLUG, p_device:answers._device, p_partner: id || ''}); }catch(e){}
   loadLinks(); loadRoom();
 }
+function updatePlus(){
+  const v = document.querySelector('.wrow.t div div'); if(!v) return;
+  const nm = (answers.partner && answers.partner.name) || get('person');
+  v.innerHTML = nm ? esc(nm) + ' <button class="chg inline" data-chg2="1">Change</button>' : '<button class="chg inline" data-chg2="1">Pick your person</button>';
+  v.querySelectorAll('[data-chg2]').forEach(b => b.onclick = () => { drawCircle._open = true; const c = $('#circle'); if(c){ c._last = null; drawCircle(); const ps = $('#psearch'); if(ps) ps.scrollIntoView({behavior:'smooth', block:'center'}); } });
+}
 function initials(n){ return String(n||'?').trim().split(/\s+/).slice(0,2).map(x=>x.charAt(0).toUpperCase()).join('') || '?'; }
 function avatar(p, size){
   const sz = size || 56;
@@ -545,6 +553,7 @@ function drawPeople(){
     const id = b.dataset.id, nm = b.dataset.name;
     if(answers.partner && answers.partner.id === id){ answers.partner = null; answers.person = ''; }
     else { answers.partner = {id, name:nm}; answers.person = nm; }
+    drawCircle._open = false; updatePlus();
     persist(); const a = $('#ans'); if(a) a.value = answers.partner ? '' : '';
     doPick(answers.partner ? id : '');
     try{ navigator.vibrate && navigator.vibrate(20) }catch(e){}
@@ -610,22 +619,30 @@ function drawCircle(){
   if(pr){
     const wa = waNumber(pr.phone);
     h += `<div class="circ"><div class="circHead">${avatar(pr, 48)}<div><small>${pr.is_host ? 'Checking on you' : 'You picked'}</small><b>${esc(pr.name)}</b>${pr.goal ? `<p>Their goal: ${esc(pr.goal)}</p>` : ''}</div></div>
+      <button class="chg" data-chg="1">Change</button>
       ${pr.is_host ? `<p class="tiny" style="margin:8px 0 0">Genie has your goal. Expect a check-in.</p>` : wa ? `<a class="btn wa full sm" target="_blank" rel="noopener" href="https://wa.me/${wa}?text=${encodeURIComponent(waMsg(pr.name))}">Message ${esc(pr.name.split(' ')[0])} on WhatsApp</a>` : `<p class="tiny" style="margin:8px 0 0">They haven't added a number. Find them before you leave the hall.</p>`}</div>`;
   } else if(get('person')){
-    h += `<div class="circ"><div class="circHead">${avatar({name:get('person')}, 48)}<div><small>Your person</small><b>${esc(get('person'))}</b><p>Not in the room. Send it to them below.</p></div></div></div>`;
+    h += `<div class="circ"><div class="circHead">${avatar({name:get('person')}, 48)}<div><small>Your person</small><b>${esc(get('person'))}</b><p>Not in the room. Send it to them on WhatsApp.</p></div></div><button class="chg" data-chg="1">Change</button></div>`;
   }
   if(pk.length){
     h += `<div class="circTitle">${pk.length === 1 ? '1 person picked you' : pk.length + ' people picked you'}</div>`;
     h += pk.map(p => { const wa = waNumber(p.phone); return `<div class="circ"><div class="circHead">${avatar(p, 44)}<div><b>${esc(p.name)}</b>${p.goal ? `<p>${esc(p.goal)}${p.when ? ' · by ' + esc(p.when) : ''}</p>` : ''}</div></div>
       ${wa ? `<a class="btn ghost full sm" target="_blank" rel="noopener" href="https://wa.me/${wa}?text=${encodeURIComponent('Hi ' + p.name.split(' ')[0] + ', I saw you picked me as your person today. I will be checking on you. How is it going?')}">Check on ${esc(p.name.split(' ')[0])}</a>` : ''}</div>`; }).join('');
   }
-  const needPick = !pr;
+  const needPick = !pr && !get('person') || !!drawCircle._open;
   const html = (h ? `<div class="label" style="margin:22px 0 10px">Your people</div>${h}` : '') +
     (needPick ? `<div class="label" style="margin:22px 0 6px">${get('person') ? 'Is your person in the room? Tap them' : 'Pick your person from the room'}</div>
       <input type="text" id="psearch" class="search" placeholder="Search names" autocomplete="off">
-      <div class="people" id="people"></div>` : '');
+      <div class="people" id="people"></div>
+      <label class="label" for="outName" style="margin-top:14px">Not in the room? Type their name</label>
+      <div style="display:flex;gap:8px"><input type="text" id="outName" maxlength="40" placeholder="e.g. My elder sister, Tolu" style="flex:1"><button class="btn dark" id="outGo" style="padding:0 16px">Use</button></div>
+      <p class="tiny">You'll send them your goal on WhatsApp with the green button below.</p>` : '');
   if(box._last === html){ if(needPick) drawPeople(); return; }
   box._last = html; box.innerHTML = html;
+  box.querySelectorAll('[data-chg]').forEach(b => b.onclick = () => { drawCircle._open = true; box._last = null; drawCircle(); const ps = $('#psearch'); if(ps) ps.scrollIntoView({behavior:'smooth', block:'center'}); });
+  const og = $('#outGo'); if(og) og.onclick = () => { const v = ($('#outName').value||'').trim(); if(!v) return;
+    answers.person = v; answers.partner = null; persist(); drawCircle._open = false; doPick(''); updatePlus(); box._last = null; drawCircle(); };
+  updatePlus();
   if(needPick){ const ps = $('#psearch'); if(ps){ ps.value = drawCircle._q || ''; ps.addEventListener('input', () => { drawCircle._q = ps.value; drawPeople(); }); } if(room.length) drawPeople(); else loadRoom(); }
   const wb = $('#waBtn'), pwn = pr && !pr.is_host && waNumber(pr.phone);
   if(wb && pwn && window.waMsg) wb.href = 'https://wa.me/' + pwn + '?text=' + encodeURIComponent(waMsg());
