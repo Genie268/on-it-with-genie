@@ -62,5 +62,42 @@ Deno.serve(async (req) => {
     return json({ ok: true, items: data });
   }
 
+
+  if (action === "plan") {
+    // everything still open, soonest first, plus parked ideas and the last few done
+    const cols = "id, client_id, body, title, kind, directions, next_step, minutes, energy, status, scheduled_for, block_label, nudges, captured_at";
+    const [a, b, c] = await Promise.all([
+      sb.from("captures").select(cols).in("status", ["new", "scheduled"]).order("scheduled_for", { ascending: true, nullsFirst: true }).limit(100),
+      sb.from("captures").select(cols).eq("status", "sorted").order("captured_at", { ascending: false }).limit(100),
+      sb.from("captures").select(cols).eq("status", "done").order("done_at", { ascending: false }).limit(10),
+    ]);
+    if (a.error || b.error || c.error) return json({ ok: false, error: "db_error" }, 500);
+    return json({ ok: true, open: a.data, ideas: b.data, done: c.data });
+  }
+
+  if (action === "update") {
+    const id = String(body.id || "");
+    const to = String(body.to || "");
+    if (!id) return json({ ok: false, error: "missing_id" }, 400);
+    let patch: Record<string, unknown> | null = null;
+    if (to === "done") patch = { status: "done", done_at: new Date().toISOString() };
+    if (to === "drop") patch = { status: "dropped" };
+    if (to === "park") patch = { status: "sorted", scheduled_for: null, notified_at: null };
+    // "later" and "schedule": back to the organizer, which finds the next free block
+    if (to === "later" || to === "schedule") patch = { status: "scheduled", notified_at: new Date().toISOString(), scheduled_for: new Date(0).toISOString() };
+    if (!patch) return json({ ok: false, error: "bad_action" }, 400);
+    const { error } = await sb.from("captures").update(patch).eq("id", id);
+    if (error) return json({ ok: false, error: "db_error" }, 500);
+    return json({ ok: true });
+  }
+
+  if (action === "subscribe") {
+    const s = body.sub as any;
+    if (!s?.endpoint || !s?.keys?.p256dh || !s?.keys?.auth) return json({ ok: false, error: "bad_sub" }, 400);
+    const { error } = await sb.from("capture_push").upsert({ endpoint: s.endpoint, p256dh: s.keys.p256dh, auth: s.keys.auth });
+    if (error) return json({ ok: false, error: "db_error" }, 500);
+    return json({ ok: true });
+  }
+
   return json({ ok: false, error: "unknown_action" }, 400);
 });

@@ -43,6 +43,32 @@ button{font-family:inherit;border:0;border-radius:14px;font-size:17px;font-weigh
 body.locked #app{display:none}
 body.locked #lock{display:flex}
 #app{flex:1;display:flex;flex-direction:column}
+.tabs{display:flex;gap:6px}
+.tabs button{background:none;color:#666;padding:6px 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;border-radius:99px}
+.tabs button.on{background:#1a1a1a;color:#c49a1c}
+#planView{display:none;flex:1;overflow:auto;padding-bottom:20px}
+body.plan #capView{display:none}
+body.plan #planView{display:block}
+#capView{flex:1;display:flex;flex-direction:column}
+.day{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#777;margin:18px 2px 8px}
+.card{background:#111;border:1px solid #1d1d1d;border-radius:14px;padding:14px;margin-bottom:8px}
+.card .when{font-size:12px;color:#c49a1c;font-weight:700;margin-bottom:4px}
+.card .when span{color:#666;font-weight:400}
+.card h3{font-size:17px;font-weight:800;line-height:1.3}
+.card .next{font-size:14px;color:#bbb;margin-top:6px;line-height:1.4}
+.card .meta{font-size:12px;color:#666;margin-top:6px}
+.card details{margin-top:8px}
+.card summary{font-size:13px;color:#888;cursor:pointer}
+.card ol{margin:8px 0 0 18px;font-size:14px;color:#ccc;line-height:1.45}
+.card ol li{margin-bottom:4px}
+.card .raw{font-size:13px;color:#777;margin-top:8px;font-style:italic}
+.acts{display:flex;gap:6px;margin-top:12px}
+.acts button{flex:1;padding:11px 6px;font-size:14px;border-radius:10px;background:#1a1a1a;color:#ddd}
+.acts button.done{background:#c49a1c;color:#060606}
+.slip{color:#e66}
+#notif{display:none;width:100%;margin:6px 0 4px;background:#1a1a1a;color:#c49a1c;font-size:15px}
+.empty{color:#666;font-size:15px;text-align:center;margin-top:40px;line-height:1.5}
+
 </style>
 </head>
 <body>
@@ -55,7 +81,8 @@ body.locked #lock{display:flex}
 </div>
 
 <div id="app">
-  <div class="top"><b>Capture</b><span id="sync"></span></div>
+  <div class="top"><div class="tabs"><button id="tCap" class="on">Capture</button><button id="tPlan">Plan</button></div><span id="sync"></span></div>
+  <div id="capView">
   <textarea id="box" placeholder="Talk or type. Save. Move on." autofocus></textarea>
   <div class="row">
     <button id="clear" aria-label="Clear">Clear</button>
@@ -63,6 +90,11 @@ body.locked #lock{display:flex}
   </div>
   <button id="install">Add Capture to home screen</button>
   <div id="list"></div>
+  </div>
+  <div id="planView">
+    <button id="notif">Turn on reminders</button>
+    <div id="planBody"><div class="empty">Loading…</div></div>
+  </div>
 </div>
 <div id="toast">Saved</div>
 
@@ -113,6 +145,7 @@ async function flush(){
     const done = new Set(j.saved);
     queue = queue.filter(q => !done.has(q.client_id));
     store.set("cap_queue", queue);
+    if (done.size) setTimeout(nudgeOrganizer, 500);
   } catch(e) {}
   flushing = false;
   render();
@@ -153,7 +186,7 @@ $("unlock").addEventListener("click", async () => {
 $("pin").addEventListener("keydown", e => { if (e.key === "Enter") $("unlock").click(); });
 
 window.addEventListener("online", flush);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { flush(); $("box").focus(); } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { flush(); if (document.body.classList.contains("plan")) loadPlan(); else $("box").focus(); } });
 
 // one-tap install where Chrome allows it
 let installEvt = null;
@@ -162,6 +195,89 @@ $("install").addEventListener("click", async () => { if (!installEvt) return; in
 window.addEventListener("appinstalled", () => { $("install").style.display = "none"; });
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+
+
+// ---------- Plan ----------
+const ORG = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/capture-organize";
+const VAPID = "BIsYpRrSeUjZSz9RK_6Y3ueIvrEI4C_jl2A91UL_GR93H4-bLHQUxJIm-ZduQJEK9XORRRyYe4Hyf2HesuOC_fI";
+const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+const lagos = d => new Date(new Date(d).getTime() + 3600000);
+function dayName(iso){
+  const d = lagos(iso).toISOString().slice(0,10), t = lagos(Date.now()).toISOString().slice(0,10);
+  const tm = lagos(Date.now() + 86400000).toISOString().slice(0,10);
+  if (d === t) return "Today"; if (d === tm) return "Tomorrow";
+  return lagos(iso).toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"short", timeZone:"UTC" });
+}
+function clock(iso){ const d = lagos(iso); let h = d.getUTCHours(), m = d.getUTCMinutes(); const ap = h >= 12 ? "pm" : "am"; h = h % 12 || 12; return h + (m ? ":" + String(m).padStart(2,"0") : "") + ap; }
+function card(c, idea){
+  const pending = c.status === "new" || (c.scheduled_for && new Date(c.scheduled_for).getTime() < 86400000);
+  const when = idea ? `<div class="when">Parked idea <span>· ${esc(c.kind || "")}</span></div>`
+    : pending ? `<div class="when">Finding a slot…</div>`
+    : `<div class="when">${clock(c.scheduled_for)} <span>· ${esc(c.block_label || "")}</span></div>`;
+  const dirs = Array.isArray(c.directions) && c.directions.length ? `<details><summary>Directions</summary><ol>${c.directions.map(d => `<li>${esc(d)}</li>`).join("")}</ol><div class="raw">“${esc(c.body)}”</div></details>` : `<div class="raw">“${esc(c.body)}”</div>`;
+  const meta = [c.minutes ? c.minutes + " min" : "", c.energy ? c.energy + " energy" : "", c.nudges ? `<span class="slip">moved ${c.nudges}×</span>` : ""].filter(Boolean).join(" · ");
+  const acts = idea
+    ? `<button data-a="schedule" data-id="${c.id}">Give it a time</button><button data-a="drop" data-id="${c.id}">Drop</button>`
+    : `<button class="done" data-a="done" data-id="${c.id}">Done</button><button data-a="later" data-id="${c.id}">Later</button><button data-a="park" data-id="${c.id}">Park</button><button data-a="drop" data-id="${c.id}">Drop</button>`;
+  return `<div class="card">${when}<h3>${esc(c.title || c.body.slice(0,60))}</h3>${c.next_step ? `<div class="next">${esc(c.next_step)}</div>` : ""}${meta ? `<div class="meta">${meta}</div>` : ""}${dirs}<div class="acts">${acts}</div></div>`;
+}
+async function loadPlan(){
+  if (!key) return;
+  let j;
+  try { j = await call({ action:"plan", key }); store.set("cap_plan", j); }
+  catch(e) { j = store.get("cap_plan", null); if (!j) { $("planBody").innerHTML = `<div class="empty">Can't load the plan without network.</div>`; return; } }
+  let html = "", last = "";
+  for (const c of j.open) {
+    const pending = c.status === "new" || !c.scheduled_for || new Date(c.scheduled_for).getTime() < 86400000;
+    const day = pending ? "Being sorted" : dayName(c.scheduled_for);
+    if (day !== last) { html += `<div class="day">${day}</div>`; last = day; }
+    html += card(c, false);
+  }
+  if (j.ideas.length) { html += `<div class="day">Parked ideas</div>` + j.ideas.map(c => card(c, true)).join(""); }
+  $("planBody").innerHTML = html || `<div class="empty">Nothing open. Capture something and it shows up here within 10 minutes.</div>`;
+}
+$("planBody").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-a]"); if (!b) return;
+  b.disabled = true;
+  try { await call({ action:"update", key, id: b.dataset.id, to: b.dataset.a }); toast({ done:"Done", later:"Moved to the next slot", park:"Parked", drop:"Dropped", schedule:"Finding it a time" }[b.dataset.a]); }
+  catch(err) { toast("Needs network"); }
+  loadPlan();
+});
+function showTab(t){
+  document.body.classList.toggle("plan", t === "plan");
+  $("tCap").classList.toggle("on", t !== "plan"); $("tPlan").classList.toggle("on", t === "plan");
+  if (t === "plan") { loadPlan(); notifButton(); } else $("box").focus();
+}
+$("tCap").addEventListener("click", () => showTab("cap"));
+$("tPlan").addEventListener("click", () => showTab("plan"));
+
+// reminders (web push to this app)
+function notifButton(){
+  const ok = "Notification" in window && "PushManager" in window;
+  $("notif").style.display = ok && Notification.permission !== "granted" ? "block" : "none";
+  if (ok && Notification.permission === "granted") subscribe();
+}
+function b64(s){ const p = "=".repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); }
+async function subscribe(){
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: b64(VAPID) });
+    const sig = sub.endpoint;
+    if (store.get("cap_sub", "") === sig) return;
+    await call({ action:"subscribe", key, sub: sub.toJSON() });
+    store.set("cap_sub", sig);
+  } catch(e) {}
+}
+$("notif").addEventListener("click", async () => {
+  const p = await Notification.requestPermission();
+  if (p === "granted") { await subscribe(); toast("Reminders on"); }
+  notifButton();
+});
+// ask the organizer to run now so new captures get sorted without waiting
+function nudgeOrganizer(){ if (key && navigator.onLine) fetch(ORG, { method:"POST", headers:{ "Content-Type":"application/json", apikey:ANON, Authorization:"Bearer "+ANON }, body: JSON.stringify({ key }) }).catch(() => {}); }
+if (new URLSearchParams(location.search).get("tab") === "plan") showTab("plan");
+if (key && "Notification" in window && Notification.permission === "granted") subscribe();
 
 if (!key) lock(); else flush();
 render();
