@@ -38,14 +38,18 @@ function blockStart(dayUtcMidnightLagos: number, hhmm: string) {
 // Find the next block of the right kind that has room. Returns ISO start + label.
 function findSlot(kind: string, routine: any, plan: any, taken: Map<string, number>, notBefore: number) {
   const want = plan[kind] || plan.other || "prep";
-  const per = Number(plan.per_block) || 2;
+  const per = Number((plan.limits || {})[kind] ?? plan.per_block) || 2;
   const lagosNow = new Date(notBefore + LAGOS);
   const day0 = Date.UTC(lagosNow.getUTCFullYear(), lagosNow.getUTCMonth(), lagosNow.getUTCDate());
   for (let d = 0; d < 14; d++) {
     const day = day0 + d * 86400_000;
     const list: Block[] = (new Date(day).getUTCDay() === 0 ? routine.sunday : routine.weekday) || [];
+    const onePerDay = (plan.one_per_day || []).includes(kind) || (plan.one_per_day || []).includes(want);
+    let seen = false;
     for (const b of list) {
       if (b.k !== want || !b.s) continue;
+      if (onePerDay && seen) break;
+      seen = true;
       const start = blockStart(day, b.s);
       if (start < notBefore) continue;
       const iso = new Date(start).toISOString();
@@ -68,7 +72,8 @@ For each capture return JSON. Write in plain, sharp English a Nigerian reader un
 - minutes: honest estimate for the next step (5 to 90)
 - energy: low, medium or high
 - needs_time: false only if it is pure reference with nothing to do
-Return {"items":[{"id":...,"title":...,"kind":...,"directions":[...],"next_step":...,"minutes":...,"energy":...,"needs_time":...}]}`;
+- For kind "video" only, also: script (a 30 to 60 second talking script in his voice: hook line, 3 short beats, close), format (talking head, whiteboard, walk and talk, or screen recording, with a few words on why), grade (score out of 10 for hook strength and insight, plus one line on how to make it sharper)
+Return {"items":[{"id":...,"title":...,"kind":...,"directions":[...],"next_step":...,"minutes":...,"energy":...,"needs_time":...,"script":...,"format":...,"grade":...}]}`;
   const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${GROQ}` },
@@ -152,6 +157,11 @@ Deno.serve(async (req) => {
         energy: aiOk && ["low", "medium", "high"].includes(o.energy) ? o.energy : null,
         organized_by: aiOk ? "groq" : "none",
       };
+      if (aiOk && kind === "video") {
+        if (o.script) patch.script = String(o.script).slice(0, 4000);
+        if (o.format) patch.format = String(o.format).slice(0, 300);
+        if (o.grade) patch.grade = String(o.grade).slice(0, 300);
+      }
       // if Groq is down, leave it for the next run unless it has waited over an hour
       if (!aiOk && GROQ && now - new Date(f.captured_at).getTime() < 3600_000) continue;
       if (aiOk && o.needs_time === false) {

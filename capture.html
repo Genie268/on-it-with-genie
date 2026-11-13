@@ -66,6 +66,10 @@ body.plan #planView{display:block}
 .acts button{flex:1;padding:11px 6px;font-size:14px;border-radius:10px;background:#1a1a1a;color:#ddd}
 .acts button.done{background:#c49a1c;color:#060606}
 .slip{color:#e66}
+.shoot{margin-top:10px;border-top:1px solid #1d1d1d;padding-top:10px}
+.fmt{font-size:13px;color:#bbb;line-height:1.4;margin-bottom:6px}
+.fmt b{color:#c49a1c;font-weight:700;margin-right:4px}
+.card details pre,.shoot pre{white-space:pre-wrap;font-family:inherit;font-size:16px;line-height:1.55;color:#f2f2f2;margin-top:8px;background:#0b0b0b;border-radius:10px;padding:12px}
 #notif{display:none;width:100%;margin:6px 0 4px;background:#1a1a1a;color:#c49a1c;font-size:15px}
 .empty{color:#666;font-size:15px;text-align:center;margin-top:40px;line-height:1.5}
 
@@ -215,11 +219,13 @@ function card(c, idea){
     : pending ? `<div class="when">Finding a slot…</div>`
     : `<div class="when">${clock(c.scheduled_for)} <span>· ${esc(c.block_label || "")}</span></div>`;
   const dirs = Array.isArray(c.directions) && c.directions.length ? `<details><summary>Directions</summary><ol>${c.directions.map(d => `<li>${esc(d)}</li>`).join("")}</ol><div class="raw">“${esc(c.body)}”</div></details>` : `<div class="raw">“${esc(c.body)}”</div>`;
-  const meta = [c.minutes ? c.minutes + " min" : "", c.energy ? c.energy + " energy" : "", c.nudges ? `<span class="slip">moved ${c.nudges}×</span>` : ""].filter(Boolean).join(" · ");
+  const meta = [c.minutes ? c.minutes + " min" : "", c.energy ? c.energy + " energy" : "", c.nudges ? `<span class="slip">moved ${c.nudges}×</span>` : "", c.claude_at ? "Claude" : (c.organized_by === "groq" ? "quick pass" : "")].filter(Boolean).join(" · ");
+  const notes = c.notes ? `<details><summary>Claude's notes</summary><pre>${esc(c.notes)}</pre></details>` : "";
+  const shoot = c.script ? `<div class="shoot">${c.format ? `<div class="fmt"><b>Format</b> ${esc(c.format)}</div>` : ""}${c.grade ? `<div class="fmt"><b>Grade</b> ${esc(c.grade)}</div>` : ""}<details${c.kind === "video" && !idea && dayName(c.scheduled_for || 0) === "Today" ? " open" : ""}><summary>Script</summary><pre>${esc(c.script)}</pre></details></div>` : "";
   const acts = idea
     ? `<button data-a="schedule" data-id="${c.id}">Give it a time</button><button data-a="drop" data-id="${c.id}">Drop</button>`
     : `<button class="done" data-a="done" data-id="${c.id}">Done</button><button data-a="later" data-id="${c.id}">Later</button><button data-a="park" data-id="${c.id}">Park</button><button data-a="drop" data-id="${c.id}">Drop</button>`;
-  return `<div class="card">${when}<h3>${esc(c.title || c.body.slice(0,60))}</h3>${c.next_step ? `<div class="next">${esc(c.next_step)}</div>` : ""}${meta ? `<div class="meta">${meta}</div>` : ""}${dirs}<div class="acts">${acts}</div></div>`;
+  return `<div class="card">${when}<h3>${esc(c.title || c.body.slice(0,60))}</h3>${c.next_step ? `<div class="next">${esc(c.next_step)}</div>` : ""}${meta ? `<div class="meta">${meta}</div>` : ""}${shoot}${notes}${dirs}<div class="acts">${acts}</div></div>`;
 }
 async function loadPlan(){
   if (!key) return;

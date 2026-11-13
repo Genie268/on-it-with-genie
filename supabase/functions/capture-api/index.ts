@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
 
   if (action === "plan") {
     // everything still open, soonest first, plus parked ideas and the last few done
-    const cols = "id, client_id, body, title, kind, directions, next_step, minutes, energy, status, scheduled_for, block_label, nudges, captured_at";
+    const cols = "id, client_id, body, title, kind, directions, next_step, minutes, energy, status, scheduled_for, block_label, nudges, captured_at, script, format, grade, organized_by, claude_at, notes";
     const [a, b, c] = await Promise.all([
       sb.from("captures").select(cols).in("status", ["new", "scheduled"]).order("scheduled_for", { ascending: true, nullsFirst: true }).limit(100),
       sb.from("captures").select(cols).eq("status", "sorted").order("captured_at", { ascending: false }).limit(100),
