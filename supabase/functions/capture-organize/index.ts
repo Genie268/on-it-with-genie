@@ -1,9 +1,9 @@
 /*
- * capture-organize: runs every 10 minutes (pg_cron). Works with no Claude involved.
+ * capture-organize: runs every minute (pg_cron); Groq sorting only every 5 minutes or when the app asks. Works with no Claude involved.
  * 1. New captures -> Groq gives each a title, kind, 2-3 directions, a next step, minutes and energy.
  * 2. Each one is placed inside a matching block of Genie's day (app_settings.capture_routine),
  *    following app_settings.capture_plan (which block per kind, max items per block).
- * 3. When a block with captures starts, a push goes to the Capture app.
+ * 3. Heads-up pushes 30 minutes and 3 minutes before a block that has captures (never a jolt at the start).
  * 4. Anything not marked done moves to the next free block (nudges + 1).
  * 5. Nightly summary of what's still open.
  * Requires header x-cron-key matching private_settings.cron_key.
@@ -138,8 +138,9 @@ Deno.serve(async (req) => {
     taken.set(k, (taken.get(k) || 0) + 1);
   });
 
-  // 1 + 2. organize and place new captures
-  const { data: fresh } = await sb.from("captures").select("id, body, captured_at, user_kind").eq("status", "new")
+  // 1 + 2. organize and place new captures (cron: every 5 minutes; the app can ask right after a save)
+  const sortNow = okApp || new Date(now).getUTCMinutes() % 5 === 0;
+  const { data: fresh } = !sortNow ? { data: [] as any[] } : await sb.from("captures").select("id, body, captured_at, user_kind").eq("status", "new")
     .order("captured_at").limit(12);
   if (fresh?.length) {
     const out = (await askGroq(fresh.map((f: any) => ({ id: f.id, body: f.body, ...(f.user_kind ? { kind_from_genie: f.user_kind } : {}) })))) || [];
@@ -167,8 +168,8 @@ Deno.serve(async (req) => {
       if (aiOk && o.needs_time === false) {
         patch.status = "sorted";
       } else {
-        const slot = findSlot(kind, routine, plan, taken, now + 10 * 60_000);
-        if (slot) { patch.status = "scheduled"; patch.scheduled_for = slot.iso; patch.block_label = slot.label; log.scheduled++; }
+        const slot = findSlot(kind, routine, plan, taken, now + 35 * 60_000);
+        if (slot) { patch.status = "scheduled"; patch.scheduled_for = slot.iso; patch.block_label = slot.label; patch.warned_at = null; log.scheduled++; }
         else patch.status = "sorted";
       }
       await sb.from("captures").update(patch).eq("id", f.id);
@@ -183,27 +184,41 @@ Deno.serve(async (req) => {
     .eq("status", "scheduled").not("notified_at", "is", null)
     .lt("scheduled_for", new Date(now - 2 * 3600_000).toISOString());
   for (const m of missed ?? []) {
-    const slot = findSlot(m.kind || "other", routine, plan, taken, now + 10 * 60_000);
+    const slot = findSlot(m.kind || "other", routine, plan, taken, now + 35 * 60_000);
     if (!slot) continue;
-    await sb.from("captures").update({ scheduled_for: slot.iso, block_label: slot.label, notified_at: null, nudges: (m.nudges || 0) + 1 }).eq("id", m.id);
+    await sb.from("captures").update({ scheduled_for: slot.iso, block_label: slot.label, notified_at: null, warned_at: null, nudges: (m.nudges || 0) + 1 }).eq("id", m.id);
     log.rolled++;
   }
 
-  // 3. remind at the start of each block that has captures
-  const { data: due } = await sb.from("captures").select("id, title, body, scheduled_for, block_label, nudges, next_step")
-    .eq("status", "scheduled").is("notified_at", null)
-    .lte("scheduled_for", new Date(now + 2 * 60_000).toISOString())
+  // 3. ease him in: heads-up 30 minutes before, then 3 minutes before. Grouped per block.
+  const pushGroup = async (rows: any[], stage: "30" | "3") => {
+    const groups = new Map<string, any[]>();
+    rows.forEach((d: any) => { const k = d.scheduled_for; groups.set(k, [...(groups.get(k) || []), d]); });
+    for (const [at, items] of groups) {
+      const mins = Math.max(1, Math.round((new Date(at).getTime() - now) / 60_000));
+      const block = items[0].block_label ? items[0].block_label.split(":")[0] : "Next block";
+      const lead = stage === "30" ? `In ${mins} minutes · ${block}` : `Starting in ${mins} minute${mins === 1 ? "" : "s"} · ${block}`;
+      const lines = items.map((i) => {
+        const t = i.title || i.body.slice(0, 60);
+        if (i.nudges >= 3) return `${t}. This keeps moving: do it or drop it.`;
+        if (stage === "30") return i.script ? `${t}. Script is ready in Capture.` : `${t}. First step: ${i.next_step || "open Capture"}.`;
+        return i.next_step ? `${t}. ${i.next_step}` : t;
+      });
+      log.pushed += await push(lead, lines.join("\n"), "/capture?tab=plan");
+      await sb.from("captures").update(stage === "30" ? { warned_at: new Date().toISOString() } : { notified_at: new Date().toISOString(), warned_at: new Date().toISOString() }).in("id", items.map((i) => i.id));
+    }
+  };
+  const cols = "id, title, body, scheduled_for, block_label, nudges, next_step, script";
+  // 3 minutes before (also catches anything placed at short notice)
+  const { data: soon } = await sb.from("captures").select(cols).eq("status", "scheduled").is("notified_at", null)
+    .lte("scheduled_for", new Date(now + 3.5 * 60_000).toISOString())
     .gte("scheduled_for", new Date(now - 2 * 3600_000).toISOString());
-  const groups = new Map<string, any[]>();
-  (due ?? []).forEach((d: any) => { const k = d.scheduled_for; groups.set(k, [...(groups.get(k) || []), d]); });
-  for (const [, items] of groups) {
-    const slipping = items.some((i) => i.nudges >= 3);
-    const title = items.length === 1 ? (items[0].title || "Capture") : `${items.length} captures for this block`;
-    const lines = items.map((i) => (i.nudges >= 3 ? "Do it or drop it: " : "") + (i.next_step || i.title || i.body.slice(0, 60)));
-    const sent = await push((slipping ? "Still open. " : "") + title, lines.join(" · "));
-    log.pushed += sent;
-    await sb.from("captures").update({ notified_at: new Date().toISOString() }).in("id", items.map((i) => i.id));
-  }
+  await pushGroup(soon ?? [], "3");
+  // 30 minutes before (skip if it's already inside the last few minutes)
+  const { data: heads } = await sb.from("captures").select(cols).eq("status", "scheduled").is("warned_at", null).is("notified_at", null)
+    .lte("scheduled_for", new Date(now + 30.5 * 60_000).toISOString())
+    .gt("scheduled_for", new Date(now + 6 * 60_000).toISOString());
+  await pushGroup(heads ?? [], "30");
 
   // 5. nightly summary
   const lagos = new Date(now + LAGOS);

@@ -44,12 +44,16 @@ input,textarea{font-family:inherit}
 #box::placeholder{color:var(--faint)}
 body.rec #box{border-color:var(--paper)}
 .bar{display:flex;gap:10px;margin-top:12px;align-items:stretch}
-#mic{width:64px;flex:none;border-radius:18px;background:var(--surface);display:grid;place-items:center;position:relative}
-#mic svg{width:26px;height:26px;fill:var(--text)}
-body.rec #mic{background:var(--paper)}
+/* floating mic: right edge, where the right thumb rests when holding the tablet */
+#mic{position:fixed;right:calc(env(safe-area-inset-right) + 14px);top:56%;transform:translateY(-50%);width:72px;height:72px;border-radius:50%;background:var(--raised);border:1px solid var(--line);display:grid;place-items:center;z-index:15;box-shadow:0 10px 30px rgba(0,0,0,.45);touch-action:manipulation}
+#mic svg{width:28px;height:28px;fill:var(--text)}
+#mic:active{transform:translateY(-50%) scale(.94)}
+body.rec #mic{background:var(--paper);border-color:var(--paper)}
 body.rec #mic svg{fill:var(--ink)}
-body.rec #mic::after{content:"";position:absolute;inset:-4px;border-radius:22px;border:2px solid var(--paper);animation:pulse 1.4s ease-out infinite}
-@keyframes pulse{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.15)}}
+body.rec #mic::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--paper);animation:pulse 1.4s ease-out infinite}
+@keyframes pulse{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.25)}}
+body.locked #mic,.sheet.on ~ #mic{display:none}
+#box{padding-right:28px}
 #save{flex:1;background:var(--paper);color:var(--ink);font-size:17px;font-weight:800;padding:18px;border-radius:18px;transition:opacity .2s}
 #save:disabled{opacity:.25}
 .under{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13px;color:var(--faint);min-height:20px}
@@ -203,11 +207,10 @@ body.locked #lock{display:flex}
   <section class="view on" id="v-dump">
     <textarea id="box" placeholder="What's on your mind?" autofocus></textarea>
     <div class="bar">
-      <button id="mic" aria-label="Speak"><svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm7-4a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.9V21H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-3.1a7 7 0 0 0 6-6.9z"/></svg></button>
       <button id="save" disabled>Save</button>
     </div>
     <div class="under">
-      <span><span id="recInfo">Listening… tap the mic to stop</span><span id="dumpCount"></span></span>
+      <span><span id="recInfo">Listening… tap the mic again to stop</span><span id="dumpCount"></span></span>
       <button id="clear">Clear</button>
     </div>
     <button id="install">Add Capture to your apps</button>
@@ -254,6 +257,7 @@ body.locked #lock{display:flex}
   <div id="syncState" style="font-size:14px"></div>
   <button class="close" id="setClose">Close</button>
 </div>
+<button id="mic" aria-label="Speak"><svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm7-4a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.9V21H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-3.1a7 7 0 0 0 6-6.9z"/></svg></button>
 <div id="toast"></div>
 
 <script>
@@ -484,7 +488,7 @@ function startBrowserSR(){
   try { sr.start(); } catch(e) { return false; }
   return true;
 }
-$("mic").addEventListener("click", () => rec ? stopRec() : startRec());
+$("mic").addEventListener("click", () => { if (rec) return stopRec(); if (view !== "dump") show("dump"); startRec(); });
 
 // ---------- shared card ----------
 const lagos = d => new Date(new Date(d).getTime() + 3600000);
