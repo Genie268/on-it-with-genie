@@ -72,8 +72,8 @@ If a capture has kind_from_genie, he told you what it is about: use that kind. F
 - minutes: honest estimate for the next step (5 to 90)
 - energy: low, medium or high
 - needs_time: false only if it is pure reference with nothing to do
-- For kind "video" only, also: script (a 30 to 60 second talking script in his voice: hook line, 3 short beats, close), format (talking head, whiteboard, walk and talk, or screen recording, with a few words on why), grade (score out of 10 for hook strength and insight, plus one line on how to make it sharper)
-Return {"items":[{"id":...,"title":...,"kind":...,"directions":[...],"next_step":...,"minutes":...,"energy":...,"needs_time":...,"script":...,"format":...,"grade":...}]}`;
+- For kind "video" only, also: suggestions (never a script; he writes his own). Give 3 short hook options built from his own words, then 2 or 3 points he made that are worth keeping, quoted as he said them. Plain text, one per line.
+Return {"items":[{"id":...,"title":...,"kind":...,"directions":[...],"next_step":...,"minutes":...,"energy":...,"needs_time":...,"suggestions":...}]}`;
   const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${GROQ}` },
@@ -158,14 +158,11 @@ Deno.serve(async (req) => {
         energy: aiOk && ["low", "medium", "high"].includes(o.energy) ? o.energy : null,
         organized_by: aiOk ? "groq" : "none",
       };
-      if (aiOk && kind === "video") {
-        if (o.script) patch.script = String(o.script).slice(0, 4000);
-        if (o.format) patch.format = String(o.format).slice(0, 300);
-        if (o.grade) patch.grade = String(o.grade).slice(0, 300);
-      }
+      if (aiOk && kind === "video" && o.suggestions) patch.suggestions = String(o.suggestions).slice(0, 2000);
       // if Groq is down, leave it for the next run unless it has waited over an hour
       if (!aiOk && GROQ && now - new Date(f.captured_at).getTime() < 3600_000) continue;
-      if (aiOk && o.needs_time === false) {
+      // book captures are raw material for the book catalog, not tasks: park them
+      if ((aiOk && o.needs_time === false) || kind === "book") {
         patch.status = "sorted";
       } else {
         const slot = findSlot(kind, routine, plan, taken, now + 35 * 60_000);
@@ -201,14 +198,14 @@ Deno.serve(async (req) => {
       const lines = items.map((i) => {
         const t = i.title || i.body.slice(0, 60);
         if (i.nudges >= 3) return `${t}. This keeps moving: do it or drop it.`;
-        if (stage === "30") return i.script ? `${t}. Script is ready in Capture.` : `${t}. First step: ${i.next_step || "open Capture"}.`;
+        if (stage === "30") return i.script || i.suggestions ? `${t}. Your notes are in Capture.` : `${t}. First step: ${i.next_step || "open Capture"}.`;
         return i.next_step ? `${t}. ${i.next_step}` : t;
       });
       log.pushed += await push(lead, lines.join("\n"), "/capture?tab=plan");
       await sb.from("captures").update(stage === "30" ? { warned_at: new Date().toISOString() } : { notified_at: new Date().toISOString(), warned_at: new Date().toISOString() }).in("id", items.map((i) => i.id));
     }
   };
-  const cols = "id, title, body, scheduled_for, block_label, nudges, next_step, script";
+  const cols = "id, title, body, scheduled_for, block_label, nudges, next_step, script, suggestions";
   // 3 minutes before (also catches anything placed at short notice)
   const { data: soon } = await sb.from("captures").select(cols).eq("status", "scheduled").is("notified_at", null)
     .lte("scheduled_for", new Date(now + 3.5 * 60_000).toISOString())

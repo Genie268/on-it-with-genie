@@ -80,16 +80,16 @@ Deno.serve(async (req) => {
 
   if (action === "plan") {
     // everything still open, soonest first, plus parked ideas and the last few done
-    const cols = "id, client_id, body, title, kind, directions, next_step, minutes, energy, status, scheduled_for, block_label, nudges, captured_at, script, format, grade, organized_by, claude_at, notes, user_kind, question, answer, verdict, categories, priority, priority_by";
+    const cols = "id, client_id, body, title, kind, directions, next_step, minutes, energy, status, scheduled_for, block_label, nudges, captured_at, script, format, grade, organized_by, claude_at, notes, user_kind, question, answer, verdict, categories, priority, priority_by, suggestions, sketch, book_at";
     const [a, b, c] = await Promise.all([
       sb.from("captures").select(cols).in("status", ["new", "scheduled"]).order("scheduled_for", { ascending: true, nullsFirst: true }).limit(100),
       sb.from("captures").select(cols).eq("status", "sorted").order("captured_at", { ascending: false }).limit(100),
       sb.from("captures").select(cols).eq("status", "done").order("done_at", { ascending: false }).limit(10),
     ]);
     if (a.error || b.error || c.error) return json({ ok: false, error: "db_error" }, 500);
-    const [routine, themes] = await Promise.all([setting("capture_routine"), setting("capture_themes")]);
+    const [routine, themes, book_map] = await Promise.all([setting("capture_routine"), setting("capture_themes"), setting("book_map")]);
     let r: unknown = null; try { r = JSON.parse(routine); } catch { /* keep null */ }
-    return json({ ok: true, open: a.data, ideas: b.data, done: c.data, routine: r, themes });
+    return json({ ok: true, open: a.data, ideas: b.data, done: c.data, routine: r, themes, book_map });
   }
 
   if (action === "update") {
@@ -130,6 +130,23 @@ Deno.serve(async (req) => {
     return json({ ok: true });
   }
 
+
+  if (action === "retag") {
+    // change tags after the fact; Claude and the book run read it again
+    const id = String(body.id || "");
+    const c = cats(body.kinds);
+    if (!id || !c.user_kind) return json({ ok: false, error: "bad_tag" }, 400);
+    const { data: row } = await sb.from("captures").select("kind, status").eq("id", id).maybeSingle();
+    if (!row) return json({ ok: false, error: "not_found" }, 404);
+    const patch: Record<string, unknown> = { ...c, kind: c.user_kind, claude_at: null, book_at: null };
+    // book-first captures are catalog material, not tasks
+    if (c.user_kind === "book" && row.status !== "done") Object.assign(patch, { status: "sorted", scheduled_for: null, notified_at: null, warned_at: null });
+    else if (row.status === "scheduled" && row.kind !== c.user_kind) Object.assign(patch, { scheduled_for: new Date(0).toISOString(), notified_at: new Date().toISOString(), warned_at: null });
+    const { error } = await sb.from("captures").update(patch).eq("id", id);
+    if (error) return json({ ok: false, error: "db_error" }, 500);
+    return json({ ok: true });
+  }
+
   if (action === "answer") {
     const id = String(body.id || "");
     const a = String(body.answer || "").trim().slice(0, 4000);
@@ -137,7 +154,7 @@ Deno.serve(async (req) => {
     // clearing claude_at puts it back in Claude's queue with the new context
     const { data: prev } = await sb.from("captures").select("answer").eq("id", id).maybeSingle();
     const all = prev?.answer ? prev.answer + "\n" + a : a;
-    const { error } = await sb.from("captures").update({ answer: all, answer_at: new Date().toISOString(), claude_at: null }).eq("id", id);
+    const { error } = await sb.from("captures").update({ answer: all, answer_at: new Date().toISOString(), claude_at: null, book_at: null }).eq("id", id);
     if (error) return json({ ok: false, error: "db_error" }, 500);
     return json({ ok: true });
   }

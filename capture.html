@@ -53,6 +53,8 @@ body.rec #mic svg{fill:var(--ink)}
 body.rec #mic::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--paper);animation:pulse 1.4s ease-out infinite}
 @keyframes pulse{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.25)}}
 body.locked #mic,.sheet.on ~ #mic{display:none}
+body:not(.onDump) #mic{width:56px;height:56px;opacity:.9}
+body:not(.onDump) #mic svg{width:22px;height:22px}
 #box{padding-right:28px}
 #save{flex:1;background:var(--paper);color:var(--ink);font-size:17px;font-weight:800;padding:18px;border-radius:18px;transition:opacity .2s}
 #save:disabled{opacity:.25}
@@ -130,6 +132,11 @@ ol li{margin-bottom:5px}
 .acts button.main{background:var(--paper);color:var(--ink)}
 .acts button:disabled{opacity:.4}
 .empty{color:var(--faint);font-size:15px;text-align:center;margin:50px 10px;line-height:1.6}
+.sketch{display:block;width:100%;height:auto;background:#f4f2ec;border-radius:12px;margin-top:8px}
+.copyRow{display:flex;gap:6px;margin-top:10px}
+.copy{flex:1;background:var(--raised);color:var(--text);font-size:13px;font-weight:700;padding:10px 6px;border-radius:10px}
+.ask .qs{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:8px}
+.tagEdit{font-size:12px;font-weight:800;color:var(--muted);border:1px dashed var(--line);padding:2px 7px;border-radius:6px}
 .themes{background:var(--surface);border-radius:18px;padding:14px 16px;margin-bottom:12px}
 .themes summary{color:var(--text);font-size:15px}
 .themes pre{background:none;padding:6px 0 0;color:var(--muted);font-size:15px}
@@ -344,10 +351,10 @@ $("clear").addEventListener("click", () => { if (rec) stopRec(); $("box").value 
 $("dumpCount").addEventListener("click", () => show("org"));
 
 // tags: tap any that fit, then Done. Closes by itself if ignored.
-let tagFor = null, tagTimer = null, picked = new Set();
+let tagFor = null, tagTimer = null, picked = new Set(), retagId = null;
 const TAG_MS = 15000;
 function openTags(cid){
-  tagFor = cid; picked = new Set();
+  tagFor = cid; picked = new Set(); $("tagSkip").textContent = "Skip";
   document.querySelectorAll("#chips button").forEach(b => b.classList.remove("sel"));
   $("tagDone").disabled = true;
   $("tagSheet").classList.add("on");
@@ -356,7 +363,25 @@ function openTags(cid){
   requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `transform ${TAG_MS}ms linear`; bar.style.transform = "scaleX(0)"; }));
   clearTimeout(tagTimer); tagTimer = setTimeout(() => closeTags(false), TAG_MS);
 }
+function openRetag(id){
+  const c = data && [...data.open, ...data.ideas].find(x => x.id === id); if (!c) return;
+  retagId = id; tagFor = null; picked = new Set(kindsOf(c));
+  document.querySelectorAll("#chips button").forEach(b => b.classList.toggle("sel", picked.has(b.dataset.k)));
+  $("tagDone").disabled = !picked.size;
+  const bar = $("timer").firstElementChild; bar.style.transition = "none"; bar.style.transform = "scaleX(0)";
+  $("tagSkip").textContent = "Cancel";
+  $("tagSheet").classList.add("on");
+}
+async function closeRetag(keep){
+  const id = retagId; retagId = null;
+  $("tagSheet").classList.remove("on");
+  if (!keep || !picked.size) return;
+  try { await call({ action:"retag", key, id, kinds:[...picked] }); toast([...picked].map(k => LABEL[k]).join(" + ")); }
+  catch(e) { toast("Needs network"); }
+  load();
+}
 function closeTags(keep){
+  if (retagId) return closeRetag(keep);
   if (!tagFor) return;
   const cid = tagFor; tagFor = null; clearTimeout(tagTimer);
   $("tagSheet").classList.remove("on");
@@ -502,15 +527,23 @@ function dayName(iso){
 function clock(iso){ const d = lagos(iso); let h = d.getUTCHours(), m = d.getUTCMinutes(); const ap = h >= 12 ? "pm" : "am"; h = h % 12 || 12; return h + (m ? ":" + String(m).padStart(2,"0") : "") + ap; }
 function hhmm12(s){ const [h, m] = s.split(":").map(Number); const ap = h >= 12 ? "pm" : "am"; return (h % 12 || 12) + (m ? ":" + String(m).padStart(2,"0") : "") + ap; }
 const kindsOf = c => (c.categories && c.categories.length ? c.categories : (c.kind ? [c.kind] : []));
-const tagsHtml = c => kindsOf(c).map((k, i) => `<span class="kind${i ? " alt" : ""}">${LABEL[k] || esc(k)}</span>`).join("");
-function depth(c, openScript){
+const tagsHtml = c => kindsOf(c).map((k, i) => `<span class="kind${i ? " alt" : ""}">${LABEL[k] || esc(k)}</span>`).join("") + (c.id ? `<button class="tagEdit" data-retag="${c.id}">${kindsOf(c).length ? "Edit" : "+ Tag"}</button>` : "");
+function sketchHtml(c){
+  if (!c.sketch || !/^\s*<svg[\s>]/i.test(c.sketch)) return "";
+  // rendered as an image so nothing inside it can run
+  return `<img class="sketch" alt="Whiteboard sketch" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(c.sketch)}">`;
+}
+function depth(c, openIdeas){
   const verdict = c.verdict ? `<div class="verdict">${esc(c.verdict)}</div>` : "";
-  const ask = c.question ? `<div class="ask"><div class="q">${esc(c.question)}</div>${c.answer ? `<div class="a">You said: ${esc(c.answer)}${c.claude_at ? "" : "\nClaude will rework it"}</div>` : ""}<form data-id="${c.id}"><input name="a" placeholder="${c.answer ? "Add more" : "Answer in a line"}" autocomplete="off"><button>Send</button></form></div>` : "";
-  const shoot = c.script ? `<details${openScript ? " open" : ""}><summary>Script</summary>${c.format ? `<div class="fmt"><b>Format</b>${esc(c.format)}</div>` : ""}${c.grade ? `<div class="fmt"><b>Grade</b>${esc(c.grade)}</div>` : ""}<pre>${esc(c.script)}</pre></details>` : "";
-  const notes = c.notes ? `<details><summary>Claude's notes</summary><pre>${esc(c.notes)}</pre></details>` : "";
+  const sugg = c.suggestions || c.sketch ? `<details${openIdeas ? " open" : ""}><summary>${c.kind === "book" || (c.categories || []).includes("book") && !c.suggestions ? "Notes" : "Suggestions"}</summary>${c.format ? `<div class="fmt"><b>Format</b>${esc(c.format)}</div>` : ""}${sketchHtml(c)}${c.suggestions ? `<pre>${esc(c.suggestions)}</pre>` : ""}</details>` : "";
+  const draft = c.script ? `<details><summary>Draft you asked for</summary>${c.grade ? `<div class="fmt"><b>Grade</b>${esc(c.grade)}</div>` : ""}<pre>${esc(c.script)}</pre></details>` : "";
+  const notes = c.notes ? `<details${openIdeas && !c.suggestions ? " open" : ""}><summary>${(c.categories || []).includes("book") || c.kind === "book" ? "Book notes" : "Claude's notes"}</summary><pre>${esc(c.notes)}</pre></details>` : "";
   const hasDirs = Array.isArray(c.directions) && c.directions.length;
-  const dirs = `<details><summary>${hasDirs ? "Directions" : "What you said"}</summary>${hasDirs ? `<ol>${c.directions.map(d => `<li>${esc(d)}</li>`).join("")}</ol>` : ""}<div class="raw">“${esc(c.body)}”</div></details>`;
-  return verdict + ask + shoot + notes + dirs;
+  const dirs = hasDirs ? `<details><summary>Directions</summary><ol>${c.directions.map(d => `<li>${esc(d)}</li>`).join("")}</ol></details>` : "";
+  const said = `<details><summary>What you said</summary><div class="raw">“${esc(c.body)}”</div><div class="copyRow"><button class="copy" data-copy="words" data-id="${c.id}">Copy my words</button><button class="copy" data-copy="all" data-id="${c.id}">Copy for Claude</button></div></details>`;
+  const waiting = c.answer && !c.claude_at;
+  const ask = `<div class="ask">${c.question ? `<div class="q">${esc(c.question)}</div>` : `<div class="qs">Ask Claude to do something with this</div>`}${c.answer ? `<div class="a">${esc(c.answer)}${waiting ? "\n· Claude picks this up at its next run" : ""}</div>` : ""}<form data-id="${c.id}"><input name="a" placeholder="${c.question ? "Answer in a line" : "e.g. give me 3 hooks in my words"}" autocomplete="off"><button>Send</button></form></div>`;
+  return verdict + sugg + notes + draft + dirs + said + ask;
 }
 function metaLine(c){
   return [c.minutes ? c.minutes + " min" : "", c.energy ? c.energy + " energy" : "", c.nudges ? `<span class="slip">moved ${c.nudges}×</span>` : "", c.claude_at ? "by Claude" : (c.organized_by === "groq" ? "quick pass, Claude is next" : "waiting for Claude")].filter(Boolean).join(" · ");
@@ -529,7 +562,8 @@ function renderOrg(){
   if (filter === "parked") list = data.ideas;
   else if (filter !== "all") list = all.filter(c => kindsOf(c).includes(filter));
   let h = "";
-  if (data.themes) h += `<details class="themes"><summary>How you've been thinking</summary><pre>${esc(data.themes)}</pre></details>`;
+  if (filter === "book") h += `<details class="themes" open><summary>Book map</summary><pre>${esc(data.book_map || "Claude builds this from your book captures. It fills in after the next book run.")}</pre></details>`;
+  else if (data.themes) h += `<details class="themes"><summary>How you've been thinking</summary><pre>${esc(data.themes)}</pre></details>`;
   h += `<div class="filters">${fl.map(([k, l]) => `<button data-f="${k}" class="${filter === k ? "on" : ""}">${l}${counts[k] ? " " + counts[k] : ""}</button>`).join("")}</div>`;
   if (local.length && filter === "all") h += `<div class="sec"><span>Waiting to send</span><span>${local.length}</span></div>` + local.map(q => `<div class="card"><div class="raw" style="margin:0">“${esc(q.body)}”</div></div>`).join("");
   if (!list.length && !local.length) h += `<div class="empty">Nothing here yet.<br>Dump something and Claude sorts it.</div>`;
@@ -539,7 +573,7 @@ function renderOrg(){
     const acts = parked
       ? `<button class="main" data-a="schedule" data-id="${c.id}">Give it a time</button><button data-a="drop" data-id="${c.id}">Drop</button>`
       : `<button data-a="park" data-id="${c.id}">Park</button><button data-a="drop" data-id="${c.id}">Drop</button>`;
-    return `<div class="card"><div class="row1">${tagsHtml(c)}${when}</div><h3>${esc(c.title || c.body.slice(0,70))}</h3>${c.next_step ? `<div class="next">${esc(c.next_step)}</div>` : ""}<div class="meta">${metaLine(c)}</div>${depth(c, false)}<div class="acts">${acts}</div></div>`;
+    return `<div class="card"><div class="row1">${tagsHtml(c)}${when}</div><h3>${esc(c.title || c.body.slice(0,70))}</h3>${c.next_step ? `<div class="next">${esc(c.next_step)}</div>` : ""}<div class="meta">${metaLine(c)}</div>${depth(c, kindsOf(c).includes("video"))}<div class="acts">${acts}</div></div>`;
   }).join("");
   $("orgBody").innerHTML = h;
 }
@@ -581,7 +615,7 @@ function renderExe(){
   const nowHM = lagos(Date.now()).toISOString().slice(11,16);
   const byTime = {}; items.forEach(c => { const k = lagos(c.scheduled_for).toISOString().slice(11,16); (byTime[k] = byTime[k] || []).push(c); });
   const used = new Set();
-  const task = c => `<div class="task"><div class="tt">${esc(c.title || c.body.slice(0,60))}</div>${c.next_step ? `<div class="tn">${esc(c.next_step)}</div>` : ""}${c.script ? `<details${c.kind === "video" && exeDay === 0 ? " open" : ""}><summary>Script</summary>${c.format ? `<div class="fmt"><b>Format</b>${esc(c.format)}</div>` : ""}<pre>${esc(c.script)}</pre></details>` : ""}${c.notes ? `<details><summary>Claude's notes</summary><pre>${esc(c.notes)}</pre></details>` : ""}<div class="acts"><button class="main" data-a="done" data-id="${c.id}">Done</button><button data-a="later" data-id="${c.id}">Later</button><button data-a="park" data-id="${c.id}">Park</button></div></div>`;
+  const task = c => `<div class="task"><div class="tt">${esc(c.title || c.body.slice(0,60))}</div>${c.next_step ? `<div class="tn">${esc(c.next_step)}</div>` : ""}${c.suggestions || c.sketch ? `<details${exeDay === 0 ? " open" : ""}><summary>Suggestions</summary>${c.format ? `<div class="fmt"><b>Format</b>${esc(c.format)}</div>` : ""}${sketchHtml(c)}${c.suggestions ? `<pre>${esc(c.suggestions)}</pre>` : ""}</details>` : ""}${c.script ? `<details><summary>Draft you asked for</summary><pre>${esc(c.script)}</pre></details>` : ""}${c.notes ? `<details><summary>Claude's notes</summary><pre>${esc(c.notes)}</pre></details>` : ""}<div class="acts"><button class="main" data-a="done" data-id="${c.id}">Done</button><button data-a="later" data-id="${c.id}">Later</button><button data-a="park" data-id="${c.id}">Park</button></div></div>`;
   let h = "";
   const pending = data.open.filter(isPending);
   if (exeDay === 0 && pending.length) h += `<div class="hint">${pending.length} being sorted. They land in a slot within a few minutes.</div>`;
@@ -608,6 +642,17 @@ async function load(){
 }
 function renderCurrent(){ if (view === "org") renderOrg(); if (view === "pri") renderPri(); if (view === "exe") renderExe(); }
 document.addEventListener("click", async e => {
+  const rt = e.target.closest("[data-retag]"); if (rt) return openRetag(rt.dataset.retag);
+  const cp = e.target.closest("[data-copy]");
+  if (cp) {
+    const c = data && [...data.open, ...data.ideas].find(x => x.id === cp.dataset.id); if (!c) return;
+    const text = cp.dataset.copy === "words" ? c.body
+      : [`Here's a thought I captured${kindsOf(c).length ? " (" + kindsOf(c).map(k => LABEL[k]).join(", ") + ")" : ""}:`, "", c.body,
+         c.suggestions ? "\nSuggestions so far:\n" + c.suggestions : "", c.notes ? "\nNotes so far:\n" + c.notes : "", c.answer ? "\nWhat I've added:\n" + c.answer : ""].filter(Boolean).join("\n");
+    try { await navigator.clipboard.writeText(text); toast("Copied"); }
+    catch(err) { const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); toast("Copied"); }
+    return;
+  }
   const b = e.target.closest("button[data-a]"); if (!b) return;
   b.disabled = true;
   const msg = { done:"Done", later:"Moved to the next slot", park:"Parked", drop:"Dropped", schedule:"Finding it a time", now:"Now. Pulled into your next slot", next:"Next", later_p:"Later" }[b.dataset.a];
@@ -620,13 +665,14 @@ document.addEventListener("submit", async e => {
   e.preventDefault();
   const a = f.a.value.trim(); if (!a) return;
   f.querySelector("button").disabled = true;
-  try { await call({ action:"answer", key, id: f.dataset.id, answer: a }); toast("Sent. Claude will rework it"); }
+  try { await call({ action:"answer", key, id: f.dataset.id, answer: a }); toast("Sent. Claude picks it up at its next run"); }
   catch(err) { toast("Needs network"); }
   load();
 });
 
 function show(v){
   view = v;
+  document.body.classList.toggle("onDump", v === "dump");
   document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
   if (v === "dump") $("box").focus(); else { renderCurrent(); load(); }
