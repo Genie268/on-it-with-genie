@@ -16,6 +16,8 @@ const CORS = {
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { "Content-Type": "application/json", ...CORS } });
 
+const KINDS = ["book", "video", "site", "business", "event", "task", "personal", "other"];
+
 async function setting(key: string): Promise<string> {
   const { data } = await sb.from("app_settings").select("value").eq("key", key).maybeSingle();
   return (data?.value as string) || "";
@@ -47,6 +49,7 @@ Deno.serve(async (req) => {
         client_id: String(i?.client_id || "").slice(0, 80) || crypto.randomUUID(),
         body: String(i?.body || "").trim().slice(0, 20000),
         captured_at: i?.captured_at && !isNaN(Date.parse(i.captured_at)) ? i.captured_at : new Date().toISOString(),
+        user_kind: KINDS.includes(String(i?.user_kind)) ? String(i.user_kind) : null,
       }))
       .filter((r) => r.body);
     if (!rows.length) return json({ ok: true, saved: [] });
@@ -65,7 +68,7 @@ Deno.serve(async (req) => {
 
   if (action === "plan") {
     // everything still open, soonest first, plus parked ideas and the last few done
-    const cols = "id, client_id, body, title, kind, directions, next_step, minutes, energy, status, scheduled_for, block_label, nudges, captured_at, script, format, grade, organized_by, claude_at, notes";
+    const cols = "id, client_id, body, title, kind, directions, next_step, minutes, energy, status, scheduled_for, block_label, nudges, captured_at, script, format, grade, organized_by, claude_at, notes, user_kind, question, answer, verdict";
     const [a, b, c] = await Promise.all([
       sb.from("captures").select(cols).in("status", ["new", "scheduled"]).order("scheduled_for", { ascending: true, nullsFirst: true }).limit(100),
       sb.from("captures").select(cols).eq("status", "sorted").order("captured_at", { ascending: false }).limit(100),
@@ -87,6 +90,34 @@ Deno.serve(async (req) => {
     if (to === "later" || to === "schedule") patch = { status: "scheduled", notified_at: new Date().toISOString(), scheduled_for: new Date(0).toISOString() };
     if (!patch) return json({ ok: false, error: "bad_action" }, 400);
     const { error } = await sb.from("captures").update(patch).eq("id", id);
+    if (error) return json({ ok: false, error: "db_error" }, 500);
+    return json({ ok: true });
+  }
+
+
+  if (action === "tag") {
+    // he says what it's about after saving; works by device id so it doesn't wait for sync
+    const cid = String(body.client_id || "");
+    const k = String(body.kind || "");
+    if (!cid || !KINDS.includes(k)) return json({ ok: false, error: "bad_tag" }, 400);
+    const { data: row } = await sb.from("captures").select("id, kind, status").eq("client_id", cid).maybeSingle();
+    if (!row) return json({ ok: true, pending: true });
+    const patch: Record<string, unknown> = { user_kind: k, claude_at: null };
+    // already placed under another kind: send it back for a new block
+    if (row.status === "scheduled" && row.kind !== k) Object.assign(patch, { kind: k, scheduled_for: new Date(0).toISOString(), notified_at: new Date().toISOString() });
+    else if (row.status !== "new") patch.kind = k;
+    await sb.from("captures").update(patch).eq("id", row.id);
+    return json({ ok: true });
+  }
+
+  if (action === "answer") {
+    const id = String(body.id || "");
+    const a = String(body.answer || "").trim().slice(0, 4000);
+    if (!id || !a) return json({ ok: false, error: "bad_answer" }, 400);
+    // clearing claude_at puts it back in Claude's queue with the new context
+    const { data: prev } = await sb.from("captures").select("answer").eq("id", id).maybeSingle();
+    const all = prev?.answer ? prev.answer + "\n" + a : a;
+    const { error } = await sb.from("captures").update({ answer: all, answer_at: new Date().toISOString(), claude_at: null }).eq("id", id);
     if (error) return json({ ok: false, error: "db_error" }, 500);
     return json({ ok: true });
   }

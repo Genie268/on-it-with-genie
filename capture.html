@@ -3,76 +3,116 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#060606">
+<meta name="theme-color" content="#141414">
 <meta name="robots" content="noindex">
 <link rel="manifest" href="/manifest-capture.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="icon" href="/capture-192.png">
+<link rel="apple-touch-icon" href="/capture-192.png">
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap" rel="stylesheet">
 <title>Capture</title>
 <style>
+:root{
+  --bg:#141414; --surface:#1c1c1c; --raised:#232323; --line:#2a2a2a;
+  --text:#ededeb; --muted:#8c8c88; --faint:#5c5c59;
+  --ink:#141414; --paper:#efede8; --warn:#e07a5f; --ok:#9cc4a4;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:#060606;color:#ededed;font-family:Helvetica,Arial,system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
-body{display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 14px)}
-.top{display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#777;margin-bottom:12px}
-.top b{color:#c49a1c;font-weight:800}
-#sync{letter-spacing:.04em;text-transform:none}
-#sync.wait{color:#c49a1c}
-textarea{flex:1;min-height:180px;width:100%;resize:none;background:#111;color:#f4f4f4;border:1px solid #222;border-radius:16px;padding:18px;font-size:20px;line-height:1.45;outline:none;font-family:inherit}
-textarea:focus{border-color:#c49a1c}
-textarea::placeholder{color:#555}
-.row{display:flex;gap:10px;margin-top:12px}
-button{font-family:inherit;border:0;border-radius:14px;font-size:17px;font-weight:800;padding:18px;cursor:pointer}
-#save{flex:1;background:#c49a1c;color:#060606}
-#save:disabled{opacity:.35}
-#clear{background:#1a1a1a;color:#999;padding:18px 20px}
-#install{display:none;width:100%;margin-top:10px;background:#1a1a1a;color:#ededed;font-size:15px}
-#list{margin-top:14px;max-height:32vh;overflow:auto}
-.item{display:flex;gap:10px;padding:10px 2px;border-top:1px solid #161616;font-size:14px;color:#aaa;line-height:1.4}
-.item i{flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;background:#c49a1c}
-.item.wait i{background:#444}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:Satoshi,Helvetica,Arial,system-ui,sans-serif;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 12px) 18px calc(env(safe-area-inset-bottom) + 14px);max-width:760px;margin:0 auto}
+button{font-family:inherit;border:0;cursor:pointer;color:inherit;background:none}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.seg{display:flex;background:var(--surface);border-radius:99px;padding:4px}
+.seg button{padding:8px 16px;border-radius:99px;font-size:14px;font-weight:700;color:var(--muted)}
+.seg button.on{background:var(--raised);color:var(--text)}
+#sync{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--faint)}
+#sync i{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+#sync.wait i{background:var(--warn)}
+
+/* capture */
+#capView{flex:1;display:flex;flex-direction:column;min-height:0}
+textarea{flex:1;min-height:200px;width:100%;resize:none;background:var(--surface);color:var(--text);border:1px solid transparent;border-radius:20px;padding:20px;font-size:21px;line-height:1.5;outline:none;font-family:inherit;transition:border-color .2s}
+textarea:focus{border-color:var(--line)}
+textarea::placeholder{color:var(--faint)}
+.bar{display:flex;gap:10px;margin-top:12px}
+#save{flex:1;background:var(--paper);color:var(--ink);font-size:17px;font-weight:800;padding:18px;border-radius:16px;transition:opacity .2s}
+#save:disabled{opacity:.25}
+#clear{background:var(--surface);color:var(--muted);font-size:15px;font-weight:700;padding:18px 20px;border-radius:16px}
+#install{display:none;width:100%;margin-top:10px;background:var(--surface);color:var(--text);font-size:15px;font-weight:700;padding:14px;border-radius:14px}
+#list{margin-top:16px;max-height:28vh;overflow:auto}
+.item{display:flex;gap:12px;padding:11px 2px;border-top:1px solid var(--surface);font-size:14px;color:var(--muted);line-height:1.4}
+.item i{flex:none;width:6px;height:6px;border-radius:50%;margin-top:7px;background:var(--faint)}
+.item.wait i{background:var(--warn)}
 .item span{flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.item em{flex:none;font-style:normal;color:#555;font-size:12px}
-#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);transform:translateX(-50%) translateY(20px);background:#ededed;color:#060606;font-weight:800;padding:10px 18px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none}
-#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
-#lock{display:none;flex:1;flex-direction:column;justify-content:center;gap:14px;max-width:360px;width:100%;margin:0 auto}
-#lock h1{font-size:28px;font-weight:900;letter-spacing:-.02em}
-#lock p{color:#888;font-size:15px}
-#lock input{background:#111;border:1px solid #222;border-radius:14px;color:#fff;font-size:22px;padding:16px;letter-spacing:.3em;text-align:center;outline:none}
-#lock input:focus{border-color:#c49a1c}
-#lock button{background:#c49a1c;color:#060606}
-#lockErr{color:#e66;font-size:14px;min-height:18px}
-body.locked #app{display:none}
-body.locked #lock{display:flex}
-#app{flex:1;display:flex;flex-direction:column}
-.tabs{display:flex;gap:6px}
-.tabs button{background:none;color:#666;padding:6px 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;border-radius:99px}
-.tabs button.on{background:#1a1a1a;color:#c49a1c}
-#planView{display:none;flex:1;overflow:auto;padding-bottom:20px}
+.item em{flex:none;font-style:normal;color:var(--faint);font-size:12px}
+
+/* what's this about */
+#sheet{position:fixed;left:0;right:0;bottom:0;background:var(--raised);border-radius:24px 24px 0 0;padding:22px 18px calc(env(safe-area-inset-bottom) + 18px);transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);z-index:20;max-width:760px;margin:0 auto;box-shadow:0 -20px 60px rgba(0,0,0,.5)}
+#sheet.on{transform:none}
+#sheet h4{font-size:18px;font-weight:800;margin-bottom:4px}
+#sheet p{font-size:14px;color:var(--muted);margin-bottom:16px}
+.chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.chips button{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px 12px;font-size:16px;font-weight:700;text-align:left}
+.chips button:active{background:var(--paper);color:var(--ink)}
+#skip{display:block;margin:14px auto 0;color:var(--muted);font-size:14px;font-weight:700;padding:8px 16px}
+#timer{height:2px;background:var(--line);border-radius:2px;margin-bottom:16px;overflow:hidden}
+#timer b{display:block;height:100%;width:100%;background:var(--muted);transform-origin:left}
+
+/* plan */
+#planView{display:none;flex:1;overflow:auto;padding-bottom:30px;margin:0 -2px}
 body.plan #capView{display:none}
 body.plan #planView{display:block}
-#capView{flex:1;display:flex;flex-direction:column}
-.day{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#777;margin:18px 2px 8px}
-.card{background:#111;border:1px solid #1d1d1d;border-radius:14px;padding:14px;margin-bottom:8px}
-.card .when{font-size:12px;color:#c49a1c;font-weight:700;margin-bottom:4px}
-.card .when span{color:#666;font-weight:400}
-.card h3{font-size:17px;font-weight:800;line-height:1.3}
-.card .next{font-size:14px;color:#bbb;margin-top:6px;line-height:1.4}
-.card .meta{font-size:12px;color:#666;margin-top:6px}
-.card details{margin-top:8px}
-.card summary{font-size:13px;color:#888;cursor:pointer}
-.card ol{margin:8px 0 0 18px;font-size:14px;color:#ccc;line-height:1.45}
-.card ol li{margin-bottom:4px}
-.card .raw{font-size:13px;color:#777;margin-top:8px;font-style:italic}
-.acts{display:flex;gap:6px;margin-top:12px}
-.acts button{flex:1;padding:11px 6px;font-size:14px;border-radius:10px;background:#1a1a1a;color:#ddd}
-.acts button.done{background:#c49a1c;color:#060606}
-.slip{color:#e66}
-.shoot{margin-top:10px;border-top:1px solid #1d1d1d;padding-top:10px}
-.fmt{font-size:13px;color:#bbb;line-height:1.4;margin-bottom:6px}
-.fmt b{color:#c49a1c;font-weight:700;margin-right:4px}
-.card details pre,.shoot pre{white-space:pre-wrap;font-family:inherit;font-size:16px;line-height:1.55;color:#f2f2f2;margin-top:8px;background:#0b0b0b;border-radius:10px;padding:12px}
-#notif{display:none;width:100%;margin:6px 0 4px;background:#1a1a1a;color:#c49a1c;font-size:15px}
-.empty{color:#666;font-size:15px;text-align:center;margin-top:40px;line-height:1.5}
+.day{font-size:13px;font-weight:700;color:var(--muted);margin:22px 4px 10px;display:flex;justify-content:space-between}
+.day:first-child{margin-top:4px}
+.card{background:var(--surface);border-radius:18px;padding:16px;margin-bottom:10px}
+.row1{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.kind{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:var(--paper);padding:3px 8px;border-radius:6px}
+.when{font-size:13px;font-weight:700;color:var(--text)}
+.block{font-size:13px;color:var(--faint)}
+.card h3{font-size:19px;font-weight:800;line-height:1.3;letter-spacing:-.01em}
+.next{font-size:15px;color:var(--muted);margin-top:6px;line-height:1.45}
+.meta{font-size:12px;color:var(--faint);margin-top:8px}
+.slip{color:var(--warn)}
+.verdict{margin-top:12px;font-size:14px;line-height:1.45;color:var(--text);border-left:2px solid var(--paper);padding-left:10px}
+.ask{margin-top:12px;background:var(--raised);border-radius:14px;padding:12px}
+.ask .q{font-size:15px;font-weight:700;line-height:1.4;margin-bottom:10px}
+.ask .a{font-size:14px;color:var(--muted);margin-bottom:6px}
+.ask form{display:flex;gap:8px}
+.ask input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:16px;padding:11px 12px;font-family:inherit;outline:none}
+.ask input:focus{border-color:var(--muted)}
+.ask button{background:var(--paper);color:var(--ink);font-weight:800;border-radius:10px;padding:0 14px;font-size:14px}
+details{margin-top:10px}
+summary{font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;list-style:none;padding:6px 0}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"+ ";color:var(--faint)}
+details[open] summary::before{content:"– "}
+.fmt{font-size:14px;color:var(--muted);line-height:1.45;margin-top:6px}
+.fmt b{color:var(--text);margin-right:4px}
+pre{white-space:pre-wrap;font-family:inherit;font-size:16px;line-height:1.6;color:var(--text);margin-top:8px;background:var(--bg);border-radius:12px;padding:14px}
+ol{margin:6px 0 0 20px;font-size:15px;color:var(--text);line-height:1.5}
+ol li{margin-bottom:5px}
+.raw{font-size:14px;color:var(--faint);margin-top:8px;font-style:italic;line-height:1.45}
+.acts{display:flex;gap:6px;margin-top:14px}
+.acts button{flex:1;padding:12px 4px;font-size:14px;font-weight:700;border-radius:12px;background:var(--raised);color:var(--text)}
+.acts button.done{background:var(--paper);color:var(--ink)}
+.acts button:disabled{opacity:.4}
+#notif{display:none;width:100%;margin:0 0 6px;background:var(--paper);color:var(--ink);font-size:15px;font-weight:800;padding:14px;border-radius:14px}
+.empty{color:var(--faint);font-size:15px;text-align:center;margin-top:60px;line-height:1.6}
 
+/* lock + toast */
+#lock{display:none;flex:1;flex-direction:column;justify-content:center;gap:14px;max-width:360px;width:100%;margin:0 auto}
+#lock h1{font-size:30px;font-weight:900;letter-spacing:-.02em}
+#lock p{color:var(--muted);font-size:15px;line-height:1.5}
+#lock input{background:var(--surface);border:1px solid var(--line);border-radius:14px;color:var(--text);font-size:22px;padding:16px;letter-spacing:.3em;text-align:center;outline:none;font-family:inherit}
+#lock button{background:var(--paper);color:var(--ink);font-weight:800;font-size:17px;padding:16px;border-radius:14px}
+#lockErr{color:var(--warn);font-size:14px;min-height:18px}
+body.locked #app{display:none}
+body.locked #lock{display:flex}
+#app{flex:1;display:flex;flex-direction:column;min-height:0}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 72px);transform:translate(-50%,-20px);background:var(--paper);color:var(--ink);font-weight:800;font-size:14px;padding:10px 18px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none;z-index:30}
+#toast.on{opacity:1;transform:translate(-50%,0)}
 </style>
 </head>
 <body>
@@ -85,35 +125,61 @@ body.plan #planView{display:block}
 </div>
 
 <div id="app">
-  <div class="top"><div class="tabs"><button id="tCap" class="on">Capture</button><button id="tPlan">Plan</button></div><span id="sync"></span></div>
-  <div id="capView">
-  <textarea id="box" placeholder="Talk or type. Save. Move on." autofocus></textarea>
-  <div class="row">
-    <button id="clear" aria-label="Clear">Clear</button>
-    <button id="save" disabled>Save</button>
+  <div class="top">
+    <div class="seg"><button id="tCap" class="on">Capture</button><button id="tPlan">Plan</button></div>
+    <span id="sync"></span>
   </div>
-  <button id="install">Add Capture to home screen</button>
-  <div id="list"></div>
+  <div id="capView">
+    <textarea id="box" placeholder="What's on your mind?" autofocus></textarea>
+    <div class="bar">
+      <button id="clear">Clear</button>
+      <button id="save" disabled>Save</button>
+    </div>
+    <button id="install">Add Capture to your apps</button>
+    <div id="list"></div>
   </div>
   <div id="planView">
     <button id="notif">Turn on reminders</button>
     <div id="planBody"><div class="empty">Loading…</div></div>
   </div>
 </div>
+
+<div id="sheet">
+  <div id="timer"><b></b></div>
+  <h4>What's this about?</h4>
+  <p>One tap so it lands in the right place.</p>
+  <div class="chips">
+    <button data-k="video">Content</button>
+    <button data-k="book">Book</button>
+    <button data-k="site">Platform</button>
+    <button data-k="business">Business</button>
+    <button data-k="event">Event</button>
+    <button data-k="task">Task</button>
+    <button data-k="personal">Personal</button>
+    <button data-k="other">Just a thought</button>
+  </div>
+  <button id="skip">Skip</button>
+</div>
 <div id="toast">Saved</div>
 
 <script>
 const API = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/capture-api";
+const ORG = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/capture-organize";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiYWZxdWxoYnNrYXN3a3lqamRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwODE3NDcsImV4cCI6MjA4MTY1Nzc0N30.cg7zCIJN9cPd1XUO29BVDjxDlOxcTzY1p6ndDThWr4Q";
+const VAPID = "BIsYpRrSeUjZSz9RK_6Y3ueIvrEI4C_jl2A91UL_GR93H4-bLHQUxJIm-ZduQJEK9XORRRyYe4Hyf2HesuOC_fI";
+const KIND_LABEL = { video:"Content", book:"Book", site:"Platform", business:"Business", event:"Event", task:"Task", personal:"Personal", other:"Thought" };
 const $ = id => document.getElementById(id);
 const store = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
-// queue = not yet on the server; recent = what you see in the list
+const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
+// queue = not yet on the server; recent = what you see under the box
 let queue = store.get("cap_queue", []);
 let recent = store.get("cap_recent", []);
 let key = store.get("cap_key", "");
+let pendingTags = store.get("cap_tags", {}); // client_id -> kind, for items already sent before the tag
 
 async function call(payload){
   const r = await fetch(API, { method:"POST", headers:{ "Content-Type":"application/json", apikey:ANON, Authorization:"Bearer "+ANON }, body: JSON.stringify(payload) });
@@ -122,55 +188,90 @@ async function call(payload){
   if (!r.ok || !j.ok) throw new Error(j.error || "failed");
   return j;
 }
-
 function lock(){ key = ""; store.set("cap_key", ""); document.body.classList.add("locked"); }
+function toast(t){ const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 1300); }
 function ago(iso){
   const s = (Date.now() - new Date(iso)) / 1000;
   if (s < 60) return "now"; if (s < 3600) return Math.floor(s/60)+"m";
   if (s < 86400) return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d";
 }
+
 function render(){
   const waiting = new Set(queue.map(q => q.client_id));
-  $("list").innerHTML = recent.slice(0, 15).map(r =>
-    `<div class="item${waiting.has(r.client_id) ? " wait" : ""}"><i></i><span></span><em>${ago(r.captured_at)}</em></div>`).join("");
-  [...$("list").querySelectorAll("span")].forEach((el, i) => el.textContent = recent[i].body);
+  $("list").innerHTML = recent.slice(0, 12).map(r =>
+    `<div class="item${waiting.has(r.client_id) ? " wait" : ""}"><i></i><span>${esc(r.body)}</span><em>${r.user_kind ? KIND_LABEL[r.user_kind] + " · " : ""}${ago(r.captured_at)}</em></div>`).join("");
   const s = $("sync");
-  if (queue.length) { s.textContent = queue.length + " waiting for network"; s.className = "wait"; }
-  else { s.textContent = recent.length ? "All saved" : ""; s.className = ""; }
+  if (queue.length) { s.innerHTML = `<i></i>${queue.length} waiting for network`; s.className = "wait"; }
+  else { s.innerHTML = recent.length ? `<i></i>Saved` : ""; s.className = ""; }
 }
 
 let flushing = false;
 async function flush(){
-  if (flushing || !queue.length || !key || !navigator.onLine) { render(); return; }
+  if (flushing || !key || !navigator.onLine) { render(); return; }
   flushing = true;
   try {
-    const batch = queue.slice(0, 50);
-    const j = await call({ action:"save", key, items: batch });
-    const done = new Set(j.saved);
-    queue = queue.filter(q => !done.has(q.client_id));
-    store.set("cap_queue", queue);
-    if (done.size) setTimeout(nudgeOrganizer, 500);
+    // don't send the newest item while the "what's this about" sheet is open for it
+    const ready = queue.filter(q => q.client_id !== sheetFor);
+    if (ready.length) {
+      const j = await call({ action:"save", key, items: ready.slice(0, 50) });
+      const done = new Set(j.saved);
+      queue = queue.filter(q => !done.has(q.client_id));
+      store.set("cap_queue", queue);
+      if (done.size) setTimeout(nudgeOrganizer, 400);
+    }
+    for (const [cid, k] of Object.entries(pendingTags)) {
+      if (queue.some(q => q.client_id === cid)) continue;
+      try { const t = await call({ action:"tag", key, client_id: cid, kind: k }); if (!t.pending) { delete pendingTags[cid]; store.set("cap_tags", pendingTags); } } catch(e) {}
+    }
   } catch(e) {}
   flushing = false;
   render();
   if (queue.length && navigator.onLine) setTimeout(flush, 15000);
 }
+function nudgeOrganizer(){ if (key && navigator.onLine) fetch(ORG, { method:"POST", headers:{ "Content-Type":"application/json", apikey:ANON, Authorization:"Bearer "+ANON }, body: JSON.stringify({ key }) }).catch(() => {}); }
 
-function toast(t){ const el = $("toast"); el.textContent = t; el.classList.add("on"); setTimeout(() => el.classList.remove("on"), 1100); }
-
+// ---------- capture ----------
 function save(){
   const body = $("box").value.trim();
   if (!body) return;
   const item = { client_id: (crypto.randomUUID ? crypto.randomUUID() : Date.now()+"-"+Math.random().toString(36).slice(2)), body, captured_at: new Date().toISOString() };
   queue.push(item); store.set("cap_queue", queue);
-  recent.unshift(item); recent = recent.slice(0, 40); store.set("cap_recent", recent);
+  recent.unshift({ ...item }); recent = recent.slice(0, 40); store.set("cap_recent", recent);
   $("box").value = ""; store.set("cap_draft", ""); $("save").disabled = true;
   toast(navigator.onLine ? "Saved" : "Saved on this device");
+  render();
+  openSheet(item.client_id);
+}
+
+// "What's this about?" sheet: one tap, or it closes by itself
+let sheetFor = null, sheetTimer = null;
+const SHEET_MS = 12000;
+function openSheet(cid){
+  sheetFor = cid;
+  $("sheet").classList.add("on");
+  const bar = $("timer").firstElementChild;
+  bar.style.transition = "none"; bar.style.transform = "scaleX(1)";
+  requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `transform ${SHEET_MS}ms linear`; bar.style.transform = "scaleX(0)"; }));
+  clearTimeout(sheetTimer); sheetTimer = setTimeout(() => closeSheet(null), SHEET_MS);
+}
+function closeSheet(kind){
+  if (!sheetFor) return;
+  const cid = sheetFor; sheetFor = null;
+  clearTimeout(sheetTimer);
+  $("sheet").classList.remove("on");
+  if (kind) {
+    const q = queue.find(x => x.client_id === cid);
+    if (q) { q.user_kind = kind; store.set("cap_queue", queue); }
+    else { pendingTags[cid] = kind; store.set("cap_tags", pendingTags); }
+    const r = recent.find(x => x.client_id === cid); if (r) { r.user_kind = kind; store.set("cap_recent", recent); }
+    toast("Got it: " + KIND_LABEL[kind]);
+  }
   render(); flush();
   $("box").focus();
 }
+document.querySelectorAll(".chips button").forEach(b => b.addEventListener("click", () => closeSheet(b.dataset.k)));
+$("skip").addEventListener("click", () => closeSheet(null));
 
-// keep the draft if the app is closed mid-thought
 $("box").value = store.get("cap_draft", "");
 $("save").disabled = !$("box").value.trim();
 $("box").addEventListener("input", () => { store.set("cap_draft", $("box").value); $("save").disabled = !$("box").value.trim(); });
@@ -178,6 +279,97 @@ $("box").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey 
 $("save").addEventListener("click", save);
 $("clear").addEventListener("click", () => { $("box").value = ""; store.set("cap_draft", ""); $("save").disabled = true; $("box").focus(); });
 
+// ---------- plan ----------
+const lagos = d => new Date(new Date(d).getTime() + 3600000);
+const isPending = c => c.status === "new" || !c.scheduled_for || new Date(c.scheduled_for).getTime() < 86400000;
+function dayName(iso){
+  const d = lagos(iso).toISOString().slice(0,10), t = lagos(Date.now()).toISOString().slice(0,10);
+  const tm = lagos(Date.now() + 86400000).toISOString().slice(0,10);
+  if (d === t) return "Today"; if (d === tm) return "Tomorrow";
+  return lagos(iso).toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"short", timeZone:"UTC" });
+}
+function clock(iso){ const d = lagos(iso); let h = d.getUTCHours(), m = d.getUTCMinutes(); const ap = h >= 12 ? "pm" : "am"; h = h % 12 || 12; return h + (m ? ":" + String(m).padStart(2,"0") : "") + ap; }
+
+function card(c, idea){
+  const kind = c.kind ? `<span class="kind">${KIND_LABEL[c.kind] || c.kind}</span>` : "";
+  const when = idea ? `<span class="block">Parked</span>`
+    : isPending(c) ? `<span class="block">Finding a slot…</span>`
+    : `<span class="when">${clock(c.scheduled_for)}</span><span class="block">${esc(c.block_label || "")}</span>`;
+  const meta = [c.minutes ? c.minutes + " min" : "", c.energy ? c.energy + " energy" : "", c.nudges ? `<span class="slip">moved ${c.nudges}×</span>` : "", c.claude_at ? "by Claude" : (c.organized_by === "groq" ? "quick pass, Claude is next" : "")].filter(Boolean).join(" · ");
+  const verdict = c.verdict ? `<div class="verdict">${esc(c.verdict)}</div>` : "";
+  const ask = c.question ? `<div class="ask"><div class="q">${esc(c.question)}</div>${c.answer ? `<div class="a">You said: ${esc(c.answer)}${c.claude_at ? "" : " · Claude will rework it"}</div>` : ""}<form data-id="${c.id}"><input name="a" placeholder="${c.answer ? "Add more" : "Answer in a line"}" autocomplete="off"><button>Send</button></form></div>` : "";
+  const openScript = c.kind === "video" && !idea && !isPending(c) && dayName(c.scheduled_for) === "Today";
+  const shoot = c.script ? `<details${openScript ? " open" : ""}><summary>Script</summary>${c.format ? `<div class="fmt"><b>Format</b>${esc(c.format)}</div>` : ""}${c.grade ? `<div class="fmt"><b>Grade</b>${esc(c.grade)}</div>` : ""}<pre>${esc(c.script)}</pre></details>` : "";
+  const notes = c.notes ? `<details><summary>Claude's notes</summary><pre>${esc(c.notes)}</pre></details>` : "";
+  const dirs = `<details><summary>${Array.isArray(c.directions) && c.directions.length ? "Directions" : "What you said"}</summary>${Array.isArray(c.directions) && c.directions.length ? `<ol>${c.directions.map(d => `<li>${esc(d)}</li>`).join("")}</ol>` : ""}<div class="raw">“${esc(c.body)}”</div></details>`;
+  const acts = idea
+    ? `<button class="done" data-a="schedule" data-id="${c.id}">Give it a time</button><button data-a="drop" data-id="${c.id}">Drop</button>`
+    : `<button class="done" data-a="done" data-id="${c.id}">Done</button><button data-a="later" data-id="${c.id}">Later</button><button data-a="park" data-id="${c.id}">Park</button><button data-a="drop" data-id="${c.id}">Drop</button>`;
+  return `<div class="card"><div class="row1">${kind}${when}</div><h3>${esc(c.title || c.body.slice(0,70))}</h3>${c.next_step ? `<div class="next">${esc(c.next_step)}</div>` : ""}${meta ? `<div class="meta">${meta}</div>` : ""}${verdict}${ask}${shoot}${notes}${dirs}<div class="acts">${acts}</div></div>`;
+}
+async function loadPlan(){
+  if (!key) return;
+  let j;
+  try { j = await call({ action:"plan", key }); store.set("cap_plan", j); }
+  catch(e) { j = store.get("cap_plan", null); if (!j) { $("planBody").innerHTML = `<div class="empty">Can't load the plan without network.</div>`; return; } }
+  let html = "", last = "";
+  const open = [...j.open].sort((a, b) => (isPending(a) ? 0 : new Date(a.scheduled_for)) - (isPending(b) ? 0 : new Date(b.scheduled_for)));
+  for (const c of open) {
+    const day = isPending(c) ? "Being sorted" : dayName(c.scheduled_for);
+    if (day !== last) { html += `<div class="day"><span>${day}</span></div>`; last = day; }
+    html += card(c, false);
+  }
+  if (j.ideas.length) html += `<div class="day"><span>Parked ideas</span><span>${j.ideas.length}</span></div>` + j.ideas.map(c => card(c, true)).join("");
+  $("planBody").innerHTML = html || `<div class="empty">Nothing open.<br>Capture something and it shows up here in a few minutes.</div>`;
+}
+$("planBody").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-a]"); if (!b) return;
+  b.disabled = true;
+  try { await call({ action:"update", key, id: b.dataset.id, to: b.dataset.a }); toast({ done:"Done", later:"Moved to the next slot", park:"Parked", drop:"Dropped", schedule:"Finding it a time" }[b.dataset.a]); }
+  catch(err) { toast("Needs network"); }
+  loadPlan();
+});
+$("planBody").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target, a = f.a.value.trim(); if (!a) return;
+  f.querySelector("button").disabled = true;
+  try { await call({ action:"answer", key, id: f.dataset.id, answer: a }); toast("Sent. Claude will rework it"); }
+  catch(err) { toast("Needs network"); }
+  loadPlan();
+});
+
+function showTab(t){
+  document.body.classList.toggle("plan", t === "plan");
+  $("tCap").classList.toggle("on", t !== "plan"); $("tPlan").classList.toggle("on", t === "plan");
+  if (t === "plan") { loadPlan(); notifButton(); } else $("box").focus();
+}
+$("tCap").addEventListener("click", () => showTab("cap"));
+$("tPlan").addEventListener("click", () => showTab("plan"));
+
+// ---------- reminders ----------
+function notifButton(){
+  const ok = "Notification" in window && "PushManager" in window;
+  $("notif").style.display = ok && Notification.permission !== "granted" ? "block" : "none";
+  if (ok && Notification.permission === "granted") subscribe();
+}
+function b64(s){ const p = "=".repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); }
+async function subscribe(){
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: b64(VAPID) });
+    if (store.get("cap_sub", "") === sub.endpoint) return;
+    await call({ action:"subscribe", key, sub: sub.toJSON() });
+    store.set("cap_sub", sub.endpoint);
+  } catch(e) {}
+}
+$("notif").addEventListener("click", async () => {
+  const p = await Notification.requestPermission();
+  if (p === "granted") { await subscribe(); toast("Reminders on"); }
+  notifButton();
+});
+
+// ---------- unlock ----------
 $("unlock").addEventListener("click", async () => {
   $("lockErr").textContent = "";
   try {
@@ -192,99 +384,14 @@ $("pin").addEventListener("keydown", e => { if (e.key === "Enter") $("unlock").c
 window.addEventListener("online", flush);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { flush(); if (document.body.classList.contains("plan")) loadPlan(); else $("box").focus(); } });
 
-// one-tap install where Chrome allows it
 let installEvt = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("install").style.display = "block"; });
 $("install").addEventListener("click", async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $("install").style.display = "none"; });
 window.addEventListener("appinstalled", () => { $("install").style.display = "none"; });
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
-
-
-// ---------- Plan ----------
-const ORG = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/capture-organize";
-const VAPID = "BIsYpRrSeUjZSz9RK_6Y3ueIvrEI4C_jl2A91UL_GR93H4-bLHQUxJIm-ZduQJEK9XORRRyYe4Hyf2HesuOC_fI";
-const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
-const lagos = d => new Date(new Date(d).getTime() + 3600000);
-function dayName(iso){
-  const d = lagos(iso).toISOString().slice(0,10), t = lagos(Date.now()).toISOString().slice(0,10);
-  const tm = lagos(Date.now() + 86400000).toISOString().slice(0,10);
-  if (d === t) return "Today"; if (d === tm) return "Tomorrow";
-  return lagos(iso).toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"short", timeZone:"UTC" });
-}
-function clock(iso){ const d = lagos(iso); let h = d.getUTCHours(), m = d.getUTCMinutes(); const ap = h >= 12 ? "pm" : "am"; h = h % 12 || 12; return h + (m ? ":" + String(m).padStart(2,"0") : "") + ap; }
-function card(c, idea){
-  const pending = c.status === "new" || (c.scheduled_for && new Date(c.scheduled_for).getTime() < 86400000);
-  const when = idea ? `<div class="when">Parked idea <span>· ${esc(c.kind || "")}</span></div>`
-    : pending ? `<div class="when">Finding a slot…</div>`
-    : `<div class="when">${clock(c.scheduled_for)} <span>· ${esc(c.block_label || "")}</span></div>`;
-  const dirs = Array.isArray(c.directions) && c.directions.length ? `<details><summary>Directions</summary><ol>${c.directions.map(d => `<li>${esc(d)}</li>`).join("")}</ol><div class="raw">“${esc(c.body)}”</div></details>` : `<div class="raw">“${esc(c.body)}”</div>`;
-  const meta = [c.minutes ? c.minutes + " min" : "", c.energy ? c.energy + " energy" : "", c.nudges ? `<span class="slip">moved ${c.nudges}×</span>` : "", c.claude_at ? "Claude" : (c.organized_by === "groq" ? "quick pass" : "")].filter(Boolean).join(" · ");
-  const notes = c.notes ? `<details><summary>Claude's notes</summary><pre>${esc(c.notes)}</pre></details>` : "";
-  const shoot = c.script ? `<div class="shoot">${c.format ? `<div class="fmt"><b>Format</b> ${esc(c.format)}</div>` : ""}${c.grade ? `<div class="fmt"><b>Grade</b> ${esc(c.grade)}</div>` : ""}<details${c.kind === "video" && !idea && dayName(c.scheduled_for || 0) === "Today" ? " open" : ""}><summary>Script</summary><pre>${esc(c.script)}</pre></details></div>` : "";
-  const acts = idea
-    ? `<button data-a="schedule" data-id="${c.id}">Give it a time</button><button data-a="drop" data-id="${c.id}">Drop</button>`
-    : `<button class="done" data-a="done" data-id="${c.id}">Done</button><button data-a="later" data-id="${c.id}">Later</button><button data-a="park" data-id="${c.id}">Park</button><button data-a="drop" data-id="${c.id}">Drop</button>`;
-  return `<div class="card">${when}<h3>${esc(c.title || c.body.slice(0,60))}</h3>${c.next_step ? `<div class="next">${esc(c.next_step)}</div>` : ""}${meta ? `<div class="meta">${meta}</div>` : ""}${shoot}${notes}${dirs}<div class="acts">${acts}</div></div>`;
-}
-async function loadPlan(){
-  if (!key) return;
-  let j;
-  try { j = await call({ action:"plan", key }); store.set("cap_plan", j); }
-  catch(e) { j = store.get("cap_plan", null); if (!j) { $("planBody").innerHTML = `<div class="empty">Can't load the plan without network.</div>`; return; } }
-  let html = "", last = "";
-  for (const c of j.open) {
-    const pending = c.status === "new" || !c.scheduled_for || new Date(c.scheduled_for).getTime() < 86400000;
-    const day = pending ? "Being sorted" : dayName(c.scheduled_for);
-    if (day !== last) { html += `<div class="day">${day}</div>`; last = day; }
-    html += card(c, false);
-  }
-  if (j.ideas.length) { html += `<div class="day">Parked ideas</div>` + j.ideas.map(c => card(c, true)).join(""); }
-  $("planBody").innerHTML = html || `<div class="empty">Nothing open. Capture something and it shows up here within 10 minutes.</div>`;
-}
-$("planBody").addEventListener("click", async e => {
-  const b = e.target.closest("button[data-a]"); if (!b) return;
-  b.disabled = true;
-  try { await call({ action:"update", key, id: b.dataset.id, to: b.dataset.a }); toast({ done:"Done", later:"Moved to the next slot", park:"Parked", drop:"Dropped", schedule:"Finding it a time" }[b.dataset.a]); }
-  catch(err) { toast("Needs network"); }
-  loadPlan();
-});
-function showTab(t){
-  document.body.classList.toggle("plan", t === "plan");
-  $("tCap").classList.toggle("on", t !== "plan"); $("tPlan").classList.toggle("on", t === "plan");
-  if (t === "plan") { loadPlan(); notifButton(); } else $("box").focus();
-}
-$("tCap").addEventListener("click", () => showTab("cap"));
-$("tPlan").addEventListener("click", () => showTab("plan"));
-
-// reminders (web push to this app)
-function notifButton(){
-  const ok = "Notification" in window && "PushManager" in window;
-  $("notif").style.display = ok && Notification.permission !== "granted" ? "block" : "none";
-  if (ok && Notification.permission === "granted") subscribe();
-}
-function b64(s){ const p = "=".repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); }
-async function subscribe(){
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: b64(VAPID) });
-    const sig = sub.endpoint;
-    if (store.get("cap_sub", "") === sig) return;
-    await call({ action:"subscribe", key, sub: sub.toJSON() });
-    store.set("cap_sub", sig);
-  } catch(e) {}
-}
-$("notif").addEventListener("click", async () => {
-  const p = await Notification.requestPermission();
-  if (p === "granted") { await subscribe(); toast("Reminders on"); }
-  notifButton();
-});
-// ask the organizer to run now so new captures get sorted without waiting
-function nudgeOrganizer(){ if (key && navigator.onLine) fetch(ORG, { method:"POST", headers:{ "Content-Type":"application/json", apikey:ANON, Authorization:"Bearer "+ANON }, body: JSON.stringify({ key }) }).catch(() => {}); }
 if (new URLSearchParams(location.search).get("tab") === "plan") showTab("plan");
 if (key && "Notification" in window && Notification.permission === "granted") subscribe();
-
 if (!key) lock(); else flush();
 render();
 </script>

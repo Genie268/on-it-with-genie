@@ -60,11 +60,11 @@ function findSlot(kind: string, routine: any, plan: any, taken: Map<string, numb
   return null;
 }
 
-async function askGroq(items: Array<{ id: string; body: string }>) {
+async function askGroq(items: Array<Record<string, string>>) {
   if (!GROQ) return null;
   const system = `You organize voice captures for Genie (Eugene Obo), a personal development coach, TikTok creator and founder in Abuja, Nigeria.
 His areas: book ("The Doing Thinker", about self-education in the age of AI), video (TikTok and podcast content ideas), site (his platform eugeneobo.com and its features), business (offers, clients, money, partnerships), event (Forward with Genie in-person events), task (errands and to-dos), personal (relationships, home, health habits), other.
-For each capture return JSON. Write in plain, sharp English a Nigerian reader understands. No hype, no motivational fluff, no em dashes.
+If a capture has kind_from_genie, he told you what it is about: use that kind. For each capture return JSON. Write in plain, sharp English a Nigerian reader understands. No hype, no motivational fluff, no em dashes.
 - title: 3 to 7 words
 - kind: one of ${KINDS.join(", ")}
 - directions: 2 or 3 concrete ways he could take this further (for a video idea: angles or hooks; for a task: just the steps). One sentence each.
@@ -139,15 +139,15 @@ Deno.serve(async (req) => {
   });
 
   // 1 + 2. organize and place new captures
-  const { data: fresh } = await sb.from("captures").select("id, body, captured_at").eq("status", "new")
+  const { data: fresh } = await sb.from("captures").select("id, body, captured_at, user_kind").eq("status", "new")
     .order("captured_at").limit(12);
   if (fresh?.length) {
-    const out = (await askGroq(fresh.map((f: any) => ({ id: f.id, body: f.body })))) || [];
+    const out = (await askGroq(fresh.map((f: any) => ({ id: f.id, body: f.body, ...(f.user_kind ? { kind_from_genie: f.user_kind } : {}) })))) || [];
     const byId = new Map(out.map((o: any) => [String(o.id), o]));
     for (const f of fresh as any[]) {
       const o: any = byId.get(f.id);
       const aiOk = !!o;
-      const kind = aiOk && KINDS.includes(o.kind) ? o.kind : "other";
+      const kind = f.user_kind && KINDS.includes(f.user_kind) ? f.user_kind : (aiOk && KINDS.includes(o.kind) ? o.kind : "other");
       const patch: any = {
         kind,
         title: aiOk ? String(o.title || "").slice(0, 120) : f.body.slice(0, 60),
