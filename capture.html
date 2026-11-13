@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#060606">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="/manifest-capture.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>Capture</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#060606;color:#ededed;font-family:Helvetica,Arial,system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+body{display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 14px)}
+.top{display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#777;margin-bottom:12px}
+.top b{color:#c49a1c;font-weight:800}
+#sync{letter-spacing:.04em;text-transform:none}
+#sync.wait{color:#c49a1c}
+textarea{flex:1;min-height:180px;width:100%;resize:none;background:#111;color:#f4f4f4;border:1px solid #222;border-radius:16px;padding:18px;font-size:20px;line-height:1.45;outline:none;font-family:inherit}
+textarea:focus{border-color:#c49a1c}
+textarea::placeholder{color:#555}
+.row{display:flex;gap:10px;margin-top:12px}
+button{font-family:inherit;border:0;border-radius:14px;font-size:17px;font-weight:800;padding:18px;cursor:pointer}
+#save{flex:1;background:#c49a1c;color:#060606}
+#save:disabled{opacity:.35}
+#clear{background:#1a1a1a;color:#999;padding:18px 20px}
+#install{display:none;width:100%;margin-top:10px;background:#1a1a1a;color:#ededed;font-size:15px}
+#list{margin-top:14px;max-height:32vh;overflow:auto}
+.item{display:flex;gap:10px;padding:10px 2px;border-top:1px solid #161616;font-size:14px;color:#aaa;line-height:1.4}
+.item i{flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;background:#c49a1c}
+.item.wait i{background:#444}
+.item span{flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.item em{flex:none;font-style:normal;color:#555;font-size:12px}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);transform:translateX(-50%) translateY(20px);background:#ededed;color:#060606;font-weight:800;padding:10px 18px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+#lock{display:none;flex:1;flex-direction:column;justify-content:center;gap:14px;max-width:360px;width:100%;margin:0 auto}
+#lock h1{font-size:28px;font-weight:900;letter-spacing:-.02em}
+#lock p{color:#888;font-size:15px}
+#lock input{background:#111;border:1px solid #222;border-radius:14px;color:#fff;font-size:22px;padding:16px;letter-spacing:.3em;text-align:center;outline:none}
+#lock input:focus{border-color:#c49a1c}
+#lock button{background:#c49a1c;color:#060606}
+#lockErr{color:#e66;font-size:14px;min-height:18px}
+body.locked #app{display:none}
+body.locked #lock{display:flex}
+#app{flex:1;display:flex;flex-direction:column}
+</style>
+</head>
+<body>
+<div id="lock">
+  <h1>Capture</h1>
+  <p>Enter your admin PIN once. This device stays unlocked after that.</p>
+  <input id="pin" type="password" inputmode="numeric" autocomplete="off">
+  <button id="unlock">Unlock</button>
+  <div id="lockErr"></div>
+</div>
+
+<div id="app">
+  <div class="top"><b>Capture</b><span id="sync"></span></div>
+  <textarea id="box" placeholder="Talk or type. Save. Move on." autofocus></textarea>
+  <div class="row">
+    <button id="clear" aria-label="Clear">Clear</button>
+    <button id="save" disabled>Save</button>
+  </div>
+  <button id="install">Add Capture to home screen</button>
+  <div id="list"></div>
+</div>
+<div id="toast">Saved</div>
+
+<script>
+const API = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/capture-api";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiYWZxdWxoYnNrYXN3a3lqamRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwODE3NDcsImV4cCI6MjA4MTY1Nzc0N30.cg7zCIJN9cPd1XUO29BVDjxDlOxcTzY1p6ndDThWr4Q";
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+// queue = not yet on the server; recent = what you see in the list
+let queue = store.get("cap_queue", []);
+let recent = store.get("cap_recent", []);
+let key = store.get("cap_key", "");
+
+async function call(payload){
+  const r = await fetch(API, { method:"POST", headers:{ "Content-Type":"application/json", apikey:ANON, Authorization:"Bearer "+ANON }, body: JSON.stringify(payload) });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && payload.action !== "unlock") { lock(); throw new Error("locked"); }
+  if (!r.ok || !j.ok) throw new Error(j.error || "failed");
+  return j;
+}
+
+function lock(){ key = ""; store.set("cap_key", ""); document.body.classList.add("locked"); }
+function ago(iso){
+  const s = (Date.now() - new Date(iso)) / 1000;
+  if (s < 60) return "now"; if (s < 3600) return Math.floor(s/60)+"m";
+  if (s < 86400) return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d";
+}
+function render(){
+  const waiting = new Set(queue.map(q => q.client_id));
+  $("list").innerHTML = recent.slice(0, 15).map(r =>
+    `<div class="item${waiting.has(r.client_id) ? " wait" : ""}"><i></i><span></span><em>${ago(r.captured_at)}</em></div>`).join("");
+  [...$("list").querySelectorAll("span")].forEach((el, i) => el.textContent = recent[i].body);
+  const s = $("sync");
+  if (queue.length) { s.textContent = queue.length + " waiting for network"; s.className = "wait"; }
+  else { s.textContent = recent.length ? "All saved" : ""; s.className = ""; }
+}
+
+let flushing = false;
+async function flush(){
+  if (flushing || !queue.length || !key || !navigator.onLine) { render(); return; }
+  flushing = true;
+  try {
+    const batch = queue.slice(0, 50);
+    const j = await call({ action:"save", key, items: batch });
+    const done = new Set(j.saved);
+    queue = queue.filter(q => !done.has(q.client_id));
+    store.set("cap_queue", queue);
+  } catch(e) {}
+  flushing = false;
+  render();
+  if (queue.length && navigator.onLine) setTimeout(flush, 15000);
+}
+
+function toast(t){ const el = $("toast"); el.textContent = t; el.classList.add("on"); setTimeout(() => el.classList.remove("on"), 1100); }
+
+function save(){
+  const body = $("box").value.trim();
+  if (!body) return;
+  const item = { client_id: (crypto.randomUUID ? crypto.randomUUID() : Date.now()+"-"+Math.random().toString(36).slice(2)), body, captured_at: new Date().toISOString() };
+  queue.push(item); store.set("cap_queue", queue);
+  recent.unshift(item); recent = recent.slice(0, 40); store.set("cap_recent", recent);
+  $("box").value = ""; store.set("cap_draft", ""); $("save").disabled = true;
+  toast(navigator.onLine ? "Saved" : "Saved on this device");
+  render(); flush();
+  $("box").focus();
+}
+
+// keep the draft if the app is closed mid-thought
+$("box").value = store.get("cap_draft", "");
+$("save").disabled = !$("box").value.trim();
+$("box").addEventListener("input", () => { store.set("cap_draft", $("box").value); $("save").disabled = !$("box").value.trim(); });
+$("box").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); } });
+$("save").addEventListener("click", save);
+$("clear").addEventListener("click", () => { $("box").value = ""; store.set("cap_draft", ""); $("save").disabled = true; $("box").focus(); });
+
+$("unlock").addEventListener("click", async () => {
+  $("lockErr").textContent = "";
+  try {
+    const j = await call({ action:"unlock", pin: $("pin").value });
+    key = j.key; store.set("cap_key", key);
+    document.body.classList.remove("locked");
+    $("box").focus(); flush();
+  } catch(e) { $("lockErr").textContent = navigator.onLine ? "Wrong PIN" : "You need network to unlock the first time"; }
+});
+$("pin").addEventListener("keydown", e => { if (e.key === "Enter") $("unlock").click(); });
+
+window.addEventListener("online", flush);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { flush(); $("box").focus(); } });
+
+// one-tap install where Chrome allows it
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("install").style.display = "block"; });
+$("install").addEventListener("click", async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $("install").style.display = "none"; });
+window.addEventListener("appinstalled", () => { $("install").style.display = "none"; });
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+
+if (!key) lock(); else flush();
+render();
+</script>
+</body>
+</html>

@@ -1,6 +1,15 @@
 {
   "headers": [
     {
+      "source": "/capture",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
       "source": "/sw.js",
       "headers": [
         {
@@ -150,6 +159,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/capture",
+      "destination": "/capture.html"
+    },
     {
       "source": "/card",
       "destination": "/card.html"
