@@ -13,75 +13,102 @@
 <title>Capture</title>
 <style>
 :root{
-  --bg:#141414; --surface:#1c1c1c; --raised:#232323; --line:#2a2a2a;
+  --bg:#141414; --surface:#1c1c1c; --raised:#242424; --line:#2c2c2c;
   --text:#ededeb; --muted:#8c8c88; --faint:#5c5c59;
   --ink:#141414; --paper:#efede8; --warn:#e07a5f; --ok:#9cc4a4;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:Satoshi,Helvetica,Arial,system-ui,sans-serif;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
-body{display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 12px) 18px calc(env(safe-area-inset-bottom) + 14px);max-width:760px;margin:0 auto}
+body{display:flex;flex-direction:column;padding:calc(env(safe-area-inset-top) + 10px) 16px calc(env(safe-area-inset-bottom) + 12px);max-width:760px;margin:0 auto}
 button{font-family:inherit;border:0;cursor:pointer;color:inherit;background:none}
+input,textarea{font-family:inherit}
 
-/* header */
-.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.seg{display:flex;background:var(--surface);border-radius:99px;padding:4px}
-.seg button{padding:8px 16px;border-radius:99px;font-size:14px;font-weight:700;color:var(--muted)}
-.seg button.on{background:var(--raised);color:var(--text)}
-#sync{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--faint)}
-#sync i{width:7px;height:7px;border-radius:50%;background:var(--ok)}
-#sync.wait i{background:var(--warn)}
+/* header: D O P E */
+.top{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.tabs{flex:1;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-radius:14px;padding:4px;gap:2px}
+.tabs button{padding:9px 2px 8px;border-radius:10px;font-size:13px;font-weight:700;color:var(--muted);line-height:1.1}
+.tabs button b{display:block;font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--faint);margin-bottom:2px}
+.tabs button.on{background:var(--raised);color:var(--text)}
+.tabs button.on b{color:var(--paper)}
+#gear{width:40px;height:40px;border-radius:12px;background:var(--surface);display:grid;place-items:center;position:relative;flex:none}
+#gear svg{width:18px;height:18px;stroke:var(--muted)}
+#gear i{position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--ok);display:none}
+#gear.wait i{display:block;background:var(--warn)}
+.view{display:none;flex:1;min-height:0;flex-direction:column}
+.view.on{display:flex}
+.scroll{flex:1;overflow:auto;padding-bottom:40px;margin:0 -2px;padding-left:2px;padding-right:2px}
 
-/* capture */
-#capView{flex:1;display:flex;flex-direction:column;min-height:0}
-textarea{flex:1;min-height:200px;width:100%;resize:none;background:var(--surface);color:var(--text);border:1px solid transparent;border-radius:20px;padding:20px;font-size:21px;line-height:1.5;outline:none;font-family:inherit;transition:border-color .2s}
-textarea:focus{border-color:var(--line)}
-textarea::placeholder{color:var(--faint)}
-.bar{display:flex;gap:10px;margin-top:12px}
-#save{flex:1;background:var(--paper);color:var(--ink);font-size:17px;font-weight:800;padding:18px;border-radius:16px;transition:opacity .2s}
+/* DUMP */
+#box{flex:1;min-height:180px;width:100%;resize:none;background:var(--surface);color:var(--text);border:1px solid transparent;border-radius:20px;padding:20px;font-size:21px;line-height:1.5;outline:none;transition:border-color .2s}
+#box:focus{border-color:var(--line)}
+#box::placeholder{color:var(--faint)}
+body.rec #box{border-color:var(--paper)}
+.bar{display:flex;gap:10px;margin-top:12px;align-items:stretch}
+#mic{width:64px;flex:none;border-radius:18px;background:var(--surface);display:grid;place-items:center;position:relative}
+#mic svg{width:26px;height:26px;fill:var(--text)}
+body.rec #mic{background:var(--paper)}
+body.rec #mic svg{fill:var(--ink)}
+body.rec #mic::after{content:"";position:absolute;inset:-4px;border-radius:22px;border:2px solid var(--paper);animation:pulse 1.4s ease-out infinite}
+@keyframes pulse{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.15)}}
+#save{flex:1;background:var(--paper);color:var(--ink);font-size:17px;font-weight:800;padding:18px;border-radius:18px;transition:opacity .2s}
 #save:disabled{opacity:.25}
-#clear{background:var(--surface);color:var(--muted);font-size:15px;font-weight:700;padding:18px 20px;border-radius:16px}
+.under{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:13px;color:var(--faint);min-height:20px}
+.under button{color:var(--muted);font-weight:700;font-size:13px;padding:4px 0}
+#recInfo{display:none;color:var(--paper);font-weight:700}
+body.rec #recInfo{display:inline}
+body.rec #dumpCount{display:none}
 #install{display:none;width:100%;margin-top:10px;background:var(--surface);color:var(--text);font-size:15px;font-weight:700;padding:14px;border-radius:14px}
-#list{margin-top:16px;max-height:28vh;overflow:auto}
-.item{display:flex;gap:12px;padding:11px 2px;border-top:1px solid var(--surface);font-size:14px;color:var(--muted);line-height:1.4}
-.item i{flex:none;width:6px;height:6px;border-radius:50%;margin-top:7px;background:var(--faint)}
-.item.wait i{background:var(--warn)}
-.item span{flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.item em{flex:none;font-style:normal;color:var(--faint);font-size:12px}
 
-/* what's this about */
-#sheet{position:fixed;left:0;right:0;bottom:0;background:var(--raised);border-radius:24px 24px 0 0;padding:22px 18px calc(env(safe-area-inset-bottom) + 18px);transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);z-index:20;max-width:760px;margin:0 auto;box-shadow:0 -20px 60px rgba(0,0,0,.5)}
-#sheet.on{transform:none}
-#sheet h4{font-size:18px;font-weight:800;margin-bottom:4px}
-#sheet p{font-size:14px;color:var(--muted);margin-bottom:16px}
+/* sheet: what's this about */
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--raised);border-radius:24px 24px 0 0;padding:20px 16px calc(env(safe-area-inset-bottom) + 16px);transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);z-index:20;max-width:760px;margin:0 auto;box-shadow:0 -20px 60px rgba(0,0,0,.55)}
+.sheet.on{transform:none}
+.sheet h4{font-size:18px;font-weight:800;margin-bottom:4px}
+.sheet p{font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.45}
 .chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.chips button{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px 12px;font-size:16px;font-weight:700;text-align:left}
-.chips button:active{background:var(--paper);color:var(--ink)}
-#skip{display:block;margin:14px auto 0;color:var(--muted);font-size:14px;font-weight:700;padding:8px 16px}
-#timer{height:2px;background:var(--line);border-radius:2px;margin-bottom:16px;overflow:hidden}
+.chips button{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 12px;font-size:16px;font-weight:700;text-align:left;display:flex;justify-content:space-between;align-items:center}
+.chips button::after{content:"";width:16px;height:16px;border-radius:5px;border:1.5px solid var(--faint)}
+.chips button.sel{background:var(--paper);color:var(--ink);border-color:var(--paper)}
+.chips button.sel::after{border-color:var(--ink);background:var(--ink);box-shadow:inset 0 0 0 3px var(--paper)}
+.sheetBar{display:flex;gap:10px;margin-top:14px}
+.sheetBar button{flex:1;padding:15px;border-radius:14px;font-size:15px;font-weight:800}
+#tagDone{background:var(--paper);color:var(--ink)}
+#tagDone:disabled{opacity:.3}
+#tagSkip{background:var(--surface);color:var(--muted)}
+#timer{height:2px;background:var(--line);border-radius:2px;margin-bottom:14px;overflow:hidden}
 #timer b{display:block;height:100%;width:100%;background:var(--muted);transform-origin:left}
+#settings label{display:block;font-size:13px;font-weight:700;color:var(--muted);margin:14px 0 6px}
+#settings input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:12px;color:var(--text);font-size:15px;padding:13px;outline:none}
+#settings .row{display:flex;gap:8px}
+#settings .row button{background:var(--paper);color:var(--ink);font-weight:800;border-radius:12px;padding:0 16px}
+#settings small{display:block;font-size:13px;color:var(--faint);margin-top:8px;line-height:1.45}
+#settings .close{display:block;width:100%;margin-top:18px;background:var(--surface);color:var(--muted);padding:14px;border-radius:14px;font-weight:800}
+#voiceState{font-size:14px;color:var(--text);margin-top:2px}
 
-/* plan */
-#planView{display:none;flex:1;overflow:auto;padding-bottom:30px;margin:0 -2px}
-body.plan #capView{display:none}
-body.plan #planView{display:block}
-.day{font-size:13px;font-weight:700;color:var(--muted);margin:22px 4px 10px;display:flex;justify-content:space-between}
-.day:first-child{margin-top:4px}
+/* shared list bits */
+.sec{font-size:13px;font-weight:800;color:var(--muted);margin:22px 4px 10px;display:flex;justify-content:space-between;align-items:baseline}
+.sec:first-child{margin-top:4px}
+.sec span:last-child{font-weight:700;color:var(--faint)}
+.hint{font-size:13px;color:var(--faint);line-height:1.45;margin:0 4px 6px}
+.filters{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;margin:0 -2px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.filters button{flex:none;padding:8px 13px;border-radius:99px;background:var(--surface);color:var(--muted);font-size:13px;font-weight:700}
+.filters button.on{background:var(--paper);color:var(--ink)}
 .card{background:var(--surface);border-radius:18px;padding:16px;margin-bottom:10px}
-.row1{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-.kind{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:var(--paper);padding:3px 8px;border-radius:6px}
+.row1{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.kind{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:var(--paper);padding:3px 7px;border-radius:6px}
+.kind.alt{background:var(--raised);color:var(--muted)}
 .when{font-size:13px;font-weight:700;color:var(--text)}
 .block{font-size:13px;color:var(--faint)}
-.card h3{font-size:19px;font-weight:800;line-height:1.3;letter-spacing:-.01em}
+.card h3{font-size:18px;font-weight:800;line-height:1.3;letter-spacing:-.01em}
 .next{font-size:15px;color:var(--muted);margin-top:6px;line-height:1.45}
 .meta{font-size:12px;color:var(--faint);margin-top:8px}
 .slip{color:var(--warn)}
-.verdict{margin-top:12px;font-size:14px;line-height:1.45;color:var(--text);border-left:2px solid var(--paper);padding-left:10px}
+.verdict{margin-top:12px;font-size:14px;line-height:1.5;color:var(--text);border-left:2px solid var(--paper);padding-left:10px}
 .ask{margin-top:12px;background:var(--raised);border-radius:14px;padding:12px}
 .ask .q{font-size:15px;font-weight:700;line-height:1.4;margin-bottom:10px}
-.ask .a{font-size:14px;color:var(--muted);margin-bottom:6px}
+.ask .a{font-size:14px;color:var(--muted);margin-bottom:8px;white-space:pre-wrap}
 .ask form{display:flex;gap:8px}
-.ask input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:16px;padding:11px 12px;font-family:inherit;outline:none}
-.ask input:focus{border-color:var(--muted)}
+.ask input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:16px;padding:11px 12px;outline:none}
 .ask button{background:var(--paper);color:var(--ink);font-weight:800;border-radius:10px;padding:0 14px;font-size:14px}
 details{margin-top:10px}
 summary{font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;list-style:none;padding:6px 0}
@@ -96,22 +123,59 @@ ol li{margin-bottom:5px}
 .raw{font-size:14px;color:var(--faint);margin-top:8px;font-style:italic;line-height:1.45}
 .acts{display:flex;gap:6px;margin-top:14px}
 .acts button{flex:1;padding:12px 4px;font-size:14px;font-weight:700;border-radius:12px;background:var(--raised);color:var(--text)}
-.acts button.done{background:var(--paper);color:var(--ink)}
+.acts button.main{background:var(--paper);color:var(--ink)}
 .acts button:disabled{opacity:.4}
-#notif{display:none;width:100%;margin:0 0 6px;background:var(--paper);color:var(--ink);font-size:15px;font-weight:800;padding:14px;border-radius:14px}
-.empty{color:var(--faint);font-size:15px;text-align:center;margin-top:60px;line-height:1.6}
+.empty{color:var(--faint);font-size:15px;text-align:center;margin:50px 10px;line-height:1.6}
+.themes{background:var(--surface);border-radius:18px;padding:14px 16px;margin-bottom:12px}
+.themes summary{color:var(--text);font-size:15px}
+.themes pre{background:none;padding:6px 0 0;color:var(--muted);font-size:15px}
+
+/* PRIORITIZE */
+.prow{background:var(--surface);border-radius:16px;padding:14px;margin-bottom:8px}
+.prow .t{font-size:16px;font-weight:800;line-height:1.3}
+.prow .s{font-size:13px;color:var(--faint);margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:10px;background:var(--bg);border-radius:12px;padding:4px}
+.pick button{padding:9px 0;border-radius:9px;font-size:13px;font-weight:800;color:var(--muted)}
+.pick button.on{background:var(--paper);color:var(--ink)}
+.pick button.sug{box-shadow:inset 0 0 0 1.5px var(--faint);color:var(--text)}
+.claudePick{font-size:11px;font-weight:800;color:var(--paper);border:1px solid var(--line);padding:2px 6px;border-radius:6px}
+
+/* EXECUTE */
+.days{display:flex;gap:6px;margin-bottom:12px}
+.days button{flex:1;padding:10px 4px;border-radius:12px;background:var(--surface);color:var(--muted);font-size:13px;font-weight:800}
+.days button.on{background:var(--paper);color:var(--ink)}
+#notif{display:none;width:100%;margin:0 0 12px;background:var(--surface);color:var(--text);border:1px solid var(--line);font-size:15px;font-weight:800;padding:13px;border-radius:14px}
+.tl{position:relative}
+.slot{display:flex;gap:12px;padding:10px 0}
+.slot .tm{width:52px;flex:none;font-size:13px;font-weight:800;color:var(--faint);padding-top:2px;text-align:right}
+.slot .bd{flex:1;min-width:0;border-left:2px solid var(--line);padding-left:12px}
+.slot .bt{font-size:14px;color:var(--muted);line-height:1.4}
+.slot.has .bt{color:var(--text);font-weight:700}
+.slot.now .tm{color:var(--paper)}
+.slot.now .bd{border-left-color:var(--paper)}
+.slot.past{opacity:.45}
+.slot.quiet{padding:5px 0}
+.slot.quiet .bt{font-size:13px}
+.task{background:var(--surface);border-radius:14px;padding:12px 13px;margin-top:8px}
+.task .tt{font-size:16px;font-weight:800;line-height:1.3}
+.task .tn{font-size:14px;color:var(--muted);margin-top:4px;line-height:1.4}
+.task details{margin-top:6px}
+.task .acts{margin-top:10px}
+.task .acts button{padding:10px 4px}
+.doneList{font-size:14px;color:var(--faint);line-height:1.8;margin:0 4px}
+.doneList s{color:var(--muted)}
 
 /* lock + toast */
 #lock{display:none;flex:1;flex-direction:column;justify-content:center;gap:14px;max-width:360px;width:100%;margin:0 auto}
 #lock h1{font-size:30px;font-weight:900;letter-spacing:-.02em}
 #lock p{color:var(--muted);font-size:15px;line-height:1.5}
-#lock input{background:var(--surface);border:1px solid var(--line);border-radius:14px;color:var(--text);font-size:22px;padding:16px;letter-spacing:.3em;text-align:center;outline:none;font-family:inherit}
+#lock input{background:var(--surface);border:1px solid var(--line);border-radius:14px;color:var(--text);font-size:22px;padding:16px;letter-spacing:.3em;text-align:center;outline:none}
 #lock button{background:var(--paper);color:var(--ink);font-weight:800;font-size:17px;padding:16px;border-radius:14px}
 #lockErr{color:var(--warn);font-size:14px;min-height:18px}
 body.locked #app{display:none}
 body.locked #lock{display:flex}
 #app{flex:1;display:flex;flex-direction:column;min-height:0}
-#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 72px);transform:translate(-50%,-20px);background:var(--paper);color:var(--ink);font-weight:800;font-size:14px;padding:10px 18px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none;z-index:30}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 70px);transform:translate(-50%,-16px);background:var(--paper);color:var(--ink);font-weight:800;font-size:14px;padding:10px 18px;border-radius:99px;opacity:0;transition:.25s;pointer-events:none;z-index:30;white-space:nowrap}
 #toast.on{opacity:1;transform:translate(-50%,0)}
 </style>
 </head>
@@ -126,29 +190,47 @@ body.locked #lock{display:flex}
 
 <div id="app">
   <div class="top">
-    <div class="seg"><button id="tCap" class="on">Capture</button><button id="tPlan">Plan</button></div>
-    <span id="sync"></span>
+    <div class="tabs">
+      <button data-v="dump" class="on"><b>D</b>Dump</button>
+      <button data-v="org"><b>O</b>Organize</button>
+      <button data-v="pri"><b>P</b>Prioritize</button>
+      <button data-v="exe"><b>E</b>Execute</button>
+    </div>
+    <button id="gear" aria-label="Settings"><i></i><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
-  <div id="capView">
+
+  <!-- D: get it out of your head -->
+  <section class="view on" id="v-dump">
     <textarea id="box" placeholder="What's on your mind?" autofocus></textarea>
     <div class="bar">
-      <button id="clear">Clear</button>
+      <button id="mic" aria-label="Speak"><svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4zm7-4a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.9V21H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-3.1a7 7 0 0 0 6-6.9z"/></svg></button>
       <button id="save" disabled>Save</button>
     </div>
+    <div class="under">
+      <span><span id="recInfo">Listening… tap the mic to stop</span><span id="dumpCount"></span></span>
+      <button id="clear">Clear</button>
+    </div>
     <button id="install">Add Capture to your apps</button>
-    <div id="list"></div>
-  </div>
-  <div id="planView">
-    <button id="notif">Turn on reminders</button>
-    <div id="planBody"><div class="empty">Loading…</div></div>
-  </div>
+  </section>
+
+  <!-- O: Claude makes sense of it -->
+  <section class="view" id="v-org"><div class="scroll" id="orgBody"></div></section>
+
+  <!-- P: decide what matters -->
+  <section class="view" id="v-pri"><div class="scroll" id="priBody"></div></section>
+
+  <!-- E: your day, with captures inside it -->
+  <section class="view" id="v-exe">
+    <div class="days" id="days"></div>
+    <div class="scroll"><button id="notif">Turn on reminders</button><div id="exeBody"></div></div>
+  </section>
 </div>
 
-<div id="sheet">
+<div class="sheet" id="tagSheet">
   <div id="timer"><b></b></div>
   <h4>What's this about?</h4>
-  <p>One tap so it lands in the right place.</p>
-  <div class="chips">
+  <p>Tap all that fit. Claude reads it either way.</p>
+  <div class="chips" id="chips">
     <button data-k="video">Content</button>
     <button data-k="book">Book</button>
     <button data-k="site">Platform</button>
@@ -158,16 +240,28 @@ body.locked #lock{display:flex}
     <button data-k="personal">Personal</button>
     <button data-k="other">Just a thought</button>
   </div>
-  <button id="skip">Skip</button>
+  <div class="sheetBar"><button id="tagSkip">Skip</button><button id="tagDone" disabled>Done</button></div>
 </div>
-<div id="toast">Saved</div>
+
+<div class="sheet" id="settings">
+  <h4>Settings</h4>
+  <label>Voice</label>
+  <div id="voiceState"></div>
+  <label>AssemblyAI key</label>
+  <div class="row"><input id="aaiKey" type="password" placeholder="Paste once" autocomplete="off"><button id="aaiSave">Save</button></div>
+  <small>Optional. Without it, the mic uses your phone's built-in speech, which is free and has no limit. With it, you get AssemblyAI's transcription. The key stays on the server.</small>
+  <label>Sync</label>
+  <div id="syncState" style="font-size:14px"></div>
+  <button class="close" id="setClose">Close</button>
+</div>
+<div id="toast"></div>
 
 <script>
 const API = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/capture-api";
 const ORG = "https://vbafqulhbskaswkyjjdn.supabase.co/functions/v1/capture-organize";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiYWZxdWxoYnNrYXN3a3lqamRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwODE3NDcsImV4cCI6MjA4MTY1Nzc0N30.cg7zCIJN9cPd1XUO29BVDjxDlOxcTzY1p6ndDThWr4Q";
 const VAPID = "BIsYpRrSeUjZSz9RK_6Y3ueIvrEI4C_jl2A91UL_GR93H4-bLHQUxJIm-ZduQJEK9XORRRyYe4Hyf2HesuOC_fI";
-const KIND_LABEL = { video:"Content", book:"Book", site:"Platform", business:"Business", event:"Event", task:"Task", personal:"Personal", other:"Thought" };
+const LABEL = { video:"Content", book:"Book", site:"Platform", business:"Business", event:"Event", task:"Task", personal:"Personal", other:"Thought" };
 const $ = id => document.getElementById(id);
 const store = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
@@ -175,43 +269,37 @@ const store = {
 };
 const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
 
-// queue = not yet on the server; recent = what you see under the box
-let queue = store.get("cap_queue", []);
-let recent = store.get("cap_recent", []);
+let queue = store.get("cap_queue", []);        // not yet on the server
+let recent = store.get("cap_recent", []);      // what this device dumped
 let key = store.get("cap_key", "");
-let pendingTags = store.get("cap_tags", {}); // client_id -> kind, for items already sent before the tag
+let pendingTags = store.get("cap_tags", {});   // client_id -> [kinds], for items sent before tagging
+let data = store.get("cap_plan", null);        // last plan from the server
+let view = "dump";
 
 async function call(payload){
   const r = await fetch(API, { method:"POST", headers:{ "Content-Type":"application/json", apikey:ANON, Authorization:"Bearer "+ANON }, body: JSON.stringify(payload) });
   const j = await r.json().catch(() => ({}));
   if (r.status === 401 && payload.action !== "unlock") { lock(); throw new Error("locked"); }
-  if (!r.ok || !j.ok) throw new Error(j.error || "failed");
+  if (!r.ok || !j.ok) { const e = new Error(j.error || "failed"); e.code = j.error; throw e; }
   return j;
 }
 function lock(){ key = ""; store.set("cap_key", ""); document.body.classList.add("locked"); }
-function toast(t){ const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 1300); }
-function ago(iso){
-  const s = (Date.now() - new Date(iso)) / 1000;
-  if (s < 60) return "now"; if (s < 3600) return Math.floor(s/60)+"m";
-  if (s < 86400) return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d";
-}
+function toast(t){ const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 1400); }
 
-function render(){
-  const waiting = new Set(queue.map(q => q.client_id));
-  $("list").innerHTML = recent.slice(0, 12).map(r =>
-    `<div class="item${waiting.has(r.client_id) ? " wait" : ""}"><i></i><span>${esc(r.body)}</span><em>${r.user_kind ? KIND_LABEL[r.user_kind] + " · " : ""}${ago(r.captured_at)}</em></div>`).join("");
-  const s = $("sync");
-  if (queue.length) { s.innerHTML = `<i></i>${queue.length} waiting for network`; s.className = "wait"; }
-  else { s.innerHTML = recent.length ? `<i></i>Saved` : ""; s.className = ""; }
+// ---------- sync ----------
+function renderSync(){
+  $("gear").classList.toggle("wait", queue.length > 0);
+  $("syncState").textContent = queue.length ? `${queue.length} waiting for network. They send by themselves.` : "Everything is saved.";
+  const today = new Date().toDateString();
+  const n = recent.filter(r => new Date(r.captured_at).toDateString() === today).length;
+  $("dumpCount").innerHTML = n ? `${n} dumped today${queue.length ? ` · ${queue.length} waiting` : ""}` : "";
 }
-
 let flushing = false;
 async function flush(){
-  if (flushing || !key || !navigator.onLine) { render(); return; }
+  if (flushing || !key || !navigator.onLine) { renderSync(); return; }
   flushing = true;
   try {
-    // don't send the newest item while the "what's this about" sheet is open for it
-    const ready = queue.filter(q => q.client_id !== sheetFor);
+    const ready = queue.filter(q => q.client_id !== tagFor);
     if (ready.length) {
       const j = await call({ action:"save", key, items: ready.slice(0, 50) });
       const done = new Set(j.saved);
@@ -219,138 +307,341 @@ async function flush(){
       store.set("cap_queue", queue);
       if (done.size) setTimeout(nudgeOrganizer, 400);
     }
-    for (const [cid, k] of Object.entries(pendingTags)) {
+    for (const [cid, kinds] of Object.entries(pendingTags)) {
       if (queue.some(q => q.client_id === cid)) continue;
-      try { const t = await call({ action:"tag", key, client_id: cid, kind: k }); if (!t.pending) { delete pendingTags[cid]; store.set("cap_tags", pendingTags); } } catch(e) {}
+      try { const t = await call({ action:"tag", key, client_id: cid, kinds }); if (!t.pending) { delete pendingTags[cid]; store.set("cap_tags", pendingTags); } } catch(e) {}
     }
   } catch(e) {}
   flushing = false;
-  render();
+  renderSync();
   if (queue.length && navigator.onLine) setTimeout(flush, 15000);
 }
 function nudgeOrganizer(){ if (key && navigator.onLine) fetch(ORG, { method:"POST", headers:{ "Content-Type":"application/json", apikey:ANON, Authorization:"Bearer "+ANON }, body: JSON.stringify({ key }) }).catch(() => {}); }
 
-// ---------- capture ----------
+// ---------- DUMP ----------
 function save(){
+  if (rec) stopRec();
   const body = $("box").value.trim();
   if (!body) return;
   const item = { client_id: (crypto.randomUUID ? crypto.randomUUID() : Date.now()+"-"+Math.random().toString(36).slice(2)), body, captured_at: new Date().toISOString() };
   queue.push(item); store.set("cap_queue", queue);
-  recent.unshift({ ...item }); recent = recent.slice(0, 40); store.set("cap_recent", recent);
+  recent.unshift({ ...item }); recent = recent.slice(0, 60); store.set("cap_recent", recent);
   $("box").value = ""; store.set("cap_draft", ""); $("save").disabled = true;
   toast(navigator.onLine ? "Saved" : "Saved on this device");
-  render();
-  openSheet(item.client_id);
+  renderSync();
+  openTags(item.client_id);
 }
-
-// "What's this about?" sheet: one tap, or it closes by itself
-let sheetFor = null, sheetTimer = null;
-const SHEET_MS = 12000;
-function openSheet(cid){
-  sheetFor = cid;
-  $("sheet").classList.add("on");
-  const bar = $("timer").firstElementChild;
-  bar.style.transition = "none"; bar.style.transform = "scaleX(1)";
-  requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `transform ${SHEET_MS}ms linear`; bar.style.transform = "scaleX(0)"; }));
-  clearTimeout(sheetTimer); sheetTimer = setTimeout(() => closeSheet(null), SHEET_MS);
-}
-function closeSheet(kind){
-  if (!sheetFor) return;
-  const cid = sheetFor; sheetFor = null;
-  clearTimeout(sheetTimer);
-  $("sheet").classList.remove("on");
-  if (kind) {
-    const q = queue.find(x => x.client_id === cid);
-    if (q) { q.user_kind = kind; store.set("cap_queue", queue); }
-    else { pendingTags[cid] = kind; store.set("cap_tags", pendingTags); }
-    const r = recent.find(x => x.client_id === cid); if (r) { r.user_kind = kind; store.set("cap_recent", recent); }
-    toast("Got it: " + KIND_LABEL[kind]);
-  }
-  render(); flush();
-  $("box").focus();
-}
-document.querySelectorAll(".chips button").forEach(b => b.addEventListener("click", () => closeSheet(b.dataset.k)));
-$("skip").addEventListener("click", () => closeSheet(null));
-
 $("box").value = store.get("cap_draft", "");
 $("save").disabled = !$("box").value.trim();
 $("box").addEventListener("input", () => { store.set("cap_draft", $("box").value); $("save").disabled = !$("box").value.trim(); });
 $("box").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); } });
 $("save").addEventListener("click", save);
-$("clear").addEventListener("click", () => { $("box").value = ""; store.set("cap_draft", ""); $("save").disabled = true; $("box").focus(); });
+$("clear").addEventListener("click", () => { if (rec) stopRec(); $("box").value = ""; store.set("cap_draft", ""); $("save").disabled = true; $("box").focus(); });
+$("dumpCount").addEventListener("click", () => show("org"));
 
-// ---------- plan ----------
+// tags: tap any that fit, then Done. Closes by itself if ignored.
+let tagFor = null, tagTimer = null, picked = new Set();
+const TAG_MS = 15000;
+function openTags(cid){
+  tagFor = cid; picked = new Set();
+  document.querySelectorAll("#chips button").forEach(b => b.classList.remove("sel"));
+  $("tagDone").disabled = true;
+  $("tagSheet").classList.add("on");
+  const bar = $("timer").firstElementChild;
+  bar.style.transition = "none"; bar.style.transform = "scaleX(1)";
+  requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = `transform ${TAG_MS}ms linear`; bar.style.transform = "scaleX(0)"; }));
+  clearTimeout(tagTimer); tagTimer = setTimeout(() => closeTags(false), TAG_MS);
+}
+function closeTags(keep){
+  if (!tagFor) return;
+  const cid = tagFor; tagFor = null; clearTimeout(tagTimer);
+  $("tagSheet").classList.remove("on");
+  const kinds = keep ? [...picked] : [];
+  if (kinds.length) {
+    const q = queue.find(x => x.client_id === cid);
+    if (q) { q.categories = kinds; store.set("cap_queue", queue); }
+    else { pendingTags[cid] = kinds; store.set("cap_tags", pendingTags); }
+    const r = recent.find(x => x.client_id === cid); if (r) { r.categories = kinds; store.set("cap_recent", recent); }
+    toast(kinds.map(k => LABEL[k]).join(" + "));
+  }
+  flush();
+  if (view === "dump") $("box").focus();
+}
+document.querySelectorAll("#chips button").forEach(b => b.addEventListener("click", () => {
+  // first tap stops the countdown: he's choosing
+  clearTimeout(tagTimer); const bar = $("timer").firstElementChild; bar.style.transition = "none"; bar.style.transform = "scaleX(0)";
+  const k = b.dataset.k;
+  picked.has(k) ? picked.delete(k) : picked.add(k);
+  b.classList.toggle("sel", picked.has(k));
+  $("tagDone").disabled = !picked.size;
+}));
+$("tagDone").addEventListener("click", () => closeTags(true));
+$("tagSkip").addEventListener("click", () => closeTags(false));
+
+// ---------- VOICE ----------
+// AssemblyAI live transcription when a key is set; otherwise the phone's own speech recognition.
+let rec = null;
+function setText(base, committed, partial){
+  const sep = base && !/\s$/.test(base) ? " " : "";
+  $("box").value = base + (committed || partial ? sep : "") + [committed, partial].filter(Boolean).join(" ");
+  $("save").disabled = !$("box").value.trim();
+  store.set("cap_draft", $("box").value);
+  $("box").scrollTop = $("box").scrollHeight;
+}
+async function startRec(){
+  if (rec) return;
+  const base = $("box").value;
+  document.body.classList.add("rec");
+  rec = { base, committed: "", partial: "", mode: null };
+  let token = null;
+  if (navigator.onLine) { try { token = (await call({ action:"stt_token", key })).token; } catch(e) {} }
+  if (!rec) return;
+  if (token) { try { await startAAI(token); rec.mode = "aai"; store.set("cap_voice", "AssemblyAI"); return; } catch(e) { cleanupAudio(); } }
+  if (!rec) return;
+  if (startBrowserSR()) { rec.mode = "browser"; store.set("cap_voice", "Phone's built-in speech"); return; }
+  toast("Voice isn't available here"); stopRec();
+}
+function stopRec(){
+  if (!rec) return;
+  const r = rec; rec = null;
+  document.body.classList.remove("rec");
+  if (r.mode === "aai" && r.ws) {
+    try { r.ws.send(JSON.stringify({ type:"Terminate" })); } catch(e) {}
+    setTimeout(() => { try { r.ws.close(); } catch(e) {} }, 1500);
+  }
+  if (r.mode === "browser" && r.sr) { r.stopped = true; try { r.sr.stop(); } catch(e) {} }
+  cleanupAudio(r);
+  setText(r.base, r.committed, r.partial);
+}
+function cleanupAudio(r = rec){
+  if (!r) return;
+  try { r.node && r.node.disconnect(); } catch(e) {}
+  try { r.ctx && r.ctx.close(); } catch(e) {}
+  try { r.stream && r.stream.getTracks().forEach(t => t.stop()); } catch(e) {}
+}
+async function startAAI(token){
+  const r = rec;
+  r.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:true, noiseSuppression:true } });
+  r.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const worklet = `class P extends AudioWorkletProcessor{process(i){const c=i[0]&&i[0][0];if(c)this.port.postMessage(c.slice(0));return true}}registerProcessor('pcm',P)`;
+  await r.ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([worklet], { type:"application/javascript" })));
+  const params = new URLSearchParams({ sample_rate:"16000", encoding:"pcm_s16le", format_turns:"true", token });
+  const ws = new WebSocket("wss://streaming.assemblyai.com/v3/ws?" + params);
+  ws.binaryType = "arraybuffer";
+  r.ws = ws;
+  await new Promise((ok, bad) => { ws.onopen = ok; ws.onerror = bad; setTimeout(() => bad(new Error("timeout")), 6000); });
+  ws.onmessage = e => {
+    let m; try { m = JSON.parse(e.data); } catch(_) { return; }
+    if (m.type !== "Turn") return;
+    if (m.end_of_turn && m.turn_is_formatted) { r.committed = [r.committed, m.transcript].filter(Boolean).join(" "); r.partial = ""; }
+    else r.partial = m.transcript || "";
+    // after stop, late words still land in the box
+    if (rec === r) setText(r.base, r.committed, r.partial);
+    else if (m.end_of_turn && m.turn_is_formatted) setText(r.base, r.committed, "");
+  };
+  ws.onclose = () => { if (rec === r) stopRec(); };
+  const src = r.ctx.createMediaStreamSource(r.stream);
+  const node = new AudioWorkletNode(r.ctx, "pcm");
+  const mute = r.ctx.createGain(); mute.gain.value = 0;
+  src.connect(node); node.connect(mute); mute.connect(r.ctx.destination);
+  r.node = node;
+  const ratio = r.ctx.sampleRate / 16000;
+  let buf = [], carry = 0;
+  node.port.onmessage = ev => {
+    const input = ev.data;
+    // downsample to 16 kHz by averaging
+    let pos = carry;
+    for (; pos < input.length; pos += ratio) {
+      const a = Math.floor(pos), b = Math.min(input.length, Math.max(a + 1, Math.floor(pos + ratio)));
+      let s = 0, n = 0; for (let k = a; k < b; k++) { s += input[k]; n++; }
+      buf.push(n ? s / n : 0);
+    }
+    carry = pos - input.length;
+    if (buf.length >= 1600 && ws.readyState === 1) {
+      const out = new Int16Array(buf.length);
+      for (let k = 0; k < buf.length; k++) { const v = Math.max(-1, Math.min(1, buf[k])); out[k] = v < 0 ? v * 0x8000 : v * 0x7fff; }
+      ws.send(out.buffer); buf = [];
+    }
+  };
+}
+function startBrowserSR(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return false;
+  const r = rec;
+  const sr = new SR();
+  sr.continuous = true; sr.interimResults = true; sr.lang = "en-NG";
+  let doneBefore = "";
+  sr.onresult = e => {
+    let fin = "", inter = "";
+    for (let k = 0; k < e.results.length; k++) { const t = e.results[k][0].transcript.trim(); e.results[k].isFinal ? fin += (fin ? " " : "") + t : inter += (inter ? " " : "") + t; }
+    r.committed = [doneBefore, fin].filter(Boolean).join(" "); r.partial = inter;
+    setText(r.base, r.committed, r.partial);
+  };
+  // Android ends a session after a pause; keep listening until he taps stop
+  sr.onend = () => { if (rec === r && !r.stopped) { doneBefore = r.committed; r.partial = ""; try { sr.start(); } catch(e) {} } };
+  sr.onerror = e => { if (e.error === "not-allowed") { toast("Allow the microphone to use voice"); stopRec(); } };
+  r.sr = sr;
+  try { sr.start(); } catch(e) { return false; }
+  return true;
+}
+$("mic").addEventListener("click", () => rec ? stopRec() : startRec());
+
+// ---------- shared card ----------
 const lagos = d => new Date(new Date(d).getTime() + 3600000);
 const isPending = c => c.status === "new" || !c.scheduled_for || new Date(c.scheduled_for).getTime() < 86400000;
+const dateKey = d => lagos(d).toISOString().slice(0,10);
 function dayName(iso){
-  const d = lagos(iso).toISOString().slice(0,10), t = lagos(Date.now()).toISOString().slice(0,10);
-  const tm = lagos(Date.now() + 86400000).toISOString().slice(0,10);
+  const d = dateKey(iso), t = dateKey(Date.now()), tm = dateKey(Date.now() + 86400000);
   if (d === t) return "Today"; if (d === tm) return "Tomorrow";
-  return lagos(iso).toLocaleDateString("en-GB", { weekday:"long", day:"numeric", month:"short", timeZone:"UTC" });
+  return lagos(iso).toLocaleDateString("en-GB", { weekday:"short", day:"numeric", month:"short", timeZone:"UTC" });
 }
 function clock(iso){ const d = lagos(iso); let h = d.getUTCHours(), m = d.getUTCMinutes(); const ap = h >= 12 ? "pm" : "am"; h = h % 12 || 12; return h + (m ? ":" + String(m).padStart(2,"0") : "") + ap; }
-
-function card(c, idea){
-  const kind = c.kind ? `<span class="kind">${KIND_LABEL[c.kind] || c.kind}</span>` : "";
-  const when = idea ? `<span class="block">Parked</span>`
-    : isPending(c) ? `<span class="block">Finding a slot…</span>`
-    : `<span class="when">${clock(c.scheduled_for)}</span><span class="block">${esc(c.block_label || "")}</span>`;
-  const meta = [c.minutes ? c.minutes + " min" : "", c.energy ? c.energy + " energy" : "", c.nudges ? `<span class="slip">moved ${c.nudges}×</span>` : "", c.claude_at ? "by Claude" : (c.organized_by === "groq" ? "quick pass, Claude is next" : "")].filter(Boolean).join(" · ");
+function hhmm12(s){ const [h, m] = s.split(":").map(Number); const ap = h >= 12 ? "pm" : "am"; return (h % 12 || 12) + (m ? ":" + String(m).padStart(2,"0") : "") + ap; }
+const kindsOf = c => (c.categories && c.categories.length ? c.categories : (c.kind ? [c.kind] : []));
+const tagsHtml = c => kindsOf(c).map((k, i) => `<span class="kind${i ? " alt" : ""}">${LABEL[k] || esc(k)}</span>`).join("");
+function depth(c, openScript){
   const verdict = c.verdict ? `<div class="verdict">${esc(c.verdict)}</div>` : "";
-  const ask = c.question ? `<div class="ask"><div class="q">${esc(c.question)}</div>${c.answer ? `<div class="a">You said: ${esc(c.answer)}${c.claude_at ? "" : " · Claude will rework it"}</div>` : ""}<form data-id="${c.id}"><input name="a" placeholder="${c.answer ? "Add more" : "Answer in a line"}" autocomplete="off"><button>Send</button></form></div>` : "";
-  const openScript = c.kind === "video" && !idea && !isPending(c) && dayName(c.scheduled_for) === "Today";
+  const ask = c.question ? `<div class="ask"><div class="q">${esc(c.question)}</div>${c.answer ? `<div class="a">You said: ${esc(c.answer)}${c.claude_at ? "" : "\nClaude will rework it"}</div>` : ""}<form data-id="${c.id}"><input name="a" placeholder="${c.answer ? "Add more" : "Answer in a line"}" autocomplete="off"><button>Send</button></form></div>` : "";
   const shoot = c.script ? `<details${openScript ? " open" : ""}><summary>Script</summary>${c.format ? `<div class="fmt"><b>Format</b>${esc(c.format)}</div>` : ""}${c.grade ? `<div class="fmt"><b>Grade</b>${esc(c.grade)}</div>` : ""}<pre>${esc(c.script)}</pre></details>` : "";
   const notes = c.notes ? `<details><summary>Claude's notes</summary><pre>${esc(c.notes)}</pre></details>` : "";
-  const dirs = `<details><summary>${Array.isArray(c.directions) && c.directions.length ? "Directions" : "What you said"}</summary>${Array.isArray(c.directions) && c.directions.length ? `<ol>${c.directions.map(d => `<li>${esc(d)}</li>`).join("")}</ol>` : ""}<div class="raw">“${esc(c.body)}”</div></details>`;
-  const acts = idea
-    ? `<button class="done" data-a="schedule" data-id="${c.id}">Give it a time</button><button data-a="drop" data-id="${c.id}">Drop</button>`
-    : `<button class="done" data-a="done" data-id="${c.id}">Done</button><button data-a="later" data-id="${c.id}">Later</button><button data-a="park" data-id="${c.id}">Park</button><button data-a="drop" data-id="${c.id}">Drop</button>`;
-  return `<div class="card"><div class="row1">${kind}${when}</div><h3>${esc(c.title || c.body.slice(0,70))}</h3>${c.next_step ? `<div class="next">${esc(c.next_step)}</div>` : ""}${meta ? `<div class="meta">${meta}</div>` : ""}${verdict}${ask}${shoot}${notes}${dirs}<div class="acts">${acts}</div></div>`;
+  const hasDirs = Array.isArray(c.directions) && c.directions.length;
+  const dirs = `<details><summary>${hasDirs ? "Directions" : "What you said"}</summary>${hasDirs ? `<ol>${c.directions.map(d => `<li>${esc(d)}</li>`).join("")}</ol>` : ""}<div class="raw">“${esc(c.body)}”</div></details>`;
+  return verdict + ask + shoot + notes + dirs;
 }
-async function loadPlan(){
-  if (!key) return;
-  let j;
-  try { j = await call({ action:"plan", key }); store.set("cap_plan", j); }
-  catch(e) { j = store.get("cap_plan", null); if (!j) { $("planBody").innerHTML = `<div class="empty">Can't load the plan without network.</div>`; return; } }
-  let html = "", last = "";
-  const open = [...j.open].sort((a, b) => (isPending(a) ? 0 : new Date(a.scheduled_for)) - (isPending(b) ? 0 : new Date(b.scheduled_for)));
-  for (const c of open) {
-    const day = isPending(c) ? "Being sorted" : dayName(c.scheduled_for);
-    if (day !== last) { html += `<div class="day"><span>${day}</span></div>`; last = day; }
-    html += card(c, false);
+function metaLine(c){
+  return [c.minutes ? c.minutes + " min" : "", c.energy ? c.energy + " energy" : "", c.nudges ? `<span class="slip">moved ${c.nudges}×</span>` : "", c.claude_at ? "by Claude" : (c.organized_by === "groq" ? "quick pass, Claude is next" : "waiting for Claude")].filter(Boolean).join(" · ");
+}
+
+// ---------- ORGANIZE ----------
+let filter = "all";
+function renderOrg(){
+  if (!data) { $("orgBody").innerHTML = `<div class="empty">Loading…</div>`; return; }
+  const all = [...data.open, ...data.ideas].sort((a, b) => new Date(b.captured_at) - new Date(a.captured_at));
+  const sentIds = new Set(all.map(c => c.client_id));
+  const local = queue.filter(q => !sentIds.has(q.client_id));
+  const counts = { all: all.length, parked: data.ideas.length }; all.forEach(c => kindsOf(c).forEach(k => counts[k] = (counts[k] || 0) + 1));
+  const fl = [["all","All"], ...Object.keys(LABEL).filter(k => counts[k]).map(k => [k, LABEL[k]]), ...(data.ideas.length ? [["parked","Parked"]] : [])];
+  let list = all;
+  if (filter === "parked") list = data.ideas;
+  else if (filter !== "all") list = all.filter(c => kindsOf(c).includes(filter));
+  let h = "";
+  if (data.themes) h += `<details class="themes"><summary>How you've been thinking</summary><pre>${esc(data.themes)}</pre></details>`;
+  h += `<div class="filters">${fl.map(([k, l]) => `<button data-f="${k}" class="${filter === k ? "on" : ""}">${l}${counts[k] ? " " + counts[k] : ""}</button>`).join("")}</div>`;
+  if (local.length && filter === "all") h += `<div class="sec"><span>Waiting to send</span><span>${local.length}</span></div>` + local.map(q => `<div class="card"><div class="raw" style="margin:0">“${esc(q.body)}”</div></div>`).join("");
+  if (!list.length && !local.length) h += `<div class="empty">Nothing here yet.<br>Dump something and Claude sorts it.</div>`;
+  h += list.map(c => {
+    const parked = c.status === "sorted";
+    const when = parked ? `<span class="block">Parked</span>` : isPending(c) ? `<span class="block">Being sorted</span>` : `<span class="block">${dayName(c.scheduled_for)} ${clock(c.scheduled_for)}</span>`;
+    const acts = parked
+      ? `<button class="main" data-a="schedule" data-id="${c.id}">Give it a time</button><button data-a="drop" data-id="${c.id}">Drop</button>`
+      : `<button data-a="park" data-id="${c.id}">Park</button><button data-a="drop" data-id="${c.id}">Drop</button>`;
+    return `<div class="card"><div class="row1">${tagsHtml(c)}${when}</div><h3>${esc(c.title || c.body.slice(0,70))}</h3>${c.next_step ? `<div class="next">${esc(c.next_step)}</div>` : ""}<div class="meta">${metaLine(c)}</div>${depth(c, false)}<div class="acts">${acts}</div></div>`;
+  }).join("");
+  $("orgBody").innerHTML = h;
+}
+$("orgBody").addEventListener("click", e => { const f = e.target.closest("[data-f]"); if (f) { filter = f.dataset.f; renderOrg(); } });
+
+// ---------- PRIORITIZE ----------
+function renderPri(){
+  if (!data) { $("priBody").innerHTML = `<div class="empty">Loading…</div>`; return; }
+  const all = [...data.open, ...data.ideas];
+  const groups = { now:[], next:[], later:[], none:[] };
+  all.forEach(c => groups[c.priority || "none"].push(c));
+  const row = c => {
+    const p = c.priority, byClaude = c.priority_by === "claude";
+    const btn = (v, l) => `<button data-a="${v === "later" ? "later_p" : v}" data-id="${c.id}" class="${p === v && !byClaude ? "on" : ""}${p === v && byClaude ? " sug" : ""}">${l}</button>`;
+    const where = c.status === "sorted" ? "Parked" : isPending(c) ? "Being sorted" : `${dayName(c.scheduled_for)} ${clock(c.scheduled_for)}`;
+    return `<div class="prow"><div class="t">${esc(c.title || c.body.slice(0,70))}</div><div class="s">${tagsHtml(c)}<span>${where}</span>${byClaude ? `<span class="claudePick">Claude's pick</span>` : ""}</div><div class="pick">${btn("now","Now")}${btn("next","Next")}${btn("later","Later")}</div></div>`;
+  };
+  let h = `<div class="hint">Claude suggests, you decide. Tapping Now pulls it into your next free block.</div>`;
+  for (const [k, l] of [["now","Now"],["next","Next"],["later","Later"],["none","Not ranked yet"]]) {
+    if (!groups[k].length) continue;
+    h += `<div class="sec"><span>${l}</span><span>${groups[k].length}</span></div>` + groups[k].map(row).join("");
   }
-  if (j.ideas.length) html += `<div class="day"><span>Parked ideas</span><span>${j.ideas.length}</span></div>` + j.ideas.map(c => card(c, true)).join("");
-  $("planBody").innerHTML = html || `<div class="empty">Nothing open.<br>Capture something and it shows up here in a few minutes.</div>`;
+  if (!all.length) h += `<div class="empty">Nothing to rank yet.</div>`;
+  $("priBody").innerHTML = h;
 }
-$("planBody").addEventListener("click", async e => {
+
+// ---------- EXECUTE ----------
+let exeDay = 0;
+function renderExe(){
+  const dd = [0,1,2].map(i => { const t = Date.now() + i*86400000; return [i, i === 0 ? "Today" : i === 1 ? "Tomorrow" : lagos(t).toLocaleDateString("en-GB", { weekday:"long", timeZone:"UTC" })]; });
+  $("days").innerHTML = dd.map(([i, l]) => `<button data-d="${i}" class="${exeDay === i ? "on" : ""}">${l}</button>`).join("");
+  notifButton();
+  if (!data) { $("exeBody").innerHTML = `<div class="empty">Loading…</div>`; return; }
+  const dayMs = Date.now() + exeDay * 86400000;
+  const dk = dateKey(dayMs);
+  const isSun = lagos(dayMs).getUTCDay() === 0;
+  const blocks = ((data.routine && (isSun ? data.routine.sunday : data.routine.weekday)) || []).filter(b => b.s);
+  const items = data.open.filter(c => !isPending(c) && dateKey(c.scheduled_for) === dk);
+  const nowHM = lagos(Date.now()).toISOString().slice(11,16);
+  const byTime = {}; items.forEach(c => { const k = lagos(c.scheduled_for).toISOString().slice(11,16); (byTime[k] = byTime[k] || []).push(c); });
+  const used = new Set();
+  const task = c => `<div class="task"><div class="tt">${esc(c.title || c.body.slice(0,60))}</div>${c.next_step ? `<div class="tn">${esc(c.next_step)}</div>` : ""}${c.script ? `<details${c.kind === "video" && exeDay === 0 ? " open" : ""}><summary>Script</summary>${c.format ? `<div class="fmt"><b>Format</b>${esc(c.format)}</div>` : ""}<pre>${esc(c.script)}</pre></details>` : ""}${c.notes ? `<details><summary>Claude's notes</summary><pre>${esc(c.notes)}</pre></details>` : ""}<div class="acts"><button class="main" data-a="done" data-id="${c.id}">Done</button><button data-a="later" data-id="${c.id}">Later</button><button data-a="park" data-id="${c.id}">Park</button></div></div>`;
+  let h = "";
+  const pending = data.open.filter(isPending);
+  if (exeDay === 0 && pending.length) h += `<div class="hint">${pending.length} being sorted. They land in a slot within a few minutes.</div>`;
+  h += `<div class="tl">`;
+  blocks.forEach((b, i) => {
+    const here = byTime[b.s] || []; here.forEach(c => used.add(c.id));
+    const end = b.e || (blocks[i+1] && blocks[i+1].s) || "23:59";
+    const cls = ["slot", here.length ? "has" : "quiet", exeDay === 0 && nowHM >= b.s && nowHM < end ? "now" : "", exeDay === 0 && nowHM >= end && !here.length ? "past" : ""].join(" ");
+    h += `<div class="${cls}"><div class="tm">${hhmm12(b.s)}</div><div class="bd"><div class="bt">${esc(b.t)}</div>${here.map(task).join("")}</div></div>`;
+  });
+  items.filter(c => !used.has(c.id)).forEach(c => { h += `<div class="slot has"><div class="tm">${clock(c.scheduled_for)}</div><div class="bd"><div class="bt">${esc(c.block_label || "")}</div>${task(c)}</div></div>`; });
+  h += `</div>`;
+  if (!blocks.length) h += `<div class="empty">Your day hasn't synced yet. Claude copies it from your November Run page.</div>`;
+  if (exeDay === 0 && data.done && data.done.length) h += `<div class="sec"><span>Done</span><span>${data.done.length}</span></div><div class="doneList">${data.done.map(c => `<div><s>${esc(c.title || c.body.slice(0,60))}</s></div>`).join("")}</div>`;
+  $("exeBody").innerHTML = h;
+}
+$("days").addEventListener("click", e => { const b = e.target.closest("[data-d]"); if (b) { exeDay = +b.dataset.d; renderExe(); } });
+
+// ---------- data + actions ----------
+async function load(){
+  if (!key) return;
+  try { data = await call({ action:"plan", key }); store.set("cap_plan", data); } catch(e) {}
+  renderCurrent();
+}
+function renderCurrent(){ if (view === "org") renderOrg(); if (view === "pri") renderPri(); if (view === "exe") renderExe(); }
+document.addEventListener("click", async e => {
   const b = e.target.closest("button[data-a]"); if (!b) return;
   b.disabled = true;
-  try { await call({ action:"update", key, id: b.dataset.id, to: b.dataset.a }); toast({ done:"Done", later:"Moved to the next slot", park:"Parked", drop:"Dropped", schedule:"Finding it a time" }[b.dataset.a]); }
+  const msg = { done:"Done", later:"Moved to the next slot", park:"Parked", drop:"Dropped", schedule:"Finding it a time", now:"Now. Pulled into your next slot", next:"Next", later_p:"Later" }[b.dataset.a];
+  try { await call({ action:"update", key, id: b.dataset.id, to: b.dataset.a }); toast(msg); if (["later","schedule","now"].includes(b.dataset.a)) setTimeout(nudgeOrganizer, 300); }
   catch(err) { toast("Needs network"); }
-  loadPlan();
+  load();
 });
-$("planBody").addEventListener("submit", async e => {
+document.addEventListener("submit", async e => {
+  const f = e.target; if (!f.dataset.id) return;
   e.preventDefault();
-  const f = e.target, a = f.a.value.trim(); if (!a) return;
+  const a = f.a.value.trim(); if (!a) return;
   f.querySelector("button").disabled = true;
   try { await call({ action:"answer", key, id: f.dataset.id, answer: a }); toast("Sent. Claude will rework it"); }
   catch(err) { toast("Needs network"); }
-  loadPlan();
+  load();
 });
 
-function showTab(t){
-  document.body.classList.toggle("plan", t === "plan");
-  $("tCap").classList.toggle("on", t !== "plan"); $("tPlan").classList.toggle("on", t === "plan");
-  if (t === "plan") { loadPlan(); notifButton(); } else $("box").focus();
+function show(v){
+  view = v;
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  document.querySelectorAll(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
+  if (v === "dump") $("box").focus(); else { renderCurrent(); load(); }
 }
-$("tCap").addEventListener("click", () => showTab("cap"));
-$("tPlan").addEventListener("click", () => showTab("plan"));
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => show(b.dataset.v)));
+
+// ---------- settings ----------
+$("gear").addEventListener("click", () => { $("voiceState").textContent = store.get("cap_voice", "Tap the mic once to check"); renderSync(); $("settings").classList.add("on"); });
+$("setClose").addEventListener("click", () => $("settings").classList.remove("on"));
+$("aaiSave").addEventListener("click", async () => {
+  const v = $("aaiKey").value.trim(); if (!v) return;
+  try { await call({ action:"stt_key", key, value: v }); $("aaiKey").value = ""; toast("AssemblyAI is on"); store.set("cap_voice", "AssemblyAI"); $("voiceState").textContent = "AssemblyAI"; }
+  catch(e) { toast(e.code === "key_rejected" ? "AssemblyAI rejected that key" : "Couldn't save the key"); }
+});
 
 // ---------- reminders ----------
 function notifButton(){
   const ok = "Notification" in window && "PushManager" in window;
   $("notif").style.display = ok && Notification.permission !== "granted" ? "block" : "none";
-  if (ok && Notification.permission === "granted") subscribe();
 }
 function b64(s){ const p = "=".repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from([...r].map(c => c.charCodeAt(0))); }
 async function subscribe(){
@@ -376,13 +667,16 @@ $("unlock").addEventListener("click", async () => {
     const j = await call({ action:"unlock", pin: $("pin").value });
     key = j.key; store.set("cap_key", key);
     document.body.classList.remove("locked");
-    $("box").focus(); flush();
+    $("box").focus(); flush(); load();
   } catch(e) { $("lockErr").textContent = navigator.onLine ? "Wrong PIN" : "You need network to unlock the first time"; }
 });
 $("pin").addEventListener("keydown", e => { if (e.key === "Enter") $("unlock").click(); });
 
 window.addEventListener("online", flush);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { flush(); if (document.body.classList.contains("plan")) loadPlan(); else $("box").focus(); } });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { if (rec) stopRec(); return; }
+  flush(); if (view === "dump") $("box").focus(); else load();
+});
 
 let installEvt = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("install").style.display = "block"; });
@@ -390,10 +684,12 @@ $("install").addEventListener("click", async () => { if (!installEvt) return; in
 window.addEventListener("appinstalled", () => { $("install").style.display = "none"; });
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
-if (new URLSearchParams(location.search).get("tab") === "plan") showTab("plan");
+const qs = new URLSearchParams(location.search).get("tab");
 if (key && "Notification" in window && Notification.permission === "granted") subscribe();
-if (!key) lock(); else flush();
-render();
+if (!key) lock(); else { flush(); load(); }
+// a reminder opens straight onto the day; otherwise you land on Dump
+show(qs === "plan" ? "exe" : "dump");
+renderSync();
 </script>
 </body>
 </html>

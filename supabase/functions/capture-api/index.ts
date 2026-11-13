@@ -18,6 +18,18 @@ const json = (b: unknown, s = 200) =>
 
 const KINDS = ["book", "video", "site", "business", "event", "task", "personal", "other"];
 
+// his tags: list of kinds; the first is the main one
+function cats(v: unknown) {
+  const list = (Array.isArray(v) ? v : []).map(String).filter((k) => KINDS.includes(k));
+  const uniq = [...new Set(list)].slice(0, 4);
+  return uniq.length ? { categories: uniq, user_kind: uniq[0] } : { categories: null, user_kind: null };
+}
+
+async function privSetting(key: string): Promise<string> {
+  const { data } = await sb.from("private_settings").select("value").eq("key", key).maybeSingle();
+  return (data?.value as string) || "";
+}
+
 async function setting(key: string): Promise<string> {
   const { data } = await sb.from("app_settings").select("value").eq("key", key).maybeSingle();
   return (data?.value as string) || "";
@@ -49,7 +61,7 @@ Deno.serve(async (req) => {
         client_id: String(i?.client_id || "").slice(0, 80) || crypto.randomUUID(),
         body: String(i?.body || "").trim().slice(0, 20000),
         captured_at: i?.captured_at && !isNaN(Date.parse(i.captured_at)) ? i.captured_at : new Date().toISOString(),
-        user_kind: KINDS.includes(String(i?.user_kind)) ? String(i.user_kind) : null,
+        ...cats(i?.categories ?? (i?.user_kind ? [i.user_kind] : [])),
       }))
       .filter((r) => r.body);
     if (!rows.length) return json({ ok: true, saved: [] });
@@ -68,14 +80,16 @@ Deno.serve(async (req) => {
 
   if (action === "plan") {
     // everything still open, soonest first, plus parked ideas and the last few done
-    const cols = "id, client_id, body, title, kind, directions, next_step, minutes, energy, status, scheduled_for, block_label, nudges, captured_at, script, format, grade, organized_by, claude_at, notes, user_kind, question, answer, verdict";
+    const cols = "id, client_id, body, title, kind, directions, next_step, minutes, energy, status, scheduled_for, block_label, nudges, captured_at, script, format, grade, organized_by, claude_at, notes, user_kind, question, answer, verdict, categories, priority, priority_by";
     const [a, b, c] = await Promise.all([
       sb.from("captures").select(cols).in("status", ["new", "scheduled"]).order("scheduled_for", { ascending: true, nullsFirst: true }).limit(100),
       sb.from("captures").select(cols).eq("status", "sorted").order("captured_at", { ascending: false }).limit(100),
       sb.from("captures").select(cols).eq("status", "done").order("done_at", { ascending: false }).limit(10),
     ]);
     if (a.error || b.error || c.error) return json({ ok: false, error: "db_error" }, 500);
-    return json({ ok: true, open: a.data, ideas: b.data, done: c.data });
+    const [routine, themes] = await Promise.all([setting("capture_routine"), setting("capture_themes")]);
+    let r: unknown = null; try { r = JSON.parse(routine); } catch { /* keep null */ }
+    return json({ ok: true, open: a.data, ideas: b.data, done: c.data, routine: r, themes });
   }
 
   if (action === "update") {
@@ -88,6 +102,11 @@ Deno.serve(async (req) => {
     if (to === "park") patch = { status: "sorted", scheduled_for: null, notified_at: null };
     // "later" and "schedule": back to the organizer, which finds the next free block
     if (to === "later" || to === "schedule") patch = { status: "scheduled", notified_at: new Date().toISOString(), scheduled_for: new Date(0).toISOString() };
+    if (to === "now" || to === "next" || to === "later_p" || to === "clear_p") {
+      patch = to === "clear_p" ? { priority: null, priority_by: null } : { priority: to === "later_p" ? "later" : to, priority_by: "genie" };
+      // "now" pulls it into the earliest free block of its kind
+      if (to === "now") Object.assign(patch, { status: "scheduled", notified_at: new Date().toISOString(), scheduled_for: new Date(0).toISOString() });
+    }
     if (!patch) return json({ ok: false, error: "bad_action" }, 400);
     const { error } = await sb.from("captures").update(patch).eq("id", id);
     if (error) return json({ ok: false, error: "db_error" }, 500);
@@ -98,11 +117,12 @@ Deno.serve(async (req) => {
   if (action === "tag") {
     // he says what it's about after saving; works by device id so it doesn't wait for sync
     const cid = String(body.client_id || "");
-    const k = String(body.kind || "");
-    if (!cid || !KINDS.includes(k)) return json({ ok: false, error: "bad_tag" }, 400);
+    const c = cats(body.kinds ?? (body.kind ? [body.kind] : []));
+    const k = c.user_kind as string | null;
+    if (!cid || !k) return json({ ok: false, error: "bad_tag" }, 400);
     const { data: row } = await sb.from("captures").select("id, kind, status").eq("client_id", cid).maybeSingle();
     if (!row) return json({ ok: true, pending: true });
-    const patch: Record<string, unknown> = { user_kind: k, claude_at: null };
+    const patch: Record<string, unknown> = { ...c, claude_at: null };
     // already placed under another kind: send it back for a new block
     if (row.status === "scheduled" && row.kind !== k) Object.assign(patch, { kind: k, scheduled_for: new Date(0).toISOString(), notified_at: new Date().toISOString() });
     else if (row.status !== "new") patch.kind = k;
@@ -119,6 +139,26 @@ Deno.serve(async (req) => {
     const all = prev?.answer ? prev.answer + "\n" + a : a;
     const { error } = await sb.from("captures").update({ answer: all, answer_at: new Date().toISOString(), claude_at: null }).eq("id", id);
     if (error) return json({ ok: false, error: "db_error" }, 500);
+    return json({ ok: true });
+  }
+
+
+  if (action === "stt_token") {
+    // AssemblyAI live transcription: short-lived token so the key never reaches the browser
+    const apiKey = Deno.env.get("ASSEMBLYAI_API_KEY") || Deno.env.get("ASSEMBLY_AI_API_KEY") || await privSetting("assemblyai_key");
+    if (!apiKey) return json({ ok: false, error: "no_key" }, 200);
+    const r = await fetch("https://streaming.assemblyai.com/v3/token?expires_in_seconds=60&max_session_duration_seconds=3600", { headers: { Authorization: apiKey } });
+    const t = await r.json().catch(() => ({}));
+    if (!r.ok || !t.token) return json({ ok: false, error: "token_failed", detail: String(t.error || r.status) }, 200);
+    return json({ ok: true, token: t.token });
+  }
+
+  if (action === "stt_key") {
+    const v = String(body.value || "").trim();
+    if (v.length < 20) return json({ ok: false, error: "bad_key" }, 400);
+    const test = await fetch("https://streaming.assemblyai.com/v3/token?expires_in_seconds=10", { headers: { Authorization: v } });
+    if (!test.ok) return json({ ok: false, error: "key_rejected" }, 200);
+    await sb.from("private_settings").upsert({ key: "assemblyai_key", value: v });
     return json({ ok: true });
   }
 
